@@ -1,33 +1,22 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
-  using System.Threading.Tasks;
   using Microsoft.AspNet.Mvc;
 
   [Route("api/[controller]")]
   public class TestController : Controller {
     [HttpGet]
-    public IActionResult Get() {
-      //return new string[] { "value1", "value2" };
-      return Ok();
+    public string Index() {
+      return "This is some text.";
     }
 
-    [HttpGet("{id}")]
-    public string Get(int id) {
-      return "value";
+    [HttpGet("Error")]
+    public IActionResult Error() {
+      throw new NotImplementedException("This method deliberately not implemented.");
     }
 
-    [HttpPost]
-    public void Post([FromBody]string value) {
-    }
-
-    [HttpPut("{id}")]
-    public void Put(int id, [FromBody]string value) {
-    }
-
-    [HttpDelete("{id}")]
-    public void Delete(int id) {
+    [HttpGet("Time")]
+    public string Time() {
+      return $"UTC: {DateTime.UtcNow}\nLocal: {DateTime.Now}";
     }
   }
 }
