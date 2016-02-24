@@ -3,22 +3,19 @@
   using System.Collections.Generic;
   using System.Linq;
   using System.Threading.Tasks;
+  using Configuration;
   using Microsoft.AspNet.Mvc;
+  using Microsoft.Extensions.OptionsModel;
   using Octokit;
 
   [Route("api/[controller]")]
   public class AuthenticationController : Controller {
-    private const string ApplicationId = "3852a73fd5c85002499c";
-    private const string ApplicationSecret = "e768601a3674e37b2b68f3194e7c74690bb35005";
+    private IGitHubClient _ghClient;
+    private GitHubOptions _ghOpts;
 
-    private static GitHubClient CreateGitHubClient(string accessToken = null) {
-      var client = new GitHubClient(new ProductHeaderValue("ShipHub", "0.1"));
-      if (accessToken == null) {
-        client.Credentials = new Credentials(ApplicationId, ApplicationSecret);
-      } else {
-        client.Credentials = new Credentials(accessToken);
-      }
-      return client;
+    public AuthenticationController(IGitHubClient ghClient, IOptions<GitHubOptions> ghOpts) {
+      _ghClient = ghClient;
+      _ghOpts = ghOpts.Value;
     }
 
     [HttpPost("login")]
@@ -27,45 +24,42 @@
         return HttpBadRequest($"{nameof(accessToken)} is required.");
       }
 
-      var gh = CreateGitHubClient();
       try {
-        var appAuth = await gh.Authorization.CheckApplicationAuthentication(gh.Credentials.Login, accessToken);
+        var appAuth = await _ghClient.Authorization.CheckApplicationAuthentication(_ghOpts.ApplicationId, accessToken);
 
         if (appAuth == null) {
           return HttpUnauthorized();
         }
 
         return Json(appAuth);
-      } catch (Exception e) {
-        throw;
+      } catch {
+        // TODO: Scope this more tightly
+        return HttpUnauthorized();
       }
     }
 
     [HttpGet("begin")]
-    public async Task<IActionResult> BeginGitHubOauth() {
-      var gh = CreateGitHubClient();
-
+    public IActionResult BeginGitHubOauth() {
       var hostParts = Request.Host.Value.Split(':');
       var host = hostParts.First();
       var port = hostParts.Skip(1).SingleOrDefault() ?? "443";
       var uri = new UriBuilder(Request.Scheme, host, int.Parse(port), Url.Action($"{nameof(EndGitHubOauth)}"));
 
-      var request = new OauthLoginRequest(ApplicationId) {
-        RedirectUri = uri.Uri, 
+      var request = new OauthLoginRequest(_ghOpts.ApplicationId) {
+        RedirectUri = uri.Uri,
         State = "TODO: this",
       };
       request.Scopes.Add("repo");
-      //request.Scopes.Add("admin:repo_hook");
       request.Scopes.Add("user:email");
 
-      var url = gh.Oauth.GetGitHubLoginUrl(request).ToString();
+      var url = _ghClient.Oauth.GetGitHubLoginUrl(request).ToString();
       return Redirect(url);
     }
 
     [HttpGet("end")]
     public async Task<IActionResult> EndGitHubOauth(string code, string state) {
-      var gh = CreateGitHubClient();
-      var token = await gh.Oauth.CreateAccessToken(new OauthTokenRequest(ApplicationId, ApplicationSecret, code));
+      var token = await _ghClient.Oauth.CreateAccessToken(
+        new OauthTokenRequest(_ghOpts.ApplicationId, _ghOpts.ApplicationSecret, code));
       return Json(token);
     }
   }

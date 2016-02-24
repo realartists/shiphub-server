@@ -1,10 +1,13 @@
 ﻿namespace RealArtists.ShipHub.Api {
+  using Configuration;
+  using DataModel;
   using Microsoft.AspNet.Builder;
   using Microsoft.AspNet.Hosting;
   using Microsoft.Extensions.Configuration;
   using Microsoft.Extensions.DependencyInjection;
   using Microsoft.Extensions.Logging;
-
+  using Microsoft.Extensions.OptionsModel;
+  using Octokit;
   public class Startup {
     public Startup(IHostingEnvironment env) {
       // Set up configuration sources.
@@ -20,6 +23,25 @@
     public void ConfigureServices(IServiceCollection services) {
       // Add framework services.
       services.AddMvc();
+
+      // Database Connections
+      var gitHubConnectionString = Configuration["Data:GitHubConnection:ConnectionString"];
+      var shipHubConnectionString = Configuration["Data:ShipHubConnection:ConnectionString"];
+      services.AddScoped(_ => new GitHubContext(gitHubConnectionString));
+      services.AddScoped(_ => new ShipHubContext(shipHubConnectionString));
+
+      services.AddOptions();
+      services.Configure<GitHubOptions>(Configuration.GetSection("GitHub"));
+
+      // GitHub
+      services.AddScoped<IGitHubClient>(sp => {
+        var opts = sp.GetService<IOptions<GitHubOptions>>().Value;
+        var productHeader = new ProductHeaderValue(opts.ApplicationName, opts.ApplicationVersion);
+        var githubCredentials = new Credentials(opts.ApplicationId, opts.ApplicationSecret);
+        return new GitHubClient(productHeader) {
+          Credentials = githubCredentials,
+        };
+      });
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
