@@ -9,12 +9,12 @@
       return "This is some text.";
     }
 
-    [HttpGet("Error")]
+    [HttpGet("error")]
     public IActionResult Error() {
       throw new NotImplementedException("This method deliberately not implemented.");
     }
 
-    [HttpGet("Time")]
+    [HttpGet("time")]
     public string Time() {
       return $"UTC: {DateTime.UtcNow}\nLocal: {DateTime.Now}";
     }
