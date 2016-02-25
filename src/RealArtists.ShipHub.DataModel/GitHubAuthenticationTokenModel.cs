@@ -5,10 +5,12 @@
   [Table("AuthenticationTokens", Schema = "GitHub")]
   public class GitHubAuthenticationTokenModel {
     [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public int AccountId { get; set; }
+
+    [Required]
     [StringLength(512)]
     public string AccessToken { get; set; }
-
-    public int AccountId { get; set; }
 
     [Required]
     public string Scopes { get; set; }

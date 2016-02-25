@@ -11,8 +11,6 @@
       Database.SetInitializer<ShipHubContext>(null);
     }
 
-    public virtual DbSet<object> name { get; set; }
-
     public GitHubContext() 
       : this("name=ShipHubContext") {
     }
@@ -35,7 +33,7 @@
 
     protected override void OnModelCreating(DbModelBuilder mb) {
       mb.Entity<GitHubAccountModel>()
-        .HasMany(x => x.AuthenticationTokens)
+        .HasOptional(x => x.AuthenticationToken)
         .WithRequired(x => x.Account)
         .WillCascadeOnDelete();
 

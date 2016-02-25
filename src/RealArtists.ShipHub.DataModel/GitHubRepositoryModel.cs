@@ -5,6 +5,7 @@
 
   [Table("Repositories", Schema = "GitHub")]
   public class GitHubRepositoryModel {
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
     public int OwnerId { get; set; }

@@ -9,6 +9,7 @@
     /// <summary>
     /// The account's GitHub unique ID.
     /// </summary>
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
     /// <summary>
@@ -20,7 +21,7 @@
     /// <summary>
     /// Company the account works for.
     /// </summary>
-    [Required]
+    [Required(AllowEmptyStrings = true)]
     [StringLength(255)]
     public string Company { get; set; }
 
@@ -43,7 +44,7 @@
     [StringLength(255)]
     public string Name { get; set; }
 
-    public virtual ICollection<GitHubAuthenticationTokenModel> AuthenticationTokens { get; set; } = new HashSet<GitHubAuthenticationTokenModel>();
+    public virtual GitHubAuthenticationTokenModel AuthenticationToken { get; set; }
 
     public virtual ICollection<GitHubRepositoryModel> Repositories { get; set; } = new HashSet<GitHubRepositoryModel>();
   }

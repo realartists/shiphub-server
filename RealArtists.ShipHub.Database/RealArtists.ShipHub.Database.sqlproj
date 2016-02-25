@@ -75,6 +75,8 @@
     <Build Include="GitHub\Repositories.sql" />
     <Build Include="GitHub\Accounts.sql" />
     <Build Include="GitHub\AuthenticationTokens.sql" />
+    <Build Include="Ship\Users.sql" />
+    <Build Include="Ship\AuthenticationTokens.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipSchema.sql" />
