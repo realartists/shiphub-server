@@ -6,8 +6,7 @@
   using Microsoft.Extensions.Configuration;
   using Microsoft.Extensions.DependencyInjection;
   using Microsoft.Extensions.Logging;
-  using Microsoft.Extensions.OptionsModel;
-  using Octokit;
+
   public class Startup {
     public Startup(IHostingEnvironment env) {
       // Set up configuration sources.
@@ -32,16 +31,6 @@
 
       services.AddOptions();
       services.Configure<GitHubOptions>(Configuration.GetSection("GitHub"));
-
-      // GitHub
-      services.AddScoped<IGitHubClient>(sp => {
-        var opts = sp.GetService<IOptions<GitHubOptions>>().Value;
-        var productHeader = new ProductHeaderValue(opts.ApplicationName, opts.ApplicationVersion);
-        var githubCredentials = new Credentials(opts.ApplicationId, opts.ApplicationSecret);
-        return new GitHubClient(productHeader) {
-          Credentials = githubCredentials,
-        };
-      });
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
