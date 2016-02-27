@@ -10,7 +10,6 @@
   "profiles": {
     "IIS Express": {
       "commandName": "IISExpress",
-      "launchUrl": "api/test",
       "environmentVariables": {
         "Hosting:Environment": "Development"
       },

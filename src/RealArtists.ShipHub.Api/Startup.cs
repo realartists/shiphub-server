@@ -12,17 +12,15 @@
 
   public class Startup {
     public Startup(IHostingEnvironment env) {
-      // Set up configuration sources.
-      var builder = new ConfigurationBuilder()
-          .AddJsonFile("appsettings.json")
-          .AddUserSecrets()
-          .AddEnvironmentVariables();
-      Configuration = builder.Build();
+      Configuration = new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json")
+        .AddUserSecrets()
+        .AddEnvironmentVariables()
+        .Build();
     }
 
     public IConfigurationRoot Configuration { get; set; }
 
-    // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services) {
       // Add framework services.
       services.AddAuthentication(options => {
