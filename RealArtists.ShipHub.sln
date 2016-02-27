@@ -14,7 +14,7 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "RealArtists.ShipHub.Api", "
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "RealArtists.ShipHub.DataModel", "src\RealArtists.ShipHub.DataModel\RealArtists.ShipHub.DataModel.xproj", "{A557E3F0-1B3E-4326-9542-5298EB68D612}"
 EndProject
-Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "RealArtists.ShipHub.Database", "RealArtists.ShipHub.Database\RealArtists.ShipHub.Database.sqlproj", "{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}"
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "RealArtists.ShipHub.Database", "src\RealArtists.ShipHub.Database\RealArtists.ShipHub.Database.sqlproj", "{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
