@@ -13,7 +13,7 @@
 
   [AllowAnonymous]
   [Route("api/[controller]")]
-  public class AuthenticationController : Controller {
+  public class Authentication : Controller {
     private GitHubOptions _ghOpts;
     private GitHubContext _ghContext;
 
@@ -28,7 +28,7 @@
       "admin:org_hook",
     }.AsReadOnly();
 
-    public AuthenticationController(IOptions<GitHubOptions> ghOpts, GitHubContext ghContext) {
+    public Authentication(IOptions<GitHubOptions> ghOpts, GitHubContext ghContext) {
       _ghOpts = ghOpts.Value;
       _ghContext = ghContext;
     }

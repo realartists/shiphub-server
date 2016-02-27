@@ -5,7 +5,7 @@
 
   [AllowAnonymous]
   [Route("api/[controller]")]
-  public class TestController : Controller {
+  public class Test : Controller {
     [HttpGet]
     public string Index() {
       return "This is some text.";
