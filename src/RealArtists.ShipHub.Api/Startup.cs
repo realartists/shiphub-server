@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api {
+  using System;
   using Configuration;
   using DataModel;
   using Microsoft.AspNetCore.Authorization;
@@ -51,6 +52,10 @@
       loggerFactory.AddDebug();
 
       app.UseIISPlatformHandler();
+
+      app.UseWebSockets(new WebSocketOptions() {
+        KeepAliveInterval = TimeSpan.FromSeconds(30),
+      });
 
       app.UseShipHubAuthentication();
 
