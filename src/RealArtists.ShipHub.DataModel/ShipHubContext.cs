@@ -1,35 +1,37 @@
 ﻿namespace RealArtists.ShipHub.DataModel {
   using System;
-  using System.Collections.Generic;
   using System.Data.Common;
   using System.Data.Entity;
-  using System.Linq;
-  using System.Threading.Tasks;
 
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
       Database.SetInitializer<ShipHubContext>(null);
     }
 
-    public virtual DbSet<object> name { get; set; }
-
-    public ShipHubContext() 
+    public ShipHubContext()
       : this("name=ShipHubContext") {
     }
 
-    public ShipHubContext(string nameOrConnectionString) 
+    public ShipHubContext(string nameOrConnectionString)
       : base(nameOrConnectionString) {
     }
 
-    public ShipHubContext(DbConnection existingConnection, bool contextOwnsConnection) 
+    public ShipHubContext(DbConnection existingConnection, bool contextOwnsConnection)
       : base(existingConnection, contextOwnsConnection) {
     }
+
+    public virtual DbSet<ShipAuthenticationTokenModel> AuthenticationTokens { get; set; }
+    public virtual DbSet<ShipUserModel> Users { get; set; }
 
     public override int SaveChanges() {
       throw new NotImplementedException("Please use SaveChangesAsync instead.");
     }
 
-    protected override void OnModelCreating(DbModelBuilder modelBuilder) {
+    protected override void OnModelCreating(DbModelBuilder mb) {
+      mb.Entity<ShipUserModel>()
+        .HasMany(x => x.AuthenticationTokens)
+        .WithRequired(x => x.User)
+        .WillCascadeOnDelete();
     }
   }
 }

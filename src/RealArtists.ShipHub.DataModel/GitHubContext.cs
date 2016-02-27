@@ -1,25 +1,22 @@
 ﻿namespace RealArtists.ShipHub.DataModel {
   using System;
-  using System.Collections.Generic;
   using System.Data.Common;
   using System.Data.Entity;
-  using System.Linq;
-  using System.Threading.Tasks;
 
   public class GitHubContext : DbContext {
     static GitHubContext() {
-      Database.SetInitializer<ShipHubContext>(null);
+      Database.SetInitializer<GitHubContext>(null);
     }
 
-    public GitHubContext() 
-      : this("name=ShipHubContext") {
+    public GitHubContext()
+      : this("name=GitHubContext") {
     }
 
-    public GitHubContext(string nameOrConnectionString) 
+    public GitHubContext(string nameOrConnectionString)
       : base(nameOrConnectionString) {
     }
 
-    public GitHubContext(DbConnection existingConnection, bool contextOwnsConnection) 
+    public GitHubContext(DbConnection existingConnection, bool contextOwnsConnection)
       : base(existingConnection, contextOwnsConnection) {
     }
 

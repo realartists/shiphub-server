@@ -3,7 +3,7 @@
   [GitHubAccountId] INT              NOT NULL,
   [CreationDate]    DATETIMEOFFSET   NOT NULL,
   CONSTRAINT [PK_ShipUsers] PRIMARY KEY CLUSTERED ([Id] ASC),
-  CONSTRAINT [FK_ShipUsers_GitHubAccountId_GitHubAccounts_Id] FOREIGN KEY ([GitHubAccountId]) REFERENCES [GitHub].[Accounts] ([Id])
+  CONSTRAINT [FKCD_ShipUsers_GitHubAccountId_GitHubAccounts_Id] FOREIGN KEY ([GitHubAccountId]) REFERENCES [GitHub].[Accounts] ([Id]) ON DELETE CASCADE
 );
 GO
 

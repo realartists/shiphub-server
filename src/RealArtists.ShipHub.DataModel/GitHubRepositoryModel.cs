@@ -22,7 +22,7 @@
     [StringLength(500)]
     public string FullName { get; set; }
 
-    [Required]
+    [Required(AllowEmptyStrings = true)]
     [StringLength(500)]
     public string Description { get; set; }
 
