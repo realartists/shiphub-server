@@ -84,10 +84,7 @@
 
     [HttpGet("begin")]
     public IActionResult BeginGitHubOauth() {
-      var hostParts = Request.Host.Value.Split(':');
-      var host = hostParts.First();
-      var port = hostParts.Skip(1).SingleOrDefault() ?? "443";
-      var uri = new UriBuilder(Request.Scheme, host, int.Parse(port), Url.Action($"{nameof(EndGitHubOauth)}"));
+      var uri = new UriBuilder(Uri.UriSchemeHttps, Request.Host.Host, Request.Host.Port ?? 443, Url.Action($"{nameof(EndGitHubOauth)}"));
 
       var request = new OauthLoginRequest(_ghOpts.ApplicationId) {
         RedirectUri = uri.Uri,
