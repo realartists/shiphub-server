@@ -14,9 +14,16 @@
   public class AuthenticationController : Controller {
     private GitHubOptions _ghOpts;
     private GitHubContext _ghContext;
-    private static readonly IReadOnlyList<string> _ghScopes = new List<string>() {
+
+    private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
+      "notifications",
       "repo",
-      //"user.Email",
+      "admin:repo_hook",
+    }.AsReadOnly();
+
+    private static readonly IReadOnlyList<string> _optionalOauthScopes = new List<string>() {
+      "read:org",
+      "admin:org_hook",
     }.AsReadOnly();
 
     public AuthenticationController(IOptions<GitHubOptions> ghOpts, GitHubContext ghContext) {
@@ -35,7 +42,7 @@
         var appAuth = await appClient.Authorization.CheckApplicationAuthentication(_ghOpts.ApplicationId, accessToken);
 
         // Check scopes
-        var missingScopes = _ghScopes.Except(appAuth.Scopes).ToArray();
+        var missingScopes = _requiredOauthScopes.Except(appAuth.Scopes).ToArray();
         if (missingScopes.Any()) {
           return HttpUnauthorized();
         }
@@ -85,7 +92,7 @@
         State = "TODO: this",
       };
 
-      foreach (var scope in _ghScopes) {
+      foreach (var scope in _requiredOauthScopes.Union(_optionalOauthScopes)) {
         request.Scopes.Add(scope);
       }
 
