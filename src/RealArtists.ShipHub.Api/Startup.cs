@@ -1,11 +1,13 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using Configuration;
   using DataModel;
-  using Microsoft.AspNet.Builder;
-  using Microsoft.AspNet.Hosting;
+  using Microsoft.AspNetCore.Authorization;
+  using Microsoft.AspNetCore.Builder;
+  using Microsoft.AspNetCore.Hosting;
   using Microsoft.Extensions.Configuration;
   using Microsoft.Extensions.DependencyInjection;
   using Microsoft.Extensions.Logging;
+  using Middleware.ShipHubAuthentication;
 
   public class Startup {
     public Startup(IHostingEnvironment env) {
@@ -21,16 +23,26 @@
     // This method gets called by the runtime. Use this method to add services to the container.
     public void ConfigureServices(IServiceCollection services) {
       // Add framework services.
+      services.AddAuthentication(options => {
+        options.SignInScheme = ShipHubAuthenticationDefaults.AuthenticationScheme;
+      });
+
+      services.AddAuthorization(options => {
+        // This is technically the default and not needed, but I want to be explicit.
+        options.DefaultPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+      });
+
       services.AddMvc();
+
+      // Options
+      services.AddOptions();
+      services.Configure<GitHubOptions>(Configuration.GetSection("GitHub"));
 
       // Database Connections
       var gitHubConnectionString = Configuration["Data:GitHubConnection:ConnectionString"];
       var shipHubConnectionString = Configuration["Data:ShipHubConnection:ConnectionString"];
       services.AddScoped(_ => new GitHubContext(gitHubConnectionString));
       services.AddScoped(_ => new ShipHubContext(shipHubConnectionString));
-
-      services.AddOptions();
-      services.Configure<GitHubOptions>(Configuration.GetSection("GitHub"));
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -40,12 +52,21 @@
 
       app.UseIISPlatformHandler();
 
-      app.UseStaticFiles();
+      app.UseShipHubAuthentication();
 
       app.UseMvc();
     }
 
     // Entry point for the application.
-    public static void Main(string[] args) => WebApplication.Run<Startup>(args);
+    public static void Main(string[] args) {
+      new WebHostBuilder()
+        .UseCaptureStartupErrors(captureStartupError: true)
+        .UseDefaultConfiguration(args)
+        .UseIISPlatformHandlerUrl()
+        .UseServer("Microsoft.AspNetCore.Server.Kestrel")
+        .UseStartup<Startup>()
+        .Build()
+        .Run();
+    }
   }
 }

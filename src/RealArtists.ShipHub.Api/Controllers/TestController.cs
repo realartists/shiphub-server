@@ -1,7 +1,9 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
-  using Microsoft.AspNet.Mvc;
+  using Microsoft.AspNetCore.Authorization;
+  using Microsoft.AspNetCore.Mvc;
 
+  [AllowAnonymous]
   [Route("api/[controller]")]
   public class TestController : Controller {
     [HttpGet]

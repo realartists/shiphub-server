@@ -6,10 +6,12 @@
   using System.Threading.Tasks;
   using Configuration;
   using DataModel;
-  using Microsoft.AspNet.Mvc;
-  using Microsoft.Extensions.OptionsModel;
+  using Microsoft.AspNetCore.Authorization;
+  using Microsoft.AspNetCore.Mvc;
+  using Microsoft.Extensions.Options;
   using Octokit;
 
+  [AllowAnonymous]
   [Route("api/[controller]")]
   public class AuthenticationController : Controller {
     private GitHubOptions _ghOpts;
@@ -34,7 +36,7 @@
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] string accessToken) {
       if (string.IsNullOrWhiteSpace(accessToken)) {
-        return HttpBadRequest($"{nameof(accessToken)} is required.");
+        return BadRequest($"{nameof(accessToken)} is required.");
       }
 
       try {
@@ -44,7 +46,7 @@
         // Check scopes
         var missingScopes = _requiredOauthScopes.Except(appAuth.Scopes).ToArray();
         if (missingScopes.Any()) {
-          return HttpUnauthorized();
+          return Unauthorized();
         }
 
         var userClient = _ghOpts.CreateUserClient(appAuth.Token);
@@ -76,7 +78,7 @@
         return Ok();
       } catch {
         // TODO: Scope this more tightly
-        return HttpUnauthorized();
+        return Unauthorized();
       }
     }
 

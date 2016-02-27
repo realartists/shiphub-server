@@ -13,7 +13,8 @@
       "launchUrl": "api/test",
       "environmentVariables": {
         "Hosting:Environment": "Development"
-      }
+      },
+      "sdkVersion": "dnx-clr-win-x64.1.0.0-rc2-16551"
     },
     "web": {
       "commandName": "web",
