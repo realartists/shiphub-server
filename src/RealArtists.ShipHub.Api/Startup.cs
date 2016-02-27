@@ -15,6 +15,7 @@
       // Set up configuration sources.
       var builder = new ConfigurationBuilder()
           .AddJsonFile("appsettings.json")
+          .AddUserSecrets()
           .AddEnvironmentVariables();
       Configuration = builder.Build();
     }
@@ -65,10 +66,9 @@
     // Entry point for the application.
     public static void Main(string[] args) {
       new WebHostBuilder()
-        .UseCaptureStartupErrors(captureStartupError: true)
         .UseDefaultConfiguration(args)
-        .UseIISPlatformHandlerUrl()
         .UseServer("Microsoft.AspNetCore.Server.Kestrel")
+        .UseIISPlatformHandlerUrl()
         .UseStartup<Startup>()
         .Build()
         .Run();
