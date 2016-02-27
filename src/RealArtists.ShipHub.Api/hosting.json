@@ -1,0 +1,7 @@
+﻿{
+  "webroot": "wwwroot",
+  "server": "Microsoft.AspNetCore.Server.Kestrel",
+  "app": "RealArtists.ShipHub.Api",
+  "environment": "Development",
+  "detailedErrors": true
+}
