@@ -14,7 +14,7 @@
 
   [AllowAnonymous]
   [Route("api/[controller]")]
-  public class Authentication : Controller {
+  public class Authentication : ShipHubController {
     private GitHubOptions _ghOpts;
     private GitHubContext _ghContext;
 
@@ -35,7 +35,7 @@
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] string accessToken) {
+    public async Task<IActionResult> Login(string accessToken, string clientName) {
       if (string.IsNullOrWhiteSpace(accessToken)) {
         return BadRequest($"{nameof(accessToken)} is required.");
       }
@@ -47,24 +47,30 @@
         // Check scopes
         var missingScopes = _requiredOauthScopes.Except(appAuth.Scopes).ToArray();
         if (missingScopes.Any()) {
-          return Unauthorized();
+          return Error("Insufficient access granted.", HttpStatusCode.Unauthorized, new {
+            MissingScopes = missingScopes,
+          });
         }
 
         var userClient = _ghOpts.CreateUserClient(appAuth.Token);
         var userInfo = await userClient.User.Current();
+        var apiInfo = userClient.GetLastApiInfo();
 
         var account = await _ghContext.Accounts
           .Include(x => x.AuthenticationToken)
           .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
         if (account == null) {
           account = _ghContext.Accounts.Create();
+          account.Id = userInfo.Id;
         }
         account.AvatarUrl = userInfo.AvatarUrl;
         account.Company = userInfo.Company ?? "";
-        account.CreatedAt = userInfo.CreatedAt.UtcDateTime;
-        account.Id = userInfo.Id;
+        account.CreatedAt = userInfo.CreatedAt;
         account.Login = userInfo.Login;
         account.Name = userInfo.Name;
+        account.ETag = apiInfo.Etag;
+        account.UpdatedAt = userInfo.
+
 
         if (account.AuthenticationToken == null) {
           account.AuthenticationToken = _ghContext.AuthenticationTokens.Add(new GitHubAuthenticationTokenModel() {

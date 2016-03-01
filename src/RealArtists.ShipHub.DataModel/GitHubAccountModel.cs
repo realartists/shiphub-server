@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
 
   [Table("Accounts", Schema = "GitHub")]
-  public class GitHubAccountModel {
+  public class GitHubAccountModel : GitHubApiResource {
     /// <summary>
     /// The account's GitHub unique ID.
     /// </summary>
@@ -26,11 +26,6 @@
     public string Company { get; set; }
 
     /// <summary>
-    /// Date the account was created.
-    /// </summary>
-    public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
     /// The account's login.
     /// </summary>
     [Required]
@@ -43,6 +38,11 @@
     [Required]
     [StringLength(255)]
     public string Name { get; set; }
+
+    /// <summary>
+    /// Date the account was created.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; set; }
 
     public virtual GitHubAuthenticationTokenModel AuthenticationToken { get; set; }
 

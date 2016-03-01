@@ -4,7 +4,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
 
   [Table("Repositories", Schema = "GitHub")]
-  public class GitHubRepositoryModel {
+  public class GitHubRepositoryModel : GitHubApiResource {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
@@ -27,8 +27,6 @@
     public string Description { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
-
-    public DateTimeOffset UpdatedAt { get; set; }
 
     public virtual GitHubAccountModel Owner { get; set; }
   }
