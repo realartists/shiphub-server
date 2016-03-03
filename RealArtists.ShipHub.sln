@@ -20,6 +20,12 @@ Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "RealArtists.ShipHub.Databas
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "RealArtists.GitHub", "src\RealArtists.GitHub\RealArtists.GitHub.xproj", "{797B1BCE-8BB8-483F-AA6D-A19EFB26E11F}"
 EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "RealArtists.GitHub.Tests", "test\RealArtists.GitHub.Tests\RealArtists.GitHub.Tests.xproj", "{03D7BD48-4CFD-4FA5-A4C1-74339C477485}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2075F4E1-204D-442C-90A8-FA38620FC421}"
+EndProject
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "RealArtists.GitHub.TestConsole", "test\RealArtists.GitHub.TestConsole\RealArtists.GitHub.TestConsole.xproj", "{7B4FD833-5F15-46EA-B164-9AC905A948B9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +50,14 @@ Global
 		{797B1BCE-8BB8-483F-AA6D-A19EFB26E11F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{797B1BCE-8BB8-483F-AA6D-A19EFB26E11F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{797B1BCE-8BB8-483F-AA6D-A19EFB26E11F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03D7BD48-4CFD-4FA5-A4C1-74339C477485}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03D7BD48-4CFD-4FA5-A4C1-74339C477485}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03D7BD48-4CFD-4FA5-A4C1-74339C477485}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03D7BD48-4CFD-4FA5-A4C1-74339C477485}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B4FD833-5F15-46EA-B164-9AC905A948B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B4FD833-5F15-46EA-B164-9AC905A948B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B4FD833-5F15-46EA-B164-9AC905A948B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B4FD833-5F15-46EA-B164-9AC905A948B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -53,5 +67,7 @@ Global
 		{A557E3F0-1B3E-4326-9542-5298EB68D612} = {0E8DEC89-F410-4F37-8CDA-F8C33DFC7E9B}
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D} = {0E8DEC89-F410-4F37-8CDA-F8C33DFC7E9B}
 		{797B1BCE-8BB8-483F-AA6D-A19EFB26E11F} = {0E8DEC89-F410-4F37-8CDA-F8C33DFC7E9B}
+		{03D7BD48-4CFD-4FA5-A4C1-74339C477485} = {2075F4E1-204D-442C-90A8-FA38620FC421}
+		{7B4FD833-5F15-46EA-B164-9AC905A948B9} = {2075F4E1-204D-442C-90A8-FA38620FC421}
 	EndGlobalSection
 EndGlobal

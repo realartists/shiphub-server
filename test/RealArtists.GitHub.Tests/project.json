@@ -1,0 +1,21 @@
+﻿{
+  "authors": [ "Nick Sivo" ],
+  "commands": {
+    "test": "xunit.runner.dnx"
+  },
+  "dependencies": {
+    "Microsoft.Extensions.PlatformAbstractions": "1.0.0-rc1-final",
+    "Newtonsoft.Json": "8.0.2",
+    "RealArtists.GitHub": "1.0.0-*",
+    "xunit": "2.1.0-*",
+    "xunit.runner.dnx": "2.1.0-*",
+  },
+  "description": "RealArtists.GitHub.Tests",
+  "frameworks": {
+    "dnx451": { }
+  },
+  "licenseUrl": "",
+  "projectUrl": "",
+  "tags": [ "" ],
+  "version": "1.0.0-*"
+}
