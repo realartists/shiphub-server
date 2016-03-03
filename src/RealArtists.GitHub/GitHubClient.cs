@@ -1,15 +1,10 @@
 ﻿namespace RealArtists.GitHub {
   using System;
-  using System.Collections.Generic;
-  using System.Diagnostics;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Net.Http.Headers;
-  using System.Net.Mime;
-  using System.Text;
-  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
@@ -17,10 +12,11 @@
   public class GitHubClient : IDisposable {
     private static readonly string _Version = typeof(GitHubClient).Assembly.GetName().Version.ToString();
     private static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
-    //private static readonly MediaTypeHeaderValue _JsonMediaTypeHeader = new MediaTypeHeaderValue("application/json");
     private static readonly JsonSerializerSettings _JsonSettings;
-    private static readonly JsonMediaTypeFormatter _JsonMediaTypeFormatter;
     private static readonly MediaTypeFormatter[] _MediaTypeFormatters;
+
+    public static readonly MediaTypeHeaderValue JsonMediaType = new MediaTypeHeaderValue("application/json");
+    public static readonly JsonMediaTypeFormatter JsonMediaTypeFormatter;
 
     static GitHubClient() {
       _JsonSettings = new JsonSerializerSettings() {
@@ -28,11 +24,14 @@
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Ignore,
       };
-      _JsonSettings.Converters.Add(new StringEnumConverter());
-      _JsonMediaTypeFormatter = new JsonMediaTypeFormatter() {
+      _JsonSettings.Converters.Add(new StringEnumConverter() {
+        AllowIntegerValues = false,
+        CamelCaseText = true,
+      });
+      JsonMediaTypeFormatter = new JsonMediaTypeFormatter() {
         SerializerSettings = _JsonSettings,
       };
-      _MediaTypeFormatters = new[] { _JsonMediaTypeFormatter };
+      _MediaTypeFormatters = new[] { JsonMediaTypeFormatter };
     }
 
     private HttpClient _httpClient;
@@ -40,6 +39,10 @@
     public GitHubClient(IGitHubCredentials credentials) {
       var handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
+        AllowAutoRedirect = false,
+        MaxAutomaticRedirections = 5,
+        MaxRequestContentBufferSize = 4 * 1024 * 1024,
+        UseCookies = false,
       };
       _httpClient = new HttpClient(handler, true);
 
@@ -62,48 +65,55 @@
       credentials.Apply(headers);
     }
 
-    protected static KeyValuePair<string, string> Pair(string key, object value) {
-      return Pair(key, value.ToString());
-    }
+    private async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
+      var uri = new Uri(_ApiRoot, request.Uri);
+      var httpRequest = new HttpRequestMessage(request.Method, uri) {
+        Content = request.CreateBodyContent(),
+      };
 
-    protected static KeyValuePair<string, string> Pair(string key, DateTime value) {
-      return Pair(key, value.ToUniversalTime().ToString("o"));
-    }
+      // Conditional headers
+      httpRequest.Headers.IfModifiedSince = request.LastModified;
+      if (!string.IsNullOrWhiteSpace(request.ETag)) {
+        httpRequest.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(request.ETag));
+      }
 
-    protected static KeyValuePair<string, string> Pair(string key, DateTimeOffset value) {
-      return Pair(key, value.ToString("o"));
-    }
+      var response = await _httpClient.SendAsync(httpRequest);
 
-    protected static KeyValuePair<string, string> Pair(string key, string value) {
-      return new KeyValuePair<string, string>(key, value);
-    }
+      // Handle redirects
+      switch (response.StatusCode) {
+        case HttpStatusCode.MovedPermanently:
+        case HttpStatusCode.RedirectKeepVerb:
+          request.Uri = response.Headers.Location;
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, response.Headers.Location));
+        case HttpStatusCode.Redirect:
+        case HttpStatusCode.RedirectMethod:
+          request.Method = HttpMethod.Get;
+          request.Uri = response.Headers.Location;
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, response.Headers.Location));
+        default:
+          break;
+      }
 
-    protected async Task<TResponse> MakeRequest<TRequest, TResponse>(HttpMethod method, string relativePath, TRequest body, params KeyValuePair<string, string>[] queryParams)
-      where TResponse : GitHubResponse {
-      Uri uri;
-      if (queryParams.Any()) {
-        var query = string.Join("&", queryParams.Select(x => $"{Uri.EscapeUriString(x.Key)}={Uri.EscapeUriString(x.Value)}"));
-        uri = new Uri(_ApiRoot, string.Join("?", relativePath, query));
+      var result = new GitHubResponse<T>() {
+        Redirect = redirect,
+        Status = response.StatusCode,
+        ETag = response.Headers.ETag?.Tag,
+        LastModified = response.Headers
+          .Where(x => x.Key == "Last-Modified")
+          .Select(x => DateTimeOffset.Parse(x.Value.Single()))
+          .SingleOrDefault(),
+      };
+
+      if (response.IsSuccessStatusCode) {
+        // TODO: Handle accepted, no content, etc.
+        if (response.StatusCode != HttpStatusCode.NotModified) {
+          result.Result = await response.Content.ReadAsAsync<T>(_MediaTypeFormatters);
+        }
       } else {
-        uri = new Uri(_ApiRoot, relativePath);
+        result.Error = await response.Content.ReadAsAsync<GitHubError>(_MediaTypeFormatters);
       }
 
-      var request = new HttpRequestMessage(method, uri);
-
-      if (body != null) {
-        request.Content = new ObjectContent<TRequest>(body, _JsonMediaTypeFormatter);
-      }
-
-      GitHubResponse result;
-      try {
-        var response = await _httpClient.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        result = await response.Content.ReadAsAsync<TResponse>(_MediaTypeFormatters);
-      } catch (Exception e) {
-        throw new SlackException("Exception during HTTP processing.", e);
-      }
-
-      return (TResponse)result;
+      return result;
     }
 
     #region IDisposable Support

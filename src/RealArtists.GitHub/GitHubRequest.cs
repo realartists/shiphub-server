@@ -1,14 +1,76 @@
 ﻿namespace RealArtists.GitHub {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
+  using System.Collections.Specialized;
   using System.Net.Http;
-  using System.Threading.Tasks;
 
   public class GitHubRequest {
+    public GitHubRequest(HttpMethod method, string path, string eTag = null, DateTimeOffset? lastModified = null) {
+      Method = method;
+      Path = path;
+      ETag = eTag;
+      LastModified = lastModified;
+      Parameters = new NameValueCollection();
+    }
+
     public HttpMethod Method { get; set; }
     public string Path { get; set; }
     public string ETag { get; set; }
-    public int MyProperty { get; set; }
+    public DateTimeOffset? LastModified { get; set; }
+    public NameValueCollection Parameters { get; set; }
+
+    public Uri Uri {
+      get {
+        if (Parameters.Count > 0) {
+          return new Uri(string.Join("?", Path, Parameters.ToString()));
+        } else {
+          return new Uri(Path);
+        }
+      }
+      set {
+        if (!value.IsAbsoluteUri) {
+          throw new ArgumentException("Uri must be absolute.", nameof(value));
+        }
+
+        Path = value.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+        Parameters = value.ParseQueryString();
+        ETag = null;
+        LastModified = null;
+      }
+    }
+
+    public GitHubRequest AddParameter(string key, string value) {
+      Parameters.Add(key, value);
+      return this;
+    }
+
+    public GitHubRequest AddParameter(string key, object value) {
+      return AddParameter(key, value.ToString());
+    }
+
+    public GitHubRequest AddParameter(string key, DateTime value) {
+      return AddParameter(key, value.ToUniversalTime().ToString("o"));
+    }
+
+    public GitHubRequest AddParameter(string key, DateTimeOffset value) {
+      return AddParameter(key, value.ToString("o"));
+    }
+
+    public virtual HttpContent CreateBodyContent() {
+      return null;
+    }
+  }
+
+  public class GitHubRequest<T> : GitHubRequest
+    where T : class {
+    public GitHubRequest(HttpMethod method, string path, T body, string eTag = null, DateTimeOffset? lastModified = null)
+      : base(method, path, eTag, lastModified) {
+      Body = body;
+    }
+
+    public T Body { get; set; }
+
+    public override HttpContent CreateBodyContent() {
+      return new ObjectContent<T>(Body, GitHubClient.JsonMediaTypeFormatter, GitHubClient.JsonMediaType);
+    }
   }
 }
