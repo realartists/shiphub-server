@@ -6,6 +6,7 @@
     public HttpStatusCode Status { get; set; }
     public GitHubError Error { get; set; }
     public GitHubRedirect Redirect { get; set; }
+    public GitHubPagination Pagination { get; set; }
     
     public T Result { get; set; }
 

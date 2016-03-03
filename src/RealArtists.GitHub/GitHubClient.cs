@@ -1,20 +1,25 @@
 ﻿namespace RealArtists.GitHub {
   using System;
-  using System.Globalization;
+  using System.Collections;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Net.Http.Headers;
+  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
 
   public class GitHubClient : IDisposable {
-    private static readonly string _Version = typeof(GitHubClient).Assembly.GetName().Version.ToString();
-    private static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
-    private static readonly JsonSerializerSettings _JsonSettings;
-    private static readonly MediaTypeFormatter[] _MediaTypeFormatters;
+    static readonly string _Version = typeof(GitHubClient).Assembly.GetName().Version.ToString();
+    static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
+    static readonly JsonSerializerSettings _JsonSettings;
+    static readonly MediaTypeFormatter[] _MediaTypeFormatters;
+
+    // Link: <https://api.github.com/repositories/51336290/issues/events?page_size=5&page=2>; rel="next", <https://api.github.com/repositories/51336290/issues/events?page_size=5&page=3>; rel="last"
+    const RegexOptions _RegexOptions = RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase;
+    static readonly Regex _LinkRegex = new Regex(@"<(?<link>[^>]+)>; rel=""(?<rel>first|last|next|prev){1}""(, )?", _RegexOptions);
 
     public static readonly MediaTypeHeaderValue JsonMediaType = new MediaTypeHeaderValue("application/json");
     public static readonly JsonMediaTypeFormatter JsonMediaTypeFormatter;
@@ -69,6 +74,12 @@
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
+      // Always request the biggest page size
+      if (request.Method == HttpMethod.Get
+        && typeof(IEnumerable).IsAssignableFrom(typeof(T))) {
+        request.AddParameter("per_page", 100);
+      }
+
       var uri = new Uri(_ApiRoot, request.Uri);
       var httpRequest = new HttpRequestMessage(request.Method, uri) {
         Content = request.CreateBodyContent(),
@@ -104,6 +115,7 @@
         LastModified = response.Content?.Headers?.LastModified,
       };
 
+      // Rate Limits
       result.RateLimit = response.Headers
         .Where(x => x.Key.Equals("X-RateLimit-Limit", StringComparison.OrdinalIgnoreCase))
         .SelectMany(x => x.Value)
@@ -121,6 +133,36 @@
         .SelectMany(x => x.Value)
         .Select(x => EpochDateTimeConverter.EpochToDateTimeOffset(int.Parse(x)))
         .Single();
+
+      // Pagination
+      // Screw the RFC, minimally match what GitHub actually sends.
+      if (response.Headers.Contains("Link")) {
+        var linkHeader = response.Headers
+          .Where(x => x.Key.Equals("Link", StringComparison.OrdinalIgnoreCase))
+          .SelectMany(x => x.Value)
+          .Single();
+
+        var links = result.Pagination = new GitHubPagination();
+        foreach (Match match in _LinkRegex.Matches(linkHeader)) {
+          var linkUri = new Uri(match.Groups["link"].Value);
+          switch (match.Groups["rel"].Value) {
+            case "first":
+              links.First = linkUri;
+              break;
+            case "last":
+              links.Last = linkUri;
+              break;
+            case "next":
+              links.Next = linkUri;
+              break;
+            case "prev":
+              links.Previous = linkUri;
+              break;
+            default:  // Skip unknown values
+              break;
+          }
+        }
+      }
 
       if (response.IsSuccessStatusCode) {
         // TODO: Handle accepted, no content, etc.
