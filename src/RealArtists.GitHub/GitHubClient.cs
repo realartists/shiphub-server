@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.GitHub {
   using System;
+  using System.Globalization;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
@@ -36,7 +37,7 @@
 
     private HttpClient _httpClient;
 
-    public GitHubClient(IGitHubCredentials credentials) {
+    public GitHubClient(IGitHubCredentials credentials = null) {
       var handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
@@ -62,10 +63,12 @@
 
       headers.Add("Time-Zone", "Etc/UTC");
 
-      credentials.Apply(headers);
+      if (credentials != null) {
+        credentials.Apply(headers);
+      }
     }
 
-    private async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
+    public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
       var uri = new Uri(_ApiRoot, request.Uri);
       var httpRequest = new HttpRequestMessage(request.Method, uri) {
         Content = request.CreateBodyContent(),
@@ -98,11 +101,26 @@
         Redirect = redirect,
         Status = response.StatusCode,
         ETag = response.Headers.ETag?.Tag,
-        LastModified = response.Headers
-          .Where(x => x.Key == "Last-Modified")
-          .Select(x => DateTimeOffset.Parse(x.Value.Single()))
-          .SingleOrDefault(),
+        LastModified = response.Content?.Headers?.LastModified,
       };
+
+      result.RateLimit = response.Headers
+        .Where(x => x.Key.Equals("X-RateLimit-Limit", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(x => x.Value)
+        .Select(x => int.Parse(x))
+        .Single();
+
+      result.RateLimitRemaining = response.Headers
+        .Where(x => x.Key.Equals("X-RateLimit-Remaining", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(x => x.Value)
+        .Select(x => int.Parse(x))
+        .Single();
+
+      result.RateLimitReset = response.Headers
+        .Where(x => x.Key.Equals("X-RateLimit-Reset", StringComparison.OrdinalIgnoreCase))
+        .SelectMany(x => x.Value)
+        .Select(x => EpochDateTimeConverter.EpochToDateTimeOffset(int.Parse(x)))
+        .Single();
 
       if (response.IsSuccessStatusCode) {
         // TODO: Handle accepted, no content, etc.

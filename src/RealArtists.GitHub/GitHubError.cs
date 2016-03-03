@@ -6,6 +6,7 @@
   public class GitHubError {
     public HttpStatusCode Status { get; set; }
     public string Message { get; set; }
+    public string DocumentationUrl { get; set; }
     public IEnumerable<GitHubEntityError> Errors { get; set; }
   }
 

@@ -35,6 +35,14 @@ namespace RealArtists.GitHub {
     private static readonly DateTime _Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     private static readonly DateTimeOffset _EpochOffset = new DateTimeOffset(_Epoch);
 
+    public static DateTime EpochToDateTime(int epoch) {
+      return _Epoch.AddSeconds(epoch);
+    }
+
+    public static DateTimeOffset EpochToDateTimeOffset(int epoch) {
+      return _EpochOffset.AddSeconds(epoch);
+    }
+
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
       var nullable = IsNullableType(objectType);
       var t = nullable ? Nullable.GetUnderlyingType(objectType) : objectType;

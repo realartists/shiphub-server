@@ -21,9 +21,9 @@
     public Uri Uri {
       get {
         if (Parameters.Count > 0) {
-          return new Uri(string.Join("?", Path, Parameters.ToString()));
+          return new Uri(string.Join("?", Path, Parameters.ToString()), UriKind.Relative);
         } else {
-          return new Uri(Path);
+          return new Uri(Path, UriKind.Relative);
         }
       }
       set {
