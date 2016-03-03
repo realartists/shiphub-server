@@ -33,6 +33,7 @@
       });
 
       services.AddMvc();
+      services.AddMvcDnx();
 
       // Options
       services.AddOptions();

@@ -69,8 +69,6 @@
         account.Login = userInfo.Login;
         account.Name = userInfo.Name;
         account.ETag = apiInfo.Etag;
-        account.UpdatedAt = userInfo.
-
 
         if (account.AuthenticationToken == null) {
           account.AuthenticationToken = _ghContext.AuthenticationTokens.Add(new GitHubAuthenticationTokenModel() {
