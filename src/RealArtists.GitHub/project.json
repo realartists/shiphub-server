@@ -7,7 +7,7 @@
   },
   "description": "RealArtists.GitHub",
   "frameworks": {
-    "dnx46": { }
+    "dnx451": { }
   },
   "licenseUrl": "",
   "projectUrl": "",

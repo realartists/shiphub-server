@@ -13,6 +13,7 @@
     "Microsoft.AspNetCore.IISPlatformHandler": "1.0.0-*",
     "Microsoft.AspNetCore.Mvc": "1.0.0-*",
     "Microsoft.AspNetCore.Mvc.Core": "1.0.0-*",
+    "Microsoft.AspNetCore.Mvc.Dnx": "1.0.0-rc2-*",
     "Microsoft.AspNetCore.Server.Kestrel": "1.0.0-*",
     "Microsoft.AspNetCore.StaticFiles": "1.0.0-*",
     "Microsoft.AspNetCore.WebSockets.Server": "0.1.0-*",
@@ -26,15 +27,14 @@
     "Microsoft.Extensions.Logging.Debug": "1.0.0-*",
     "Microsoft.Extensions.Options.ConfigurationExtensions": "1.0.0-*",
     "Octokit": "0.18.0",
-    "RealArtists.ShipHub.DataModel": "1.0.0-*",
-    "System.Text.Encodings.Web": "4.0.0-*"
+    "RealArtists.ShipHub.DataModel": "1.0.0-*"
   },
   "exclude": [
     "wwwroot",
     "node_modules"
   ],
   "frameworks": {
-    "dnx46": { }
+    "dnx451": { }
   },
   "publishExclude": [
     "**.user",
