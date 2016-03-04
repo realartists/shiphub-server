@@ -1,28 +1,30 @@
 ﻿namespace RealArtists.ShipHub.Api.Configuration {
-  using Octokit;
+  using System.Collections.Generic;
+  using System.Linq;
+  using GitHub;
+
+  public class GitHubApplicationCredentialOptions {
+    public string Id { get; set; }
+    public string Secret { get; set; }
+  }
 
   public class GitHubOptions {
-    public string ApplicationId { get; set; }
-    public string ApplicationSecret { get; set; }
-    public string ApplicationName { get; set; }
-    public string ApplicationVersion { get; set; }
+    public string Name { get; set; }
+    public string Version { get; set; }
+    public IEnumerable<GitHubApplicationCredentialOptions> Credentials { get; set; }
 
-    public ProductHeaderValue ProductHeader {
-      get {
-        return new ProductHeaderValue(ApplicationName, ApplicationVersion);
+    public GitHubClient CreateApplicationClient(string applicationId = null) {
+      GitHubApplicationCredentialOptions appCreds;
+      if (applicationId == null) {
+        appCreds = Credentials.Single();
+      } else {
+        appCreds = Credentials.Single(x => x.Id == applicationId);
       }
+      return new GitHubClient(Name, Version, new GitHubApplicationCredentials(appCreds.Id, appCreds.Secret));
     }
 
-    public IGitHubClient CreateApplicationClient() {
-      return new GitHubClient(ProductHeader) {
-        Credentials = new Credentials(ApplicationId, ApplicationSecret)
-      };
-    }
-
-    public IGitHubClient CreateUserClient(string accessToken) {
-      return new GitHubClient(ProductHeader) {
-        Credentials = new Credentials(accessToken)
-      };
+    public GitHubClient CreateUserClient(string accessToken) {
+      return new GitHubClient(Name, Version, new GitHubOauthCredentials(accessToken));
     }
   }
 }
