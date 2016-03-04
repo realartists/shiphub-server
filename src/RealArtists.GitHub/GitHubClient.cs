@@ -6,20 +6,29 @@
   using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Net.Http.Headers;
-  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
+  using Models;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
+  using Serialization;
+
+  public static class HeaderUtility {
+    public static string SingleHeader(this HttpResponseMessage response, string headerName) {
+      return response.Headers
+        .Where(x => x.Key.Equals(headerName, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(x => x.Value)
+        .SingleOrDefault();
+    }
+
+    public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
+      return selector(response.SingleHeader(headerName));
+    }
+  }
 
   public class GitHubClient : IDisposable {
-    static readonly string _Version = typeof(GitHubClient).Assembly.GetName().Version.ToString();
     static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
     static readonly JsonSerializerSettings _JsonSettings;
     static readonly MediaTypeFormatter[] _MediaTypeFormatters;
-
-    // Link: <https://api.github.com/repositories/51336290/issues/events?page_size=5&page=2>; rel="next", <https://api.github.com/repositories/51336290/issues/events?page_size=5&page=3>; rel="last"
-    const RegexOptions _RegexOptions = RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase;
-    static readonly Regex _LinkRegex = new Regex(@"<(?<link>[^>]+)>; rel=""(?<rel>first|last|next|prev){1}""(, )?", _RegexOptions);
 
     public static readonly MediaTypeHeaderValue JsonMediaType = new MediaTypeHeaderValue("application/json");
     public static readonly JsonMediaTypeFormatter JsonMediaTypeFormatter;
@@ -42,7 +51,7 @@
 
     private HttpClient _httpClient;
 
-    public GitHubClient(IGitHubCredentials credentials = null) {
+    public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null) {
       var handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
@@ -57,20 +66,37 @@
       headers.AcceptEncoding.ParseAdd("gzip");
       headers.AcceptEncoding.ParseAdd("deflate");
 
-      headers.AcceptCharset.Clear();
-      headers.AcceptCharset.ParseAdd("utf-8");
-
       headers.Accept.Clear();
       headers.Accept.ParseAdd("application/vnd.github.v3+json");
 
+      headers.AcceptCharset.Clear();
+      headers.AcceptCharset.ParseAdd("utf-8");
+
       headers.UserAgent.Clear();
-      headers.UserAgent.Add(new ProductInfoHeaderValue("RealArtists.GitHub", _Version));
+      headers.UserAgent.Add(new ProductInfoHeaderValue(productName, productVersion));
 
       headers.Add("Time-Zone", "Etc/UTC");
 
       if (credentials != null) {
         credentials.Apply(headers);
       }
+    }
+
+    public async Task<GitHubResponse<AccessTokenModel>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
+      var request = new GitHubRequest<object>(HttpMethod.Post, "login/oauth/access_token", new {
+        ClientId = clientId,
+        ClientSecret = clientSecret,
+        Code = code,
+        State = state,
+      });
+
+      return await MakeRequest<AccessTokenModel>(request);
+    }
+
+    public async Task<GitHubResponse<UserModel>> AuthenticatedUser() {
+      var request = new GitHubRequest(HttpMethod.Get, "user");
+
+      return await MakeRequest<UserModel>(request);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
@@ -94,16 +120,17 @@
       var response = await _httpClient.SendAsync(httpRequest);
 
       // Handle redirects
+      var originalLocation = request.Uri;
       switch (response.StatusCode) {
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, response.Headers.Location));
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, originalLocation, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
           request.Method = HttpMethod.Get;
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, response.Headers.Location));
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, originalLocation, request.Uri, redirect));
         default:
           break;
       }
@@ -116,52 +143,15 @@
       };
 
       // Rate Limits
-      result.RateLimit = response.Headers
-        .Where(x => x.Key.Equals("X-RateLimit-Limit", StringComparison.OrdinalIgnoreCase))
-        .SelectMany(x => x.Value)
-        .Select(x => int.Parse(x))
-        .Single();
-
-      result.RateLimitRemaining = response.Headers
-        .Where(x => x.Key.Equals("X-RateLimit-Remaining", StringComparison.OrdinalIgnoreCase))
-        .SelectMany(x => x.Value)
-        .Select(x => int.Parse(x))
-        .Single();
-
-      result.RateLimitReset = response.Headers
-        .Where(x => x.Key.Equals("X-RateLimit-Reset", StringComparison.OrdinalIgnoreCase))
-        .SelectMany(x => x.Value)
-        .Select(x => EpochDateTimeConverter.EpochToDateTimeOffset(int.Parse(x)))
-        .Single();
+      result.RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x));
+      result.RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x));
+      result.RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x)));
 
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
-      if (response.Headers.Contains("Link")) {
-        var linkHeader = response.Headers
-          .Where(x => x.Key.Equals("Link", StringComparison.OrdinalIgnoreCase))
-          .SelectMany(x => x.Value)
-          .Single();
-
-        var links = result.Pagination = new GitHubPagination();
-        foreach (Match match in _LinkRegex.Matches(linkHeader)) {
-          var linkUri = new Uri(match.Groups["link"].Value);
-          switch (match.Groups["rel"].Value) {
-            case "first":
-              links.First = linkUri;
-              break;
-            case "last":
-              links.Last = linkUri;
-              break;
-            case "next":
-              links.Next = linkUri;
-              break;
-            case "prev":
-              links.Previous = linkUri;
-              break;
-            default:  // Skip unknown values
-              break;
-          }
-        }
+      var linkHeader = response.SingleHeader("Link");
+      if (linkHeader != null) {
+        result.Pagination = GitHubPagination.FromLinkHeader(linkHeader);
       }
 
       if (response.IsSuccessStatusCode) {
@@ -176,7 +166,6 @@
       return result;
     }
 
-    #region IDisposable Support
     private bool disposedValue = false;
 
     protected virtual void Dispose(bool disposing) {
@@ -192,7 +181,6 @@
     public void Dispose() {
       Dispose(true);
     }
-    #endregion
   }
 }
 

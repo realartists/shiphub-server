@@ -5,12 +5,16 @@
   public class GitHubRedirect {
     public GitHubRedirect() { }
 
-    public GitHubRedirect(HttpStatusCode status, Uri location) {
+    public GitHubRedirect(HttpStatusCode status, Uri originalLocation, Uri newLocation, GitHubRedirect previous = null) {
       Status = status;
-      Location = location;
+      OriginalLocation = originalLocation;
+      NewLocation = newLocation;
+      PreviousRedirect = previous;
     }
 
     public HttpStatusCode Status { get; set; }
-    public Uri Location { get; set; }
+    public Uri OriginalLocation { get; set; }
+    public Uri NewLocation { get; set; }
+    public GitHubRedirect PreviousRedirect { get; set; }
   }
 }
