@@ -1,5 +1,4 @@
-﻿#region License
-// Derived from https://github.com/JamesNK/Newtonsoft.Json/blob/a3278ccd6a7ac88c3c5ae85d46a3ec46a6f438ec/Src/Newtonsoft.Json/Converters/IsoDateTimeConverter.cs
+﻿// Derived from https://github.com/JamesNK/Newtonsoft.Json/blob/a3278ccd6a7ac88c3c5ae85d46a3ec46a6f438ec/Src/Newtonsoft.Json/Converters/IsoDateTimeConverter.cs
 // which has the following license:
 // Copyright (c) 2007 James Newton-King
 // Copyright (c) 2015 Real Artists, Inc.
@@ -24,25 +23,13 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
-#endregion
 
-using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+namespace RealArtists.GitHub.Serialization {
+  using System;
+  using Newtonsoft.Json;
+  using Newtonsoft.Json.Converters;
 
-namespace RealArtists.GitHub {
   public class EpochDateTimeConverter : DateTimeConverterBase {
-    private static readonly DateTime _Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-    private static readonly DateTimeOffset _EpochOffset = new DateTimeOffset(_Epoch);
-
-    public static DateTime EpochToDateTime(int epoch) {
-      return _Epoch.AddSeconds(epoch);
-    }
-
-    public static DateTimeOffset EpochToDateTimeOffset(int epoch) {
-      return _EpochOffset.AddSeconds(epoch);
-    }
-
     public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
       var nullable = IsNullableType(objectType);
       var t = nullable ? Nullable.GetUnderlyingType(objectType) : objectType;
@@ -68,24 +55,22 @@ namespace RealArtists.GitHub {
         return reader.Value;
       }
 
-      long millisecs = 0;
+      double seconds = 0;
 
       if (reader.TokenType == JsonToken.Integer) {
-        millisecs = (long)reader.Value * 1000;
+        seconds = (int)reader.Value;
       } else if (reader.TokenType == JsonToken.Float) {
-        millisecs = (long)((double)reader.Value * 1000);
+        seconds = (double)reader.Value;
       } else if (reader.TokenType == JsonToken.String) {
-        millisecs = (long)(double.Parse((string)reader.Value) * 1000);
+        seconds = double.Parse((string)reader.Value);
       } else {
         throw new JsonSerializationException(string.Format("Unexpected token parsing date. Expected numeric, got {0}.", reader.TokenType));
       }
 
-      var date = _Epoch.AddMilliseconds(millisecs);
-
       if (t == typeof(DateTimeOffset)) {
-        return new DateTimeOffset(date);
+        return EpochUtility.ToDateTimeOffset(seconds);
       } else {
-        return date;
+        return EpochUtility.ToDateTime(seconds);
       }
     }
 
@@ -94,14 +79,10 @@ namespace RealArtists.GitHub {
 
       if (value is DateTime) {
         var dateTime = (DateTime)value;
-        dateTime = dateTime.ToUniversalTime();
-
-        seconds = dateTime.Subtract(_Epoch).TotalSeconds;
+        seconds = EpochUtility.ToEpoch(dateTime);
       } else if (value is DateTimeOffset) {
         DateTimeOffset dateTimeOffset = (DateTimeOffset)value;
-        dateTimeOffset = dateTimeOffset.ToUniversalTime();
-
-        seconds = dateTimeOffset.Subtract(_EpochOffset).TotalSeconds;
+        seconds = EpochUtility.ToEpoch(dateTimeOffset);
       } else {
         throw new JsonSerializationException(string.Format("Unexpected value when converting date. Expected DateTime or DateTimeOffset, got {0}.", value.GetType()));
       }
