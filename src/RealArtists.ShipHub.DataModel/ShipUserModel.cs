@@ -9,9 +9,9 @@
 
     public int GitHubAccountId { get; set; }
 
-    public DateTimeOffset CreationDate { get; set; }
+    public DateTimeOffset CreationDate { get; set; } = DateTimeOffset.UtcNow;
 
-    public virtual GitHubAccountModel GithubAccount { get; set; }
+    public virtual GitHubAccountModel GitHubAccount { get; set; }
 
     public virtual ICollection<ShipAuthenticationTokenModel> AuthenticationTokens { get; set; } = new HashSet<ShipAuthenticationTokenModel>();
   }

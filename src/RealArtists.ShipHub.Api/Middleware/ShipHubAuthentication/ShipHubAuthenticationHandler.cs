@@ -17,6 +17,7 @@
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync() {
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+
       return AuthenticateResult.Skip();
     }
 

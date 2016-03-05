@@ -44,7 +44,7 @@
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
 
-    public virtual GitHubAuthenticationTokenModel AuthenticationToken { get; set; }
+    public virtual GitHubAccessTokenModel AccessToken { get; set; }
 
     public virtual ICollection<GitHubRepositoryModel> Repositories { get; set; } = new HashSet<GitHubRepositoryModel>();
   }

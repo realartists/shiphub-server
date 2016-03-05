@@ -3,7 +3,7 @@
   using System.Data.Common;
   using System.Data.Entity;
 
-  public class ShipHubContext : DbContext {
+  public class ShipHubContext : GitHubContext {
     static ShipHubContext() {
       Database.SetInitializer<ShipHubContext>(null);
     }

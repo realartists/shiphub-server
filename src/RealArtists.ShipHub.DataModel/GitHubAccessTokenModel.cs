@@ -3,8 +3,8 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  [Table("AuthenticationTokens", Schema = "GitHub")]
-  public class GitHubAuthenticationTokenModel {
+  [Table("AccessTokens", Schema = "GitHub")]
+  public class GitHubAccessTokenModel {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int AccountId { get; set; }

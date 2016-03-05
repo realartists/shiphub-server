@@ -5,7 +5,8 @@
 
   [Table("AuthenticationTokens", Schema = "Ship")]
   public class ShipAuthenticationTokenModel {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
+    public Guid Id { get; set; }
 
     public Guid UserId { get; set; }
 

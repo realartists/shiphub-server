@@ -21,7 +21,7 @@
     }
 
     public virtual DbSet<GitHubAccountModel> Accounts { get; set; }
-    public virtual DbSet<GitHubAuthenticationTokenModel> AuthenticationTokens { get; set; }
+    public virtual DbSet<GitHubAccessTokenModel> AccessTokens { get; set; }
     public virtual DbSet<GitHubRepositoryModel> Repositories { get; set; }
 
     public override int SaveChanges() {
@@ -30,7 +30,7 @@
 
     protected override void OnModelCreating(DbModelBuilder mb) {
       mb.Entity<GitHubAccountModel>()
-        .HasOptional(x => x.AuthenticationToken)
+        .HasOptional(x => x.AccessToken)
         .WithRequired(x => x.Account)
         .WillCascadeOnDelete();
 

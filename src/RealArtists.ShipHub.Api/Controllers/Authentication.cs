@@ -10,12 +10,13 @@
   using Microsoft.AspNetCore.Authorization;
   using Microsoft.AspNetCore.Mvc;
   using Microsoft.Extensions.Options;
+  using Utilities;
 
   [AllowAnonymous]
   [Route("api/[controller]")]
   public class Authentication : ShipHubController {
     private GitHubOptions _ghOpts;
-    private GitHubContext _ghContext;
+    private ShipHubContext _shContext;
 
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "notifications",
@@ -28,12 +29,12 @@
       "admin:org_hook",
     }.AsReadOnly();
 
-    public Authentication(IOptions<GitHubOptions> ghOpts, GitHubContext ghContext) {
+    public Authentication(IOptions<GitHubOptions> ghOpts, ShipHubContext shContext) {
       _ghOpts = ghOpts.Value;
-      _ghContext = ghContext;
+      _shContext = shContext;
     }
 
-    [HttpPost("login")]
+    [HttpPost("hello")]
     public async Task<IActionResult> Login(string applicationId, string code, string state, string clientName) {
       if (string.IsNullOrWhiteSpace(applicationId)) {
         return BadRequest($"{nameof(applicationId)} is required.");
@@ -76,11 +77,12 @@
       }
       var user = userInfo.Result;
 
-      var account = await _ghContext.Accounts
-        .Include(x => x.AuthenticationToken)
+      // GitHub Setup
+      var account = await _shContext.Accounts
+        .Include(x => x.AccessToken)
         .SingleOrDefaultAsync(x => x.Id == user.Id);
       if (account == null) {
-        account = _ghContext.Accounts.Create();
+        account = _shContext.Accounts.Create();
         account.Id = user.Id;
       }
       account.AvatarUrl = user.AvatarUrl;
@@ -92,15 +94,27 @@
       account.LastModified = userInfo.LastModified;
       account.LastRefresh = DateTimeOffset.UtcNow;
 
-      if (account.AuthenticationToken == null) {
-        account.AuthenticationToken = _ghContext.AuthenticationTokens.Add(new GitHubAuthenticationTokenModel() {
+      if (account.AccessToken == null) {
+        account.AccessToken = _shContext.AccessTokens.Add(new GitHubAccessTokenModel() {
           Account = account,
         });
       }
-      account.AuthenticationToken.AccessToken = appAuth.AccessToken;
-      account.AuthenticationToken.Scopes = appAuth.Scope;
+      var accessToken = account.AccessToken;
+      accessToken.AccessToken = appAuth.AccessToken;
+      accessToken.Scopes = appAuth.Scope;
+      accessToken.UpdateRateLimits(userInfo);
 
-      await _ghContext.SaveChangesAsync();
+      // ShipHub Setup
+      var shipUser = await _shContext.Users
+        .Include(x => x.AuthenticationTokens)
+        .SingleOrDefaultAsync(x => x.GitHubAccountId == user.Id);
+      if (shipUser == null) {
+        shipUser = _shContext.Users.Create();
+        shipUser.GitHubAccount = account;
+      }
+      _shContext.CreateAuthenticationToken(shipUser, clientName);
+
+      await _shContext.SaveChangesAsync();
 
       return Ok();
     }

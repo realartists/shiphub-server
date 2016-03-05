@@ -15,3 +15,11 @@ dnvm upgrade -u -ngen -a x64
 The build tooling should magically use the NuGet.config in this directory.
 
 Eventually this will all change again.
+
+IIS fun: https://github.com/tuespetre/dnx-watch-iis/blob/master/README.md
+
+Install the 64 bit IIS HTTPPlatformHandler. Link on https://docs.asp.net/en/latest/publishing/iis.html
+
+Grant access to IIS AppPool\<AppPoolName> not IIS_IUSRS
+
+

@@ -51,12 +51,18 @@
       loggerFactory.AddConsole(Configuration.GetSection("Logging"));
       loggerFactory.AddDebug();
 
+      //
+      // Remember: The order of statements here matters, as it affects
+      // the order in which middleware handlers are invoked.
+      //
+
       app.UseIISPlatformHandler();
 
       app.UseWebSockets(new WebSocketOptions() {
         KeepAliveInterval = TimeSpan.FromSeconds(30),
       });
 
+      // TODO: Should this come before the websocket middleware?
       app.UseShipHubAuthentication();
 
       app.UseMvc();
