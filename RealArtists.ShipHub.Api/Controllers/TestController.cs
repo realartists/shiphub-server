@@ -4,7 +4,7 @@
 
   [AllowAnonymous]
   [RoutePrefix("api/test")]
-  public class Test : ApiController {
+  public class TestController : ApiController {
     [HttpGet]
     [Route("")]
     public string Index() {

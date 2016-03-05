@@ -3,7 +3,7 @@
   using System.Runtime.CompilerServices;
   using System.Web.Http;
 
-  public class ShipHubController : ApiController {
+  public abstract class ShipHubController : ApiController {
     public IHttpActionResult Error(
                          string message,
                          HttpStatusCode status = HttpStatusCode.InternalServerError,

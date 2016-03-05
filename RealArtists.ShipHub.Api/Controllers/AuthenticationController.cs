@@ -11,7 +11,7 @@
 
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
-  public class Authentication : ShipHubController {
+  public class AuthenticationController : ShipHubController {
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "notifications",
       "repo",

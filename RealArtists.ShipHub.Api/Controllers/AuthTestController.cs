@@ -2,7 +2,7 @@
   using System.Web.Http;
 
   [RoutePrefix("api/authTest")]
-  public class AuthTest : ApiController {
+  public class AuthTestController : ApiController {
     [HttpGet]
     [Route("")]
     public string Index() {
