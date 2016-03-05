@@ -1,0 +1,6 @@
+﻿CREATE USER [GitHubUser]
+  WITH PASSWORD = 'epzoy9rbL18sZRhlikXL',
+  DEFAULT_SCHEMA = [GitHub]
+GO
+
+GRANT CONNECT TO [GitHubUser]
