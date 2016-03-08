@@ -119,6 +119,7 @@
         account.CreatedAt = user.CreatedAt;
         account.Login = user.Login;
         account.Name = user.Name;
+        account.UpdatedAt = user.UpdatedAt;
         account.ETag = userInfo.ETag;
         account.Expires = userInfo.Expires;
         account.LastModified = userInfo.LastModified;
