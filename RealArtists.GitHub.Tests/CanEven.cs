@@ -69,5 +69,16 @@
       Assert.Equal(response.Status, HttpStatusCode.NotModified);
       Assert.Null(response.Result);
     }
+
+    [Fact]
+    public async Task CacheMaxAge() {
+      var request = new GitHubRequest(HttpMethod.Get, $"/users/kogir");
+      var response = await _client.MakeRequest<JToken>(request);
+
+      Assert.Equal(response.Status, HttpStatusCode.OK);
+      Assert.NotNull(response.Result);
+      Assert.NotNull(response.Expires);
+      Assert.True(response.Expires > DateTimeOffset.UtcNow);
+    }
   }
 }

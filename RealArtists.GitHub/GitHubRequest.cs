@@ -1,8 +1,9 @@
 ﻿namespace RealArtists.GitHub {
   using System;
+  using System.Collections.Generic;
   using System.Collections.Specialized;
+  using System.Net;
   using System.Net.Http;
-
   public class GitHubRequest {
     public GitHubRequest(HttpMethod method, string path, string eTag = null, DateTimeOffset? lastModified = null) {
       Method = method;
@@ -21,14 +22,21 @@
     public Uri Uri {
       get {
         if (Parameters.Count > 0) {
-          return new Uri(string.Join("?", Path, Parameters.ToString()), UriKind.Relative);
+          var parms = new List<string>(Parameters.Count);
+          foreach (string key in Parameters.AllKeys) {
+            foreach (var val in Parameters.GetValues(key)) {
+              parms.Add(string.Join("=", WebUtility.UrlEncode(key), WebUtility.UrlEncode(val)));
+            }
+          }
+          var query = string.Join("&", parms);
+          return new Uri(string.Join("?", Path, query), UriKind.Relative);
         } else {
           return new Uri(Path, UriKind.Relative);
         }
       }
       set {
         if (!value.IsAbsoluteUri) {
-          throw new ArgumentException("Uri must be absolute.", nameof(value));
+          throw new ArgumentException($"Uri is not absolute: {value}", nameof(value));
         }
 
         Path = value.GetComponents(UriComponents.Path, UriFormat.Unescaped);

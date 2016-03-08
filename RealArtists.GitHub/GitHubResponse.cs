@@ -13,6 +13,7 @@
     // Cache management
     public string ETag { get; set; }
     public DateTimeOffset? LastModified { get; set; }
+    public DateTimeOffset? Expires { get; set; }
 
     // Rate limit tracking
     public int RateLimit { get; set; }

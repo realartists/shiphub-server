@@ -58,6 +58,7 @@
         MaxAutomaticRedirections = 5,
         MaxRequestContentBufferSize = 4 * 1024 * 1024,
         UseCookies = false,
+        UseDefaultCredentials = false,
       };
       _httpClient = new HttpClient(handler, true);
 
@@ -83,14 +84,37 @@
     }
 
     public async Task<GitHubResponse<AccessTokenModel>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
-      var request = new GitHubRequest<object>(HttpMethod.Post, "login/oauth/access_token", new {
+      var request = new GitHubRequest<object>(HttpMethod.Post, "", new {
         ClientId = clientId,
         ClientSecret = clientSecret,
         Code = code,
         State = state,
       });
 
-      return await MakeRequest<AccessTokenModel>(request);
+      var httpRequest = new HttpRequestMessage(request.Method, _OauthTokenRedemption) {
+        Content = request.CreateBodyContent(),
+      };
+      httpRequest.Headers.Accept.Clear();
+      httpRequest.Headers.Accept.ParseAdd("application/json");
+
+      var response = await _httpClient.SendAsync(httpRequest);
+
+      var result = new GitHubResponse<AccessTokenModel>() {
+        Status = response.StatusCode,
+        ETag = response.Headers.ETag?.Tag,
+        LastModified = response.Content?.Headers?.LastModified,
+      };
+
+      if (response.IsSuccessStatusCode) {
+        // TODO: Handle accepted, no content, etc.
+        if (response.StatusCode != HttpStatusCode.NotModified) {
+          result.Result = await response.Content.ReadAsAsync<AccessTokenModel>(_MediaTypeFormatters);
+        }
+      } else {
+        result.Error = await response.Content.ReadAsAsync<GitHubError>(_MediaTypeFormatters);
+      }
+
+      return result;
     }
 
     public async Task<GitHubResponse<UserModel>> AuthenticatedUser() {
@@ -120,17 +144,16 @@
       var response = await _httpClient.SendAsync(httpRequest);
 
       // Handle redirects
-      var originalLocation = request.Uri;
       switch (response.StatusCode) {
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, originalLocation, request.Uri, redirect));
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
           request.Method = HttpMethod.Get;
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, originalLocation, request.Uri, redirect));
+          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         default:
           break;
       }
@@ -141,6 +164,16 @@
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
       };
+
+      // Expires and Caching Max-Age
+      result.Expires = response.Content?.Headers?.Expires;
+      var maxAgeSpan = response.Headers.CacheControl?.SharedMaxAge ?? response.Headers.CacheControl?.MaxAge;
+      if (maxAgeSpan != null) {
+        var maxAgeExpires = DateTimeOffset.UtcNow.Add(maxAgeSpan.Value);
+        if (result.Expires == null || maxAgeExpires < result.Expires) {
+          result.Expires = maxAgeExpires;
+        }
+      }
 
       // Rate Limits
       result.RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x));
