@@ -2,10 +2,5 @@ CREATE SCHEMA [GitHub]
     AUTHORIZATION [GitHubUser];
 
 GO
-GRANT VIEW DEFINITION
+GRANT CONTROL
     ON SCHEMA::[GitHub] TO [ShipUser];
-
-GO
-GRANT SELECT
-    ON SCHEMA::[GitHub] TO [ShipUser];
-
