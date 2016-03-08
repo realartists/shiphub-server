@@ -26,7 +26,14 @@
   }
 
   public class GitHubClient : IDisposable {
+#if DEBUG
+    public const bool UseFiddler = true;
+#else
+    public const bool UseFiddler = false;
+#endif
+
     static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
+    static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
     static readonly JsonSerializerSettings _JsonSettings;
     static readonly MediaTypeFormatter[] _MediaTypeFormatters;
 
@@ -47,6 +54,10 @@
         SerializerSettings = _JsonSettings,
       };
       _MediaTypeFormatters = new[] { JsonMediaTypeFormatter };
+
+      if (UseFiddler) {
+        ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
+      }
     }
 
     private HttpClient _httpClient;
@@ -59,6 +70,8 @@
         MaxRequestContentBufferSize = 4 * 1024 * 1024,
         UseCookies = false,
         UseDefaultCredentials = false,
+        UseProxy = UseFiddler,
+        Proxy = UseFiddler ? new WebProxy("127.0.0.1", 8888) : null,
       };
       _httpClient = new HttpClient(handler, true);
 
