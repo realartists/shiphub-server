@@ -17,8 +17,11 @@
       config.Formatters.Add(new JsonMediaTypeFormatter());
       config.Formatters.JsonFormatter.SerializerSettings = JsonUtility.SaneDefaults;
 
+      config.EnableCors();
+
       //config.MapHttpAttributeRoutes(new CustomDirectRouteProvider());
       config.MapHttpAttributeRoutes();
+
 
       // Application Insights exception logging
       //config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());

@@ -6,6 +6,7 @@
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using System.Web.Http.Cors;
   using DataModel;
   using Utilities;
 
@@ -31,6 +32,7 @@
       }
       if (string.IsNullOrWhiteSpace(code)) {
         return BadRequest($"{nameof(code)} is required.");
+    [EnableCors("*", "*", "*")]
       }
       if (string.IsNullOrWhiteSpace(state)) {
         return BadRequest($"{nameof(state)} is required.");
