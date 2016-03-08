@@ -8,7 +8,7 @@
 
     public DateTimeOffset? LastModified { get; set; }
     
-    public DateTimeOffset? ValidUntil { get; set; }
+    public DateTimeOffset? Expires { get; set; }
 
     public DateTimeOffset LastRefresh { get; set; }
   }

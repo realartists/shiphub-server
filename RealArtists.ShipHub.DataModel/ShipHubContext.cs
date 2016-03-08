@@ -28,6 +28,8 @@
     }
 
     protected override void OnModelCreating(DbModelBuilder mb) {
+      base.OnModelCreating(mb);
+
       mb.Entity<ShipUserModel>()
         .HasMany(x => x.AuthenticationTokens)
         .WithRequired(x => x.User)

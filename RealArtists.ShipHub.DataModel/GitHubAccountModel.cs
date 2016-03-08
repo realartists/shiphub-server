@@ -44,6 +44,11 @@
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>
+    /// Date the account was last updated.
+    /// </summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+
     public virtual GitHubAccessTokenModel AccessToken { get; set; }
 
     public virtual ICollection<GitHubRepositoryModel> Repositories { get; set; } = new HashSet<GitHubRepositoryModel>();

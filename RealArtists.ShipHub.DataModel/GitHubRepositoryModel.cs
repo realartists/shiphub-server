@@ -28,6 +28,8 @@
 
     public DateTimeOffset CreatedAt { get; set; }
 
+    public DateTimeOffset UpdatedAt { get; set; }
+
     public virtual GitHubAccountModel Owner { get; set; }
   }
 }
