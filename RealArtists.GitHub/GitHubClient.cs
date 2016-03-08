@@ -10,6 +10,7 @@
   using Models;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
+  using Newtonsoft.Json.Linq;
   using Serialization;
 
   public static class HeaderUtility {
@@ -114,14 +115,14 @@
 
       var result = new GitHubResponse<AccessTokenModel>() {
         Status = response.StatusCode,
-        ETag = response.Headers.ETag?.Tag,
-        LastModified = response.Content?.Headers?.LastModified,
       };
 
       if (response.IsSuccessStatusCode) {
-        // TODO: Handle accepted, no content, etc.
-        if (response.StatusCode != HttpStatusCode.NotModified) {
-          result.Result = await response.Content.ReadAsAsync<AccessTokenModel>(_MediaTypeFormatters);
+        var temp = await response.Content.ReadAsAsync<JToken>(_MediaTypeFormatters);
+        if (temp["error"] != null) {
+          result.Error = JsonRoundTrip<GitHubError>(temp);
+        } else {
+          result.Result = JsonRoundTrip<AccessTokenModel>(temp);
         }
       } else {
         result.Error = await response.Content.ReadAsAsync<GitHubError>(_MediaTypeFormatters);
@@ -210,6 +211,18 @@
       }
 
       return result;
+    }
+
+    public static string SerializeObject(object value) {
+      return JsonConvert.SerializeObject(value, _JsonSettings);
+    }
+
+    public static T DeserializeObject<T>(string json) {
+      return JsonConvert.DeserializeObject<T>(json, _JsonSettings);
+    }
+
+    public static T JsonRoundTrip<T>(object self) {
+      return DeserializeObject<T>(SerializeObject(self));
     }
 
     private bool disposedValue = false;
