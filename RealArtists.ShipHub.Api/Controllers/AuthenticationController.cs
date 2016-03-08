@@ -24,30 +24,66 @@
       "admin:org_hook",
     }.AsReadOnly();
 
+    [HttpGet]
+    [Route("begin")]
+    public IHttpActionResult Begin(string clientId = "dc74f7ec664b73a51971") {
+      if (!GitHubSettings.Credentials.ContainsKey(clientId)) {
+        return Error($"Unknown applicationId: {clientId}", HttpStatusCode.NotFound);
+      }
+      var secret = GitHubSettings.Credentials[clientId];
+
+      var scope = string.Join(",", _requiredOauthScopes.Union(_optionalOauthScopes).ToArray());
+
+      var redir = new Uri(Request.RequestUri, Url.Link("callback", new { clientId = clientId })).ToString();
+
+      string uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
+
+      return Redirect(uri);
+    }
+
+    [HttpGet]
+    [Route("end", Name = "callback")]
+    public async Task<IHttpActionResult> End(string clientId, string code, string state = null) {
+      if (!GitHubSettings.Credentials.ContainsKey(clientId)) {
+        return Error($"Unknown applicationId: {clientId}", HttpStatusCode.NotFound);
+      }
+
+      return await Hello(new HelloRequest() {
+        ApplicationId = clientId,
+        ClientName = "Loopback",
+        Code = code,
+        State = state
+      });
+    }
+
+    public class HelloRequest {
+      public string ApplicationId { get; set; }
+      public string Code { get; set; }
+      public string State { get; set; }
+      public string ClientName { get; set; }
+    }
+
     [HttpPost]
     [Route("hello")]
-    public async Task<IHttpActionResult> Login(string applicationId, string code, string state, string clientName) {
-      if (string.IsNullOrWhiteSpace(applicationId)) {
-        return BadRequest($"{nameof(applicationId)} is required.");
-      }
-      if (string.IsNullOrWhiteSpace(code)) {
-        return BadRequest($"{nameof(code)} is required.");
     [EnableCors("*", "*", "*")]
+    public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
+      if (string.IsNullOrWhiteSpace(request.ApplicationId)) {
+        return BadRequest($"{nameof(request.ApplicationId)} is required.");
       }
-      if (string.IsNullOrWhiteSpace(state)) {
-        return BadRequest($"{nameof(state)} is required.");
+      if (string.IsNullOrWhiteSpace(request.Code)) {
+        return BadRequest($"{nameof(request.Code)} is required.");
       }
-      if (string.IsNullOrWhiteSpace(clientName)) {
-        return BadRequest($"{nameof(clientName)} is required.");
+      if (string.IsNullOrWhiteSpace(request.ClientName)) {
+        return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      if (!GitHubSettings.Credentials.ContainsKey(applicationId)) {
-        return Error($"Unknown applicationId: {applicationId}", HttpStatusCode.NotFound);
+      if (!GitHubSettings.Credentials.ContainsKey(request.ApplicationId)) {
+        return Error($"Unknown applicationId: {request.ApplicationId}", HttpStatusCode.NotFound);
       }
-      var secret = GitHubSettings.Credentials[applicationId];
+      var secret = GitHubSettings.Credentials[request.ApplicationId];
 
-      var appClient = GitHubSettings.CreateApplicationClient(applicationId);
-      var tokenInfo = await appClient.CreateAccessToken(applicationId, secret, code, state);
+      var appClient = GitHubSettings.CreateClient();
+      var tokenInfo = await appClient.CreateAccessToken(request.ApplicationId, secret, request.Code, request.State);
       if (tokenInfo.Error != null) {
         return Error("Unable to retrieve token.", tokenInfo.Status, tokenInfo.Error);
       }
@@ -84,6 +120,7 @@
         account.Login = user.Login;
         account.Name = user.Name;
         account.ETag = userInfo.ETag;
+        account.Expires = userInfo.Expires;
         account.LastModified = userInfo.LastModified;
         account.LastRefresh = DateTimeOffset.UtcNow;
 
@@ -105,7 +142,7 @@
           shipUser = context.Users.Create();
           shipUser.GitHubAccount = account;
         }
-        context.CreateAuthenticationToken(shipUser, clientName);
+        context.CreateAuthenticationToken(shipUser, request.ClientName);
 
         await context.SaveChangesAsync();
       }

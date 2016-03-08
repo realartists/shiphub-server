@@ -24,6 +24,10 @@
       Credentials = creds;
     }
 
+    public static GitHubClient CreateClient() {
+      return new GitHubClient(ApplicationName, ApplicationVersion);
+    }
+
     public static GitHubClient CreateUserClient(string accessToken) {
       return new GitHubClient(ApplicationName, ApplicationVersion, new GitHubOauthCredentials(accessToken));
     }
