@@ -111,13 +111,17 @@
     <Compile Include="Controllers\AuthTestController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\TestController.cs" />
+    <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\ApiUser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\AccessTokenUtility.cs" />
+    <Compile Include="Utilities\ExceptionUtilities.cs" />
     <Compile Include="Utilities\GitHubSettings.cs" />
     <Compile Include="Utilities\JsonUtility.cs" />
+    <Compile Include="Utilities\GitHubAccountUtility.cs" />
     <Compile Include="Utilities\ShipHubAuthenticationUtility.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -131,7 +135,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-    <Folder Include="Models\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RealArtists.GitHub\RealArtists.GitHub.csproj">

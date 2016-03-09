@@ -1,6 +1,2 @@
 CREATE SCHEMA [GitHub]
     AUTHORIZATION [GitHubUser];
-
-GO
-GRANT CONTROL
-    ON SCHEMA::[GitHub] TO [ShipUser];

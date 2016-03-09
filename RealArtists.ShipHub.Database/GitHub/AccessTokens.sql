@@ -1,6 +1,7 @@
 ﻿CREATE TABLE [GitHub].[AccessTokens] (
   [AccountId]          INT            NOT NULL,
   [AccessToken]        NVARCHAR(64)   NOT NULL,
+  [ApplicationId]      NVARCHAR(64)   NOT NULL,
   [Scopes]             NVARCHAR(255)  NOT NULL,
   [RateLimit]          INT            NOT NULL,
   [RateLimitRemaining] INT            NOT NULL,

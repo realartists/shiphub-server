@@ -5,7 +5,7 @@
 
   public static class ShipHubAuthenticationUtility {
     public static ShipAuthenticationTokenModel CreateAuthenticationToken(this ShipHubContext context, ShipUserModel user, string clientName) {
-      var token = context.AuthenticationTokens.Create();
+      var token = context.AuthenticationTokens.Add(context.AuthenticationTokens.Create());
       token.Id = new Guid(GetRandomBytes(16));
       token.ClientName = clientName;
       token.User = user;

@@ -97,7 +97,7 @@
       }
     }
 
-    public async Task<GitHubResponse<AccessTokenModel>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
+    public async Task<GitHubResponse<CreatedAccessToken>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
       var request = new GitHubRequest<object>(HttpMethod.Post, "", new {
         ClientId = clientId,
         ClientSecret = clientSecret,
@@ -113,7 +113,7 @@
 
       var response = await _httpClient.SendAsync(httpRequest);
 
-      var result = new GitHubResponse<AccessTokenModel>() {
+      var result = new GitHubResponse<CreatedAccessToken>() {
         Status = response.StatusCode,
       };
 
@@ -122,7 +122,7 @@
         if (temp["error"] != null) {
           result.Error = JsonRoundTrip<GitHubError>(temp);
         } else {
-          result.Result = JsonRoundTrip<AccessTokenModel>(temp);
+          result.Result = JsonRoundTrip<CreatedAccessToken>(temp);
         }
       } else {
         result.Error = await response.Content.ReadAsAsync<GitHubError>(_MediaTypeFormatters);
@@ -131,10 +131,14 @@
       return result;
     }
 
-    public async Task<GitHubResponse<UserModel>> AuthenticatedUser() {
-      var request = new GitHubRequest(HttpMethod.Get, "user");
+    public async Task<GitHubResponse<Models.Authorization>> CheckAccessToken(string clientId, string accessToken) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/applications/{clientId}/tokens/{accessToken}");
+      return await MakeRequest<Models.Authorization>(request);
+    }
 
-      return await MakeRequest<UserModel>(request);
+    public async Task<GitHubResponse<User>> AuthenticatedUser() {
+      var request = new GitHubRequest(HttpMethod.Get, "user");
+      return await MakeRequest<User>(request);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {

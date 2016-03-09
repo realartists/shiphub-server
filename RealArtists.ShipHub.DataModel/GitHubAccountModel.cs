@@ -21,7 +21,6 @@
     /// <summary>
     /// Company the account works for.
     /// </summary>
-    [Required(AllowEmptyStrings = true)]
     [StringLength(255)]
     public string Company { get; set; }
 
@@ -35,7 +34,6 @@
     /// <summary>
     /// The account's full name.
     /// </summary>
-    [Required]
     [StringLength(255)]
     public string Name { get; set; }
 

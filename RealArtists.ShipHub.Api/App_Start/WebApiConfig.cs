@@ -2,12 +2,13 @@
   using System;
   using System.Net.Http.Formatting;
   using System.Web.Http;
+  using Filters;
   using Mindscape.Raygun4Net.WebApi;
   using Utilities;
 
   public static class WebApiConfig {
     public static void Register(HttpConfiguration config) {
-      //config.Filters.Add(new DeaggregateExceptionFilterAttribute());
+      config.Filters.Add(new DeaggregateExceptionFilterAttribute());
       //config.Filters.Add(new ShipAuthenticationAttribute());
       //config.Filters.Add(new AuthorizeAttribute());
 

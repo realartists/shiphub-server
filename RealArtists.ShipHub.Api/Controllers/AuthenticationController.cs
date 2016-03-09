@@ -6,20 +6,17 @@
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using System.Web.Http.Cors;
   using DataModel;
+  using Models;
   using Utilities;
 
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
-      "notifications",
+      "user:email",
       "repo",
       "admin:repo_hook",
-    }.AsReadOnly();
-
-    private static readonly IReadOnlyList<string> _optionalOauthScopes = new List<string>() {
       "read:org",
       "admin:org_hook",
     }.AsReadOnly();
@@ -30,12 +27,10 @@
       if (!GitHubSettings.Credentials.ContainsKey(clientId)) {
         return Error($"Unknown applicationId: {clientId}", HttpStatusCode.NotFound);
       }
+
       var secret = GitHubSettings.Credentials[clientId];
-
-      var scope = string.Join(",", _requiredOauthScopes.Union(_optionalOauthScopes).ToArray());
-
+      var scope = string.Join(",", _requiredOauthScopes);
       var redir = new Uri(Request.RequestUri, Url.Link("callback", new { clientId = clientId })).ToString();
-
       string uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
 
       return Redirect(uri);
@@ -48,7 +43,7 @@
         return Error($"Unknown applicationId: {clientId}", HttpStatusCode.NotFound);
       }
 
-      return await Hello(new HelloRequest() {
+      return await Code(new CodeRequest() {
         ApplicationId = clientId,
         ClientName = "Loopback",
         Code = code,
@@ -56,7 +51,7 @@
       });
     }
 
-    public class HelloRequest {
+    public class CodeRequest {
       public string ApplicationId { get; set; }
       public string Code { get; set; }
       public string State { get; set; }
@@ -64,9 +59,8 @@
     }
 
     [HttpPost]
-    [Route("hello")]
-    [EnableCors("*", "*", "*")]
-    public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
+    [Route("code")]
+    public async Task<IHttpActionResult> Code([FromBody] CodeRequest request) {
       if (string.IsNullOrWhiteSpace(request.ApplicationId)) {
         return BadRequest($"{nameof(request.ApplicationId)} is required.");
       }
@@ -89,41 +83,68 @@
       }
       var appAuth = tokenInfo.Result;
 
+      return await Hello(new HelloRequest() {
+        AccessToken = appAuth.AccessToken,
+        ApplicationId = request.ApplicationId,
+        ClientName = request.ClientName,
+      });
+    }
+
+    public class HelloRequest {
+      public string AccessToken { get; set; }
+      public string ApplicationId { get; set; }
+      public string ClientName { get; set; }
+    }
+
+    [HttpPost]
+    [Route("hello")]
+    public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
+      if (string.IsNullOrWhiteSpace(request.ApplicationId)) {
+        return BadRequest($"{nameof(request.ApplicationId)} is required.");
+      }
+      if (string.IsNullOrWhiteSpace(request.AccessToken)) {
+        return BadRequest($"{nameof(request.AccessToken)} is required.");
+      }
+      if (string.IsNullOrWhiteSpace(request.ClientName)) {
+        return BadRequest($"{nameof(request.ClientName)} is required.");
+      }
+
+      if (!GitHubSettings.Credentials.ContainsKey(request.ApplicationId)) {
+        return Error($"Unknown applicationId: {request.ApplicationId}", HttpStatusCode.NotFound);
+      }
+
       // Check scopes
-      var scopes = appAuth.Scope.Split(',');
-      var missingScopes = _requiredOauthScopes.Except(scopes).ToArray();
+      var appClient = GitHubSettings.CreateApplicationClient(request.ApplicationId);
+      var authRequest = await appClient.CheckAccessToken(request.ApplicationId, request.AccessToken);
+      if (authRequest.Error != null) {
+        return Error("Token validation failed.", HttpStatusCode.Unauthorized, authRequest.Error);
+      }
+      var authInfo = authRequest.Result;
+
+      var missingScopes = _requiredOauthScopes.Except(authInfo.Scopes).ToArray();
       if (missingScopes.Any()) {
         return Error("Insufficient access granted.", HttpStatusCode.Unauthorized, new {
           MissingScopes = missingScopes,
         });
       }
 
-      var userClient = GitHubSettings.CreateUserClient(appAuth.AccessToken);
+      var userClient = GitHubSettings.CreateUserClient(authInfo.Token);
       var userInfo = await userClient.AuthenticatedUser();
       if (userInfo.Error != null) {
         return Error("Unable to retrieve user information.", HttpStatusCode.Unauthorized, userInfo.Error);
       }
-      var user = userInfo.Result;
+      var ghId = userInfo.Result.Id;
 
       using (var context = new ShipHubContext()) {
         // GitHub Setup
         var account = await context.Accounts
           .Include(x => x.AccessToken)
-          .SingleOrDefaultAsync(x => x.Id == user.Id);
+          .SingleOrDefaultAsync(x => x.Id == ghId);
         if (account == null) {
-          account = context.Accounts.Create();
-          account.Id = user.Id;
+          account = context.Accounts.Add(context.Accounts.Create());
+          account.Id = ghId;
         }
-        account.AvatarUrl = user.AvatarUrl;
-        account.Company = user.Company ?? "";
-        account.CreatedAt = user.CreatedAt;
-        account.Login = user.Login;
-        account.Name = user.Name;
-        account.UpdatedAt = user.UpdatedAt;
-        account.ETag = userInfo.ETag;
-        account.Expires = userInfo.Expires;
-        account.LastModified = userInfo.LastModified;
-        account.LastRefresh = DateTimeOffset.UtcNow;
+        account.Update(userInfo);
 
         if (account.AccessToken == null) {
           account.AccessToken = context.AccessTokens.Add(new GitHubAccessTokenModel() {
@@ -131,24 +152,35 @@
           });
         }
         var accessToken = account.AccessToken;
-        accessToken.AccessToken = appAuth.AccessToken;
-        accessToken.Scopes = appAuth.Scope;
+        accessToken.AccessToken = authInfo.Token;
+        accessToken.ApplicationId = request.ApplicationId;
+        accessToken.Scopes = string.Join(",", authInfo.Scopes);
         accessToken.UpdateRateLimits(userInfo);
 
         // ShipHub Setup
         var shipUser = await context.Users
           .Include(x => x.AuthenticationTokens)
-          .SingleOrDefaultAsync(x => x.GitHubAccountId == user.Id);
+          .SingleOrDefaultAsync(x => x.GitHubAccountId == account.Id);
         if (shipUser == null) {
-          shipUser = context.Users.Create();
+          shipUser = context.Users.Add(context.Users.Create());
           shipUser.GitHubAccount = account;
         }
-        context.CreateAuthenticationToken(shipUser, request.ClientName);
+        var shipToken = context.CreateAuthenticationToken(shipUser, request.ClientName);
 
         await context.SaveChangesAsync();
-      }
 
-      return Ok();
+        return Ok(new {
+          Session = shipToken.Id,
+          User = new ApiUser() {
+            AvatarUrl = account.AvatarUrl,
+            Company = account.Company,
+            Identifier = shipUser.Id,
+            GitHubId = account.Id,
+            Login = account.Login,
+            Name = account.Name,
+          }
+        });
+      }
     }
   }
 }

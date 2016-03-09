@@ -14,6 +14,10 @@
     public string AccessToken { get; set; }
 
     [Required]
+    [StringLength(64)]
+    public string ApplicationId { get; set; }
+
+    [Required]
     [StringLength(255)]
     public string Scopes { get; set; }
 
