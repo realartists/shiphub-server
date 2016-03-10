@@ -147,7 +147,7 @@
         account.Update(userInfo);
 
         if (account.AccessToken == null) {
-          account.AccessToken = context.AccessTokens.Add(new GitHubAccessTokenModel() {
+          account.AccessToken = context.AccessTokens.Add(new AccessToken() {
             Account = account,
           });
         }

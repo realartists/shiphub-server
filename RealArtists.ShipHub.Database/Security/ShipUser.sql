@@ -1,6 +1,5 @@
 ﻿CREATE USER [ShipUser]
-  WITH PASSWORD = 'uB4vtZbsjUGvqzmS0S6i',
-  DEFAULT_SCHEMA = [Ship]
+  WITH PASSWORD = 'uB4vtZbsjUGvqzmS0S6i'
 GO
 
 GRANT CONNECT TO [ShipUser]

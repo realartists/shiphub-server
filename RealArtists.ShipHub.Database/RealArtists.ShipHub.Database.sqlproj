@@ -62,25 +62,22 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
     <Folder Include="Properties" />
-    <Folder Include="GitHub" />
-    <Folder Include="Ship" />
     <Folder Include="Security" />
+    <Folder Include="Tables" />
+    <Folder Include="Sequences" />
   </ItemGroup>
   <ItemGroup>
     <PostDeploy Include="PostDeployment.sql" />
   </ItemGroup>
   <ItemGroup>
-    <Build Include="Security\GitHubSchema.sql" />
-    <Build Include="Security\GitHubUser.sql" />
-    <Build Include="GitHub\Repositories.sql" />
-    <Build Include="GitHub\Accounts.sql" />
-    <Build Include="GitHub\AccessTokens.sql" />
-    <Build Include="Ship\Users.sql" />
-    <Build Include="Ship\AuthenticationTokens.sql" />
-    <Build Include="Security\GitHubSchemaGrant.sql" />
+    <Build Include="Tables\AccessTokens.sql" />
+    <Build Include="Tables\Repositories.sql" />
+    <Build Include="Tables\AuthenticationTokens.sql" />
+    <Build Include="Tables\Accounts.sql" />
+    <Build Include="Sequences\SyncIdentifier.sql" />
+    <Build Include="Tables\OrganizationMembers.sql" />
   </ItemGroup>
   <ItemGroup>
-    <Build Include="Security\ShipSchema.sql" />
     <Build Include="Security\ShipUser.sql" />
   </ItemGroup>
   <ItemGroup>

@@ -4,11 +4,12 @@
   using System.ComponentModel.DataAnnotations.Schema;
 
   [Table("AuthenticationTokens", Schema = "Ship")]
-  public class ShipAuthenticationTokenModel {
+  public class AuthenticationToken {
+    [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public Guid Id { get; set; }
+    public Guid Token { get; set; }
 
-    public Guid UserId { get; set; }
+    public Guid AccountId { get; set; }
 
     [Required]
     [StringLength(150)]
@@ -18,6 +19,6 @@
 
     public DateTimeOffset LastAccessDate { get; set; }
 
-    public virtual ShipUserModel User { get; set; }
+    public virtual Account Account { get; set; }
   }
 }

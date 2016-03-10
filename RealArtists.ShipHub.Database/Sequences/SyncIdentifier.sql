@@ -1,0 +1,7 @@
+﻿CREATE SEQUENCE [dbo].[SyncIdentifier] AS BIGINT
+  START WITH 1
+  INCREMENT BY 1
+  MINVALUE 1
+  NO CYCLE;
+
+GO

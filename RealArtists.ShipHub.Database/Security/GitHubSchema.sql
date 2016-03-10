@@ -1,2 +1,0 @@
-CREATE SCHEMA [GitHub]
-    AUTHORIZATION [GitHubUser];

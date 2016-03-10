@@ -1,8 +1,17 @@
 ﻿namespace RealArtists.ShipHub.DataModel {
   using System;
   using System.ComponentModel.DataAnnotations;
+  using System.ComponentModel.DataAnnotations.Schema;
 
-  public abstract class GitHubApiResource {
+  public interface IGitHubResource {
+    GitHubMetaData GitHubMetaData { get; set; }
+  }
+
+  /// <summary>
+  /// Common tracking data used to minimize GitHub API requests.
+  /// </summary>
+  [ComplexType]
+  public class GitHubMetaData {
     [StringLength(64)]
     public string ETag { get; set; }
 

@@ -416,9 +416,4 @@
       <Name>GitHub</Name>
     </SelectedItem>
   </ExcludedSourceElements>
-  <ExcludedTargetElements>
-    <SelectedItem Type="Microsoft.Data.Tools.Schema.Sql.SchemaModel.SqlSchema, Microsoft.Data.Tools.Schema.Sql, Version=12.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Name>GitHub</Name>
-    </SelectedItem>
-  </ExcludedTargetElements>
 </SchemaComparison>

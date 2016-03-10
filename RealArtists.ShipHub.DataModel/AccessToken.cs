@@ -4,18 +4,18 @@
   using System.ComponentModel.DataAnnotations.Schema;
 
   [Table("AccessTokens", Schema = "GitHub")]
-  public class GitHubAccessTokenModel {
+  public class AccessToken {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int AccountId { get; set; }
 
     [Required]
     [StringLength(64)]
-    public string AccessToken { get; set; }
+    public string ApplicationId { get; set; }
 
     [Required]
     [StringLength(64)]
-    public string ApplicationId { get; set; }
+    public string Token { get; set; }
 
     [Required]
     [StringLength(255)]
@@ -27,6 +27,6 @@
 
     public DateTimeOffset RateLimitReset { get; set; }
 
-    public virtual GitHubAccountModel Account { get; set; }
+    public virtual Account Account { get; set; }
   }
 }

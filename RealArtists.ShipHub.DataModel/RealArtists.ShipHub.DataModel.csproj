@@ -49,15 +49,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="GitHubAccessTokenModel.cs" />
-    <Compile Include="GitHubAccountModel.cs" />
-    <Compile Include="GitHubApiResource.cs" />
-    <Compile Include="GitHubContext.cs" />
-    <Compile Include="GitHubRepositoryModel.cs" />
+    <Compile Include="AccessToken.cs" />
+    <Compile Include="GitHubMetaData.cs" />
+    <Compile Include="Organization.cs" />
+    <Compile Include="Repository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ShipAuthenticationTokenModel.cs" />
+    <Compile Include="AuthenticationToken.cs" />
     <Compile Include="ShipHubContext.cs" />
-    <Compile Include="ShipUserModel.cs" />
+    <Compile Include="Account.cs" />
+    <Compile Include="User.cs" />
+    <Compile Include="VersionMetaData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
