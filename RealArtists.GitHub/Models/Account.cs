@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.GitHub.Models {
   using System;
 
-  public class User : GitHubModel {
+  public class Account : GitHubModel {
     public int Id { get; set; }
     public string AvatarUrl { get; set; }
     public string Company { get; set; }

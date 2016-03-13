@@ -136,9 +136,9 @@
       return await MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<User>> AuthenticatedUser() {
+    public async Task<GitHubResponse<Account>> AuthenticatedUser() {
       var request = new GitHubRequest(HttpMethod.Get, "user");
-      return await MakeRequest<User>(request);
+      return await MakeRequest<Account>(request);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
