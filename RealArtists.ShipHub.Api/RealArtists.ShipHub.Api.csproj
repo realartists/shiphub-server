@@ -109,6 +109,7 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\AuthTestController.cs" />
+    <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\TestController.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />

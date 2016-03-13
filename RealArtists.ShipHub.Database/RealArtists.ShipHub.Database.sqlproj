@@ -76,6 +76,7 @@
     <Build Include="Tables\Accounts.sql" />
     <Build Include="Sequences\SyncIdentifier.sql" />
     <Build Include="Tables\OrganizationMembers.sql" />
+    <Build Include="Security\RoleMemberships.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

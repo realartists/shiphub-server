@@ -1,11 +1,18 @@
 ﻿namespace RealArtists.ShipHub.Api.Utilities {
   using System;
-  using DataModel;
+  using Ship = DataModel;
   using GitHub;
   using GitHub.Models;
 
   public static class GitHubAccountUtility {
-    public static void Update(this GitHubAccountModel account, GitHubResponse<User> response) {
+    public static void UpdateCacheInfo(this Ship.IGitHubResource resource, GitHubResponse response) {
+      resource.ETag = response.ETag;
+      resource.Expires = response.Expires;
+      resource.LastModified = response.LastModified;
+      resource.LastRefresh = DateTimeOffset.UtcNow;
+    }
+
+    public static void UpdateAccount(this Ship.Account account, GitHubResponse<Account> response) {
       var user = response.Result;
 
       if (account.Id != user.Id) {
@@ -13,15 +20,8 @@
       }
 
       account.AvatarUrl = user.AvatarUrl;
-      account.Company = user.Company;
-      account.CreatedAt = user.CreatedAt;
       account.Login = user.Login;
       account.Name = user.Name;
-      account.UpdatedAt = user.UpdatedAt;
-      account.ETag = response.ETag;
-      account.Expires = response.Expires;
-      account.LastModified = response.LastModified;
-      account.LastRefresh = DateTimeOffset.UtcNow;
     }
   }
 }

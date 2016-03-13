@@ -137,47 +137,39 @@
 
       using (var context = new ShipHubContext()) {
         // GitHub Setup
-        var account = await context.Accounts
+        var user = await context.Accounts
           .Include(x => x.AccessToken)
           .SingleOrDefaultAsync(x => x.Id == ghId);
-        if (account == null) {
-          account = context.Accounts.Add(context.Accounts.Create());
-          account.Id = ghId;
-        }
-        account.Update(userInfo);
-
-        if (account.AccessToken == null) {
-          account.AccessToken = context.AccessTokens.Add(new AccessToken() {
-            Account = account,
+        if (user == null) {
+          user = context.Accounts.Add(new User() {
+            Id = ghId,
           });
         }
-        var accessToken = account.AccessToken;
-        accessToken.AccessToken = authInfo.Token;
+        user.UpdateAccount(userInfo);
+        user.UpdateCacheInfo(userInfo);
+
+        if (user.AccessToken == null) {
+          user.AccessToken = context.AccessTokens.Add(new AccessToken() {
+            Account = user,
+          });
+        }
+        var accessToken = user.AccessToken;
+        accessToken.Token = authInfo.Token;
         accessToken.ApplicationId = request.ApplicationId;
         accessToken.Scopes = string.Join(",", authInfo.Scopes);
         accessToken.UpdateRateLimits(userInfo);
 
-        // ShipHub Setup
-        var shipUser = await context.Users
-          .Include(x => x.AuthenticationTokens)
-          .SingleOrDefaultAsync(x => x.GitHubAccountId == account.Id);
-        if (shipUser == null) {
-          shipUser = context.Users.Add(context.Users.Create());
-          shipUser.GitHubAccount = account;
-        }
-        var shipToken = context.CreateAuthenticationToken(shipUser, request.ClientName);
+        var shipToken = context.CreateAuthenticationToken(user, request.ClientName);
 
         await context.SaveChangesAsync();
 
         return Ok(new {
-          Session = shipToken.Id,
+          Session = shipToken.Token,
           User = new ApiUser() {
-            AvatarUrl = account.AvatarUrl,
-            Company = account.Company,
-            Identifier = shipUser.Id,
-            GitHubId = account.Id,
-            Login = account.Login,
-            Name = account.Name,
+            AvatarUrl = user.AvatarUrl,
+            Identifier = user.Id,
+            Login = user.Login,
+            Name = user.Name,
           }
         });
       }

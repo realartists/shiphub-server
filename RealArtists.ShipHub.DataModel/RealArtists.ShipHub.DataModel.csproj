@@ -50,7 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AccessToken.cs" />
-    <Compile Include="GitHubMetaData.cs" />
+    <Compile Include="GitHubResource.cs" />
     <Compile Include="Organization.cs" />
     <Compile Include="Repository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -58,7 +58,7 @@
     <Compile Include="ShipHubContext.cs" />
     <Compile Include="Account.cs" />
     <Compile Include="User.cs" />
-    <Compile Include="VersionMetaData.cs" />
+    <Compile Include="IVersionedResource.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

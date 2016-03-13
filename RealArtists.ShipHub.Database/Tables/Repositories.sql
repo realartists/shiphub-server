@@ -10,6 +10,7 @@
   [Expires]        DATETIMEOFFSET NULL,
   [LastModified]   DATETIMEOFFSET NULL,
   [LastRefresh]    DATETIMEOFFSET NOT NULL,
+  [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [RowVersion]     BIGINT         NULL,
   [RestoreVersion] BIGINT         NULL,
   CONSTRAINT [PK_Repositories] PRIMARY KEY CLUSTERED ([Id] ASC),

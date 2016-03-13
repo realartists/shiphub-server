@@ -1,15 +1,12 @@
 ﻿namespace RealArtists.ShipHub.DataModel {
   using System;
   using System.ComponentModel.DataAnnotations;
-  using System.ComponentModel.DataAnnotations.Schema;
 
-  [Table("AuthenticationTokens", Schema = "Ship")]
   public class AuthenticationToken {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public Guid Token { get; set; }
+    public Guid Token { get; set; } = Guid.Empty;
 
-    public Guid AccountId { get; set; }
+    public int AccountId { get; set; }
 
     [Required]
     [StringLength(150)]

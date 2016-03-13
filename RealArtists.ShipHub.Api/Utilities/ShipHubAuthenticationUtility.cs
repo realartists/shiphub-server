@@ -4,14 +4,16 @@
   using DataModel;
 
   public static class ShipHubAuthenticationUtility {
-    public static AuthenticationToken CreateAuthenticationToken(this ShipHubContext context, Account user, string clientName) {
-      var token = context.AuthenticationTokens.Add(context.AuthenticationTokens.Create());
-      token.Id = new Guid(GetRandomBytes(16));
-      token.ClientName = clientName;
-      token.User = user;
-      token.CreationDate = token.LastAccessDate = DateTimeOffset.UtcNow;
+    public static AuthenticationToken CreateAuthenticationToken(this ShipHubContext context, Account account, string clientName) {
+      var token = context.AuthenticationTokens.Add(new AuthenticationToken() {
+        Token = new Guid(GetRandomBytes(16)),
+        ClientName = clientName,
+        Account = account,
+        CreationDate = DateTimeOffset.UtcNow,
+        LastAccessDate = DateTimeOffset.UtcNow
+      });
 
-      user.AuthenticationTokens.Add(token);
+      account.AuthenticationTokens.Add(token);
       return token;
     }
 

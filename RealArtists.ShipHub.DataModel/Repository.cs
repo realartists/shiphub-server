@@ -1,9 +1,10 @@
 ﻿namespace RealArtists.ShipHub.DataModel {
+  using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  public class Repository : IGitHubResource, IVersionedResource {
-    public string TopicName { get { return FullName; } }
+  public class Repository : GitHubResource {
+    public override string TopicName { get { return FullName; } }
 
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
@@ -22,14 +23,13 @@
     [StringLength(500)]
     public string FullName { get; set; }
 
-    [Required(AllowEmptyStrings = true)]
     [StringLength(500)]
-    public string Description { get; set; }
-
-    public GitHubMetaData GitHubMetaData { get; set; } = new GitHubMetaData();
-
-    public VersionMetaData VersionMetaData { get; set; } = new VersionMetaData();
+    [Column("Description")]
+    [Required(AllowEmptyStrings = true)]
+    public string RepoDescription { get; set; }
 
     public virtual Account Account { get; set; }
+
+    public virtual ICollection<User> SubscribedUsers { get; set; } = new HashSet<User>();
   }
 }

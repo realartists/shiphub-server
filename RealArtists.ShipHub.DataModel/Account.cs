@@ -3,41 +3,24 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  public class Account : IGitHubResource, IVersionedResource {
-    public string TopicName { get { return Login; } }
+  public abstract class Account : GitHubResource {
+    public const string OrganizationType = "org";
+    public const string UserType = "user";
 
-    /// <summary>
-    /// The account's GitHub unique ID.
-    /// </summary>
+    public override string TopicName { get { return Login; } }
+
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
-    [Required]
-    [StringLength(4)]
-    public string Type { get; set; }
-
-    /// <summary>
-    /// URL of the account's avatar.
-    /// </summary>
     [StringLength(500)]
     public string AvatarUrl { get; set; }
 
-    /// <summary>
-    /// The account's login.
-    /// </summary>
     [Required]
     [StringLength(255)]
     public string Login { get; set; }
 
-    /// <summary>
-    /// The account's full name.
-    /// </summary>
     [StringLength(255)]
     public string Name { get; set; }
-
-    public GitHubMetaData GitHubMetaData { get; set; } = new GitHubMetaData();
-
-    public VersionMetaData VersionMetaData { get; set; } = new VersionMetaData();
 
     public virtual AccessToken AccessToken { get; set; }
 

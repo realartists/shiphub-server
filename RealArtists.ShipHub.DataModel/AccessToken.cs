@@ -3,7 +3,6 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  [Table("AccessTokens", Schema = "GitHub")]
   public class AccessToken {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
