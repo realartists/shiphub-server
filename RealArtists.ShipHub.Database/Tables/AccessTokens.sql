@@ -10,3 +10,6 @@
   CONSTRAINT [FKCD_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]) ON DELETE CASCADE
 );
 GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_AccessTokens_Token] ON [dbo].[AccessTokens]([Token]);
+GO
