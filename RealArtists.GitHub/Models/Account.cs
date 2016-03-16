@@ -1,12 +1,12 @@
 ﻿namespace RealArtists.GitHub.Models {
-  public class Account : GitHubModel {
-    public enum GitHubAccountType {
-      Organization,
-      User,
-    }
+  public enum GitHubAccountType {
+    Organization,
+    User,
+  }
 
-    public string AvatarUrl { get; set; }
+  public class Account : GitHubModel {
     public int Id { get; set; }
+    public string AvatarUrl { get; set; }
     public string Login { get; set; }
     public string Name { get; set; }
     public GitHubAccountType Type { get; set; }

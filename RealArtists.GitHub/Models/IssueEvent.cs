@@ -1,10 +1,6 @@
 ﻿namespace RealArtists.GitHub.Models {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
   using System.Runtime.Serialization;
-  using System.Text;
-  using System.Threading.Tasks;
 
   public enum GitHubIssueEvent {
     Closed,
@@ -29,15 +25,15 @@
   }
 
   public class IssueEvent : GitHubModel {
-    public string CommitId { get; set; }
+    public int Id { get; set; }
     public Account Actor { get; set; }
+    public Account Assignee { get; set; }
+    public Account Assigner { get; set; }
+    public string CommitId { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public IssueLabel Label { get; set; }
-    public Account Assignee { get; set; }
-    public Account Assigner { get; set; }
     public IssueMilestone Milestone { get; set; }
-    public int MyProperty { get; set; }
-    
+    public IssueRename Rename { get; set; }
   }
 }
