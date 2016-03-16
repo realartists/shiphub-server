@@ -41,6 +41,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AutoMapper, Version=4.2.1.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <HintPath>..\packages\AutoMapper.4.2.1\lib\net45\AutoMapper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
       <Private>True</Private>
@@ -59,7 +63,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Net.Http" />
@@ -112,10 +116,29 @@
     <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\TestController.cs" />
+    <Compile Include="DataModel\AccessToken.cs" />
+    <Compile Include="DataModel\Account.cs" />
+    <Compile Include="DataModel\AuthenticationToken.cs" />
+    <Compile Include="DataModel\GitHubResource.cs" />
+    <Compile Include="DataModel\IVersionedResource.cs" />
+    <Compile Include="DataModel\Organization.cs" />
+    <Compile Include="DataModel\Repository.cs" />
+    <Compile Include="DataModel\ShipHubContext.cs" />
+    <Compile Include="DataModel\User.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
+    <Compile Include="CachingGitHubClient.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Models\ApiAccount.cs" />
+    <Compile Include="Models\ApiComment.cs" />
+    <Compile Include="Models\ApiEvent.cs" />
+    <Compile Include="Models\ApiIssue.cs" />
+    <Compile Include="Models\ApiLabel.cs" />
+    <Compile Include="Models\ApiMilestone.cs" />
+    <Compile Include="Models\ApiOrganization.cs" />
+    <Compile Include="Models\ApiRelationship.cs" />
+    <Compile Include="Models\ApiRepository.cs" />
     <Compile Include="Models\ApiUser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\AccessTokenUtility.cs" />
@@ -141,10 +164,6 @@
     <ProjectReference Include="..\RealArtists.GitHub\RealArtists.GitHub.csproj">
       <Project>{db68df42-a6b7-4a24-8308-05ed0f00e3ab}</Project>
       <Name>RealArtists.GitHub</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RealArtists.ShipHub.DataModel\RealArtists.ShipHub.DataModel.csproj">
-      <Project>{74b17565-417a-4dc2-be4b-ededd1573643}</Project>
-      <Name>RealArtists.ShipHub.DataModel</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

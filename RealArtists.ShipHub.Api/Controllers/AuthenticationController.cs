@@ -135,44 +135,42 @@
       }
       var ghId = userInfo.Result.Id;
 
-      using (var context = new ShipHubContext()) {
-        // GitHub Setup
-        var user = await context.Accounts
-          .Include(x => x.AccessToken)
-          .SingleOrDefaultAsync(x => x.Id == ghId);
-        if (user == null) {
-          user = context.Accounts.Add(new User() {
-            Id = ghId,
-          });
-        }
-        user.UpdateAccount(userInfo);
-        user.UpdateCacheInfo(userInfo);
-
-        if (user.AccessToken == null) {
-          user.AccessToken = context.AccessTokens.Add(new AccessToken() {
-            Account = user,
-          });
-        }
-        var accessToken = user.AccessToken;
-        accessToken.Token = authInfo.Token;
-        accessToken.ApplicationId = request.ApplicationId;
-        accessToken.Scopes = string.Join(",", authInfo.Scopes);
-        accessToken.UpdateRateLimits(userInfo);
-
-        var shipToken = context.CreateAuthenticationToken(user, request.ClientName);
-
-        await context.SaveChangesAsync();
-
-        return Ok(new {
-          Session = shipToken.Token,
-          User = new ApiUser() {
-            AvatarUrl = user.AvatarUrl,
-            Identifier = user.Id,
-            Login = user.Login,
-            Name = user.Name,
-          }
+      // GitHub Setup
+      var user = await Context.Accounts
+        .Include(x => x.AccessToken)
+        .SingleOrDefaultAsync(x => x.Id == ghId);
+      if (user == null) {
+        user = Context.Accounts.Add(new User() {
+          Id = ghId,
         });
       }
+      user.UpdateAccount(userInfo);
+      user.UpdateCacheInfo(userInfo);
+
+      if (user.AccessToken == null) {
+        user.AccessToken = Context.AccessTokens.Add(new AccessToken() {
+          Account = user,
+        });
+      }
+      var accessToken = user.AccessToken;
+      accessToken.Token = authInfo.Token;
+      accessToken.ApplicationId = request.ApplicationId;
+      accessToken.Scopes = string.Join(",", authInfo.Scopes);
+      accessToken.UpdateRateLimits(userInfo);
+
+      var shipToken = Context.CreateAuthenticationToken(user, request.ClientName);
+
+      await Context.SaveChangesAsync();
+
+      return Ok(new {
+        Session = shipToken.Token,
+        User = new ApiUser() {
+          AvatarUrl = user.AvatarUrl,
+          Identifier = user.Id,
+          Login = user.Login,
+          Name = user.Name,
+        }
+      });
     }
   }
 }

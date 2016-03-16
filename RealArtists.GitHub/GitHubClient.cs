@@ -35,24 +35,24 @@
 
     static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
     static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
-    static readonly JsonSerializerSettings _JsonSettings;
     static readonly MediaTypeFormatter[] _MediaTypeFormatters;
 
+    public static readonly JsonSerializerSettings JsonSettings;
     public static readonly MediaTypeHeaderValue JsonMediaType = new MediaTypeHeaderValue("application/json");
     public static readonly JsonMediaTypeFormatter JsonMediaTypeFormatter;
 
     static GitHubClient() {
-      _JsonSettings = new JsonSerializerSettings() {
+      JsonSettings = new JsonSerializerSettings() {
         ContractResolver = new SnakeCasePropertyNamesContractResolver(),
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Ignore,
       };
-      _JsonSettings.Converters.Add(new StringEnumConverter() {
+      JsonSettings.Converters.Add(new StringEnumConverter() {
         AllowIntegerValues = false,
         CamelCaseText = true,
       });
       JsonMediaTypeFormatter = new JsonMediaTypeFormatter() {
-        SerializerSettings = _JsonSettings,
+        SerializerSettings = JsonSettings,
       };
       _MediaTypeFormatters = new[] { JsonMediaTypeFormatter };
 
@@ -136,8 +136,8 @@
       return await MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<Account>> AuthenticatedUser() {
-      var request = new GitHubRequest(HttpMethod.Get, "user");
+    public async Task<GitHubResponse<Account>> AuthenticatedUser(string eTag = null, DateTimeOffset? lastModified = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user", eTag, lastModified);
       return await MakeRequest<Account>(request);
     }
 
@@ -218,11 +218,11 @@
     }
 
     public static string SerializeObject(object value) {
-      return JsonConvert.SerializeObject(value, _JsonSettings);
+      return JsonConvert.SerializeObject(value, JsonSettings);
     }
 
     public static T DeserializeObject<T>(string json) {
-      return JsonConvert.DeserializeObject<T>(json, _JsonSettings);
+      return JsonConvert.DeserializeObject<T>(json, JsonSettings);
     }
 
     public static T JsonRoundTrip<T>(object self) {

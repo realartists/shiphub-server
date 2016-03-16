@@ -16,11 +16,11 @@
     [JsonIgnore]
     public string ExtensionData {
       get {
-        return JsonConvert.SerializeObject(_extensionData, Formatting.Indented);
+        return JsonConvert.SerializeObject(_extensionData, Formatting.Indented, GitHubClient.JsonSettings);
       }
       set {
         if (value != null) {
-          _extensionData = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);
+          _extensionData = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value, GitHubClient.JsonSettings);
         }
       }
     }

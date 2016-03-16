@@ -77,6 +77,8 @@
     <Build Include="Sequences\SyncIdentifier.sql" />
     <Build Include="Tables\OrganizationMembers.sql" />
     <Build Include="Security\RoleMemberships.sql" />
+    <Build Include="Sequences\BumpGlobalVersion.sql" />
+    <Build Include="Sequences\UpdateRateLimit.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

@@ -31,7 +31,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -57,9 +57,13 @@
     <Compile Include="GitHubRedirect.cs" />
     <Compile Include="GitHubRequest.cs" />
     <Compile Include="GitHubResponse.cs" />
+    <Compile Include="Models\IssueComment.cs" />
     <Compile Include="Models\CreatedAccessToken.cs" />
     <Compile Include="Models\Authorization.cs" />
     <Compile Include="Models\Account.cs" />
+    <Compile Include="Models\IssueEvent.cs" />
+    <Compile Include="Models\IssueLabel.cs" />
+    <Compile Include="Models\IssueMilestone.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Serialization\EpochDateTimeConverter.cs" />
     <Compile Include="Serialization\EpochUtility.cs" />
