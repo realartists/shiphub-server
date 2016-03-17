@@ -65,6 +65,7 @@
     <Folder Include="Security" />
     <Folder Include="Tables" />
     <Folder Include="Sequences" />
+    <Folder Include="Procedures" />
   </ItemGroup>
   <ItemGroup>
     <PostDeploy Include="PostDeployment.sql" />
@@ -77,8 +78,8 @@
     <Build Include="Sequences\SyncIdentifier.sql" />
     <Build Include="Tables\OrganizationMembers.sql" />
     <Build Include="Security\RoleMemberships.sql" />
-    <Build Include="Sequences\BumpGlobalVersion.sql" />
-    <Build Include="Sequences\UpdateRateLimit.sql" />
+    <Build Include="Procedures\BumpGlobalVersion.sql" />
+    <Build Include="Procedures\UpdateRateLimit.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

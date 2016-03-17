@@ -6,21 +6,21 @@
   public abstract class GitHubModel {
     public JToken this[string key] {
       get {
-        return _extensionData[key];
+        return _extensionJson[key];
       }
     }
 
     [JsonExtensionData]
-    public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();
+    public IDictionary<string, JToken> _extensionJson = new Dictionary<string, JToken>();
 
     [JsonIgnore]
-    public string ExtensionData {
+    public string ExtensionJson {
       get {
-        return JsonConvert.SerializeObject(_extensionData, Formatting.Indented, GitHubClient.JsonSettings);
+        return JsonConvert.SerializeObject(_extensionJson, Formatting.Indented, GitHubClient.JsonSettings);
       }
       set {
         if (value != null) {
-          _extensionData = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value, GitHubClient.JsonSettings);
+          _extensionJson = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value, GitHubClient.JsonSettings);
         }
       }
     }

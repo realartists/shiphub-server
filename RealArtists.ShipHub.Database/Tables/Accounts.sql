@@ -8,10 +8,12 @@
   [Expires]        DATETIMEOFFSET NULL,
   [LastModified]   DATETIMEOFFSET NULL,
   [LastRefresh]    DATETIMEOFFSET NOT NULL,
+  [CacheTokenId]   BIGINT         NULL,
   [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [RowVersion]     BIGINT         NULL,
   [RestoreVersion] BIGINT         NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id] ASC),
+  CONSTRAINT [FKSN_Accounts_CacheTokenId_AccessTokens_Id] FOREIGN KEY ([CacheTokenId]) REFERENCES [dbo].[AccessTokens] ([Id]) ON DELETE SET NULL
 );
 GO
 

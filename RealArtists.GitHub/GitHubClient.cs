@@ -63,11 +63,15 @@
 
     private HttpClient _httpClient;
 
+    public IGitHubCredentials Credentials { get; set; }
+
     public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null) {
+      Credentials = credentials;
+
+      // TODO: Only one handler for all clients?
       var handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
-        MaxAutomaticRedirections = 5,
         MaxRequestContentBufferSize = 4 * 1024 * 1024,
         UseCookies = false,
         UseDefaultCredentials = false,
@@ -91,10 +95,6 @@
       headers.UserAgent.Add(new ProductInfoHeaderValue(productName, productVersion));
 
       headers.Add("Time-Zone", "Etc/UTC");
-
-      if (credentials != null) {
-        credentials.Apply(headers);
-      }
     }
 
     public async Task<GitHubResponse<CreatedAccessToken>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
@@ -158,6 +158,9 @@
       if (!string.IsNullOrWhiteSpace(request.ETag)) {
         httpRequest.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(request.ETag));
       }
+
+      // Authentication
+      Credentials?.Apply(httpRequest.Headers);
 
       var response = await _httpClient.SendAsync(httpRequest);
 

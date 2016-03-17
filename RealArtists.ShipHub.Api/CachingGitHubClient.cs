@@ -9,58 +9,87 @@
   using RealArtists.GitHub;
   using Utilities;
   using System.Data.Entity;
+  using System.Net;
 
-  public class CachingGitHubClient : IDisposable {
-    private int _userId;
-    private ShipHubContext _db = new ShipHubContext();
-
+  public class CachingGitHubClient {
     private GitHubClient _gh;
-    private GitHubClient _GitHub {
-      get {
-        return _gh ?? (_gh = CreateGitHubClient());
-      }
-    }
-
+    private ShipHubContext _db;
     private User _user;
-    private User _User {
-      get {
-        return _user ?? (_user = (User)_db.Accounts.Include(x => x.AccessToken).Single(x => x.Id == _userId));
-      }
+
+    public CachingGitHubClient(ShipHubContext context, User user) {
+      _gh = GitHubSettings.CreateUserClient(user.AccessToken.Token);
+      _db = context;
+      _user = user;
     }
 
-    public CachingGitHubClient(int userId) {
-      _userId = userId;
-    }
+    public async Task<User> CurrentUser() {
+      var current = _user;
+      var token = _user.AccessToken;
 
-    //public async Task<Account> User() {
-    //  var current = _User;
-    //  var response = _GitHub.AuthenticatedUser(_User.ETag, _user.LastModified);
-    //  if(response.
-    //}
+      _gh.Credentials = new GitHubOauthCredentials(token.Token);
+      var updated = await _gh.AuthenticatedUser(current.ETag, current.LastModified);
 
-    //public async Task<Account> User(string login) {
-    //}
+      current.CacheToken = token;
+      current.LastRefresh = DateTimeOffset.UtcNow;
 
-    private GitHubClient CreateGitHubClient() {
-      return GitHubSettings.CreateUserClient(_User.AccessToken.Token);
-    }
+      token.RateLimit = updated.RateLimit;
+      token.RateLimitRemaining = updated.RateLimitRemaining;
+      token.RateLimitReset = updated.RateLimitReset;
 
-    private bool disposedValue = false; // To detect redundant calls
-
-    protected virtual void Dispose(bool disposing) {
-      if (!disposedValue) {
-        if (disposing) {
-          // Too cute?
-          Interlocked.Exchange(ref _db, null)?.Dispose();
-          Interlocked.Exchange(ref _gh, null)?.Dispose();
+      if (updated.Status != HttpStatusCode.NotModified) {
+        var u = updated.Result;
+        if (u.Id != _user.Id) {
+          throw new InvalidOperationException($"Refreshing current user cannot alter user id.");
         }
 
-        disposedValue = true;
+        current.ETag = updated.ETag;
+        current.Expires = updated.Expires;
+        current.LastModified = updated.LastModified;
+
+        current.AvatarUrl = u.AvatarUrl;
+        current.ExtensionJson = u.ExtensionJson;
+        current.Login = u.Login;
+        current.Name = u.Name;
       }
+
+      await _db.SaveChangesAsync();
+      return current;
     }
 
-    public void Dispose() {
-      Dispose(true);
+    // TODO: Is user id more robust when known?
+    public async Task<User> User(string login) {
+      var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
+      var token = current?.AccessToken ?? _user.AccessToken;
+
+      _gh.Credentials = new GitHubOauthCredentials(token.Token);
+      var updated = await _gh.User(login, current.ETag, current.LastModified);
+
+      current.CacheToken = token;
+      current.LastRefresh = DateTimeOffset.UtcNow;
+
+      token.RateLimit = updated.RateLimit;
+      token.RateLimitRemaining = updated.RateLimitRemaining;
+      token.RateLimitReset = updated.RateLimitReset;
+
+      if (updated.Status != HttpStatusCode.NotModified) {
+        var u = updated.Result;
+        if (u.Id != _user.Id) {
+          throw new InvalidOperationException($"Refreshing current user cannot alter user id.");
+        }
+
+        current.ETag = updated.ETag;
+        current.Expires = updated.Expires;
+        current.LastModified = updated.LastModified;
+
+        current.AvatarUrl = u.AvatarUrl;
+        current.ExtensionJson = u.ExtensionJson;
+        current.Login = u.Login;
+        current.Name = u.Name;
+      }
+
+      await _db.SaveChangesAsync();
+      return current;
+
     }
   }
 }
