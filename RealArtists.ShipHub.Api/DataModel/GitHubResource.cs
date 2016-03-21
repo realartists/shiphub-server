@@ -27,7 +27,7 @@
 
     public long CacheTokenId { get; set; }
 
-    public virtual AccessToken CacheToken { get; set; } 
+    public virtual AccessToken CacheToken { get; set; }
 
     public string ExtensionJson { get; set; }
 

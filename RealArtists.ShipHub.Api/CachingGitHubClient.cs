@@ -6,10 +6,16 @@
   using System.Threading.Tasks;
   using System.Web;
   using DataModel;
-  using RealArtists.GitHub;
+  using RealArtists.ShipHub.Api.GitHub;
   using Utilities;
   using System.Data.Entity;
   using System.Net;
+
+  public static class GitHubCacheHelpers {
+    public static ConditionalHeaders ConditionalHeaders(this IGitHubResource resource) {
+      return new ConditionalHeaders(resource.ETag, resource.LastModified);
+    }
+  }
 
   public class CachingGitHubClient {
     private GitHubClient _gh;
@@ -27,7 +33,7 @@
       var token = _user.AccessToken;
 
       _gh.Credentials = new GitHubOauthCredentials(token.Token);
-      var updated = await _gh.AuthenticatedUser(current.ETag, current.LastModified);
+      var updated = await _gh.AuthenticatedUser(current.ConditionalHeaders());
 
       current.CacheToken = token;
       current.LastRefresh = DateTimeOffset.UtcNow;
@@ -62,7 +68,7 @@
       var token = current?.AccessToken ?? _user.AccessToken;
 
       _gh.Credentials = new GitHubOauthCredentials(token.Token);
-      var updated = await _gh.User(login, current.ETag, current.LastModified);
+      var updated = await _gh.User(login, current.ConditionalHeaders());
 
       current.CacheToken = token;
       current.LastRefresh = DateTimeOffset.UtcNow;
