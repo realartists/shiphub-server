@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub.Models {
+﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   public enum GitHubAccountType {
     Organization,
     User,

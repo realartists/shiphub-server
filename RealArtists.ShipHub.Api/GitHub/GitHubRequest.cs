@@ -1,15 +1,16 @@
-﻿namespace RealArtists.GitHub {
+﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System;
   using System.Collections.Generic;
   using System.Collections.Specialized;
   using System.Net;
   using System.Net.Http;
+
   public class GitHubRequest {
-    public GitHubRequest(HttpMethod method, string path, string eTag = null, DateTimeOffset? lastModified = null) {
+    public GitHubRequest(HttpMethod method, string path, ConditionalHeaders conds = null) {
       Method = method;
       Path = path;
-      ETag = eTag;
-      LastModified = lastModified;
+      ETag = conds?.ETag;
+      LastModified = conds?.LastModified;
       Parameters = new NameValueCollection();
     }
 
@@ -70,8 +71,8 @@
 
   public class GitHubRequest<T> : GitHubRequest
     where T : class {
-    public GitHubRequest(HttpMethod method, string path, T body, string eTag = null, DateTimeOffset? lastModified = null)
-      : base(method, path, eTag, lastModified) {
+    public GitHubRequest(HttpMethod method, string path, T body, ConditionalHeaders conds = null)
+      : base(method, path, conds) {
       Body = body;
     }
 

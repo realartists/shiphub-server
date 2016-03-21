@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub.Models {
+﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   using System.Collections.Generic;
 
   public class Authorization : GitHubModel {

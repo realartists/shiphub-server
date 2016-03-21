@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub {
+﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System;
   using System.Text.RegularExpressions;
   public class GitHubPagination {

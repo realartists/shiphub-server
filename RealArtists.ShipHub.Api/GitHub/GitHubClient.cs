@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub {
+﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System;
   using System.Collections;
   using System.Linq;
@@ -14,15 +14,25 @@
   using Serialization;
 
   public static class HeaderUtility {
-    public static string SingleHeader(this HttpResponseMessage response, string headerName) {
-      return response.Headers
+    public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
+      var header = response.Headers
         .Where(x => x.Key.Equals(headerName, StringComparison.OrdinalIgnoreCase))
         .SelectMany(x => x.Value)
         .SingleOrDefault();
-    }
 
-    public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
-      return selector(response.SingleHeader(headerName));
+      return selector(header);
+    }
+  }
+
+  public class ConditionalHeaders {
+    public string ETag { get; set; }
+    public DateTimeOffset? LastModified { get; set; }
+
+    public ConditionalHeaders(string eTag) : this(eTag, null) { }
+    public ConditionalHeaders(DateTimeOffset? lastModified) : this(null, lastModified) { }
+    public ConditionalHeaders(string eTag = null, DateTimeOffset? lastModified = null) {
+      ETag = eTag;
+      LastModified = lastModified;
     }
   }
 
@@ -136,8 +146,13 @@
       return await MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<Account>> AuthenticatedUser(string eTag = null, DateTimeOffset? lastModified = null) {
-      var request = new GitHubRequest(HttpMethod.Get, "user", eTag, lastModified);
+    public async Task<GitHubResponse<Account>> AuthenticatedUser(ConditionalHeaders conds = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user", conds);
+      return await MakeRequest<Account>(request);
+    }
+
+    public async Task<GitHubResponse<Account>> User(string login, ConditionalHeaders conds = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", conds);
       return await MakeRequest<Account>(request);
     }
 
@@ -181,10 +196,14 @@
 
       var result = new GitHubResponse<T>() {
         Redirect = redirect,
+        RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
-        ETag = response.Headers.ETag?.Tag,
-        LastModified = response.Content?.Headers?.LastModified,
+        IsError = response.IsSuccessStatusCode,
       };
+
+      // Cache Headers
+      result.ETag = response.Headers.ETag?.Tag;
+      result.LastModified = response.Content?.Headers?.LastModified;
 
       // Expires and Caching Max-Age
       result.Expires = response.Content?.Headers?.Expires;
@@ -203,10 +222,7 @@
 
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
-      var linkHeader = response.SingleHeader("Link");
-      if (linkHeader != null) {
-        result.Pagination = GitHubPagination.FromLinkHeader(linkHeader);
-      }
+      result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
 
       if (response.IsSuccessStatusCode) {
         // TODO: Handle accepted, no content, etc.

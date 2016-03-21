@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub {
+﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System.Collections.Generic;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;

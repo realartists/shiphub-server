@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub.Models {
+﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   public class Repository : GitHubModel {
     public int Id { get; set; }
     public Account Owner { get; set; }

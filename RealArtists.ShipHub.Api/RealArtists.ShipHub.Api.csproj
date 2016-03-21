@@ -67,6 +67,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Web.Cors, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.Cors.5.2.3\lib\net45\System.Web.Cors.dll</HintPath>
       <Private>True</Private>
@@ -127,6 +128,28 @@
     <Compile Include="DataModel\User.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="CachingGitHubClient.cs" />
+    <Compile Include="GitHub\GitHubClient.cs" />
+    <Compile Include="GitHub\GitHubCredentials.cs" />
+    <Compile Include="GitHub\GitHubError.cs" />
+    <Compile Include="GitHub\GitHubModel.cs" />
+    <Compile Include="GitHub\GitHubPagination.cs" />
+    <Compile Include="GitHub\GitHubRedirect.cs" />
+    <Compile Include="GitHub\GitHubRequest.cs" />
+    <Compile Include="GitHub\GitHubResponse.cs" />
+    <Compile Include="GitHub\Models\Account.cs" />
+    <Compile Include="GitHub\Models\Authorization.cs" />
+    <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
+    <Compile Include="GitHub\Models\Issue.cs" />
+    <Compile Include="GitHub\Models\IssueComment.cs" />
+    <Compile Include="GitHub\Models\IssueEvent.cs" />
+    <Compile Include="GitHub\Models\IssueLabel.cs" />
+    <Compile Include="GitHub\Models\IssueMilestone.cs" />
+    <Compile Include="GitHub\Models\IssueRename.cs" />
+    <Compile Include="GitHub\Models\Repository.cs" />
+    <Compile Include="GitHub\Serialization\EpochDateTimeConverter.cs" />
+    <Compile Include="GitHub\Serialization\EpochUtility.cs" />
+    <Compile Include="GitHub\Serialization\SnakeCasePropertyNamesContractResolver.cs" />
+    <Compile Include="GitHub\Serialization\SnakeCaseUtility.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -159,12 +182,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\RealArtists.GitHub\RealArtists.GitHub.csproj">
-      <Project>{db68df42-a6b7-4a24-8308-05ed0f00e3ab}</Project>
-      <Name>RealArtists.GitHub</Name>
-    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

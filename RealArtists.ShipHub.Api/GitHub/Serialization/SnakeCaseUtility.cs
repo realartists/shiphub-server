@@ -1,4 +1,4 @@
-﻿namespace RealArtists.GitHub.Serialization {
+﻿namespace RealArtists.ShipHub.Api.GitHub.Serialization {
   using System;
   using System.Text;
 

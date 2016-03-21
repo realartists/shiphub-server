@@ -24,7 +24,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 // OTHER DEALINGS IN THE SOFTWARE.
 
-namespace RealArtists.GitHub.Serialization {
+namespace RealArtists.ShipHub.Api.GitHub.Serialization {
   using System;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
