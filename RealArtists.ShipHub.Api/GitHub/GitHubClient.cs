@@ -24,18 +24,6 @@
     }
   }
 
-  public class ConditionalHeaders {
-    public string ETag { get; set; }
-    public DateTimeOffset? LastModified { get; set; }
-
-    public ConditionalHeaders(string eTag) : this(eTag, null) { }
-    public ConditionalHeaders(DateTimeOffset? lastModified) : this(null, lastModified) { }
-    public ConditionalHeaders(string eTag = null, DateTimeOffset? lastModified = null) {
-      ETag = eTag;
-      LastModified = lastModified;
-    }
-  }
-
   public class GitHubClient : IDisposable {
 #if DEBUG
     public const bool UseFiddler = true;
@@ -73,10 +61,10 @@
 
     private HttpClient _httpClient;
 
-    public IGitHubCredentials Credentials { get; set; }
+    public IGitHubCredentials DefaultCredentials { get; set; }
 
     public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null) {
-      Credentials = credentials;
+      DefaultCredentials = credentials;
 
       // TODO: Only one handler for all clients?
       var handler = new HttpClientHandler() {
@@ -146,17 +134,17 @@
       return await MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<Account>> AuthenticatedUser(ConditionalHeaders conds = null) {
-      var request = new GitHubRequest(HttpMethod.Get, "user", conds);
-      return await MakeRequest<Account>(request);
+    public async Task<GitHubResponse<Account>> AuthenticatedUser(IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user", opts?.CacheOptions);
+      return await MakeRequest<Account>(request, opts);
     }
 
-    public async Task<GitHubResponse<Account>> User(string login, ConditionalHeaders conds = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", conds);
-      return await MakeRequest<Account>(request);
+    public async Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
+      return await MakeRequest<Account>(request, opts);
     }
 
-    public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, GitHubRedirect redirect = null) {
+    public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubRequestOptions opts = null, GitHubRedirect redirect = null) {
       // Always request the biggest page size
       if (request.Method == HttpMethod.Get
         && typeof(IEnumerable).IsAssignableFrom(typeof(T))) {
@@ -175,7 +163,8 @@
       }
 
       // Authentication
-      Credentials?.Apply(httpRequest.Headers);
+      var creds = opts?.Credentials ?? DefaultCredentials;
+      creds?.Apply(httpRequest.Headers);
 
       var response = await _httpClient.SendAsync(httpRequest);
 
@@ -184,17 +173,18 @@
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(request, opts, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
           request.Method = HttpMethod.Get;
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(request, opts, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         default:
           break;
       }
 
       var result = new GitHubResponse<T>() {
+        Credentials = creds,
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,

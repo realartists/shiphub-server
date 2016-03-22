@@ -6,11 +6,11 @@
   using System.Net.Http;
 
   public class GitHubRequest {
-    public GitHubRequest(HttpMethod method, string path, ConditionalHeaders conds = null) {
+    public GitHubRequest(HttpMethod method, string path, IGitHubCacheOptions opts = null) {
       Method = method;
       Path = path;
-      ETag = conds?.ETag;
-      LastModified = conds?.LastModified;
+      ETag = opts?.ETag;
+      LastModified = opts?.LastModified;
       Parameters = new NameValueCollection();
     }
 
@@ -71,8 +71,8 @@
 
   public class GitHubRequest<T> : GitHubRequest
     where T : class {
-    public GitHubRequest(HttpMethod method, string path, T body, ConditionalHeaders conds = null)
-      : base(method, path, conds) {
+    public GitHubRequest(HttpMethod method, string path, T body, IGitHubCacheOptions opts = null)
+      : base(method, path, opts) {
       Body = body;
     }
 

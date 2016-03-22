@@ -6,6 +6,7 @@
     public Uri RequestUri { get; set; }
     public HttpStatusCode Status { get; set; }
     public bool IsError { get; set; }
+    public IGitHubCredentials Credentials { get; set; }
 
     // Null unless sent.
     public GitHubError Error { get; set; }

@@ -1,19 +1,37 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
-  using System.Threading;
+  using System.Data.Entity;
+  using System.Net;
+  using System.Net.Http.Headers;
   using System.Threading.Tasks;
-  using System.Web;
   using DataModel;
   using RealArtists.ShipHub.Api.GitHub;
   using Utilities;
-  using System.Data.Entity;
-  using System.Net;
+
+  public class GitHubResourceOptionWrapper : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials {
+    private IGitHubResource _resource;
+
+    public GitHubResourceOptionWrapper(IGitHubResource resource) {
+      _resource = resource;
+    }
+
+    public IGitHubCacheOptions CacheOptions { get { return this; } }
+    public IGitHubCredentials Credentials { get { return this; } }
+
+    public string ETag { get { return _resource.ETag; } }
+    public DateTimeOffset? LastModified { get { return _resource.LastModified; } }
+
+    public void Apply(HttpRequestHeaders headers) {
+      headers.Authorization = new AuthenticationHeaderValue("token", _resource.CacheToken.Token);
+    }
+  }
 
   public static class GitHubCacheHelpers {
-    public static ConditionalHeaders ConditionalHeaders(this IGitHubResource resource) {
-      return new ConditionalHeaders(resource.ETag, resource.LastModified);
+    public static IGitHubRequestOptions ToGitHubRequestOptions(this IGitHubResource resource) {
+      if (resource == null)
+        return null;
+
+      return new GitHubResourceOptionWrapper(resource);
     }
   }
 
@@ -32,8 +50,8 @@
       var current = _user;
       var token = _user.AccessToken;
 
-      _gh.Credentials = new GitHubOauthCredentials(token.Token);
-      var updated = await _gh.AuthenticatedUser(current.ConditionalHeaders());
+      _gh.DefaultCredentials = new GitHubOauthCredentials(token.Token);
+      var updated = await _gh.AuthenticatedUser(current.ToGitHubRequestOptions());
 
       current.CacheToken = token;
       current.LastRefresh = DateTimeOffset.UtcNow;
@@ -67,8 +85,8 @@
       var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
       var token = current?.AccessToken ?? _user.AccessToken;
 
-      _gh.Credentials = new GitHubOauthCredentials(token.Token);
-      var updated = await _gh.User(login, current.ConditionalHeaders());
+      _gh.DefaultCredentials = new GitHubOauthCredentials(token.Token);
+      var updated = await _gh.User(login, current.ToGitHubRequestOptions());
 
       current.CacheToken = token;
       current.LastRefresh = DateTimeOffset.UtcNow;
@@ -95,7 +113,6 @@
 
       await _db.SaveChangesAsync();
       return current;
-
     }
   }
 }

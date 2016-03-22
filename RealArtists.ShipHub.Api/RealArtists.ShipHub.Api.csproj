@@ -136,6 +136,8 @@
     <Compile Include="GitHub\GitHubRedirect.cs" />
     <Compile Include="GitHub\GitHubRequest.cs" />
     <Compile Include="GitHub\GitHubResponse.cs" />
+    <Compile Include="GitHub\IGitHubCacheOptions.cs" />
+    <Compile Include="GitHub\IGitHubRequestOptions.cs" />
     <Compile Include="GitHub\Models\Account.cs" />
     <Compile Include="GitHub\Models\Authorization.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
