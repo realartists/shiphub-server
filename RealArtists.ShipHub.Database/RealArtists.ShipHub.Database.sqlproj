@@ -76,15 +76,28 @@
     <Build Include="Tables\AuthenticationTokens.sql" />
     <Build Include="Tables\Accounts.sql" />
     <Build Include="Sequences\SyncIdentifier.sql" />
-    <Build Include="Tables\OrganizationMembers.sql" />
+    <Build Include="Tables\AccountOrganizations.sql" />
     <Build Include="Security\RoleMemberships.sql" />
     <Build Include="Procedures\BumpGlobalVersion.sql" />
     <Build Include="Procedures\UpdateRateLimit.sql" />
+    <Build Include="Tables\PollQueueItems.sql" />
+    <Build Include="Tables\Issues.sql" />
+    <Build Include="Tables\Comments.sql" />
+    <Build Include="Tables\Events.sql" />
+    <Build Include="Tables\Labels.sql" />
+    <Build Include="Tables\Milestones.sql" />
+    <Build Include="Tables\AccountRepositories.sql" />
+    <Build Include="Tables\IssueLabels.sql" />
+    <Build Include="Tables\RepositoryLabels.sql" />
+    <Build Include="Tables\GitHubMetaData.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LocalDB.scmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <RefactorLog Include="RealArtists.ShipHub.Database.refactorlog" />
   </ItemGroup>
 </Project>

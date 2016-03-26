@@ -116,10 +116,12 @@
     <Compile Include="Controllers\AuthTestController.cs" />
     <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
+    <Compile Include="Controllers\SpiderController.cs" />
     <Compile Include="Controllers\TestController.cs" />
     <Compile Include="DataModel\AccessToken.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\AuthenticationToken.cs" />
+    <Compile Include="DataModel\ComplexTypes\GitHubMetaData.cs" />
     <Compile Include="DataModel\GitHubResource.cs" />
     <Compile Include="DataModel\IVersionedResource.cs" />
     <Compile Include="DataModel\Organization.cs" />

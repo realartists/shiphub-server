@@ -16,22 +16,13 @@
   }
 
   public abstract class GitHubResource : IGitHubResource, IVersionedResource {
-    [StringLength(64)]
-    public string ETag { get; set; }
+    
 
-    public DateTimeOffset? LastModified { get; set; }
-
-    public DateTimeOffset? Expires { get; set; }
-
-    public DateTimeOffset LastRefresh { get; set; }
-
-    public long CacheTokenId { get; set; }
-
-    public virtual AccessToken CacheToken { get; set; }
+    // Just in case
 
     public string ExtensionJson { get; set; }
 
-    // IVersionedResource
+    // Version Data
 
     public abstract string TopicName { get; }
 

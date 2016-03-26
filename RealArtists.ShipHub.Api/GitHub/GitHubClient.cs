@@ -43,7 +43,7 @@
       JsonSettings = new JsonSerializerSettings() {
         ContractResolver = new SnakeCasePropertyNamesContractResolver(),
         Formatting = Formatting.Indented,
-        NullValueHandling = NullValueHandling.Ignore,
+        NullValueHandling = NullValueHandling.Include,
       };
       JsonSettings.Converters.Add(new StringEnumConverter() {
         AllowIntegerValues = false,
@@ -188,7 +188,7 @@
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
-        IsError = response.IsSuccessStatusCode,
+        IsError = !response.IsSuccessStatusCode,
       };
 
       // Cache Headers

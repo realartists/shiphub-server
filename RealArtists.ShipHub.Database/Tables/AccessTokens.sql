@@ -8,7 +8,7 @@
   [RateLimitRemaining] INT            NOT NULL,
   [RateLimitReset]     DATETIMEOFFSET NOT NULL,
   CONSTRAINT [PK_AccessTokens] PRIMARY KEY CLUSTERED ([Id] ASC),
-  CONSTRAINT [FKCD_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]) ON DELETE CASCADE
+  CONSTRAINT [FK_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id])
 );
 GO
 

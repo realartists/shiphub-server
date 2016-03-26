@@ -1,0 +1,10 @@
+﻿CREATE TABLE [dbo].[Labels] (
+  [Id]    UNIQUEIDENTIFIER NOT NULL,
+  [Color] NVARCHAR(6)      NOT NULL,
+  [Name]  NVARCHAR(150)    NOT NULL,
+  CONSTRAINT [PK_Labels] PRIMARY KEY CLUSTERED ([Id] ASC),
+)
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Labels_Color_Name] ON [dbo].[Labels]([Color] ASC, [Name] ASC);
+GO

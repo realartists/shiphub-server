@@ -10,19 +10,34 @@
 
   public class GitHubResourceOptionWrapper : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials {
     private IGitHubResource _resource;
+    private IGitHubCredentials _fallbackCreds;
 
-    public GitHubResourceOptionWrapper(IGitHubResource resource) {
+    public GitHubResourceOptionWrapper(IGitHubResource resource, IGitHubCredentials fallback = null) {
       _resource = resource;
+      var token = resource.CacheToken?.Token;
+      if (token != null) {
+        Scheme = "token";
+        Parameter = token;
+      } else {
+        Scheme = fallback?.Scheme;
+        Parameter = fallback?.Parameter;
+      }
     }
 
     public IGitHubCacheOptions CacheOptions { get { return this; } }
     public IGitHubCredentials Credentials { get { return this; } }
+    public string Scheme { get; private set; }
+    public string Parameter { get; private set; }
 
     public string ETag { get { return _resource.ETag; } }
     public DateTimeOffset? LastModified { get { return _resource.LastModified; } }
 
     public void Apply(HttpRequestHeaders headers) {
-      headers.Authorization = new AuthenticationHeaderValue("token", _resource.CacheToken.Token);
+      if (_resource.CacheToken != null) {
+        headers.Authorization = new AuthenticationHeaderValue("token", _resource.CacheToken.Token);
+      } else if (_fallbackCreds != null) {
+        _fallbackCreds.Apply(headers);
+      }
     }
   }
 
@@ -50,7 +65,7 @@
       var current = _user;
       var token = _user.AccessToken;
 
-      _gh.DefaultCredentials = new GitHubOauthCredentials(token.Token);
+      _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
       var updated = await _gh.AuthenticatedUser(current.ToGitHubRequestOptions());
 
       current.CacheToken = token;
@@ -85,7 +100,7 @@
       var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
       var token = current?.AccessToken ?? _user.AccessToken;
 
-      _gh.DefaultCredentials = new GitHubOauthCredentials(token.Token);
+      _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
       var updated = await _gh.User(login, current.ToGitHubRequestOptions());
 
       current.CacheToken = token;

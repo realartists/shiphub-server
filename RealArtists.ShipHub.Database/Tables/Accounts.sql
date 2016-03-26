@@ -1,26 +1,29 @@
 ﻿CREATE TABLE [dbo].[Accounts] (
-  [Id]             INT            NOT NULL,
-  [Type]           NVARCHAR(4)    NOT NULL,
-  [AvatarUrl]      NVARCHAR(500)  NULL,
-  [Login]          NVARCHAR(255)  NOT NULL,
-  [Name]           NVARCHAR(255)  NULL,
-  [ETag]           NVARCHAR(64)   NULL,
-  [Expires]        DATETIMEOFFSET NULL,
-  [LastModified]   DATETIMEOFFSET NULL,
-  [LastRefresh]    DATETIMEOFFSET NOT NULL,
-  [CacheTokenId]   BIGINT         NULL,
-  [ExtensionJson]  NVARCHAR(MAX)  NULL,
-  [RowVersion]     BIGINT         NULL,
-  [RestoreVersion] BIGINT         NULL,
-  CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id] ASC),
-  CONSTRAINT [FKSN_Accounts_CacheTokenId_AccessTokens_Id] FOREIGN KEY ([CacheTokenId]) REFERENCES [dbo].[AccessTokens] ([Id]) ON DELETE SET NULL
+  [Id]             INT              NOT NULL,
+  [Type]           NVARCHAR(4)      NOT NULL,
+  [AvatarUrl]      NVARCHAR(500)    NULL,
+  [Login]          NVARCHAR(255)    NOT NULL,
+  [Name]           NVARCHAR(255)    NULL,
+  [AccessTokenId]  BIGINT           NULL,
+  [MetaDataId]     UNIQUEIDENTIFIER NOT NULL,
+  [ExtensionJson]  NVARCHAR(MAX)    NULL,
+  [RowVersion]     BIGINT           NULL,
+  CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
+  CONSTRAINT [FK_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
+  CONSTRAINT [FK_Accounts_AccessTokenId_AccessTokens_Id] FOREIGN KEY ([AccessTokenId]) REFERENCES [dbo].[AccessTokens]([Id]),
 );
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
 GO
 
-CREATE NONCLUSTERED INDEX [UIX_Accounts_Type] ON [dbo].[Accounts]([Type]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Accounts_Type] ON [dbo].[Accounts]([Type]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Accounts_MetaDataId] ON [dbo].[Accounts]([MetaDataId]);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Accounts_Version]
@@ -33,22 +36,8 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-  DECLARE @Versions TABLE (
-    [Id] INT PRIMARY KEY NOT NULL,
-    [RowVersion] BIGINT NULL)
-
-  INSERT INTO @Versions
-  SELECT i.Id, IIF(i.[RowVersion] IS NULL, i.RestoreVersion, NULL)
-  FROM inserted as i
-
-  UPDATE @Versions SET
-    [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-  WHERE [RowVersion] IS NULL
-
   UPDATE Accounts SET
-    [RowVersion] = v.[RowVersion],
-    [RestoreVersion] = NULL
-  FROM Accounts as t
-    INNER JOIN @Versions as v ON (v.Id = t.Id)
+    [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
+  WHERE Id IN (SELECT Id FROM inserted)
 END
 GO

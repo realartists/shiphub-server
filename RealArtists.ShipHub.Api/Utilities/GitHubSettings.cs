@@ -29,7 +29,7 @@
     }
 
     public static GitHubClient CreateUserClient(string accessToken) {
-      return new GitHubClient(ApplicationName, ApplicationVersion, new GitHubOauthCredentials(accessToken));
+      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(accessToken));
     }
 
     public static GitHubClient CreateApplicationClient(string applicationId) {
@@ -38,7 +38,7 @@
       }
 
       var secret = Credentials[applicationId];
-      return new GitHubClient(ApplicationName, ApplicationVersion, new GitHubApplicationCredentials(applicationId, secret));
+      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForApplication(applicationId, secret));
     }
   }
 }
