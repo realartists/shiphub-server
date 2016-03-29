@@ -6,7 +6,7 @@
   [LastAccessDate] DATETIMEOFFSET   NOT NULL,
   CONSTRAINT [CK_AuthenticationTokens_NonDefaultToken] CHECK ([Token] != '00000000-0000-0000-0000-000000000000'),
   CONSTRAINT [PK_AuthenticationTokens] PRIMARY KEY CLUSTERED ([Token]),
-  CONSTRAINT [FKCD_AuthenticationTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]) ON DELETE CASCADE
+  CONSTRAINT [FKCD_AuthenticationTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]) ON DELETE CASCADE,
 );
 GO
 

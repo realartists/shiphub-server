@@ -7,12 +7,12 @@
   [RateLimit]          INT            NOT NULL,
   [RateLimitRemaining] INT            NOT NULL,
   [RateLimitReset]     DATETIMEOFFSET NOT NULL,
-  CONSTRAINT [PK_AccessTokens] PRIMARY KEY CLUSTERED ([Id] ASC),
-  CONSTRAINT [FK_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id])
+  CONSTRAINT [PK_AccessTokens] PRIMARY KEY CLUSTERED ([Id]),
+  CONSTRAINT [FK_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
 );
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_AccessTokens_AccountId] ON [dbo].[AccessTokens]([AccountId]);
+CREATE NONCLUSTERED INDEX [IX_AccessTokens_AccountId] ON [dbo].[AccessTokens]([AccountId]);
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_AccessTokens_Token] ON [dbo].[AccessTokens]([Token]);

@@ -7,6 +7,12 @@
 );
 GO
 
+CREATE NONCLUSTERED INDEX [IX_AccountRepositories_AccountId] ON [dbo].[AccountRepositories]([AccountId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_AccountRepositories_RepositoryId] ON [dbo].[AccountRepositories]([RepositoryId]);
+GO
+
 CREATE TRIGGER [dbo].[TRG_AccountRepositories_Version]
 ON [dbo].[AccountRepositories]
 AFTER INSERT, UPDATE, DELETE

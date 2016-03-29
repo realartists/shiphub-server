@@ -7,6 +7,12 @@
 );
 GO
 
+CREATE NONCLUSTERED INDEX [IX_AccountOrganizations_UserId] ON [dbo].[AccountOrganizations]([UserId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_AccountOrganizations_OrganizationId] ON [dbo].[AccountOrganizations]([OrganizationId]);
+GO
+
 CREATE TRIGGER [dbo].[TRG_AccountOrganizations_Version]
 ON [dbo].[AccountOrganizations]
 AFTER INSERT, UPDATE, DELETE
@@ -22,6 +28,8 @@ BEGIN
     WHERE Id IN (
       SELECT OrganizationId FROM inserted
       UNION
-      SELECT OrganizationId FROM deleted)
+      SELECT OrganizationId FROM deleted
+      UNION
+      SELECT UserId FROM inserted)
 END
 GO

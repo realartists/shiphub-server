@@ -25,13 +25,26 @@
   [RenameTo]             NVARCHAR(255)  NULL,
   -- Future
   [ExtensionJson]        NVARCHAR(MAX)  NOT NULL,
-  -- MetaData
-  [ETag]                 NVARCHAR(64)   NULL,
-  [Expires]              DATETIMEOFFSET NULL,
-  [LastModified]         DATETIMEOFFSET NULL,
-  [LastRefresh]          DATETIMEOFFSET NULL,
-  [CacheTokenId]         BIGINT         NULL,
-  -- Sync
-  [RowVersion]           BIGINT         NULL,
-  [RestoreVersion]       BIGINT         NULL,
-)
+  CONSTRAINT [PK_Events] PRIMARY KEY CLUSTERED ([Id]),
+  CONSTRAINT [FK_Events_ActorId_Accounts_Id] FOREIGN KEY ([ActorId]) REFERENCES [dbo].[Accounts] ([Id]),
+  CONSTRAINT [FK_Events_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),
+  CONSTRAINT [FK_Events_Assigner_Accounts_Id] FOREIGN KEY ([AssignerId]) REFERENCES [dbo].[Accounts] ([Id]),
+  CONSTRAINT [FK_Events_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
+  CONSTRAINT [FK_Events_MilestoneId_Milestones_Id] FOREIGN KEY ([MilestoneId]) REFERENCES [dbo].[Milestones] ([Id]),
+);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Events_ActorId] ON [dbo].[Events]([ActorId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Events_AssigneeId] ON [dbo].[Events]([AssigneeId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Events_AssignerId] ON [dbo].[Events]([AssignerId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Events_RepositoryId] ON [dbo].[Events]([RepositoryId]);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Events_MilestoneId] ON [dbo].[Events]([MilestoneId]);
+GO

@@ -1,29 +1,27 @@
 ﻿CREATE TABLE [dbo].[Accounts] (
-  [Id]             INT              NOT NULL,
-  [Type]           NVARCHAR(4)      NOT NULL,
-  [AvatarUrl]      NVARCHAR(500)    NULL,
-  [Login]          NVARCHAR(255)    NOT NULL,
-  [Name]           NVARCHAR(255)    NULL,
-  [AccessTokenId]  BIGINT           NULL,
-  [MetaDataId]     UNIQUEIDENTIFIER NOT NULL,
-  [ExtensionJson]  NVARCHAR(MAX)    NULL,
-  [RowVersion]     BIGINT           NULL,
+  [Id]             INT           NOT NULL,
+  [Type]           NVARCHAR(4)   NOT NULL,
+  [AvatarUrl]      NVARCHAR(500) NULL,
+  [Login]          NVARCHAR(255) NOT NULL,
+  [Name]           NVARCHAR(255) NULL,
+  [MetaDataId]     BIGINT        NULL,
+  [ExtensionJson]  NVARCHAR(MAX) NOT NULL,
+  [RowVersion]     BIGINT        NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
-  CONSTRAINT [FK_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
-  CONSTRAINT [FK_Accounts_AccessTokenId_AccessTokens_Id] FOREIGN KEY ([AccessTokenId]) REFERENCES [dbo].[AccessTokens]([Id]),
+  CONSTRAINT [FKSN_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]) ON DELETE SET NULL,
 );
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login]);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Accounts_Type] ON [dbo].[Accounts]([Type]);
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Accounts_MetaDataId] ON [dbo].[Accounts]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Accounts_MetaDataId] ON [dbo].[Accounts]([MetaDataId]);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Accounts_Version]
