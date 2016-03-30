@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.DataModel {
+namespace RealArtists.ShipHub.Api.AGModel {
   using System;
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;

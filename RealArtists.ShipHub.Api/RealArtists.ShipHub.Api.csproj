@@ -68,6 +68,7 @@
     </Reference>
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Web.Cors, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.Cors.5.2.3\lib\net45\System.Web.Cors.dll</HintPath>
       <Private>True</Private>
@@ -111,6 +112,18 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AGModel\AccessToken.cs" />
+    <Compile Include="AGModel\Account.cs" />
+    <Compile Include="AGModel\AGModel.cs" />
+    <Compile Include="AGModel\AuthenticationToken.cs" />
+    <Compile Include="AGModel\Comment.cs" />
+    <Compile Include="AGModel\Event.cs" />
+    <Compile Include="AGModel\GitHubMetaData.cs" />
+    <Compile Include="AGModel\Issue.cs" />
+    <Compile Include="AGModel\Label.cs" />
+    <Compile Include="AGModel\Milestone.cs" />
+    <Compile Include="AGModel\PollQueueItem.cs" />
+    <Compile Include="AGModel\Repository.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\AuthTestController.cs" />
@@ -121,9 +134,13 @@
     <Compile Include="DataModel\AccessToken.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\AuthenticationToken.cs" />
-    <Compile Include="DataModel\ComplexTypes\GitHubMetaData.cs" />
-    <Compile Include="DataModel\GitHubResource.cs" />
+    <Compile Include="DataModel\Comment.cs" />
+    <Compile Include="DataModel\Event.cs" />
+    <Compile Include="DataModel\GitHubMetaData.cs" />
+    <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\IVersionedResource.cs" />
+    <Compile Include="DataModel\Label.cs" />
+    <Compile Include="DataModel\Milestone.cs" />
     <Compile Include="DataModel\Organization.cs" />
     <Compile Include="DataModel\Repository.cs" />
     <Compile Include="DataModel\ShipHubContext.cs" />

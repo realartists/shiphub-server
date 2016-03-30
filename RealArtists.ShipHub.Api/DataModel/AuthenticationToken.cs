@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.DataModel {
+﻿namespace RealArtists.ShipHub.Api.DataModel {
   using System;
   using System.ComponentModel.DataAnnotations;
 
@@ -16,6 +16,6 @@
 
     public DateTimeOffset LastAccessDate { get; set; }
 
-    public virtual Account Account { get; set; }
+    public virtual User Account { get; set; }
   }
 }

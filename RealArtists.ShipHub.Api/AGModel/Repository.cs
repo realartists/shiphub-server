@@ -1,10 +1,20 @@
-﻿namespace RealArtists.ShipHub.Api.DataModel {
+namespace RealArtists.ShipHub.Api.AGModel {
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
   public partial class Repository {
+    [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
+    public Repository() {
+      Comments = new HashSet<Comment>();
+      Events = new HashSet<Event>();
+      Issues = new HashSet<Issue>();
+      Milestones = new HashSet<Milestone>();
+      AssignableAccounts = new HashSet<Account>();
+      Labels = new HashSet<Label>();
+    }
+
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
@@ -34,21 +44,21 @@
     public virtual Account Account { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+    public virtual ICollection<Comment> Comments { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Event> Events { get; set; } = new HashSet<Event>();
+    public virtual ICollection<Event> Events { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
+    public virtual ICollection<Issue> Issues { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
+    public virtual ICollection<Milestone> Milestones { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Account> AssignableAccounts { get; set; } = new HashSet<Account>();
+    public virtual ICollection<Account> AssignableAccounts { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Label> Labels { get; set; } = new HashSet<Label>();
+    public virtual ICollection<Label> Labels { get; set; }
   }
 }
