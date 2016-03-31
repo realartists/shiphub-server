@@ -4,7 +4,7 @@
   using DataModel;
 
   public static class ShipHubAuthenticationUtility {
-    public static AuthenticationToken CreateAuthenticationToken(this ShipHubContext context, Account account, string clientName) {
+    public static AuthenticationToken CreateAuthenticationToken(this ShipHubContext context, User account, string clientName) {
       var token = context.AuthenticationTokens.Add(new AuthenticationToken() {
         Token = new Guid(GetRandomBytes(16)),
         ClientName = clientName,

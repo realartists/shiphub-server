@@ -137,7 +137,7 @@
 
       // GitHub Setup
       var user = await Context.Accounts
-        .Include(x => x.AccessToken)
+        .Include(x => x.PrimaryToken)
         .SingleOrDefaultAsync(x => x.Id == ghId);
       if (user == null) {
         user = Context.Accounts.Add(new User() {

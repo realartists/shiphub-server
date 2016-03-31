@@ -36,7 +36,7 @@
         Scopes = "testing,more.testing",
         Token = "thingsAndStuffAndThins"
       };
-      account.AccessToken = Context.AccessTokens.Add(token);
+      account.PrimaryToken = Context.AccessTokens.Add(token);
       await Context.SaveChangesAsync();
 
       Context.Accounts.Remove(account);
@@ -48,7 +48,7 @@
     [HttpGet]
     [Route("authToken")]
     public async Task<IHttpActionResult> AuthenticationToken() {
-      var account = Context.Accounts.Add(new User() {
+      var account = (User)Context.Accounts.Add(new User() {
         Id = 1,
         Login = "test",
         Name = "EF Test",

@@ -5,7 +5,7 @@
   using System.Net.Http.Headers;
   using System.Threading.Tasks;
   using DataModel;
-  using RealArtists.ShipHub.Api.GitHub;
+  using GitHub;
   using Utilities;
 
   public class GitHubResourceOptionWrapper : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials {
@@ -14,7 +14,9 @@
 
     public GitHubResourceOptionWrapper(IGitHubResource resource, IGitHubCredentials fallback = null) {
       _resource = resource;
-      var token = resource.CacheToken?.Token;
+      _fallbackCreds = fallback;
+      var meta = resource.MetaData;
+      var token = meta?.AccessToken.Token;
       if (token != null) {
         Scheme = "token";
         Parameter = token;
@@ -29,12 +31,12 @@
     public string Scheme { get; private set; }
     public string Parameter { get; private set; }
 
-    public string ETag { get { return _resource.ETag; } }
-    public DateTimeOffset? LastModified { get { return _resource.LastModified; } }
+    public string ETag { get { return _resource.MetaData?.ETag; } }
+    public DateTimeOffset? LastModified { get { return _resource.MetaData?.LastModified; } }
 
     public void Apply(HttpRequestHeaders headers) {
-      if (_resource.CacheToken != null) {
-        headers.Authorization = new AuthenticationHeaderValue("token", _resource.CacheToken.Token);
+      if (_resource.MetaData?.AccessToken != null) {
+        headers.Authorization = new AuthenticationHeaderValue("token", _resource.MetaData?.AccessToken.Token);
       } else if (_fallbackCreds != null) {
         _fallbackCreds.Apply(headers);
       }
@@ -56,20 +58,25 @@
     private User _user;
 
     public CachingGitHubClient(ShipHubContext context, User user) {
-      _gh = GitHubSettings.CreateUserClient(user.AccessToken.Token);
+      _gh = GitHubSettings.CreateUserClient(user.PrimaryToken.Token);
       _db = context;
       _user = user;
     }
 
     public async Task<User> CurrentUser() {
       var current = _user;
-      var token = _user.AccessToken;
+      var token = _user.PrimaryToken;
 
       _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
       var updated = await _gh.AuthenticatedUser(current.ToGitHubRequestOptions());
 
-      current.CacheToken = token;
-      current.LastRefresh = DateTimeOffset.UtcNow;
+      var meta = _user.MetaData;
+      if (meta == null) {
+        meta = _db.GitHubMetaData.Add(new GitHubMetaData());
+        _user.MetaData = meta;
+      }
+      meta.AccessToken = token;
+      meta.LastRefresh = DateTimeOffset.UtcNow;
 
       token.RateLimit = updated.RateLimit;
       token.RateLimitRemaining = updated.RateLimitRemaining;
@@ -81,9 +88,9 @@
           throw new InvalidOperationException($"Refreshing current user cannot alter user id.");
         }
 
-        current.ETag = updated.ETag;
-        current.Expires = updated.Expires;
-        current.LastModified = updated.LastModified;
+        meta.ETag = updated.ETag;
+        meta.Expires = updated.Expires;
+        meta.LastModified = updated.LastModified;
 
         current.AvatarUrl = u.AvatarUrl;
         current.ExtensionJson = u.ExtensionJson;
@@ -98,13 +105,18 @@
     // TODO: Is user id more robust when known?
     public async Task<User> User(string login) {
       var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
-      var token = current?.AccessToken ?? _user.AccessToken;
+      var token = current?.PrimaryToken ?? _user.PrimaryToken;
 
       _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
       var updated = await _gh.User(login, current.ToGitHubRequestOptions());
 
-      current.CacheToken = token;
-      current.LastRefresh = DateTimeOffset.UtcNow;
+      var meta = current.MetaData;
+      if (meta == null) {
+        meta = _db.GitHubMetaData.Add(new GitHubMetaData());
+        current.MetaData = meta;
+      }
+      meta.AccessToken = token;
+      meta.LastRefresh = DateTimeOffset.UtcNow;
 
       token.RateLimit = updated.RateLimit;
       token.RateLimitRemaining = updated.RateLimitRemaining;
@@ -116,9 +128,9 @@
           throw new InvalidOperationException($"Refreshing current user cannot alter user id.");
         }
 
-        current.ETag = updated.ETag;
-        current.Expires = updated.Expires;
-        current.LastModified = updated.LastModified;
+        meta.ETag = updated.ETag;
+        meta.Expires = updated.Expires;
+        meta.LastModified = updated.LastModified;
 
         current.AvatarUrl = u.AvatarUrl;
         current.ExtensionJson = u.ExtensionJson;
