@@ -5,11 +5,16 @@
   using GitHub.Models;
 
   public static class GitHubAccountUtility {
-    public static void UpdateCacheInfo(this Ship.IGitHubResource resource, GitHubResponse response) {
-      resource.ETag = response.ETag;
-      resource.Expires = response.Expires;
-      resource.LastModified = response.LastModified;
-      resource.LastRefresh = DateTimeOffset.UtcNow;
+    public static void UpdateCacheInfo(this Ship.IGitHubResource resource, Ship.ShipHubContext context, GitHubResponse response) {
+      var meta = resource.MetaData;
+      if (meta == null) {
+        meta = context.GitHubMetaData.Add(new Ship.GitHubMetaData());
+        resource.MetaData = meta;
+      }
+      meta.ETag = response.ETag;
+      meta.Expires = response.Expires;
+      meta.LastModified = response.LastModified;
+      meta.LastRefresh = DateTimeOffset.UtcNow;
     }
 
     public static void UpdateAccount(this Ship.Account account, GitHubResponse<Account> response) {

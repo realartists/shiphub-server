@@ -136,23 +136,23 @@
       var ghId = userInfo.Result.Id;
 
       // GitHub Setup
-      var user = await Context.Accounts
+      var user = await Context.Users
         .Include(x => x.PrimaryToken)
         .SingleOrDefaultAsync(x => x.Id == ghId);
       if (user == null) {
-        user = Context.Accounts.Add(new User() {
+        user = (User)Context.Accounts.Add(new User() {
           Id = ghId,
         });
       }
       user.UpdateAccount(userInfo);
-      user.UpdateCacheInfo(userInfo);
+      user.UpdateCacheInfo(Context, userInfo);
 
-      if (user.AccessToken == null) {
-        user.AccessToken = Context.AccessTokens.Add(new AccessToken() {
+      if (user.PrimaryToken == null) {
+        user.PrimaryToken = Context.AccessTokens.Add(new AccessToken() {
           Account = user,
         });
       }
-      var accessToken = user.AccessToken;
+      var accessToken = user.PrimaryToken;
       accessToken.Token = authInfo.Token;
       accessToken.ApplicationId = request.ApplicationId;
       accessToken.Scopes = string.Join(",", authInfo.Scopes);
