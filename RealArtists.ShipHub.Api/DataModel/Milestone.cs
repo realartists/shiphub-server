@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Milestone {
+  public partial class Milestone : IGitHubResource {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 

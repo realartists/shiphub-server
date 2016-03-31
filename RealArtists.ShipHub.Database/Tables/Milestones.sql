@@ -16,7 +16,7 @@
   CONSTRAINT [PK_Milestones] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Milestones_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),
   CONSTRAINT [FK_Milestones_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts]([Id]),
-  CONSTRAINT [FKSN_Milestones_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]) ON DELETE SET NULL,
+  CONSTRAINT [FK_Milestones_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
 );
 GO
 

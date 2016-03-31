@@ -4,7 +4,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Repository {
+  public partial class Repository : IGitHubResource {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 
@@ -27,11 +27,13 @@
 
     public string ExtensionJson { get; set; }
 
+    public long? MetaDataId { get; set; }
+
     public long? RowVersion { get; set; }
 
-    public long? RestoreVersion { get; set; }
-
     public virtual Account Account { get; set; }
+
+    public virtual GitHubMetaData MetaData { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();

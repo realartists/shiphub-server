@@ -125,6 +125,7 @@
     <Compile Include="DataModel\Comment.cs" />
     <Compile Include="DataModel\Event.cs" />
     <Compile Include="DataModel\GitHubMetaData.cs" />
+    <Compile Include="DataModel\IGitHubResource.cs" />
     <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\IVersionedResource.cs" />
     <Compile Include="DataModel\Label.cs" />

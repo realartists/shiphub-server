@@ -4,7 +4,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public abstract partial class Account {
+  public abstract partial class Account : IGitHubResource {
     public const string OrganizationType = "org";
     public const string UserType = "user";
 
@@ -21,12 +21,16 @@
     [StringLength(255)]
     public string Name { get; set; }
 
+    public long? PrimaryTokenId { get; set; }
+
     public long? MetaDataId { get; set; }
 
     [Required]
     public string ExtensionJson { get; set; }
 
     public long? RowVersion { get; set; }
+
+    public virtual AccessToken PrimaryToken { get; set; }
 
     public virtual GitHubMetaData MetaData { get; set; }
 

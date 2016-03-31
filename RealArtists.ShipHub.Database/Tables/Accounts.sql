@@ -4,11 +4,15 @@
   [AvatarUrl]      NVARCHAR(500) NULL,
   [Login]          NVARCHAR(255) NOT NULL,
   [Name]           NVARCHAR(255) NULL,
+  [PrimaryTokenId] BIGINT        NULL,
   [MetaDataId]     BIGINT        NULL,
+  [RepoMetaDataId] BIGINT        NULL,
   [ExtensionJson]  NVARCHAR(MAX) NOT NULL,
   [RowVersion]     BIGINT        NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
-  CONSTRAINT [FKSN_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]) ON DELETE SET NULL,
+  CONSTRAINT [FK_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
+  CONSTRAINT [FK_Accounts_RepoMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([RepoMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
+  CONSTRAINT [FK_Accounts_PrimaryTokenId_AccessTokens_Id] FOREIGN KEY ([PrimaryTokenId]) REFERENCES [dbo].[AccessTokens]([Id]),
 );
 GO
 
@@ -19,6 +23,9 @@ CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Accounts_PrimaryTokenId] ON [dbo].[Accounts]([PrimaryTokenId]);
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [IX_Accounts_MetaDataId] ON [dbo].[Accounts]([MetaDataId]);

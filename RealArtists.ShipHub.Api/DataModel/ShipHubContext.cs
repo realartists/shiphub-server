@@ -29,7 +29,7 @@
     public virtual DbSet<AuthenticationToken> AuthenticationTokens { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<Event> Events { get; set; }
-    public virtual DbSet<GitHubMetaData> GitHubMetaDatas { get; set; }
+    public virtual DbSet<GitHubMetaData> GitHubMetaData { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
