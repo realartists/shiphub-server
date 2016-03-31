@@ -112,18 +112,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AGModel\AccessToken.cs" />
-    <Compile Include="AGModel\Account.cs" />
-    <Compile Include="AGModel\AGModel.cs" />
-    <Compile Include="AGModel\AuthenticationToken.cs" />
-    <Compile Include="AGModel\Comment.cs" />
-    <Compile Include="AGModel\Event.cs" />
-    <Compile Include="AGModel\GitHubMetaData.cs" />
-    <Compile Include="AGModel\Issue.cs" />
-    <Compile Include="AGModel\Label.cs" />
-    <Compile Include="AGModel\Milestone.cs" />
-    <Compile Include="AGModel\PollQueueItem.cs" />
-    <Compile Include="AGModel\Repository.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\AuthTestController.cs" />
