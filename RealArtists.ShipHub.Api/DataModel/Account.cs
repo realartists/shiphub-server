@@ -21,16 +21,11 @@
     [StringLength(255)]
     public string Name { get; set; }
 
-    public long? PrimaryTokenId { get; set; }
-
     public long? MetaDataId { get; set; }
 
-    [Required]
     public string ExtensionJson { get; set; }
 
     public long? RowVersion { get; set; }
-
-    public virtual AccessToken PrimaryToken { get; set; }
 
     public virtual GitHubMetaData MetaData { get; set; }
 

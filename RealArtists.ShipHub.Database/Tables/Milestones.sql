@@ -10,7 +10,7 @@
   [UpdatedAt]      DATETIMEOFFSET NOT NULL,
   [ClosedAt]       DATETIMEOFFSET NULL,
   [DueOn]          DATETIMEOFFSET NULL,
-  [ExtensionJson]  NVARCHAR(MAX)  NOT NULL,
+  [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [MetaDataId]     BIGINT         NULL,
   [RowVersion]     BIGINT         NULL,
   CONSTRAINT [PK_Milestones] PRIMARY KEY CLUSTERED ([Id]),

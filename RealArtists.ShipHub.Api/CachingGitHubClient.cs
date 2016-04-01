@@ -56,58 +56,59 @@
     private GitHubClient _gh;
     private ShipHubContext _db;
     private User _user;
+    private AccessToken _token;
 
-    public CachingGitHubClient(ShipHubContext context, User user) {
-      _gh = GitHubSettings.CreateUserClient(user.PrimaryToken.Token);
+    public CachingGitHubClient(ShipHubContext context, User user, AccessToken token) {
+      if (context == null) {
+        throw new ArgumentNullException(nameof(context));
+      }
+      if (user == null) {
+        throw new ArgumentNullException(nameof(user));
+      }
+      if (token == null) {
+        throw new ArgumentNullException(nameof(token));
+      }
+      if (user.Id != token.AccountId) {
+        throw new ArgumentException("Token provided is for a different user.", nameof(token));
+      }
+
       _db = context;
       _user = user;
+      _token = token;
+      _gh = GitHubSettings.CreateUserClient(token.Token);
     }
 
     public async Task<User> CurrentUser() {
       var current = _user;
-      var token = _user.PrimaryToken;
 
-      _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
-      var updated = await _gh.AuthenticatedUser(current.ToGitHubRequestOptions());
+      // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
+      var updated = await _gh.AuthenticatedUser();
 
-      var meta = _user.MetaData;
-      if (meta == null) {
-        meta = _db.GitHubMetaData.Add(new GitHubMetaData());
-        _user.MetaData = meta;
+      // DO NOT UPDATE ANY METADATA - accounts are refreshed at a different endpoint, and eTags won't match, even if token does.
+
+      _token.UpdateRateLimits(updated);
+
+      if (updated.IsError) {
+        throw updated.Error.ToException();
       }
-      meta.AccessToken = token;
-      meta.LastRefresh = DateTimeOffset.UtcNow;
 
-      token.RateLimit = updated.RateLimit;
-      token.RateLimitRemaining = updated.RateLimitRemaining;
-      token.RateLimitReset = updated.RateLimitReset;
-
-      if (updated.Status != HttpStatusCode.NotModified) {
-        var u = updated.Result;
-        if (u.Id != _user.Id) {
-          throw new InvalidOperationException($"Refreshing current user cannot alter user id.");
-        }
-
-        meta.ETag = updated.ETag;
-        meta.Expires = updated.Expires;
-        meta.LastModified = updated.LastModified;
-
-        current.AvatarUrl = u.AvatarUrl;
-        current.ExtensionJson = u.ExtensionJson;
-        current.Login = u.Login;
-        current.Name = u.Name;
+      var u = updated.Result;
+      if (u.Id != current.Id) {
+        throw new InvalidOperationException("Refreshing current user cannot alter user id.");
       }
+
+      current.AvatarUrl = u.AvatarUrl;
+      current.ExtensionJson = u.ExtensionJson;
+      current.Login = u.Login;
+      current.Name = u.Name;
 
       await _db.SaveChangesAsync();
       return current;
     }
 
-    // TODO: Is user id more robust when known?
     public async Task<User> User(string login) {
       var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
-      var token = current?.PrimaryToken ?? _user.PrimaryToken;
 
-      _gh.DefaultCredentials = GitHubCredentials.ForToken(token.Token);
       var updated = await _gh.User(login, current.ToGitHubRequestOptions());
 
       var meta = current.MetaData;
@@ -115,12 +116,12 @@
         meta = _db.GitHubMetaData.Add(new GitHubMetaData());
         current.MetaData = meta;
       }
-      meta.AccessToken = token;
       meta.LastRefresh = DateTimeOffset.UtcNow;
 
-      token.RateLimit = updated.RateLimit;
-      token.RateLimitRemaining = updated.RateLimitRemaining;
-      token.RateLimitReset = updated.RateLimitReset;
+      if (updated.Credentials.Parameter != meta.AccessToken?.Token) {
+        meta.AccessToken = await _db.AccessTokens.SingleAsync(x => x.Token == updated.Credentials.Parameter);
+      }
+      meta.AccessToken.UpdateRateLimits(updated);
 
       if (updated.Status != HttpStatusCode.NotModified) {
         var u = updated.Result;

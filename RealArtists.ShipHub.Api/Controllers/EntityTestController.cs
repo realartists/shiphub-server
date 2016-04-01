@@ -6,11 +6,13 @@
 
   [RoutePrefix("etest")]
   public class EntityTestController : ShipHubController {
+    const int UserId = -42;
+
     [HttpGet]
     [Route("user")]
     public async Task<IHttpActionResult> TestUser() {
       var account = Context.Accounts.Add(new User() {
-        Id = 1,
+        Id = UserId,
         Login = "test",
         Name = "EF Test",
       });
@@ -25,20 +27,20 @@
     [HttpGet]
     [Route("accessToken")]
     public async Task<IHttpActionResult> AccessToken() {
-      var account = Context.Accounts.Add(new User() {
-        Id = 1,
+      var account = (User)Context.Accounts.Add(new User() {
+        Id = UserId,
         Login = "test",
         Name = "EF Test",
       });
-      var token = new AccessToken() {
+      var token = Context.AccessTokens.Add(new AccessToken() {
         Account = account,
         ApplicationId = "efTest",
         Scopes = "testing,more.testing",
-        Token = "thingsAndStuffAndThins"
-      };
-      account.PrimaryToken = Context.AccessTokens.Add(token);
+        Token = "thingsAndStuffAndThings"
+      });
       await Context.SaveChangesAsync();
 
+      Context.AccessTokens.Remove(token);
       Context.Accounts.Remove(account);
       await Context.SaveChangesAsync();
 
@@ -49,7 +51,7 @@
     [Route("authToken")]
     public async Task<IHttpActionResult> AuthenticationToken() {
       var account = (User)Context.Accounts.Add(new User() {
-        Id = 1,
+        Id = UserId,
         Login = "test",
         Name = "EF Test",
       });

@@ -137,7 +137,7 @@
 
       // GitHub Setup
       var user = await Context.Users
-        .Include(x => x.PrimaryToken)
+        .Include(x => x.AccessTokens)
         .SingleOrDefaultAsync(x => x.Id == ghId);
       if (user == null) {
         user = (User)Context.Accounts.Add(new User() {
@@ -147,16 +147,14 @@
       user.UpdateAccount(userInfo);
       user.UpdateCacheInfo(Context, userInfo);
 
-      if (user.PrimaryToken == null) {
-        user.PrimaryToken = Context.AccessTokens.Add(new AccessToken() {
-          Account = user,
+      if (!user.AccessTokens.Any(x => x.Token == authInfo.Token)) {
+        var token = Context.AccessTokens.Add(new AccessToken() {
+          Token = authInfo.Token,
+          ApplicationId = request.ApplicationId,
+          Scopes = string.Join(",", authInfo.Scopes),
         });
+        token.UpdateRateLimits(userInfo);
       }
-      var accessToken = user.PrimaryToken;
-      accessToken.Token = authInfo.Token;
-      accessToken.ApplicationId = request.ApplicationId;
-      accessToken.Scopes = string.Join(",", authInfo.Scopes);
-      accessToken.UpdateRateLimits(userInfo);
 
       var shipToken = Context.CreateAuthenticationToken(user, request.ClientName);
 

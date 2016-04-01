@@ -6,7 +6,7 @@
   [Body]           NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]      DATETIMEOFFSET NOT NULL,
   [UpdatedAt]      DATETIMEOFFSET NOT NULL,
-  [ExtensionJson]  NVARCHAR(MAX)  NOT NULL,
+  [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [MetaDataId]     BIGINT         NULL,
   [RowVersion]     BIGINT         NULL,
   CONSTRAINT [PK_Comments] PRIMARY KEY CLUSTERED ([Id]),

@@ -7,6 +7,7 @@
   [RateLimit]          INT            NOT NULL,
   [RateLimitRemaining] INT            NOT NULL,
   [RateLimitReset]     DATETIMEOFFSET NOT NULL,
+  [CreatedAt]          DATETIMEOFFSET NOT NULL,
   CONSTRAINT [PK_AccessTokens] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
 );

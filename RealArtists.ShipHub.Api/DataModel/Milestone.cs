@@ -35,7 +35,6 @@
 
     public DateTimeOffset? DueOn { get; set; }
 
-    [Required]
     public string ExtensionJson { get; set; }
 
     public long? MetaDataId { get; set; }

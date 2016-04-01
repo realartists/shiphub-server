@@ -57,7 +57,6 @@
     [StringLength(255)]
     public string RenameTo { get; set; }
 
-    [Required]
     public string ExtensionJson { get; set; }
 
     public virtual User Actor { get; set; }
