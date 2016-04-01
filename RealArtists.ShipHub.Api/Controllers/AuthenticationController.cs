@@ -149,6 +149,7 @@
 
       if (!user.AccessTokens.Any(x => x.Token == authInfo.Token)) {
         var token = Context.AccessTokens.Add(new AccessToken() {
+          Account = user,
           Token = authInfo.Token,
           ApplicationId = request.ApplicationId,
           Scopes = string.Join(",", authInfo.Scopes),
@@ -167,6 +168,8 @@
           Identifier = user.Id,
           Login = user.Login,
           Name = user.Name,
+          Type = ApiAccountType.User,
+          RowVersion = user.RowVersion,
         }
       });
     }
