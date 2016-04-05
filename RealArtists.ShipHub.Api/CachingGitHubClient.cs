@@ -16,7 +16,7 @@
       _resource = resource;
       _fallbackCreds = fallback;
       var meta = resource.MetaData;
-      var token = meta?.AccessToken.Token;
+      var token = meta?.AccessToken?.Token;
       if (token != null) {
         Scheme = "token";
         Parameter = token;
@@ -45,7 +45,7 @@
 
   public static class GitHubCacheHelpers {
     public static IGitHubRequestOptions ToGitHubRequestOptions(this IGitHubResource resource) {
-      if (resource == null)
+      if (resource == null || resource.MetaData == null)
         return null;
 
       return new GitHubResourceOptionWrapper(resource);
@@ -107,7 +107,9 @@
     }
 
     public async Task<User> User(string login) {
-      var current = await _db.Users.SingleOrDefaultAsync(x => x.Login == login);
+      var current = await _db.Users
+        .Include(x => x.MetaData)
+        .SingleOrDefaultAsync(x => x.Login == login);
 
       var updated = await _gh.User(login, current.ToGitHubRequestOptions());
 

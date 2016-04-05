@@ -4,6 +4,7 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
+  using System.Security.Cryptography;
   using System.Threading.Tasks;
   using System.Web.Http;
   using DataModel;
@@ -58,6 +59,7 @@
       public string ClientName { get; set; }
     }
 
+    // Maybe used by web signup flow. If not, kill it.
     [HttpPost]
     [Route("code")]
     public async Task<IHttpActionResult> Code([FromBody] CodeRequest request) {
@@ -113,65 +115,88 @@
         return Error($"Unknown applicationId: {request.ApplicationId}", HttpStatusCode.NotFound);
       }
 
-      // Check scopes
-      var appClient = GitHubSettings.CreateApplicationClient(request.ApplicationId);
-      var authRequest = await appClient.CheckAccessToken(request.ApplicationId, request.AccessToken);
-      if (authRequest.Error != null) {
-        return Error("Token validation failed.", HttpStatusCode.Unauthorized, authRequest.Error);
-      }
-      var authInfo = authRequest.Result;
-
-      var missingScopes = _requiredOauthScopes.Except(authInfo.Scopes).ToArray();
-      if (missingScopes.Any()) {
-        return Error("Insufficient access granted.", HttpStatusCode.Unauthorized, new {
-          MissingScopes = missingScopes,
-        });
-      }
-
-      var userClient = GitHubSettings.CreateUserClient(authInfo.Token);
-      var userInfo = await userClient.AuthenticatedUser();
-      if (userInfo.Error != null) {
-        return Error("Unable to retrieve user information.", HttpStatusCode.Unauthorized, userInfo.Error);
-      }
-      var ghId = userInfo.Result.Id;
-
-      // GitHub Setup
-      var user = await Context.Users
-        .Include(x => x.AccessTokens)
-        .SingleOrDefaultAsync(x => x.Id == ghId);
-      if (user == null) {
-        user = (User)Context.Accounts.Add(new User() {
-          Id = ghId,
-        });
-      }
-      user.UpdateAccount(userInfo);
-      user.UpdateCacheInfo(Context, userInfo);
-
-      if (!user.AccessTokens.Any(x => x.Token == authInfo.Token)) {
-        var token = Context.AccessTokens.Add(new AccessToken() {
-          Account = user,
-          Token = authInfo.Token,
-          ApplicationId = request.ApplicationId,
-          Scopes = string.Join(",", authInfo.Scopes),
-        });
-        token.UpdateRateLimits(userInfo);
-      }
-
-      var shipToken = Context.CreateAuthenticationToken(user, request.ClientName);
-
-      await Context.SaveChangesAsync();
-
-      return Ok(new {
-        Session = shipToken.Token,
-        User = new ApiUser() {
-          AvatarUrl = user.AvatarUrl,
-          Identifier = user.Id,
-          Login = user.Login,
-          Name = user.Name,
-          Type = ApiAccountType.User,
-          RowVersion = user.RowVersion,
+      // Lookup Token
+      GitHub.Models.Authorization tokenInfo = null;
+      using (var appClient = GitHubSettings.CreateApplicationClient(request.ApplicationId)) {
+        var checkTokenResponse = await appClient.CheckAccessToken(request.ApplicationId, request.AccessToken);
+        if (checkTokenResponse.IsError) {
+          return Error("Token validation failed.", HttpStatusCode.Unauthorized, checkTokenResponse.Error);
         }
-      });
+        tokenInfo = checkTokenResponse.Result;
+
+        // Check scopes
+        var missingScopes = _requiredOauthScopes.Except(tokenInfo.Scopes).ToArray();
+        if (missingScopes.Any()) {
+          return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
+            Granted = tokenInfo.Scopes,
+            Missing = missingScopes,
+          });
+        }
+      }
+
+      using (var userClient = GitHubSettings.CreateUserClient(tokenInfo.Token)) {
+        // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
+        var userResponse = await userClient.AuthenticatedUser();
+
+        if (userResponse.IsError) {
+          Error("Unable to determine current user.", HttpStatusCode.InternalServerError, userResponse.Error);
+        }
+
+        var userInfo = userResponse.Result;
+        var user = await Context.Users
+          .Include(x => x.AccessTokens)
+          .Include(x => x.MetaData)
+          .Include(x => x.Organizations)
+          .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
+        if (user == null) {
+          user = (User)Context.Accounts.Add(new User() {
+            Id = userInfo.Id,
+          });
+        }
+        Mapper.Map(userInfo, user);
+
+        // CLEAR ANY METADATA - accounts are refreshed at a different endpoint, and eTags won't match, even if token does.
+        if (user.MetaData != null) {
+          Context.GitHubMetaData.Remove(user.MetaData);
+          user.MetaData = null;
+        }
+
+        var token = user.AccessTokens.SingleOrDefault(x => x.Token == tokenInfo.Token);
+        if (token == null) {
+          // Map this ourselves here since this is the only place it's done.
+          token = Context.AccessTokens.Add(new AccessToken() {
+            Account = user,
+            Token = tokenInfo.Token,
+            ApplicationId = request.ApplicationId,
+            CreatedAt = tokenInfo.CreatedAt,
+          });
+        }
+        token.Scopes = string.Join(",", tokenInfo.Scopes);
+        token.UpdateRateLimits(userResponse);
+
+        // Always issues a new token. Maybe collect them later?
+        var shipToken = Context.AuthenticationTokens.Add(new AuthenticationToken() {
+          Token = new Guid(GetRandomBytes(16)),
+          ClientName = request.ClientName,
+          Account = user,
+        });
+        user.AuthenticationTokens.Add(shipToken);
+
+        await Context.SaveChangesAsync();
+
+        return Ok(new {
+          Session = shipToken.Token,
+          User = Mapper.Map<ApiUser>(user),
+        });
+      }
+    }
+
+    public static byte[] GetRandomBytes(int length) {
+      var result = new byte[length];
+      using (var rng = new RNGCryptoServiceProvider()) {
+        rng.GetBytes(result);
+      }
+      return result;
     }
   }
 }

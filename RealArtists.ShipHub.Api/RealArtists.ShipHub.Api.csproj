@@ -112,6 +112,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="App_Start\AutoMapperConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\AuthTestController.cs" />
@@ -125,6 +126,7 @@
     <Compile Include="DataModel\Comment.cs" />
     <Compile Include="DataModel\Event.cs" />
     <Compile Include="DataModel\GitHubMetaData.cs" />
+    <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\IGitHubResource.cs" />
     <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\IVersionedResource.cs" />
@@ -173,13 +175,13 @@
     <Compile Include="Models\ApiRelationship.cs" />
     <Compile Include="Models\ApiRepository.cs" />
     <Compile Include="Models\ApiUser.cs" />
+    <Compile Include="Models\DataModelToApiModelProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\AccessTokenUtility.cs" />
     <Compile Include="Utilities\ExceptionUtilities.cs" />
     <Compile Include="Utilities\GitHubSettings.cs" />
     <Compile Include="Utilities\JsonUtility.cs" />
     <Compile Include="Utilities\GitHubAccountUtility.cs" />
-    <Compile Include="Utilities\ShipHubAuthenticationUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />

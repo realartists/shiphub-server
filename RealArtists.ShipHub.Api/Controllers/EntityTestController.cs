@@ -46,22 +46,5 @@
 
       return Ok("Ok");
     }
-
-    [HttpGet]
-    [Route("authToken")]
-    public async Task<IHttpActionResult> AuthenticationToken() {
-      var account = (User)Context.Accounts.Add(new User() {
-        Id = UserId,
-        Login = "test",
-        Name = "EF Test",
-      });
-      var token2 = Context.CreateAuthenticationToken(account, "efTest");
-      await Context.SaveChangesAsync();
-
-      Context.Accounts.Remove(account);
-      await Context.SaveChangesAsync();
-
-      return Ok("Ok");
-    }
   }
 }

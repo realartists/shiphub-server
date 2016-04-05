@@ -12,9 +12,9 @@
     [StringLength(150)]
     public string ClientName { get; set; }
 
-    public DateTimeOffset CreationDate { get; set; }
+    public DateTimeOffset CreationDate { get; set; } = DateTimeOffset.UtcNow;
 
-    public DateTimeOffset LastAccessDate { get; set; }
+    public DateTimeOffset LastAccessDate { get; set; } = DateTimeOffset.UtcNow;
 
     public virtual User Account { get; set; }
   }

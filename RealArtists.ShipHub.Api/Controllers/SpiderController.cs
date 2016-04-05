@@ -1,22 +1,33 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
-  using System;
-  using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Net;
-  using System.Net.Http;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using GitHub;
-  using Utilities;
 
   [RoutePrefix("spider")]
-  public class SpiderController : ApiController {
+  public class SpiderController : ShipHubController {
     [HttpGet]
-    [Route("user")]
-    public async Task<IHttpActionResult> SpiderUser(string token) {
-      var gh = GitHubSettings.CreateUserClient(token);
-      var user = await gh.AuthenticatedUser();
-      return Ok(user.Result);
+    [Route("user/{login}")]
+    public async Task<IHttpActionResult> SpiderUser(string login) {
+      var user = await Context.Users
+        .Include(x => x.AccessTokens)
+        .SingleOrDefaultAsync(x => x.Login == login);
+
+      if (user == null || !user.AccessTokens.Any()) {
+        return Error("Cannot spider users not using ShipHub", HttpStatusCode.NotFound);
+      }
+
+      var token = user.AccessTokens.OrderBy(x => x.CreatedAt).First();
+
+      var gh = new CachingGitHubClient(Context, user, token);
+      await gh.User(login);
+
+      return Ok();
+    }
+
+    public async Task<IHttpActionResult> SpiderUserRepositories(string login) {
+      return Error("Nope");
     }
   }
 }

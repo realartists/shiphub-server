@@ -2,6 +2,6 @@
   using System.Collections.Generic;
 
   public class ApiOrganization : ApiAccount {
-    public IEnumerable<int> Users { get; set; }
+    public IEnumerable<ApiUser> Members { get; set; }
   }
 }

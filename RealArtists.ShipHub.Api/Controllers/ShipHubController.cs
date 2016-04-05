@@ -3,10 +3,14 @@
   using System.Runtime.CompilerServices;
   using System.Threading;
   using System.Web.Http;
+  using App_Start;
+  using AutoMapper;
   using DataModel;
 
   public abstract class ShipHubController : ApiController {
-    public ShipHubContext Context = new ShipHubContext();
+    private ShipHubContext _Context = new ShipHubContext();
+    public ShipHubContext Context { get { return _Context; } }
+    public IMapper Mapper { get; private set; } = AutoMapperConfig.Mapper;
 
     public IHttpActionResult Error(
                          string message,
@@ -31,7 +35,7 @@
 
     protected override void Dispose(bool disposing) {
       if (disposing) {
-        var temp = Interlocked.Exchange(ref Context, null);
+        var temp = Interlocked.Exchange(ref _Context, null);
         if (temp != null) {
           temp.Dispose();
         }

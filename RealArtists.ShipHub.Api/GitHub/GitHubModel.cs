@@ -11,7 +11,7 @@
     }
 
     [JsonExtensionData]
-    public IDictionary<string, JToken> _extensionJson = new Dictionary<string, JToken>();
+    private IDictionary<string, JToken> _extensionJson = new Dictionary<string, JToken>();
 
     [JsonIgnore]
     public string ExtensionJson {
