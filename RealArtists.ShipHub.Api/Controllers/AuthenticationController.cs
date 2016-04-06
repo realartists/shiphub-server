@@ -136,7 +136,7 @@
 
       using (var userClient = GitHubSettings.CreateUserClient(tokenInfo.Token)) {
         // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
-        var userResponse = await userClient.AuthenticatedUser();
+        var userResponse = await userClient.User();
 
         if (userResponse.IsError) {
           Error("Unable to determine current user.", HttpStatusCode.InternalServerError, userResponse.Error);

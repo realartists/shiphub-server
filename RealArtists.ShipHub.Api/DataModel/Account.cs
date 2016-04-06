@@ -23,11 +23,15 @@
 
     public long? MetaDataId { get; set; }
 
+    public long? RepositoryMetaDataId { get; set; }
+
     public string ExtensionJson { get; set; }
 
     public long? RowVersion { get; set; }
 
     public virtual GitHubMetaData MetaData { get; set; }
+
+    public virtual GitHubMetaData RepositoryMetaData { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<AccessToken> AccessTokens { get; set; } = new HashSet<AccessToken>();

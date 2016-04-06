@@ -82,7 +82,7 @@
       var current = _user;
 
       // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
-      var updated = await _gh.AuthenticatedUser();
+      var updated = await _gh.User();
 
       // DO NOT UPDATE ANY METADATA - accounts are refreshed at a different endpoint, and eTags won't match, even if token does.
 

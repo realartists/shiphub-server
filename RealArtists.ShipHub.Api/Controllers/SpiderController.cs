@@ -1,9 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using Models;
 
   [RoutePrefix("spider")]
   public class SpiderController : ShipHubController {
@@ -12,6 +14,7 @@
     public async Task<IHttpActionResult> SpiderUser(string login) {
       var user = await Context.Users
         .Include(x => x.AccessTokens)
+        .Include(x => x.MetaData)
         .SingleOrDefaultAsync(x => x.Login == login);
 
       if (user == null || !user.AccessTokens.Any()) {
@@ -23,7 +26,7 @@
       var gh = new CachingGitHubClient(Context, user, token);
       await gh.User(login);
 
-      return Ok();
+      return Ok(Mapper.Map<ApiUser>(user));
     }
 
     public async Task<IHttpActionResult> SpiderUserRepositories(string login) {

@@ -12,6 +12,9 @@
             throw new InvalidOperationException($"Cannot update Account {to.Id} with data from GitHub Account {from.Id}");
           }
         });
+
+      CreateMap<GitHub.Repository, Repository>(MemberList.Source)
+        .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
     }
   }
 }

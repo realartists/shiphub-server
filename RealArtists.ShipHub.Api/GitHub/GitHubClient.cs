@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System;
   using System.Collections;
+  using System.Collections.Generic;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
@@ -134,7 +135,7 @@
       return await MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<Account>> AuthenticatedUser(IGitHubRequestOptions opts = null) {
+    public async Task<GitHubResponse<Account>> User(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user", opts?.CacheOptions);
       return await MakeRequest<Account>(request, opts);
     }
@@ -142,6 +143,16 @@
     public async Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
       return await MakeRequest<Account>(request, opts);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user/repos", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Repository>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubRequestOptions opts = null, GitHubRedirect redirect = null) {
@@ -224,6 +235,34 @@
       }
 
       return result;
+    }
+
+    public async Task<GitHubResponse<IEnumerable<T>>> Enumerate<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubRequestOptions opts = null) {
+      var results = new List<T>(firstPage.Result);
+      var current = firstPage;
+
+      // TODO: Request in parallel?
+      while (current.Pagination?.Next != null) {
+        // Ignore cache options, since we're paging because they didn't match
+        var nextReq = new GitHubRequest(HttpMethod.Get, "") {
+          Uri = current.Pagination.Next,
+        };
+        current = await MakeRequest<IEnumerable<T>>(nextReq, opts);
+
+        if (current.IsError) {
+          return current;
+        } else {
+          results.AddRange(current.Result);
+        }
+      }
+
+      // Keep cache and other headers from first page.
+      var final = firstPage;
+      final.Result = results;
+      final.RateLimit = current.RateLimit;
+      final.RateLimitRemaining = current.RateLimitRemaining;
+      final.RateLimitReset = current.RateLimitReset;
+      return final;
     }
 
     public static string SerializeObject(object value) {

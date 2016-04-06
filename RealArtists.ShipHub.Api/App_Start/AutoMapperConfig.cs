@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.App_Start {
+﻿namespace RealArtists.ShipHub.Api {
   using AutoMapper;
   using DataModel;
   using Models;

@@ -1,5 +1,4 @@
 ﻿namespace RealArtists.ShipHub.Api.Models {
-  using System;
   using AutoMapper;
   using DataModel;
 
@@ -13,6 +12,10 @@
 
       CreateMap<User, ApiUser>(MemberList.Destination)
         .ForMember(x => x.Type, opts => opts.UseValue(ApiAccountType.User));
+
+      CreateMap<Repository, ApiRepository>(MemberList.Destination)
+        .ForMember(x => x.RepoDescription, opts => opts.MapFrom(x => x.Description))
+        .ForMember(x => x.Hidden, opts => opts.UseValue(false));
 
     }
   }

@@ -3,7 +3,6 @@
   using System.Runtime.CompilerServices;
   using System.Threading;
   using System.Web.Http;
-  using App_Start;
   using AutoMapper;
   using DataModel;
 
