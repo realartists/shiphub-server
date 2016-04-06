@@ -51,6 +51,9 @@
     public virtual ICollection<Account> AssignableAccounts { get; set; } = new HashSet<Account>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Account> LinkedAccounts { get; set; } = new HashSet<Account>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Label> Labels { get; set; } = new HashSet<Label>();
   }
 }

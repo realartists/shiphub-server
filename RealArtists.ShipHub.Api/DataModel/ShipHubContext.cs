@@ -98,14 +98,14 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
-        .HasMany(e => e.Repositories)
+        .HasMany(e => e.OwnedRepositories)
         .WithRequired(e => e.Account)
         .HasForeignKey(e => e.AccountId)
         .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
-        .HasMany(e => e.AssignableRepositories)
-        .WithMany(e => e.AssignableAccounts)
+        .HasMany(e => e.LinkedRepositories)
+        .WithMany(e => e.LinkedAccounts)
         .Map(m => m.ToTable("AccountRepositories").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
 
       mb.Entity<GitHubMetaData>()
@@ -167,6 +167,11 @@
         .HasMany(e => e.Milestones)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
+
+      mb.Entity<Repository>()
+        .HasMany(e => e.AssignableAccounts)
+        .WithMany(e => e.AssignableRepositories)
+        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("RepositoryId").MapRightKey("AccountId"));
     }
 
     public Task UpdateRateLimit(string token, int limit, int remaining, DateTimeOffset reset) {

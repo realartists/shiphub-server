@@ -58,12 +58,15 @@
     public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Repository> Repositories { get; set; } = new HashSet<Repository>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<AuthenticationToken> AuthenticationTokens { get; set; } = new HashSet<AuthenticationToken>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Repository> LinkedRepositories { get; set; } = new HashSet<Repository>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Repository> OwnedRepositories { get; set; } = new HashSet<Repository>();
   }
 }
