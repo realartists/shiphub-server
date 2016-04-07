@@ -26,7 +26,9 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Comments_UserId] ON [dbo].[Comments]([UserId]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [IX_Comments_MetaDataId] ON [dbo].[Comments]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_MetaDataId]
+  ON [dbo].[Comments]([MetaDataId])
+  WHERE [MetaDataId] IS NOT NULL;
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_RowVersion] ON [dbo].[Comments]([RowVersion]);

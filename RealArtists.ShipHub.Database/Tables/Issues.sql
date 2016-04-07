@@ -37,10 +37,12 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Issues_ClosedById] ON [dbo].[Issues]([ClosedById]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_MetaDataId] ON [dbo].[Issues]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_MetaDataId]
+  ON [dbo].[Issues]([MetaDataId])
+  WHERE [MetaDataId] IS NOT NULL;
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Issues_RowVersion] ON [dbo].[Issues]([RowVersion]);
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Issues_RowVersion] ON [dbo].[Issues]([RowVersion]);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Issues_Version]

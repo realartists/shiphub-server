@@ -29,7 +29,9 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Milestones_UserId] ON [dbo].[Milestones]([UserId]);
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Milestones_MetaDataId] ON [dbo].[Milestones]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Milestones_MetaDataId]
+  ON [dbo].[Milestones]([MetaDataId])
+  WHERE [MetaDataId] IS NOT NULL;
 GO
 
 CREATE TRIGGER [dbo].[TRG_Milestones_Version]

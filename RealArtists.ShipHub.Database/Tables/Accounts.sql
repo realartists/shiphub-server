@@ -23,10 +23,14 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_MetaDataId] ON [dbo].[Accounts]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_MetaDataId]
+  ON [dbo].[Accounts]([MetaDataId])
+  WHERE [MetaDataId] IS NOT NULL;
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RepositoryMetaDataId] ON [dbo].[Accounts]([RepositoryMetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RepositoryMetaDataId]
+  ON [dbo].[Accounts]([RepositoryMetaDataId])
+  WHERE [RepositoryMetaDataId] IS NOT NULL;
 GO
 
 CREATE TRIGGER [dbo].[TRG_Accounts_Version]

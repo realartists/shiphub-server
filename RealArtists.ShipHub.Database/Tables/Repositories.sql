@@ -18,10 +18,12 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Repositories_FullName] ON [dbo].[Repositories]([FullName]);
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Repositories_RowVersion] ON [dbo].[Repositories]([RowVersion]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Repositories_RowVersion] ON [dbo].[Repositories]([RowVersion]);
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Repositories_MetaDataId] ON [dbo].[Repositories]([MetaDataId]);
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Repositories_MetaDataId]
+  ON [dbo].[Repositories]([MetaDataId])
+  WHERE [MetaDataId] IS NOT NULL;;
 GO
 
 CREATE TRIGGER [dbo].[TRG_Repositories_Version]
