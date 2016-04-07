@@ -10,7 +10,7 @@
   [RoutePrefix("spider")]
   public class SpiderController : ShipHubController {
     [HttpGet]
-    [Route("user/{login}")]
+    [Route("users/{login}")]
     public async Task<IHttpActionResult> SpiderUser(string login) {
       var user = await Context.Users
         .Include(x => x.AccessTokens)
@@ -29,8 +29,24 @@
       return Ok(Mapper.Map<ApiUser>(user));
     }
 
+    [HttpGet]
+    [Route("users/{login}/repos")]
     public async Task<IHttpActionResult> SpiderUserRepositories(string login) {
-      return Error("Nope");
+      var user = await Context.Users
+        .Include(x => x.AccessTokens)
+        .Include(x => x.RepositoryMetaData)
+        .SingleOrDefaultAsync(x => x.Login == login);
+
+      if (user == null || !user.AccessTokens.Any()) {
+        return Error("Cannot spider users not using ShipHub", HttpStatusCode.NotFound);
+      }
+
+      var token = user.RepositoryMetaData?.AccessToken ?? user.AccessTokens.OrderBy(x => x.CreatedAt).First();
+
+      var gh = new CachingGitHubClient(Context, user, token);
+      var repos = await gh.Repositories();
+
+      return Ok(Mapper.Map<IEnumerable<ApiRepository>>(repos));
     }
   }
 }

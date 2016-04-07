@@ -13,10 +13,12 @@
       CreateMap<User, ApiUser>(MemberList.Destination)
         .ForMember(x => x.Type, opts => opts.UseValue(ApiAccountType.User));
 
+      CreateMap<Organization, ApiOrganization>(MemberList.Destination)
+        .ForMember(x => x.Type, opts => opts.UseValue(ApiAccountType.Organization));
+
       CreateMap<Repository, ApiRepository>(MemberList.Destination)
         .ForMember(x => x.RepoDescription, opts => opts.MapFrom(x => x.Description))
         .ForMember(x => x.Hidden, opts => opts.UseValue(false));
-
     }
   }
 }

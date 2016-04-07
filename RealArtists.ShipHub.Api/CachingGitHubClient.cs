@@ -1,58 +1,60 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
+  using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Linq;
+  using System.Linq.Expressions;
   using System.Net;
   using System.Net.Http.Headers;
   using System.Threading.Tasks;
+  using AutoMapper;
   using DataModel;
   using GitHub;
   using Utilities;
 
-  public class GitHubResourceOptionWrapper : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials {
-    private IGitHubResource _resource;
-    private IGitHubCredentials _fallbackCreds;
+  public class GitHubResourceOptionWrapper<T> : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials
+    where T : IGitHubResource {
 
-    public GitHubResourceOptionWrapper(IGitHubResource resource, IGitHubCredentials fallback = null) {
-      _resource = resource;
-      _fallbackCreds = fallback;
-      var meta = resource.MetaData;
-      var token = meta?.AccessToken?.Token;
-      if (token != null) {
-        Scheme = "token";
-        Parameter = token;
-      } else {
-        Scheme = fallback?.Scheme;
-        Parameter = fallback?.Parameter;
+    private GitHubMetaData _metaData;
+    private AuthenticationHeaderValue _authHeader;
+
+    public GitHubResourceOptionWrapper(T resource, Func<T, GitHubMetaData> metaDataSelector = null) {
+      if (resource != null) {
+        _metaData = metaDataSelector == null ? resource.MetaData : metaDataSelector(resource);
+
+        var token = _metaData?.AccessToken.Token;
+        if (token != null) {
+          _authHeader = new AuthenticationHeaderValue("token", token);
+        }
       }
     }
 
-    public IGitHubCacheOptions CacheOptions { get { return this; } }
-    public IGitHubCredentials Credentials { get { return this; } }
-    public string Scheme { get; private set; }
-    public string Parameter { get; private set; }
+    public IGitHubCacheOptions CacheOptions { get { return _metaData == null ? null : this; } }
+    public IGitHubCredentials Credentials { get { return _authHeader == null ? null : this; } }
 
-    public string ETag { get { return _resource.MetaData?.ETag; } }
-    public DateTimeOffset? LastModified { get { return _resource.MetaData?.LastModified; } }
+    public string Scheme { get { return _authHeader.Scheme; } }
+    public string Parameter { get { return _authHeader.Parameter; } }
+
+    public string ETag { get { return _metaData.ETag; } }
+    public DateTimeOffset? LastModified { get { return _metaData.LastModified; } }
 
     public void Apply(HttpRequestHeaders headers) {
-      if (_resource.MetaData?.AccessToken != null) {
-        headers.Authorization = new AuthenticationHeaderValue("token", _resource.MetaData?.AccessToken.Token);
-      } else if (_fallbackCreds != null) {
-        _fallbackCreds.Apply(headers);
-      }
+      headers.Authorization = _authHeader;
     }
   }
 
   public static class GitHubCacheHelpers {
-    public static IGitHubRequestOptions ToGitHubRequestOptions(this IGitHubResource resource) {
-      if (resource == null || resource.MetaData == null)
-        return null;
-
-      return new GitHubResourceOptionWrapper(resource);
+    public static IGitHubRequestOptions ToGitHubRequestOptions<T>(
+      this T resource,
+      Func<T, GitHubMetaData> metaDataSelector = null)
+      where T: IGitHubResource {
+      return new GitHubResourceOptionWrapper<T>(resource, metaDataSelector);
     }
   }
 
   public class CachingGitHubClient {
+    private IMapper Mapper { get { return AutoMapperConfig.Mapper; } }
+
     private GitHubClient _gh;
     private ShipHubContext _db;
     private User _user;
@@ -97,10 +99,7 @@
         throw new InvalidOperationException("Refreshing current user cannot alter user id.");
       }
 
-      current.AvatarUrl = u.AvatarUrl;
-      current.ExtensionJson = u.ExtensionJson;
-      current.Login = u.Login;
-      current.Name = u.Name;
+      Mapper.Map(updated, current);
 
       await _db.SaveChangesAsync();
       return current;
@@ -112,6 +111,9 @@
         .SingleOrDefaultAsync(x => x.Login == login);
 
       var updated = await _gh.User(login, current.ToGitHubRequestOptions());
+      if (updated.IsError) {
+        throw updated.Error.ToException();
+      }
 
       var meta = current.MetaData;
       if (meta == null) {
@@ -143,6 +145,48 @@
 
       await _db.SaveChangesAsync();
       return current;
+    }
+
+    public async Task<IEnumerable<Repository>> Repositories() {
+      var user = _user;
+      await EnsureLoaded(user, x => x.LinkedRepositories);
+
+      var response = await _gh.Repositories(user.ToGitHubRequestOptions(x => x.RepositoryMetaData));
+      if (response.IsError) {
+        throw response.Error.ToException();
+      }
+
+      //if (response.Status == HttpStatusCode.NotModified) {
+      //  user.RepositoryMetaData.
+      //}
+
+      var currentRepoIds = user.LinkedRepositories.Select(x => x.Id).ToHashSet();
+      var updatedRepoIds = response.Result.Select(x => x.Id).ToHashSet();
+
+      // Do not update existing repositories. That happens on demand or when scheduled
+      foreach (var added in response.Result.Where(x => !currentRepoIds.Contains(x.Id))) {
+      }
+
+      // TODO: Schedule for GC check?
+      foreach (var removed in user.LinkedRepositories.Where(x => !updatedRepoIds.Contains(x.Id))) {
+        user.LinkedRepositories.Remove(removed);
+      }
+
+      await _db.SaveChangesAsync();
+
+      return user.LinkedRepositories;
+    }
+
+    private async Task EnsureLoaded<TEntity, TElement>(TEntity entity, Expression<Func<TEntity, ICollection<TElement>>> navigationProperty)
+      where TEntity : class
+      where TElement : class {
+      var entry = _db.Entry(entity);
+      if ((entry.State & (EntityState.Added | EntityState.Detached)) == 0) {
+        var relationship = entry.Collection(navigationProperty);
+        if (!relationship.IsLoaded) {
+          await relationship.LoadAsync();
+        }
+      }
     }
   }
 }
