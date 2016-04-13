@@ -6,7 +6,7 @@
   [LastRefresh]   DATETIMEOFFSET NULL,
   [AccessTokenId] BIGINT         NULL,
   CONSTRAINT [PK_GitHubMetaData] PRIMARY KEY CLUSTERED ([Id] ASC),
-  CONSTRAINT [FKCD_GitHubMetaData_CacheTokenId_AccessTokens_Id] FOREIGN KEY ([AccessTokenId]) REFERENCES [dbo].[AccessTokens] ([Id]) ON DELETE CASCADE,
+  CONSTRAINT [FK_GitHubMetaData_CacheTokenId_AccessTokens_Id] FOREIGN KEY ([AccessTokenId]) REFERENCES [dbo].[AccessTokens] ([Id]),
 );
 GO
 
