@@ -130,24 +130,106 @@
       return result;
     }
 
-    public async Task<GitHubResponse<Models.Authorization>> CheckAccessToken(string clientId, string accessToken) {
+    public Task<GitHubResponse<Models.Authorization>> CheckAccessToken(string clientId, string accessToken) {
       var request = new GitHubRequest(HttpMethod.Get, $"/applications/{clientId}/tokens/{accessToken}");
-      return await MakeRequest<Models.Authorization>(request);
+      return MakeRequest<Models.Authorization>(request);
     }
 
-    public async Task<GitHubResponse<Account>> User(IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Account>> User(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user", opts?.CacheOptions);
-      return await MakeRequest<Account>(request, opts);
+      return MakeRequest<Account>(request, opts);
     }
 
-    public async Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
-      return await MakeRequest<Account>(request, opts);
+      return MakeRequest<Account>(request, opts);
     }
 
     public async Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user/repos", opts?.CacheOptions);
       var result = await MakeRequest<IEnumerable<Repository>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
+    }
+
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}", opts?.CacheOptions);
+      return MakeRequest<Repository>(request, opts);
+    }
+
+    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
+      return MakeRequest<Issue>(request, opts);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues", opts?.CacheOptions);
+      if (since != null) {
+        request.AddParameter("since", since);
+      }
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", "updated");
+      var result = await MakeRequest<IEnumerable<Issue>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
+    }
+
+    public Task<GitHubResponse<Comment>> Comment(string repoFullName, int commentId, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}", opts?.CacheOptions);
+      return MakeRequest<Comment>(request, opts);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueId, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/comments", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Comment>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/labels", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Label>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
+    }
+
+    public Task<GitHubResponse<Comment>> Milestone(string repoFullName, int milestoneNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones/{milestoneNumber}", opts?.CacheOptions);
+      return MakeRequest<Comment>(request, opts);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones", opts?.CacheOptions);
+      request.AddParameter("state", "all");
+
+      var result = await MakeRequest<IEnumerable<Milestone>>(request, opts);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await Enumerate(result);
+      }
+    }
+
+    public Task<GitHubResponse<Account>> Organization(string login, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"orgs/{login}", opts?.CacheOptions);
+      return MakeRequest<Account>(request, opts);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/assignees", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Account>>(request, opts);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {

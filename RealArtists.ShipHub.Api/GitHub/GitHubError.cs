@@ -9,6 +9,7 @@
     IEnumerable<GitHubEntityError> Errors { get; }
     string Message { get; }
     HttpStatusCode Status { get; }
+    bool IsAbuse { get; }
   }
 
   public class GitHubError : IGitHubError {
@@ -16,6 +17,7 @@
     public string Message { get; set; }
     public string DocumentationUrl { get; set; }
     public IEnumerable<GitHubEntityError> Errors { get; set; }
+    public bool IsAbuse { get { return Message.Contains("abuse"); } }
 
     public GitHubException ToException() {
       return new GitHubException(this);
@@ -99,6 +101,8 @@
     public IEnumerable<GitHubEntityError> Errors { get; set; }
 
     public HttpStatusCode Status { get; set; }
+
+    public bool IsAbuse { get { return Message.Contains("abuse"); } }
 
     string IGitHubError.Message { get { return Message; } }
   }
