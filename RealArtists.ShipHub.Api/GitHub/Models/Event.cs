@@ -1,8 +1,8 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   using System;
   using System.Runtime.Serialization;
-
-  public enum GitHubIssueEvent {
+  using Newtonsoft.Json;
+  public enum IssueEvent {
     Closed,
     Reopened,
     Subscribed,
@@ -24,16 +24,23 @@
     HeadRefRestored
   }
 
-  public class IssueEvent : GitHubModel {
+  public class IssueRename : GitHubModel {
+    public string From { get; set; }
+    public string To { get; set; }
+  }
+
+  public class Event : GitHubModel {
     public int Id { get; set; }
     public Account Actor { get; set; }
     public Account Assignee { get; set; }
     public Account Assigner { get; set; }
     public string CommitId { get; set; }
-    public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public IssueLabel Label { get; set; }
-    public IssueMilestone Milestone { get; set; }
+    public Label Label { get; set; }
+    public Milestone Milestone { get; set; }
     public IssueRename Rename { get; set; }
+
+    [JsonProperty("event")]
+    public IssueEvent EventType { get; set; }
   }
 }

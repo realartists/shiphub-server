@@ -154,11 +154,10 @@
     <Compile Include="GitHub\Models\Authorization.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
-    <Compile Include="GitHub\Models\IssueComment.cs" />
-    <Compile Include="GitHub\Models\IssueEvent.cs" />
-    <Compile Include="GitHub\Models\IssueLabel.cs" />
-    <Compile Include="GitHub\Models\IssueMilestone.cs" />
-    <Compile Include="GitHub\Models\IssueRename.cs" />
+    <Compile Include="GitHub\Models\Comment.cs" />
+    <Compile Include="GitHub\Models\Event.cs" />
+    <Compile Include="GitHub\Models\Label.cs" />
+    <Compile Include="GitHub\Models\Milestone.cs" />
     <Compile Include="GitHub\Models\Repository.cs" />
     <Compile Include="GitHub\Serialization\EpochDateTimeConverter.cs" />
     <Compile Include="GitHub\Serialization\EpochUtility.cs" />

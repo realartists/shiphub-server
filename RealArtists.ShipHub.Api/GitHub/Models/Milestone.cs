@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   using System;
 
-  public class IssueMilestone : GitHubModel {
+  public class Milestone : GitHubModel {
     public int Id { get; set; }
     public int Number { get; set; }
     public IssueState State { get; set; }

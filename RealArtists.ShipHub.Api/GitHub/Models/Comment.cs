@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   using System;
 
-  public class IssueComment : GitHubModel {
+  public class Comment : GitHubModel {
     public int Id { get; set; }
     public string Body { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

@@ -13,10 +13,10 @@
     public IssueState State { get; set; }
     public string Title { get; set; }
     public string Body { get; set; }
-    public IEnumerable<IssueLabel> Labels { get; set; }
+    public IEnumerable<Label> Labels { get; set; }
     public Account Assignee { get; set; }
     public Account User { get; set; }
-    public IssueMilestone Milestone { get; set; }
+    public Milestone Milestone { get; set; }
     public bool Locked { get; set; }
     public int Comments { get; set; }
     public DateTimeOffset? ClosedAt { get; set; }
