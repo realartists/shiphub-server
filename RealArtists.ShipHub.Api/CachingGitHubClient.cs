@@ -10,7 +10,6 @@
   using AutoMapper;
   using DataModel;
   using GitHub;
-  using Utilities;
 
   public class GitHubResourceOptionWrapper<T> : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials
     where T : IGitHubResource {

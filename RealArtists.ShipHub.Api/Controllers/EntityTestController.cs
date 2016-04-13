@@ -2,7 +2,6 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using DataModel;
-  using Utilities;
 
   [RoutePrefix("etest")]
   public class EntityTestController : ShipHubController {

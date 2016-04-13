@@ -3,7 +3,6 @@
   using System.Collections.Generic;
   using System.Net;
   using System.Runtime.Serialization;
-  using Utilities;
 
   public interface IGitHubError {
     string DocumentationUrl { get; }

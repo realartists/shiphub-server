@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.Utilities {
+﻿namespace RealArtists.ShipHub.Api {
   using GitHub;
   using DataModel;
 

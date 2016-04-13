@@ -9,7 +9,6 @@
   using System.Web.Http;
   using DataModel;
   using Models;
-  using Utilities;
 
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]

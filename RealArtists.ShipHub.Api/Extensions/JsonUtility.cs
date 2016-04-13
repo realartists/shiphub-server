@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.Utilities {
+﻿namespace RealArtists.ShipHub.Api {
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Serialization;
@@ -30,6 +30,7 @@
       return JsonConvert.DeserializeObject<T>(json, SaneDefaults);
     }
 
+    // Please don't need this.
     //public static T JsonRoundTrip<T>(this object self) {
     //  return JsonUtility.DeserializeObject<T>(JsonHelpers.SerializeObject(self));
     //}

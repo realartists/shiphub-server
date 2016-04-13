@@ -137,6 +137,7 @@
     <Compile Include="DataModel\ShipHubContext.cs" />
     <Compile Include="DataModel\User.cs" />
     <Compile Include="EnumerableHacks.cs" />
+    <Compile Include="Extensions\EntityExtensions.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="CachingGitHubClient.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
@@ -178,11 +179,11 @@
     <Compile Include="Models\ApiUser.cs" />
     <Compile Include="Models\DataModelToApiModelProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\AccessTokenUtility.cs" />
-    <Compile Include="Utilities\ExceptionUtilities.cs" />
-    <Compile Include="Utilities\GitHubSettings.cs" />
-    <Compile Include="Utilities\JsonUtility.cs" />
-    <Compile Include="Utilities\GitHubAccountUtility.cs" />
+    <Compile Include="Extensions\AccessTokenUtility.cs" />
+    <Compile Include="Extensions\AutoMapperExtensions.cs" />
+    <Compile Include="Extensions\ExceptionUtilities.cs" />
+    <Compile Include="Extensions\GitHubSettings.cs" />
+    <Compile Include="Extensions\JsonUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />

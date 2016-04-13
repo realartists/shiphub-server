@@ -4,7 +4,6 @@
   using System.Web.Http;
   using Filters;
   using Mindscape.Raygun4Net.WebApi;
-  using Utilities;
 
   public static class WebApiConfig {
     public static void Register(HttpConfiguration config) {

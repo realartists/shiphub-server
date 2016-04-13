@@ -3,7 +3,6 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http.Filters;
-  using Utilities;
 
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
   public class DeaggregateExceptionFilterAttribute : ExceptionFilterAttribute {
