@@ -139,7 +139,7 @@
     <Compile Include="EnumerableHacks.cs" />
     <Compile Include="Extensions\EntityExtensions.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
-    <Compile Include="CachingGitHubClient.cs" />
+    <Compile Include="GitHubSpider.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />
     <Compile Include="GitHub\GitHubError.cs" />

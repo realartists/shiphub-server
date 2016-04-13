@@ -23,8 +23,8 @@
 
       var token = user.AccessTokens.OrderBy(x => x.CreatedAt).First();
 
-      var gh = new CachingGitHubClient(Context, user, token);
-      await gh.User(login);
+      var gh = new GitHubSpider(Context, user, token);
+      await gh.RefreshUser(login);
 
       return Ok(Mapper.Map<ApiUser>(user));
     }
@@ -43,8 +43,8 @@
 
       var token = user.RepositoryMetaData?.AccessToken ?? user.AccessTokens.OrderBy(x => x.CreatedAt).First();
 
-      var gh = new CachingGitHubClient(Context, user, token);
-      var repos = await gh.Repositories();
+      var gh = new GitHubSpider(Context, user, token);
+      var repos = await gh.RefreshRepositories();
 
       return Ok(Mapper.Map<IEnumerable<ApiRepository>>(repos));
     }
