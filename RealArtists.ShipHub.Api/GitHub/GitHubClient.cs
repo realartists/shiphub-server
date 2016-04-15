@@ -7,6 +7,7 @@
   using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Net.Http.Headers;
+  using System.Threading;
   using System.Threading.Tasks;
   using Models;
   using Newtonsoft.Json;
@@ -31,6 +32,8 @@
 #else
     public const bool UseFiddler = false;
 #endif
+
+    public const int ConcurrencyLimit = 128;
 
     static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
     static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
@@ -137,32 +140,32 @@
 
     public Task<GitHubResponse<Account>> User(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user", opts?.CacheOptions);
-      return MakeRequest<Account>(request, opts);
+      return MakeRequest<Account>(request, opts?.Credentials);
     }
 
     public Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
-      return MakeRequest<Account>(request, opts);
+      return MakeRequest<Account>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user/repos", opts?.CacheOptions);
-      var result = await MakeRequest<IEnumerable<Repository>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Repository>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
     public Task<GitHubResponse<Repository>> Repository(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}", opts?.CacheOptions);
-      return MakeRequest<Repository>(request, opts);
+      return MakeRequest<Repository>(request, opts?.Credentials);
     }
 
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
-      return MakeRequest<Issue>(request, opts);
+      return MakeRequest<Issue>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
@@ -172,75 +175,85 @@
       }
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
-      var result = await MakeRequest<IEnumerable<Issue>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Issue>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
     public Task<GitHubResponse<Comment>> Comment(string repoFullName, int commentId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}", opts?.CacheOptions);
-      return MakeRequest<Comment>(request, opts);
+      return MakeRequest<Comment>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/comments", opts?.CacheOptions);
-      var result = await MakeRequest<IEnumerable<Comment>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
     public async Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/labels", opts?.CacheOptions);
-      var result = await MakeRequest<IEnumerable<Label>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Label>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
     public Task<GitHubResponse<Comment>> Milestone(string repoFullName, int milestoneNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones/{milestoneNumber}", opts?.CacheOptions);
-      return MakeRequest<Comment>(request, opts);
+      return MakeRequest<Comment>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones", opts?.CacheOptions);
       request.AddParameter("state", "all");
 
-      var result = await MakeRequest<IEnumerable<Milestone>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Milestone>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
     public Task<GitHubResponse<Account>> Organization(string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"orgs/{login}", opts?.CacheOptions);
-      return MakeRequest<Account>(request, opts);
+      return MakeRequest<Account>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/assignees", opts?.CacheOptions);
-      var result = await MakeRequest<IEnumerable<Account>>(request, opts);
+      var result = await MakeRequest<IEnumerable<Account>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await Enumerate(result);
+        return await EnumerateParallel(result, opts?.Credentials);
       }
     }
 
-    public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubRequestOptions opts = null, GitHubRedirect redirect = null) {
+    public async Task<GitHubResponse<bool>> Assignable(string repoFullName, string login, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/assignees/{login}", opts?.CacheOptions);
+      var response = await MakeRequest<bool>(request, opts?.Credentials);
+      if (response.Status == HttpStatusCode.NoContent) {
+        response.Result = true;
+      }
+      return response;
+    }
+
+    public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubCredentials credentials = null, GitHubRedirect redirect = null) {
       // Always request the biggest page size
       if (request.Method == HttpMethod.Get
-        && typeof(IEnumerable).IsAssignableFrom(typeof(T))) {
+        && typeof(IEnumerable).IsAssignableFrom(typeof(T))
+        && !request.Parameters.ContainsKey("per_page")) {
         request.AddParameter("per_page", 100);
       }
 
@@ -256,8 +269,8 @@
       }
 
       // Authentication
-      var creds = opts?.Credentials ?? DefaultCredentials;
-      creds?.Apply(httpRequest.Headers);
+      credentials = credentials ?? DefaultCredentials;
+      credentials?.Apply(httpRequest.Headers);
 
       var response = await _httpClient.SendAsync(httpRequest);
 
@@ -266,18 +279,18 @@
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, opts, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(request, credentials, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
           request.Method = HttpMethod.Get;
           request.Uri = response.Headers.Location;
-          return await MakeRequest<T>(request, opts, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(request, credentials, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         default:
           break;
       }
 
       var result = new GitHubResponse<T>() {
-        Credentials = creds,
+        Credentials = credentials,
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
@@ -319,7 +332,7 @@
       return result;
     }
 
-    public async Task<GitHubResponse<IEnumerable<T>>> Enumerate<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubRequestOptions opts = null) {
+    public async Task<GitHubResponse<IEnumerable<T>>> Enumerate<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
       var results = new List<T>(firstPage.Result);
       var current = firstPage;
 
@@ -329,7 +342,7 @@
         var nextReq = new GitHubRequest(HttpMethod.Get, "") {
           Uri = current.Pagination.Next,
         };
-        current = await MakeRequest<IEnumerable<T>>(nextReq, opts);
+        current = await MakeRequest<IEnumerable<T>>(nextReq, credentials);
 
         if (current.IsError) {
           return current;
@@ -345,6 +358,74 @@
       final.RateLimitRemaining = current.RateLimitRemaining;
       final.RateLimitReset = current.RateLimitReset;
       return final;
+    }
+
+    public async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
+      var results = new List<T>(firstPage.Result);
+
+      // Only support extrapolation when using pages.
+      if (firstPage.Pagination?.CanInterpolate != true) {
+        return await Enumerate(firstPage, credentials);
+      }
+
+      var pages = firstPage.Pagination.Interpolate();
+      var tasks = new List<Func<Task<GitHubResponse<IEnumerable<T>>>>>();
+      foreach (var page in pages) {
+        // Ignore cache options, since we're paging because they didn't match
+        var req = new GitHubRequest(HttpMethod.Get, "") { Uri = page };
+        tasks.Add(() => MakeRequest<IEnumerable<T>>(req, credentials));
+      }
+      var batch = await Batch(tasks);
+
+      foreach (var response in batch) {
+        if (response.IsError) {
+          // TODO: Add retry logic
+          return response;
+        } else {
+          results.AddRange(response.Result);
+        }
+      }
+
+      // Keep cache and other headers from first page.
+      var final = firstPage;
+      final.Result = results;
+
+      var currentWindow = batch
+        .GroupBy(x => x.RateLimitReset)
+        .OrderBy(x => x.Key)
+        .Last()
+        .ToArray();
+
+      final.RateLimit = currentWindow.Min(x => x.RateLimit);
+      final.RateLimitRemaining = currentWindow.Min(x => x.RateLimitRemaining);
+      final.RateLimitReset = currentWindow.First().RateLimitReset;
+      return final;
+    }
+
+    public Task<IEnumerable<T>> Batch<T>(params Func<Task<T>>[] batch) {
+      return Batch(batch);
+    }
+
+    public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batch) {
+      var tasks = new List<Task<T>>();
+      using (var limit = new SemaphoreSlim(ConcurrencyLimit, ConcurrencyLimit)) {
+        foreach (var item in batch) {
+          await limit.WaitAsync();
+
+          tasks.Add(Task.Run(async delegate {
+            var response = await item();
+            limit.Release();
+            return response;
+          }));
+        }
+
+        var results = new List<T>();
+        foreach (var task in tasks) {
+          results.Add(await task);
+        }
+
+        return results;
+      }
     }
 
     public static string SerializeObject(object value) {

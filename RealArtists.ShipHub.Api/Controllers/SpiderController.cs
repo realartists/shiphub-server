@@ -1,10 +1,12 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using GitHub.Models;
   using Models;
 
   [RoutePrefix("spider")]
@@ -47,6 +49,51 @@
       var repos = await gh.RefreshRepositories();
 
       return Ok(Mapper.Map<IEnumerable<ApiRepository>>(repos));
+    }
+
+    [HttpGet]
+    [Route("all")]
+    public async Task<IHttpActionResult> SpiderAll(string token) {
+      var g = GitHubSettings.CreateUserClient(token);
+
+      var user = (await g.User()).Result;
+
+      // Storage
+      var users = new Dictionary<string, Account>(StringComparer.OrdinalIgnoreCase) { { user.Login, user } };
+      var orgs = new Dictionary<string, Account>(StringComparer.OrdinalIgnoreCase);
+      var repos = new Dictionary<string, Dictionary<string, Repository>>(StringComparer.OrdinalIgnoreCase);
+      var assignable = new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.OrdinalIgnoreCase);
+
+      // Enumerate repos
+      var issueRepos = (await g.Repositories()).Result.Where(x => x.HasIssues);
+
+
+      foreach (var r in ) {
+        repos
+          .Vald(r.Owner.Login, () => new Dictionary<string, Repository>(StringComparer.OrdinalIgnoreCase))
+          .Vald(r.Name, () => r);
+        var ac = r.Owner.Type == GitHubAccountType.Organization ? orgs : users;
+        ac.Vald(r.Owner.Login, () => r.Owner);
+
+        foreach (var a in (await g.Assignable(r.FullName)).Result) {
+          ac = a.Type == GitHubAccountType.Organization ? orgs : users;
+          ac.Vald(a.Login, () => a);
+
+          var temp = assignable
+            .Vald(r.Owner.Login, () => new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase))
+            .Vald(r.Name, () => new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+          if (!temp.Contains(a.Login)) {
+            temp.Add(a.Login);
+          }
+        }
+      }
+
+      return Ok(new {
+        users = users.Values.OrderBy(x => x.Login),
+        orgs = orgs.Values.OrderBy(x => x.Login),
+        repos = repos.Values.SelectMany(x => x.Values).OrderBy(x => x.FullName),
+        assignable = assignable,
+      });
     }
   }
 }

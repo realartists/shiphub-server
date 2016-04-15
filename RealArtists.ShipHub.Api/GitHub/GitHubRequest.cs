@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub {
   using System;
   using System.Collections.Generic;
-  using System.Collections.Specialized;
+  using System.Linq;
   using System.Net;
   using System.Net.Http;
 
@@ -11,24 +11,21 @@
       Path = path;
       ETag = opts?.ETag;
       LastModified = opts?.LastModified;
-      Parameters = new NameValueCollection();
     }
 
     public HttpMethod Method { get; set; }
     public string Path { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? LastModified { get; set; }
-    public NameValueCollection Parameters { get; set; }
+
+    // Arguably should allow duplicate keys, but no. Don't do that.
+    // Should it be case sensitive? Meh.
+    public Dictionary<string, string> Parameters { get; set; } = new Dictionary<string, string>();
 
     public Uri Uri {
       get {
-        if (Parameters.Count > 0) {
-          var parms = new List<string>(Parameters.Count);
-          foreach (string key in Parameters.AllKeys) {
-            foreach (var val in Parameters.GetValues(key)) {
-              parms.Add(string.Join("=", WebUtility.UrlEncode(key), WebUtility.UrlEncode(val)));
-            }
-          }
+        if (Parameters.Any()) {
+          var parms = Parameters.Select(x => string.Join("=", WebUtility.UrlEncode(x.Key), WebUtility.UrlEncode(x.Value)));
           var query = string.Join("&", parms);
           return new Uri(string.Join("?", Path, query), UriKind.Relative);
         } else {
@@ -41,9 +38,14 @@
         }
 
         Path = value.GetComponents(UriComponents.Path, UriFormat.Unescaped);
-        Parameters = value.ParseQueryString();
         ETag = null;
         LastModified = null;
+
+        Parameters.Clear();
+        var parsed = value.ParseQueryString();
+        for (int i = 0; i < parsed.Count; ++i) {
+          Parameters.Add(parsed.GetKey(i), parsed.GetValues(i).Single());
+        }
       }
     }
 

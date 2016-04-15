@@ -44,9 +44,7 @@
           throw new InvalidOperationException("Cannot access result of failed request.");
         }
 
-        if (_resultSet) {
-          throw new InvalidOperationException("Cannot set result multiple times.");
-        }
+        // Allow results to be set multiple times because I'm lazy and pagination uses it.
 
         _result = value;
         _resultSet = true;
