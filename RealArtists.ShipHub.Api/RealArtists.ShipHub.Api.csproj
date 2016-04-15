@@ -136,7 +136,8 @@
     <Compile Include="DataModel\Repository.cs" />
     <Compile Include="DataModel\ShipHubContext.cs" />
     <Compile Include="DataModel\User.cs" />
-    <Compile Include="EnumerableHacks.cs" />
+    <Compile Include="Extensions\DictionaryExtensions.cs" />
+    <Compile Include="Extensions\EnumerableExtensions.cs" />
     <Compile Include="Extensions\EntityExtensions.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="GitHubSpider.cs" />
