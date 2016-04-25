@@ -1,46 +1,37 @@
 ﻿namespace RealArtists.ShipHub.Api.GitHub.Models {
   using System;
-  using System.Runtime.Serialization;
-  using Newtonsoft.Json;
-  public enum IssueEvent {
-    Closed,
-    Reopened,
-    Subscribed,
-    Merged,
-    Referenced,
-    Mentioned,
-    Assigned,
-    Unassigned,
-    Labeled,
-    Unlabeled,
-    Milestoned,
-    Demilestoned,
-    Renamed,
-    Locked,
-    Unlocked,
-    [EnumMember(Value = "head_ref_deleted")]
-    HeadRefDeleted,
-    [EnumMember(Value = "head_ref_restored")]
-    HeadRefRestored
-  }
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Web;
 
-  public class IssueRename : GitHubModel {
-    public string From { get; set; }
-    public string To { get; set; }
+  public enum EventType {
+    CommitCommentEvent,
+    CreateEvent,
+    DeleteEvent,
+    DeploymentEvent,
+    DeploymentStatusEvent,
+    DownloadEvent,
+    FollowEvent,
+    ForkEvent,
+    ForkApplyEvent,
+    GistEvent,
+    GollumEvent,
+    IssueCommentEvent,
+    IssuesEvent,
+    MemberEvent,
+    MembershipEvent,
+    PageBuildEvent,
+    PublicEvent,
+    PullRequestEvent,
+    PullRequestReviewCommentEvent,
+    PushEvent,
+    ReleaseEvent,
+    RepositoryEvent,
+    StatusEvent,
+    TeamAddEvent,
+    WatchEvent,
   }
 
   public class Event : GitHubModel {
-    public int Id { get; set; }
-    public Account Actor { get; set; }
-    public Account Assignee { get; set; }
-    public Account Assigner { get; set; }
-    public string CommitId { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public Label Label { get; set; }
-    public Milestone Milestone { get; set; }
-    public IssueRename Rename { get; set; }
-
-    [JsonProperty("event")]
-    public IssueEvent EventType { get; set; }
   }
 }

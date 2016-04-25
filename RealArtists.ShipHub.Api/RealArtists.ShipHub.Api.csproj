@@ -117,6 +117,7 @@
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\AuthTestController.cs" />
     <Compile Include="Controllers\EntityTestController.cs" />
+    <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SpiderController.cs" />
     <Compile Include="Controllers\TestController.cs" />
@@ -154,12 +155,15 @@
     <Compile Include="GitHub\Models\Account.cs" />
     <Compile Include="GitHub\Models\Authorization.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
+    <Compile Include="GitHub\Models\Event.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
     <Compile Include="GitHub\Models\Comment.cs" />
-    <Compile Include="GitHub\Models\Event.cs" />
+    <Compile Include="GitHub\Models\IssueEvent.cs" />
     <Compile Include="GitHub\Models\Label.cs" />
     <Compile Include="GitHub\Models\Milestone.cs" />
     <Compile Include="GitHub\Models\Repository.cs" />
+    <Compile Include="GitHub\Models\Webhook.cs" />
+    <Compile Include="GitHub\Models\WebhookPayload.cs" />
     <Compile Include="GitHub\Serialization\EpochDateTimeConverter.cs" />
     <Compile Include="GitHub\Serialization\EpochUtility.cs" />
     <Compile Include="GitHub\Serialization\SnakeCasePropertyNamesContractResolver.cs" />

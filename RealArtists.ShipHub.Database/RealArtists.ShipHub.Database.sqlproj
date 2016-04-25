@@ -91,6 +91,7 @@
     <Build Include="Tables\RepositoryLabels.sql" />
     <Build Include="Tables\GitHubMetaData.sql" />
     <Build Include="Tables\RepositoryAccounts.sql" />
+    <Build Include="Tables\Hooks.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
