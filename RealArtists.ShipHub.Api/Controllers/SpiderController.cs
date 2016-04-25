@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Collections.Concurrent;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
@@ -65,10 +66,11 @@
       var assignable = new Dictionary<string, Dictionary<string, HashSet<string>>>(StringComparer.OrdinalIgnoreCase);
 
       // Enumerate repos
-      var issueRepos = (await g.Repositories()).Result.Where(x => x.HasIssues);
+      var allRepos = (await g.Repositories()).Result;
+      var withIssues = allRepos.Where(x => x.HasIssues);
+      var imAssignable = withIssues.Where(x => g.Assignable(x.FullName, user.Login).Result.Result);
 
-
-      foreach (var r in ) {
+      foreach (var r in imAssignable) {
         repos
           .Vald(r.Owner.Login, () => new Dictionary<string, Repository>(StringComparer.OrdinalIgnoreCase))
           .Vald(r.Name, () => r);
