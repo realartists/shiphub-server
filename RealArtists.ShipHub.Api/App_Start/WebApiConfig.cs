@@ -2,6 +2,7 @@
   using System;
   using System.Net.Http.Formatting;
   using System.Web.Http;
+  using Common;
   using Filters;
   using Mindscape.Raygun4Net.WebApi;
 

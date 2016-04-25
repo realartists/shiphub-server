@@ -7,7 +7,8 @@
   using System.Security.Cryptography;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using DataModel;
+  using Common;
+  using Common.DataModel;
   using Models;
 
   [AllowAnonymous]
@@ -118,7 +119,7 @@
       }
 
       // Lookup Token
-      GitHub.Models.Authorization tokenInfo = null;
+      Common.GitHub.Models.Authorization tokenInfo = null;
       using (var appClient = GitHubSettings.CreateApplicationClient(request.ApplicationId)) {
         var checkTokenResponse = await appClient.CheckAccessToken(request.ApplicationId, request.AccessToken);
         if (checkTokenResponse.IsError) {

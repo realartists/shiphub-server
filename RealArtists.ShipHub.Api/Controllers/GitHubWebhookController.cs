@@ -8,7 +8,7 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using GitHub;
+  using Common.GitHub;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
 

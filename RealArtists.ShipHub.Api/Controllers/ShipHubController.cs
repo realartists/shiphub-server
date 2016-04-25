@@ -4,7 +4,7 @@
   using System.Threading;
   using System.Web.Http;
   using AutoMapper;
-  using DataModel;
+  using Common.DataModel;
 
   public abstract class ShipHubController : ApiController {
     private ShipHubContext _Context = new ShipHubContext();

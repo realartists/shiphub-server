@@ -121,53 +121,8 @@
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SpiderController.cs" />
     <Compile Include="Controllers\TestController.cs" />
-    <Compile Include="DataModel\AccessToken.cs" />
-    <Compile Include="DataModel\Account.cs" />
-    <Compile Include="DataModel\AuthenticationToken.cs" />
-    <Compile Include="DataModel\Comment.cs" />
-    <Compile Include="DataModel\Event.cs" />
-    <Compile Include="DataModel\GitHubMetaData.cs" />
-    <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
-    <Compile Include="DataModel\IGitHubResource.cs" />
-    <Compile Include="DataModel\Issue.cs" />
-    <Compile Include="DataModel\IVersionedResource.cs" />
-    <Compile Include="DataModel\Label.cs" />
-    <Compile Include="DataModel\Milestone.cs" />
-    <Compile Include="DataModel\Organization.cs" />
-    <Compile Include="DataModel\Repository.cs" />
-    <Compile Include="DataModel\ShipHubContext.cs" />
-    <Compile Include="DataModel\User.cs" />
-    <Compile Include="Extensions\DictionaryExtensions.cs" />
-    <Compile Include="Extensions\EnumerableExtensions.cs" />
-    <Compile Include="Extensions\EntityExtensions.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="GitHubSpider.cs" />
-    <Compile Include="GitHub\GitHubClient.cs" />
-    <Compile Include="GitHub\GitHubCredentials.cs" />
-    <Compile Include="GitHub\GitHubError.cs" />
-    <Compile Include="GitHub\GitHubModel.cs" />
-    <Compile Include="GitHub\GitHubPagination.cs" />
-    <Compile Include="GitHub\GitHubRedirect.cs" />
-    <Compile Include="GitHub\GitHubRequest.cs" />
-    <Compile Include="GitHub\GitHubResponse.cs" />
-    <Compile Include="GitHub\IGitHubCacheOptions.cs" />
-    <Compile Include="GitHub\IGitHubRequestOptions.cs" />
-    <Compile Include="GitHub\Models\Account.cs" />
-    <Compile Include="GitHub\Models\Authorization.cs" />
-    <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
-    <Compile Include="GitHub\Models\Event.cs" />
-    <Compile Include="GitHub\Models\Issue.cs" />
-    <Compile Include="GitHub\Models\Comment.cs" />
-    <Compile Include="GitHub\Models\IssueEvent.cs" />
-    <Compile Include="GitHub\Models\Label.cs" />
-    <Compile Include="GitHub\Models\Milestone.cs" />
-    <Compile Include="GitHub\Models\Repository.cs" />
-    <Compile Include="GitHub\Models\Webhook.cs" />
-    <Compile Include="GitHub\Models\WebhookPayload.cs" />
-    <Compile Include="GitHub\Serialization\EpochDateTimeConverter.cs" />
-    <Compile Include="GitHub\Serialization\EpochUtility.cs" />
-    <Compile Include="GitHub\Serialization\SnakeCasePropertyNamesContractResolver.cs" />
-    <Compile Include="GitHub\Serialization\SnakeCaseUtility.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -183,11 +138,6 @@
     <Compile Include="Models\ApiUser.cs" />
     <Compile Include="Models\DataModelToApiModelProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Extensions\AccessTokenUtility.cs" />
-    <Compile Include="Extensions\AutoMapperExtensions.cs" />
-    <Compile Include="Extensions\ExceptionUtilities.cs" />
-    <Compile Include="Extensions\GitHubSettings.cs" />
-    <Compile Include="Extensions\JsonUtility.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />
@@ -200,6 +150,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
+      <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
+      <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

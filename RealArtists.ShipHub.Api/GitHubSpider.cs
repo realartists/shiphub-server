@@ -8,8 +8,9 @@
   using System.Net.Http.Headers;
   using System.Threading.Tasks;
   using AutoMapper;
-  using DataModel;
-  using GitHub;
+  using Common;
+  using Common.DataModel;
+  using Common.GitHub;
 
   public class GitHubResourceOptionWrapper<T> : IGitHubRequestOptions, IGitHubCacheOptions, IGitHubCredentials
     where T : IGitHubResource {

@@ -1,6 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Models {
   using AutoMapper;
-  using DataModel;
+  using Common.DataModel;
 
   public class DataModelToApiModelProfile : Profile {
     protected override void Configure() {

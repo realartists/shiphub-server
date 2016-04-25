@@ -1,13 +1,13 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
-  using System.Collections.Concurrent;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using GitHub.Models;
+  using Common;
+  using Common.GitHub.Models;
   using Models;
 
   [RoutePrefix("spider")]

@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System.Threading.Tasks;
   using System.Web.Http;
-  using DataModel;
+  using Common.DataModel;
 
   [RoutePrefix("etest")]
   public class EntityTestController : ShipHubController {
