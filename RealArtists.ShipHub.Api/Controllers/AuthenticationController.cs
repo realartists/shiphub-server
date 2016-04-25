@@ -16,8 +16,11 @@
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "user:email",
       "repo",
-      "admin:repo_hook",
       "read:org",
+    }.AsReadOnly();
+
+    private static readonly IReadOnlyList<string> _suggestedOauthScopes = new List<string>() {
+      "admin:repo_hook",
       "admin:org_hook",
     }.AsReadOnly();
 
@@ -29,7 +32,7 @@
       }
 
       var secret = GitHubSettings.Credentials[clientId];
-      var scope = string.Join(",", _requiredOauthScopes);
+      var scope = string.Join(",", _requiredOauthScopes.Union(_suggestedOauthScopes));
       var redir = new Uri(Request.RequestUri, Url.Link("callback", new { clientId = clientId })).ToString();
       string uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
 
