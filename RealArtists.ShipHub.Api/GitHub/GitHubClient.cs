@@ -332,58 +332,43 @@
       return result;
     }
 
-    public async Task<GitHubResponse<IEnumerable<T>>> Enumerate<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
-      var results = new List<T>(firstPage.Result);
-      var current = firstPage;
-
-      // TODO: Request in parallel?
-      while (current.Pagination?.Next != null) {
-        // Ignore cache options, since we're paging because they didn't match
-        var nextReq = new GitHubRequest(HttpMethod.Get, "") {
-          Uri = current.Pagination.Next,
-        };
-        current = await MakeRequest<IEnumerable<T>>(nextReq, credentials);
-
-        if (current.IsError) {
-          return current;
-        } else {
-          results.AddRange(current.Result);
-        }
-      }
-
-      // Keep cache and other headers from first page.
-      var final = firstPage;
-      final.Result = results;
-      final.RateLimit = current.RateLimit;
-      final.RateLimitRemaining = current.RateLimitRemaining;
-      final.RateLimitReset = current.RateLimitReset;
-      return final;
-    }
-
     public async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
       var results = new List<T>(firstPage.Result);
+      IEnumerable<GitHubResponse<IEnumerable<T>>> batch;
 
       // Only support extrapolation when using pages.
-      if (firstPage.Pagination?.CanInterpolate != true) {
-        return await Enumerate(firstPage, credentials);
-      }
+      if (firstPage.Pagination?.CanInterpolate == true) {
+        var pages = firstPage.Pagination.Interpolate();
+        batch = await Batch(pages.Select<Uri, Func<Task<GitHubResponse<IEnumerable<T>>>>>(
+          page => () => MakeRequest<IEnumerable<T>>(
+            new GitHubRequest(HttpMethod.Get, "") { Uri = page },
+            credentials)));
 
-      var pages = firstPage.Pagination.Interpolate();
-      var tasks = new List<Func<Task<GitHubResponse<IEnumerable<T>>>>>();
-      foreach (var page in pages) {
-        // Ignore cache options, since we're paging because they didn't match
-        var req = new GitHubRequest(HttpMethod.Get, "") { Uri = page };
-        tasks.Add(() => MakeRequest<IEnumerable<T>>(req, credentials));
-      }
-      var batch = await Batch(tasks);
-
-      foreach (var response in batch) {
-        if (response.IsError) {
-          // TODO: Add retry logic
-          return response;
-        } else {
-          results.AddRange(response.Result);
+        foreach (var response in batch) {
+          if (response.IsError) {
+            // TODO: Add retry logic
+            return response;
+          } else {
+            results.AddRange(response.Result);
+          }
         }
+      } else {
+        var current = firstPage;
+        while (current.Pagination?.Next != null) {
+          // Ignore cache options, since we're paging because they didn't match
+          var nextReq = new GitHubRequest(HttpMethod.Get, "") {
+            Uri = current.Pagination.Next,
+          };
+          current = await MakeRequest<IEnumerable<T>>(nextReq, credentials);
+
+          if (current.IsError) {
+            return current;
+          } else {
+            results.AddRange(current.Result);
+          }
+        }
+        // Just use the last request.
+        batch = new[] { current };
       }
 
       // Keep cache and other headers from first page.
