@@ -34,9 +34,9 @@
 
     protected override void Dispose(bool disposing) {
       if (disposing) {
-        var temp = Interlocked.Exchange(ref _Context, null);
-        if (temp != null) {
-          temp.Dispose();
+        if (_Context != null) {
+          _Context.Dispose();
+          _Context = null;
         }
       }
       base.Dispose(disposing);

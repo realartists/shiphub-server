@@ -1,11 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
   using AutoMapper;
-  using GM = GitHub.Models;
+  using g = GitHub.Models;
 
   public class GitHubToDataModelProfile : Profile {
     protected override void Configure() {
-      CreateMap<GM.Account, Account>(MemberList.Source)
+      CreateMap<g.Account, Account>(MemberList.Source)
         .ForSourceMember(x => x.Type, opts => opts.Ignore())
         .BeforeMap((from, to) => {
           if (!from.Id.Equals(to.Id)) {
@@ -13,7 +13,7 @@
           }
         });
 
-      CreateMap<GM.Repository, Repository>(MemberList.Source)
+      CreateMap<g.Repository, Repository>(MemberList.Source)
         .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
 
       //CreateMap<GH.GitHubResponse, AccessToken>()

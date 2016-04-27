@@ -1,17 +1,47 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
+﻿namespace GitHubUpdateProcessor {
+  using System.IO;
+  using System.Threading.Tasks;
+  using Microsoft.Azure.WebJobs;
+  using RealArtists.Ship.Server.QueueClient.GitHubSpider;
+  using RealArtists.Ship.Server.QueueClient.GitHubUpdate;
+  using RealArtists.ShipHub.Common;
+  using RealArtists.ShipHub.Common.GitHub.Models;
 
-namespace GitHubUpdateProcessor {
-  public class Functions {
-    // This function will get triggered/executed when a new message is written 
-    // on an Azure Queue called queue.
-    public static void ProcessQueueMessage([QueueTrigger("queue")] string message, TextWriter log) {
-      log.WriteLine(message);
+  public static class Functions {
+    // TODO: Locking?
+
+    public static async Task SpiderToken(
+      [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
+      [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
+      [Queue(GitHubQueueNames.Account)] IAsyncCollector<UpdateMessage<Account>> githubAccounts,
+      [Queue(GitHubQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdate> githubRateLimits,
+      TextWriter log) {
+      using (var g = GitHubSettings.CreateUserClient(token)) {
+        var ur = await g.User();
+
+        if (!ur.IsError) {
+          await githubAccounts.Update(ur);
+          await githubRateLimits.Update(ur);
+          await spiderUser.AddAsync(ur.Result.Login);
+        }
+      }
+    }
+
+    public static async Task SpiderUser(
+      [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
+      [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
+      [Queue(GitHubQueueNames.Account)] IAsyncCollector<UpdateMessage<Account>> githubAccounts,
+      [Queue(GitHubQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdate> githubRateLimits,
+      TextWriter log) {
+      using (var g = GitHubSettings.CreateUserClient(token)) {
+        var ur = await g.User();
+
+        if (!ur.IsError) {
+          await githubAccounts.Update(ur);
+          await githubRateLimits.Update(ur);
+          await spiderUser.AddAsync(ur.Result.Login);
+        }
+      }
     }
   }
 }
