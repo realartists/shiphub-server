@@ -54,13 +54,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GitHubSpider\SpiderQueueNames.cs" />
-    <Compile Include="GitHubUpdate\GitHubQueueNames.cs" />
-    <Compile Include="GitHubUpdate\RateLimitUpdate.cs" />
-    <Compile Include="GitHubUpdate\UpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\CommentUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\ResourceQueueNames.cs" />
+    <Compile Include="ResourceUpdate\IssueUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\MilestoneUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\AccountUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\RateLimitUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\RepositoryUpdateMessage.cs" />
+    <Compile Include="ResourceUpdate\UpdateMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
+      <Project>{6ECF5873-32AB-459D-985B-B949599FED74}</Project>
+      <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

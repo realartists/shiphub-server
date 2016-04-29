@@ -3,12 +3,6 @@
   "WebJobs": [
     {
       "filePath": "../GitHubUpdateProcessor/GitHubUpdateProcessor.csproj"
-    },
-    {
-      "filePath": "../GitHubSpider/GitHubSpider.csproj"
-    },
-    {
-      "filePath": "../GitHubUpdater/GitHubUpdater.csproj"
     }
   ]
 }

@@ -2,7 +2,7 @@
   using System;
   using System.Collections.Generic;
 
-  public enum IssueState {
+  public enum OpenState {
     Open,
     Closed,
   }
@@ -10,7 +10,7 @@
   public class Issue : GitHubModel {
     public int Id { get; set; }
     public int Number { get; set; }
-    public IssueState State { get; set; }
+    public OpenState State { get; set; }
     public string Title { get; set; }
     public string Body { get; set; }
     public IEnumerable<Label> Labels { get; set; }

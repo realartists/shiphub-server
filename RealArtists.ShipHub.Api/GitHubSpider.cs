@@ -178,8 +178,8 @@
       }
       meta.LastRefresh = DateTimeOffset.UtcNow;
 
-      if (response.Credentials.Parameter != meta.AccessToken?.Token) {
-        meta.AccessToken = await _db.AccessTokens.SingleAsync(x => x.Token == response.Credentials.Parameter);
+      if (response.Token != meta.AccessToken?.Token) {
+        meta.AccessToken = await _db.AccessTokens.SingleAsync(x => x.Token == response.Token);
       }
       meta.AccessToken.UpdateRateLimits(response);
 
@@ -227,7 +227,7 @@
       m.LastRefresh = DateTimeOffset.UtcNow;
 
       // Update token if needed
-      var parameter = response.Credentials.Parameter;
+      var parameter = response.Token;
       if (parameter != m.AccessToken?.Token) {
         // It shouldn't be possible for this lookup to fail.
         m.AccessToken = await _db.AccessTokens.SingleAsync(x => x.Token == parameter);

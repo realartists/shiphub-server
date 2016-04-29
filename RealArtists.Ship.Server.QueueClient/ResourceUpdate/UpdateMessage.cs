@@ -1,4 +1,4 @@
-﻿namespace RealArtists.Ship.Server.QueueClient.GitHubUpdate {
+﻿namespace RealArtists.Ship.Server.QueueClient.ResourceUpdate {
   using System;
 
   public class CacheMetaData {
@@ -14,9 +14,15 @@
     public string Event { get; set; }
   }
 
-  public class UpdateMessage<T> {
+  public abstract class UpdateMessage {
     public CacheMetaData CacheMetaData { get; set; }
     public WebhookMetaData WebhookMetaData { get; set; }
+  }
+
+  public class UpdateMessage<T> : UpdateMessage {
+    public UpdateMessage() { }
+    public UpdateMessage(T value) { Value = value; }
+
     public T Value { get; set; }
   }
 }

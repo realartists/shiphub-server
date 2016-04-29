@@ -1,29 +1,27 @@
 ﻿namespace GitHubUpdateProcessor {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
-  using System.Text;
   using System.Threading.Tasks;
   using Microsoft.Azure.WebJobs;
-  using RealArtists.Ship.Server.QueueClient.GitHubUpdate;
+  using RealArtists.Ship.Server.QueueClient.ResourceUpdate;
   using RealArtists.ShipHub.Common.GitHub;
 
   public static class Extensions {
-    public static Task Update(this IAsyncCollector<RateLimitUpdate> collector, GitHubResponse response) {
-      return collector.AddAsync(new RateLimitUpdate() {
-        AccessToken = response.Credentials.Parameter,
-        RateLimit = response.RateLimit,
-        RateLimitRemaining = response.RateLimitRemaining,
-        RateLimitReset = response.RateLimitReset,
-      });
+    public static Task UpdateRateLimit(this IAsyncCollector<RateLimitUpdateMessage> collector, GitHubResponse response) {
+      if (!string.IsNullOrWhiteSpace(response.Token)) {
+        return collector.AddAsync(new RateLimitUpdateMessage() {
+          AccessToken = response.Token,
+          RateLimit = response.RateLimit,
+          RateLimitRemaining = response.RateLimitRemaining,
+          RateLimitReset = response.RateLimitReset,
+        });
+      } else {
+        return Task.CompletedTask;
+      }
     }
 
-    public static Task Update<T>(this IAsyncCollector<UpdateMessage<T>> collector, GitHubResponse<T> response) {
-      var message = new UpdateMessage<T>() {
-        Value = response.Result,
-      };
-
-      var token = response.Credentials?.Parameter;
+    public static T WithCacheMetaData<T>(this T message, GitHubResponse response)
+      where T : UpdateMessage {
+      var token = response.Token;
       if (token != null) {
         message.CacheMetaData = new CacheMetaData() {
           AccessToken = token,
@@ -32,8 +30,17 @@
           LastModified = response.LastModified,
         };
       }
+      return message;
+    }
 
-      return collector.AddAsync(message);
+    public static T WithWebhookMetaData<T>(this T message, Guid hookId, Guid deliveryId, string eventName)
+      where T : UpdateMessage {
+      message.WebhookMetaData = new WebhookMetaData() {
+        DeliveryId = deliveryId,
+        Event = eventName,
+        HookId = hookId,
+      };
+      return message;
     }
   }
 }

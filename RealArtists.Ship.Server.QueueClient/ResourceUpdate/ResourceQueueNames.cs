@@ -1,6 +1,6 @@
-﻿namespace RealArtists.Ship.Server.QueueClient.GitHubUpdate {
-  public static class GitHubQueueNames {
-    public const string _Prefix = "gh-u-";
+﻿namespace RealArtists.Ship.Server.QueueClient.ResourceUpdate {
+  public static class ResourceQueueNames {
+    public const string _Prefix = "ru-";
 
     public const string Account = _Prefix + "account";
     public const string Comment = _Prefix + "comment";

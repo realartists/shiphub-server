@@ -290,7 +290,7 @@
       }
 
       var result = new GitHubResponse<T>() {
-        Credentials = credentials,
+        Token = credentials.Parameter,
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
