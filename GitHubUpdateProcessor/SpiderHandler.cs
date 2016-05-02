@@ -9,38 +9,38 @@
   public static class SpiderHandler {
     // TODO: Locking?
 
-    public static async Task SpiderToken(
-      [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
-      [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
-      [Queue(ResourceQueueNames.Account)] IAsyncCollector<AccountUpdateMessage> githubAccounts,
-      [Queue(ResourceQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdateMessage> githubRateLimits,
-      TextWriter log) {
-      using (var g = GitHubSettings.CreateUserClient(token)) {
-        var ur = await g.User();
+    //public static async Task SpiderToken(
+    //  [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
+    //  [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
+    //  [Queue(ResourceQueueNames.Account)] IAsyncCollector<AccountUpdateMessage> githubAccounts,
+    //  [Queue(ResourceQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdateMessage> githubRateLimits,
+    //  TextWriter log) {
+    //  using (var g = GitHubSettings.CreateUserClient(token)) {
+    //    var ur = await g.User();
 
-        if (!ur.IsError) {
-          await githubAccounts.AddAsync(new AccountUpdateMessage() {
-            Value = ur.Result,
-          }.WithCacheMetaData(ur));
-          await githubRateLimits.UpdateRateLimit(ur);
-          await spiderUser.AddAsync(ur.Result.Login);
-        }
-      }
-    }
+    //    if (!ur.IsError) {
+    //      await githubAccounts.AddAsync(new AccountUpdateMessage() {
+    //        Value = ur.Result,
+    //      }.WithCacheMetaData(ur));
+    //      await githubRateLimits.UpdateRateLimit(ur);
+    //      await spiderUser.AddAsync(ur.Result.Login);
+    //    }
+    //  }
+    //}
 
-    public static async Task SpiderUser(
-      [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
-      [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
-      [Queue(ResourceQueueNames.Account)] IAsyncCollector<AccountUpdateMessage> githubAccounts,
-      [Queue(ResourceQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdateMessage> githubRateLimits,
-      TextWriter log) {
-      using (var g = GitHubSettings.CreateUserClient(token)) {
-        var ur = await g.User();
+    //public static async Task SpiderUser(
+    //  [QueueTrigger(SpiderQueueNames.AccessToken)] string token,
+    //  [Queue(SpiderQueueNames.User)] IAsyncCollector<string> spiderUser,
+    //  [Queue(ResourceQueueNames.Account)] IAsyncCollector<AccountUpdateMessage> githubAccounts,
+    //  [Queue(ResourceQueueNames.RateLimit)] IAsyncCollector<RateLimitUpdateMessage> githubRateLimits,
+    //  TextWriter log) {
+    //  using (var g = GitHubSettings.CreateUserClient(token)) {
+    //    var ur = await g.User();
 
-        if (!ur.IsError) {
-          await githubRateLimits.UpdateRateLimit(ur);
-        }
-      }
-    }
+    //    if (!ur.IsError) {
+    //      await githubRateLimits.UpdateRateLimit(ur);
+    //    }
+    //  }
+    //}
   }
 }

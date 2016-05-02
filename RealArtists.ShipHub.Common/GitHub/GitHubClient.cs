@@ -404,9 +404,12 @@
           }));
         }
 
+        await Task.WhenAll(tasks);
+
         var results = new List<T>();
         foreach (var task in tasks) {
-          results.Add(await task);
+          // we know they've completed.
+          results.Add(task.Result);
         }
 
         return results;
