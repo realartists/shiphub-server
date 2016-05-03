@@ -1,5 +1,6 @@
 ﻿namespace ConsoleSpider {
   using System;
+  using System.Diagnostics;
   using Newtonsoft.Json;
   using RealArtists.Ship.Server.QueueClient;
 
@@ -11,9 +12,13 @@
 
       var result = new SpiderSession(NickToken);
 
+      Stopwatch timer = new Stopwatch();
+      timer.Restart();
       result.Run().Wait();
+      timer.Stop();
 
-      Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
+      Console.WriteLine($"Done. Elapsed: {timer.Elapsed}");
+      //Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
       Console.ReadKey();
     }
   }

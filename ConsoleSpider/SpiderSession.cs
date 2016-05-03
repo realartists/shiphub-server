@@ -38,6 +38,7 @@
         var assignable = (await _g.Assignable(repo.FullName)).Result;
         var tasks = assignable.Select(x => queue.Send(x));
         await Task.WhenAll(tasks);
+        //await queue.SendBatch(assignable);
 
         // enumerate issues
         // TODO: Store them
@@ -46,7 +47,7 @@
         //  await queue.Send(i.Assignee);
         //  await queue.Send(i.ClosedBy);
         //  await queue.Send(i.User);
-          
+
         //}
 
         // enumerate comments

@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
   using System;
 
-  public class Milestone : GitHubModel {
+  public class Milestone {
     public int Id { get; set; }
     public int Number { get; set; }
     public OpenState State { get; set; }

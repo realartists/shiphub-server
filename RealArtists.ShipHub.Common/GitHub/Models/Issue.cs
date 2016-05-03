@@ -7,7 +7,7 @@
     Closed,
   }
 
-  public class Issue : GitHubModel {
+  public class Issue {
     public int Id { get; set; }
     public int Number { get; set; }
     public OpenState State { get; set; }

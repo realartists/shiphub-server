@@ -7,8 +7,9 @@
     protected override void Configure() {
       CreateMap<g.Account, Account>(MemberList.Source)
         .ForSourceMember(x => x.Type, opts => opts.Ignore())
+        .ForSourceMember(x => x.UpdatedAt, opts => opts.Ignore())
         .BeforeMap((from, to) => {
-          if (!from.Id.Equals(to.Id)) {
+          if (from.Id != to.Id) {
             throw new InvalidOperationException($"Cannot update Account {to.Id} with data from GitHub Account {from.Id}");
           }
         });

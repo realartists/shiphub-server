@@ -8,6 +8,7 @@
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
   using ResourceUpdate;
+  using ShipHub.Common.GitHub;
   using ShipHub.Common.GitHub.Models;
 
   public class ResourceUpdateClient {
@@ -49,29 +50,48 @@
       var creations = checks
         .Where(x => !x.Value.Result)
         .Select(x => nm.CreateQueueAsync(new QueueDescription(x.Key) {
-          // TODO: Duplicate detection and other settings.
+          //DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
+          DefaultMessageTimeToLive = TimeSpan.FromDays(7),
+
+          //DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(1),
+          DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
+
+          EnableBatchedOperations = true,
+          //EnableExpress = true, // Can't enable this and duplicate detection
+          EnablePartitioning = true,
+          IsAnonymousAccessible = false,
+          MaxSizeInMegabytes = 5120,
+          RequiresDuplicateDetection = true,
         }));
 
       await Task.WhenAll(creations);
     }
 
-    public Task Send(Account account, CacheMetaData cacheMetaData = null, WebhookMetaData webhookMetaData = null) {
-      var message = new AccountUpdateMessage() {
-        CacheMetaData = cacheMetaData,
-        WebhookMetaData = webhookMetaData,
-        Value = account,
-      };
-      return _account.SendAsync(new BrokeredMessage(message));
+    public Task Send(Account account, GitHubCacheData cacheData = null) {
+      var message = new UpdateMessage<Account>(account, cacheData);
+      return _account.SendAsync(new BrokeredMessage(message) {
+        MessageId = $"{account.Id}/{account.UpdatedAt.ToUnixTimeSeconds()}",
+        PartitionKey = $"{account.Id}",
+      });
     }
 
-    public Task Send(Repository repo, CacheMetaData cacheMetaData = null, WebhookMetaData webhookMetaData = null) {
-      var message = new RepositoryUpdateMessage() {
-        CacheMetaData = cacheMetaData,
-        WebhookMetaData = webhookMetaData,
-        Value = repo,
-        AccountId = repo.Owner.Id,
-      };
-      return _repository.SendAsync(new BrokeredMessage(message));
+    //public Task SendBatch(IEnumerable<Account> accounts, CacheMetaData cacheMetaData = null, WebhookMetaData webhookMetaData = null) {
+    //  var messages = accounts.Select(x => new BrokeredMessage(
+    //    new AccountUpdateMessage() {
+    //      CacheMetaData = cacheMetaData,
+    //      WebhookMetaData = webhookMetaData,
+    //      Value = x,
+    //    }
+    //  ));
+    //  return _account.SendBatchAsync(messages);
+    //}
+
+    public Task Send(Repository repo, GitHubCacheData cacheData = null) {
+      var message = new UpdateMessage<Repository>(repo, cacheData);
+      return _repository.SendAsync(new BrokeredMessage(message) {
+        MessageId = $"{repo.Id}/{repo.UpdatedAt.ToUnixTimeSeconds()}",
+        PartitionKey = $"{repo.Id}",
+      });
     }
   }
 }

@@ -1,5 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
-  public class Repository : GitHubModel {
+  using System;
+
+  public class Repository {
     public int Id { get; set; }
     public Account Owner { get; set; }
     public string Name { get; set; }
@@ -7,5 +9,6 @@
     public string Description { get; set; }
     public bool Private { get; set; }
     public bool HasIssues { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
   }
 }

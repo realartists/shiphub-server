@@ -6,6 +6,7 @@
   using Microsoft.Azure.WebJobs;
   using RealArtists.Ship.Server.QueueClient.ResourceUpdate;
   using RealArtists.ShipHub.Common.DataModel;
+  using gh = RealArtists.ShipHub.Common.GitHub.Models;
 
   public static class ResourceUpdateHandler {
     // TODO: Locking?
@@ -29,7 +30,7 @@
     }
 
     public static async Task UpdateAccount(
-      [ServiceBusTrigger(ResourceQueueNames.Account)] AccountUpdateMessage message,
+      [ServiceBusTrigger(ResourceQueueNames.Account)] UpdateMessage<gh.Account> message,
       TextWriter log) {
       using (var context = new ShipHubContext()) {
         var update = message.Value;
@@ -38,10 +39,10 @@
           .Include(x => x.MetaData)
           .SingleOrDefaultAsync(x => x.Id == update.Id);
         if (existing == null) {
-          if (update.Type == RealArtists.ShipHub.Common.GitHub.Models.GitHubAccountType.Organization) {
-            existing = (Organization)context.Accounts.Add(new Organization());
+          if (update.Type == gh.GitHubAccountType.Organization) {
+            existing = context.Accounts.Add(new Organization());
           } else {
-            existing = (Organization)context.Accounts.Add(new User());
+            existing = context.Accounts.Add(new User());
           }
           existing.Id = update.Id;
         }
@@ -51,89 +52,88 @@
       }
     }
 
-    public static async Task UpdateComment(
-      [ServiceBusTrigger(ResourceQueueNames.Comment)] CommentUpdateMessage message,
-      TextWriter log) {
-      using (var context = new ShipHubContext()) {
-        var update = message.Value;
+    //public static async Task UpdateComment(
+    //  [ServiceBusTrigger(ResourceQueueNames.Comment)] CommentUpdateMessage message,
+    //  TextWriter log) {
+    //  using (var context = new ShipHubContext()) {
+    //    var update = message.Value;
 
-        var existing = await context.Comments
-          .Include(x => x.MetaData)
-          .SingleOrDefaultAsync(x => x.Id == update.Id);
-        if (existing == null) {
-          existing = context.Comments.Add(new Comment() {
-            Id = update.Id,
-            IssueId = message.IssueId,
-            RepositoryId = message.RepositoryId,
-          });
-        }
-        Mapper.Map(update, existing);
+    //    var existing = await context.Comments
+    //      .Include(x => x.MetaData)
+    //      .SingleOrDefaultAsync(x => x.Id == update.Id);
+    //    if (existing == null) {
+    //      existing = context.Comments.Add(new Comment() {
+    //        Id = update.Id,
+    //        IssueId = message.IssueId,
+    //        RepositoryId = message.RepositoryId,
+    //      });
+    //    }
+    //    Mapper.Map(update, existing);
 
-        await context.SaveChangesAsync();
-      }
-    }
+    //    await context.SaveChangesAsync();
+    //  }
+    //}
 
-    public static async Task UpdateIssue(
-      [ServiceBusTrigger(ResourceQueueNames.Issue)] IssueUpdateMessage message,
-      TextWriter log) {
-      using (var context = new ShipHubContext()) {
-        var update = message.Value;
+    //public static async Task UpdateIssue(
+    //  [ServiceBusTrigger(ResourceQueueNames.Issue)] IssueUpdateMessage message,
+    //  TextWriter log) {
+    //  using (var context = new ShipHubContext()) {
+    //    var update = message.Value;
 
-        var existing = await context.Issues
-          .Include(x => x.MetaData)
-          .SingleOrDefaultAsync(x => x.Id == update.Id);
-        if (existing == null) {
-          existing = context.Issues.Add(new Issue() {
-            Id = update.Id,
-            RepositoryId = message.RepositoryId,
-          });
-        }
-        Mapper.Map(update, existing);
+    //    var existing = await context.Issues
+    //      .Include(x => x.MetaData)
+    //      .SingleOrDefaultAsync(x => x.Id == update.Id);
+    //    if (existing == null) {
+    //      existing = context.Issues.Add(new Issue() {
+    //        Id = update.Id,
+    //        RepositoryId = message.RepositoryId,
+    //      });
+    //    }
+    //    Mapper.Map(update, existing);
 
-        await context.SaveChangesAsync();
-      }
-    }
+    //    await context.SaveChangesAsync();
+    //  }
+    //}
 
-    public static async Task UpdateMilestone(
-      [ServiceBusTrigger(ResourceQueueNames.Milestone)] MilestoneUpdateMessage message,
-      TextWriter log) {
-      using (var context = new ShipHubContext()) {
-        var update = message.Value;
+    //public static async Task UpdateMilestone(
+    //  [ServiceBusTrigger(ResourceQueueNames.Milestone)] MilestoneUpdateMessage message,
+    //  TextWriter log) {
+    //  using (var context = new ShipHubContext()) {
+    //    var update = message.Value;
 
-        var existing = await context.Milestones
-          .Include(x => x.MetaData)
-          .SingleOrDefaultAsync(x => x.Id == update.Id);
-        if (existing == null) {
-          existing = context.Milestones.Add(new Milestone() {
-            Id = update.Id,
-            RepositoryId = message.RepositoryId,
-          });
-        }
-        Mapper.Map(update, existing);
+    //    var existing = await context.Milestones
+    //      .Include(x => x.MetaData)
+    //      .SingleOrDefaultAsync(x => x.Id == update.Id);
+    //    if (existing == null) {
+    //      existing = context.Milestones.Add(new Milestone() {
+    //        Id = update.Id,
+    //        RepositoryId = message.RepositoryId,
+    //      });
+    //    }
+    //    Mapper.Map(update, existing);
 
-        await context.SaveChangesAsync();
-      }
-    }
+    //    await context.SaveChangesAsync();
+    //  }
+    //}
 
-    public static async Task UpdateRepository(
-      [ServiceBusTrigger(ResourceQueueNames.Repository)] RepositoryUpdateMessage message,
-      TextWriter log) {
-      using (var context = new ShipHubContext()) {
-        var update = message.Value;
+    //public static async Task UpdateRepository(
+    //  [ServiceBusTrigger(ResourceQueueNames.Repository)] UpdateMessage<gh.Repository> message,
+    //  TextWriter log) {
+    //  using (var context = new ShipHubContext()) {
+    //    var update = message.Value;
 
-        var existing = await context.Repositories
-          .Include(x => x.MetaData)
-          .SingleOrDefaultAsync(x => x.Id == update.Id);
-        if (existing == null) {
-          existing = context.Repositories.Add(new Repository() {
-            Id = update.Id,
-            AccountId = message.AccountId,
-          });
-        }
-        Mapper.Map(update, existing);
+    //    var existing = await context.Repositories
+    //      .Include(x => x.MetaData)
+    //      .SingleOrDefaultAsync(x => x.Id == update.Id);
+    //    if (existing == null) {
+    //      existing = context.Repositories.Add(new Repository() {
+    //        Id = update.Id,
+    //      });
+    //    }
+    //    Mapper.Map(update, existing);
 
-        await context.SaveChangesAsync();
-      }
-    }
+    //    await context.SaveChangesAsync();
+    //  }
+    //}
   }
 }

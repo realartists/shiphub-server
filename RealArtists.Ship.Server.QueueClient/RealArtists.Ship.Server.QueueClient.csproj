@@ -63,9 +63,7 @@
     <Compile Include="ResourceUpdate\ResourceQueueNames.cs" />
     <Compile Include="ResourceUpdate\IssueUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\MilestoneUpdateMessage.cs" />
-    <Compile Include="ResourceUpdate\AccountUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\RateLimitUpdateMessage.cs" />
-    <Compile Include="ResourceUpdate\RepositoryUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\UpdateMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

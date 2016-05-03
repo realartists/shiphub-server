@@ -290,7 +290,6 @@
       }
 
       var result = new GitHubResponse<T>() {
-        Token = credentials.Parameter,
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
@@ -298,23 +297,30 @@
       };
 
       // Cache Headers
-      result.ETag = response.Headers.ETag?.Tag;
-      result.LastModified = response.Content?.Headers?.LastModified;
+      result.CacheData = new GitHubCacheData() {
+        AccessToken = credentials.Parameter,
+        ETag = response.Headers.ETag?.Tag,
+        LastModified = response.Content?.Headers?.LastModified,
+      };
 
       // Expires and Caching Max-Age
-      result.Expires = response.Content?.Headers?.Expires;
+      var expires = response.Content?.Headers?.Expires;
       var maxAgeSpan = response.Headers.CacheControl?.SharedMaxAge ?? response.Headers.CacheControl?.MaxAge;
       if (maxAgeSpan != null) {
         var maxAgeExpires = DateTimeOffset.UtcNow.Add(maxAgeSpan.Value);
-        if (result.Expires == null || maxAgeExpires < result.Expires) {
-          result.Expires = maxAgeExpires;
+        if (expires == null || maxAgeExpires < expires) {
+          expires = maxAgeExpires;
         }
       }
+      result.CacheData.Expires = expires;
 
       // Rate Limits
-      result.RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x));
-      result.RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x));
-      result.RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x)));
+      result.RateLimit = new GitHubRateLimit() {
+        AccessToken = credentials.Parameter,
+        RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
+        RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
+        RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
+      };
 
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
@@ -375,15 +381,17 @@
       var final = firstPage;
       final.Result = results;
 
-      var currentWindow = batch
-        .GroupBy(x => x.RateLimitReset)
-        .OrderBy(x => x.Key)
-        .Last()
-        .ToArray();
+      var rateLimit = final.RateLimit;
+      foreach (var req in batch) {
+        var limit = req.RateLimit;
+        if (limit.RateLimitReset > rateLimit.RateLimitReset) {
+          rateLimit = limit;
+        } else if (limit.RateLimitReset == rateLimit.RateLimitReset) {
+          rateLimit.RateLimit = Math.Min(rateLimit.RateLimit, limit.RateLimit);
+          rateLimit.RateLimitRemaining = Math.Min(rateLimit.RateLimitRemaining, limit.RateLimitRemaining);
+        } // else drop it
+      }
 
-      final.RateLimit = currentWindow.Min(x => x.RateLimit);
-      final.RateLimitRemaining = currentWindow.Min(x => x.RateLimitRemaining);
-      final.RateLimitReset = currentWindow.First().RateLimitReset;
       return final;
     }
 

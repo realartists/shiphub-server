@@ -25,12 +25,12 @@
     HeadRefRestored
   }
 
-  public class IssueRename : GitHubModel {
+  public class IssueRename {
     public string From { get; set; }
     public string To { get; set; }
   }
 
-  public class IssueEvent : GitHubModel {
+  public class IssueEvent {
     public int Id { get; set; }
     public Account Actor { get; set; }
     public Account Assignee { get; set; }

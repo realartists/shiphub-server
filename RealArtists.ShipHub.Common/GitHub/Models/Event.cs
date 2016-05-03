@@ -27,6 +27,6 @@
     WatchEvent,
   }
 
-  public class Event : GitHubModel {
+  public class Event {
   }
 }
