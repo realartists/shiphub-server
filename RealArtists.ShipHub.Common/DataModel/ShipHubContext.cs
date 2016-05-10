@@ -109,11 +109,6 @@
         .Map(m => m.ToTable("AccountRepositories").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
 
       mb.Entity<GitHubMetaData>()
-        .HasMany(e => e.Accounts)
-        .WithOptional(e => e.MetaData)
-        .HasForeignKey(e => e.MetaDataId);
-
-      mb.Entity<GitHubMetaData>()
         .HasMany(e => e.Comments)
         .WithOptional(e => e.MetaData)
         .HasForeignKey(e => e.MetaDataId);

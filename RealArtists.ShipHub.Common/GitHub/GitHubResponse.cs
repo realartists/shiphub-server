@@ -5,6 +5,7 @@
   public class GitHubResponse {
     public Uri RequestUri { get; set; }
     public HttpStatusCode Status { get; set; }
+    public DateTimeOffset Date { get; set; }
 
     public bool IsError { get; set; }
     public GitHubError Error { get; set; }

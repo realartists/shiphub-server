@@ -1,10 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
+  using System;
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public abstract partial class Account : IGitHubResource {
+  public abstract partial class Account  {
     public const string OrganizationType = "org";
     public const string UserType = "user";
 
@@ -18,18 +19,13 @@
     [StringLength(255)]
     public string Login { get; set; }
 
-    [StringLength(255)]
-    public string Name { get; set; }
-
-    public long? MetaDataId { get; set; }
+    public DateTimeOffset Date { get; set; }
 
     public long? RepositoryMetaDataId { get; set; }
 
-    public string ExtensionJson { get; set; }
-
+    [ConcurrencyCheck]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public long? RowVersion { get; set; }
-
-    public virtual GitHubMetaData MetaData { get; set; }
 
     public virtual GitHubMetaData RepositoryMetaData { get; set; }
 

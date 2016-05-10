@@ -10,6 +10,7 @@
       var settings = new JsonSerializerSettings() {
         ContractResolver = new CamelCasePropertyNamesContractResolver(),
         DateFormatHandling = DateFormatHandling.IsoDateFormat,
+        DateParseHandling = DateParseHandling.DateTimeOffset,
         DateTimeZoneHandling = DateTimeZoneHandling.Utc,
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Ignore,

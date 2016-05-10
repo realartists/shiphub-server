@@ -116,6 +116,7 @@
       var response = await _httpClient.SendAsync(httpRequest);
 
       var result = new GitHubResponse<CreatedAccessToken>() {
+        Date = response.Headers.Date.Value,
         Status = response.StatusCode,
       };
 
@@ -290,10 +291,11 @@
       }
 
       var result = new GitHubResponse<T>() {
+        Date = response.Headers.Date.Value,
+        IsError = !response.IsSuccessStatusCode,
         Redirect = redirect,
         RequestUri = response.RequestMessage.RequestUri,
         Status = response.StatusCode,
-        IsError = !response.IsSuccessStatusCode,
       };
 
       // Cache Headers

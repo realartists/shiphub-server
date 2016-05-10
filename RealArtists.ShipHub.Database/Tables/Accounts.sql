@@ -1,15 +1,12 @@
 ﻿CREATE TABLE [dbo].[Accounts] (
-  [Id]                   INT           NOT NULL,
-  [Type]                 NVARCHAR(4)   NOT NULL,
-  [AvatarUrl]            NVARCHAR(500) NULL,
-  [Login]                NVARCHAR(255) NOT NULL,
-  [Name]                 NVARCHAR(255) NULL,
-  [MetaDataId]           BIGINT        NULL,
-  [RepositoryMetaDataId] BIGINT        NULL,
-  [ExtensionJson]        NVARCHAR(MAX) NULL,
-  [RowVersion]           BIGINT        NULL,
+  [Id]                   INT            NOT NULL,
+  [Type]                 NVARCHAR(4)    NOT NULL,
+  [AvatarUrl]            NVARCHAR(500)  NULL,
+  [Login]                NVARCHAR(255)  NOT NULL,
+  [Date]                 DATETIMEOFFSET NOT NULL,
+  [RepositoryMetaDataId] BIGINT         NULL,
+  [RowVersion]           BIGINT         NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
-  CONSTRAINT [FK_Accounts_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
   CONSTRAINT [FK_Accounts_RepositoryMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([RepositoryMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
 );
 GO
@@ -23,14 +20,9 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_MetaDataId]
-  ON [dbo].[Accounts]([MetaDataId])
-  WHERE [MetaDataId] IS NOT NULL;
-GO
-
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RepositoryMetaDataId]
   ON [dbo].[Accounts]([RepositoryMetaDataId])
-  WHERE [RepositoryMetaDataId] IS NOT NULL;
+  WHERE ([RepositoryMetaDataId] IS NOT NULL);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Accounts_Version]

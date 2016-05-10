@@ -109,9 +109,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="RefreshHandler.cs" />
     <Compile Include="SpiderHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResourceUpdateHandler.cs" />
+    <Compile Include="UpdateHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\App.config">

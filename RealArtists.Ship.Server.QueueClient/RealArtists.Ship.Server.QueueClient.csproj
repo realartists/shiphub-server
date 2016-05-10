@@ -58,14 +58,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GitHubSpider\SpiderQueueNames.cs" />
-    <Compile Include="ResourceUpdateClient.cs" />
+    <Compile Include="ShipHubQueueClient.cs" />
     <Compile Include="ResourceUpdate\CommentUpdateMessage.cs" />
-    <Compile Include="ResourceUpdate\ResourceQueueNames.cs" />
+    <Compile Include="ShipHubQueueNames.cs" />
     <Compile Include="ResourceUpdate\IssueUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\MilestoneUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\RateLimitUpdateMessage.cs" />
     <Compile Include="ResourceUpdate\UpdateMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WebJobInterop.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

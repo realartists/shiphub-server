@@ -23,9 +23,6 @@
     public virtual AccessToken AccessToken { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Account> Accounts { get; set; } = new HashSet<Account>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

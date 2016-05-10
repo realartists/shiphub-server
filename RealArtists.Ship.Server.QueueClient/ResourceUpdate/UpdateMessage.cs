@@ -10,14 +10,16 @@
 
   public class UpdateMessage<T> {
     public UpdateMessage() { }
-    public UpdateMessage(T value) { Value = value; }
-    public UpdateMessage(T value, GitHubCacheData cacheData) {
-      Value = value;
+    public UpdateMessage(T value, DateTimeOffset responseDate) : this(value, responseDate, null) { }
+    public UpdateMessage(T value, DateTimeOffset responseDate, GitHubCacheData cacheData) {
       CacheData = cacheData;
+      ResponseDate = responseDate;
+      Value = value;
     }
 
     public GitHubCacheData CacheData { get; set; }
     //public WebhookMetaData WebhookMetaData { get; set; }
+    public DateTimeOffset ResponseDate { get; set; }
     public T Value { get; set; }
   }
 }

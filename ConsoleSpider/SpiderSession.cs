@@ -12,7 +12,7 @@
   public class SpiderSession {
     GitHubClient _g;
     bool _hasRun = false;
-    ResourceUpdateClient queue = new ResourceUpdateClient();
+    ShipHubQueueClient queue = new ShipHubQueueClient();
 
     public SpiderSession(string accessToken) {
       _g = GitHubSettings.CreateUserClient(accessToken);
@@ -24,19 +24,21 @@
       }
       _hasRun = true;
 
-      var user = (await _g.User()).Result;
-      await queue.Send(user);
+      var userResponse = await _g.User();
+      var user = userResponse.Result;
+      await queue.UpdateAccount(user, userResponse.Date);
 
       // repos
-      var repos = (await _g.Repositories()).Result
+      var repoResponse = await _g.Repositories();
+      var repos = repoResponse.Result
         .Where(x => x.HasIssues)
         .Where(x => _g.Assignable(x.FullName, user.Login).Result.Result);
       foreach (var repo in repos) {
-        await queue.Send(repo.Owner);
-        await queue.Send(repo);
+        await queue.UpdateRepository(repo, repoResponse.Date);
 
-        var assignable = (await _g.Assignable(repo.FullName)).Result;
-        var tasks = assignable.Select(x => queue.Send(x));
+        var assignableResponse = await _g.Assignable(repo.FullName);
+        var assignable = assignableResponse.Result;
+        var tasks = assignable.Select(x => queue.UpdateAccount(x, assignableResponse.Date));
         await Task.WhenAll(tasks);
         //await queue.SendBatch(assignable);
 
