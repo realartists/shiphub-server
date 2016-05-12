@@ -59,7 +59,7 @@
         await UpdateOrStubAccount(context, message.Value, message.ResponseDate);
 
         if (context.ChangeTracker.HasChanges()) {
-          var numWritten = await context.SaveChangesAsync();
+          await context.SaveChangesAsync();
         }
       }
     }
@@ -71,7 +71,7 @@
         await UpdateOrStubRepository(context, message.Value, message.ResponseDate);
 
         if (context.ChangeTracker.HasChanges()) {
-          var numWritten = await context.SaveChangesAsync();
+          await context.SaveChangesAsync();
         }
       }
     }
@@ -83,6 +83,12 @@
       using (var context = new ShipHubContext()) {
         var repo = await UpdateOrStubRepository(context, message.Value.Repository, message.ResponseDate);
 
+        // Ensure repo and owner are saved if new.
+        if (context.ChangeTracker.HasChanges()) {
+          await context.SaveChangesAsync();
+        }
+
+        // Bulk update assignable users in a single shot.
         await context.UpdateRepositoryAssignableAccounts(
           repo.Id,
           update.AssignableAccounts.Select(x => new AccountStubTableRow() {
@@ -90,10 +96,6 @@
             Type = x.Type == gh.GitHubAccountType.Organization ? Account.OrganizationType : Account.UserType,
             Login = x.Login,
           }));
-
-        if (context.ChangeTracker.HasChanges()) {
-          var numWritten = await context.SaveChangesAsync();
-        }
       }
     }
 

@@ -17,7 +17,9 @@ BEGIN
     AND Target.RepositoryId = Source.RepositoryId
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (AccountId, RepositoryId) VALUES (AccountId, RepositoryId)
-  WHEN NOT MATCHED BY SOURCE THEN DELETE;
+  WHEN NOT MATCHED BY SOURCE
+    AND Target.RepositoryId = @RepositoryId
+    THEN DELETE;
 
   IF(@@ROWCOUNT > 0)
   BEGIN

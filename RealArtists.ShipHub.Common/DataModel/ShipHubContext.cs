@@ -217,7 +217,9 @@
       };
 
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[UpdateRepositoryAssignableAccounts]",
+        @"EXEC @Result = [dbo].[UpdateRepositoryAssignableAccounts]
+          @RepositoryId = @RepositoryId,
+          @AssignableAccounts = @AssignableAccounts;",
         result,
         new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
         CreateAccountStubTable("AssignableAccounts", assignableAccounts));
@@ -239,7 +241,7 @@
       }
 
       return new SqlParameter(name, SqlDbType.Structured) {
-        UdtTypeName = "[dbo].[AccountStubTableType]",
+        TypeName = "[dbo].[AccountStubTableType]",
         Value = table
       };
     }
