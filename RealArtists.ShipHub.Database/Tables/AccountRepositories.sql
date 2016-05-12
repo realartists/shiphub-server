@@ -13,28 +13,28 @@ GO
 CREATE NONCLUSTERED INDEX [IX_AccountRepositories_RepositoryId] ON [dbo].[AccountRepositories]([RepositoryId]);
 GO
 
-CREATE TRIGGER [dbo].[TRG_AccountRepositories_Version]
-ON [dbo].[AccountRepositories]
-AFTER INSERT, UPDATE, DELETE
-NOT FOR REPLICATION
-AS 
-BEGIN
-  -- SET NOCOUNT ON added to prevent extra result sets from
-  -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+--CREATE TRIGGER [dbo].[TRG_AccountRepositories_Version]
+--ON [dbo].[AccountRepositories]
+--AFTER INSERT, UPDATE, DELETE
+--NOT FOR REPLICATION
+--AS 
+--BEGIN
+--  -- SET NOCOUNT ON added to prevent extra result sets from
+--  -- interfering with SELECT statements.
+--  SET NOCOUNT ON;
 
-  UPDATE Accounts
-    SET [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-    WHERE Id IN (
-      SELECT AccountId FROM inserted
-      UNION
-      SELECT AccountId FROM deleted)
+--  UPDATE Accounts
+--    SET [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
+--    WHERE Id IN (
+--      SELECT AccountId FROM inserted
+--      UNION
+--      SELECT AccountId FROM deleted)
 
-  UPDATE Repositories
-    SET [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-    WHERE Id IN (
-      SELECT RepositoryId FROM inserted
-      UNION
-      SELECT RepositoryId FROM deleted)
-END
-GO
+--  UPDATE Repositories
+--    SET [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
+--    WHERE Id IN (
+--      SELECT RepositoryId FROM inserted
+--      UNION
+--      SELECT RepositoryId FROM deleted)
+--END
+--GO
