@@ -10,7 +10,6 @@
   [UpdatedAt]      DATETIMEOFFSET NOT NULL,
   [ClosedAt]       DATETIMEOFFSET NULL,
   [DueOn]          DATETIMEOFFSET NULL,
-  [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [MetaDataId]     BIGINT         NULL,
   [RowVersion]     BIGINT         NULL,
   CONSTRAINT [PK_Milestones] PRIMARY KEY CLUSTERED ([Id]),
@@ -31,7 +30,7 @@ GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Milestones_MetaDataId]
   ON [dbo].[Milestones]([MetaDataId])
-  WHERE [MetaDataId] IS NOT NULL;
+  WHERE ([MetaDataId] IS NOT NULL);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Milestones_Version]

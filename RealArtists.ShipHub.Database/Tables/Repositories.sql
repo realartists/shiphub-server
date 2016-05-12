@@ -6,7 +6,6 @@
   [Name]          NVARCHAR(100)  NOT NULL,
   [FullName]      NVARCHAR(255)  NOT NULL,
   [Description]   NVARCHAR(500)  NULL,
-  [ExtensionJson] NVARCHAR(MAX)  NULL,
   [MetaDataId]    BIGINT         NULL,
   [RowVersion]    BIGINT         NULL,
   CONSTRAINT [PK_Repositories] PRIMARY KEY CLUSTERED ([Id] ASC),
@@ -23,7 +22,7 @@ GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [IX_Repositories_MetaDataId]
   ON [dbo].[Repositories]([MetaDataId])
-  WHERE [MetaDataId] IS NOT NULL;;
+  WHERE ([MetaDataId] IS NOT NULL);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Repositories_Version]
@@ -36,7 +35,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-   UPDATE Repositories SET
+  UPDATE Repositories SET
     [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
   WHERE Id IN (SELECT Id FROM inserted)
 END

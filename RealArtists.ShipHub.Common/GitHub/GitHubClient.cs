@@ -385,13 +385,14 @@
 
       var rateLimit = final.RateLimit;
       foreach (var req in batch) {
+        // Rate Limit
         var limit = req.RateLimit;
         if (limit.RateLimitReset > rateLimit.RateLimitReset) {
           rateLimit = limit;
         } else if (limit.RateLimitReset == rateLimit.RateLimitReset) {
           rateLimit.RateLimit = Math.Min(rateLimit.RateLimit, limit.RateLimit);
           rateLimit.RateLimitRemaining = Math.Min(rateLimit.RateLimitRemaining, limit.RateLimitRemaining);
-        } // else drop it
+        } // else ignore it
       }
 
       return final;

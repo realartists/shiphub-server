@@ -1,4 +1,4 @@
-﻿namespace RealArtists.Ship.Server.QueueClient.ResourceUpdate {
+﻿namespace RealArtists.Ship.Server.QueueClient.Messages {
   using System;
   using ShipHub.Common.GitHub;
 

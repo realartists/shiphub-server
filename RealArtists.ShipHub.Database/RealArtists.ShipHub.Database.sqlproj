@@ -67,6 +67,7 @@
     <Folder Include="Tables" />
     <Folder Include="Sequences" />
     <Folder Include="Procedures" />
+    <Folder Include="User Defined Types" />
   </ItemGroup>
   <ItemGroup>
     <PostDeploy Include="PostDeployment.sql" />
@@ -93,6 +94,9 @@
     <Build Include="Tables\GitHubMetaData.sql" />
     <Build Include="Tables\RepositoryAccounts.sql" />
     <Build Include="Tables\Hooks.sql" />
+    <Build Include="Procedures\UpdateRepositoryAssignableAccounts.sql" />
+    <Build Include="User Defined Types\AccountStubTableType.sql" />
+    <Build Include="Procedures\StubAccounts.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

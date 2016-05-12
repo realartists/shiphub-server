@@ -22,8 +22,6 @@
   -- Rename
   [RenameFrom]           NVARCHAR(255)  NULL,
   [RenameTo]             NVARCHAR(255)  NULL,
-  -- Future
-  [ExtensionJson]        NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Events] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Events_ActorId_Accounts_Id] FOREIGN KEY ([ActorId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Events_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),

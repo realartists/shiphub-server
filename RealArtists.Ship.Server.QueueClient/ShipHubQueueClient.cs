@@ -1,12 +1,13 @@
 ﻿namespace RealArtists.Ship.Server.QueueClient {
   using System;
   using System.Collections.Concurrent;
+  using System.Collections.Generic;
   using System.Linq;
   using System.Threading.Tasks;
   using Microsoft.Azure;
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
-  using ResourceUpdate;
+  using Messages;
   using ShipHub.Common.GitHub;
   using ShipHub.Common.GitHub.Models;
 
@@ -68,6 +69,22 @@
       var queue = QueueClientForName(ShipHubQueueNames.UpdateRepository);
       return queue.SendAsync(WebJobInterop.CreateMessage(
         new UpdateMessage<Repository>(repo, responseDate, cacheData),
+        partitionKey: $"{repo.Id}")
+      );
+    }
+
+    public Task UpdateRepositoryAssignable(Repository repo, IEnumerable<Account> assignableAccounts, DateTimeOffset responseDate, GitHubCacheData cacheData = null) {
+      var queue = QueueClientForName(ShipHubQueueNames.UpdateRepositoryAssignable);
+      var message = new RepositoryAssignableMessage() {
+        AssignableAccounts = assignableAccounts.Select(x => new MinimalAccountInformation() {
+          Id = x.Id,
+          Login = x.Login,
+          Type = x.Type,
+        }),
+        Repository = repo,
+      };
+      return queue.SendAsync(WebJobInterop.CreateMessage(
+        new UpdateMessage<RepositoryAssignableMessage>(message, responseDate, cacheData),
         partitionKey: $"{repo.Id}")
       );
     }

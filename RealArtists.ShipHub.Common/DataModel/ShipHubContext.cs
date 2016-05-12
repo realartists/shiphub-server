@@ -1,5 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
+  using System.Collections;
+  using System.Collections.Generic;
   using System.Data;
   using System.Data.Common;
   using System.Data.Entity;
@@ -207,6 +209,39 @@
       }
 
       return (long)rangeFirstValue.Value;
+    }
+
+    public async Task<bool> UpdateRepositoryAssignableAccounts(int repositoryId, IEnumerable<AccountStubTableRow> assignableAccounts) {
+      var result = new SqlParameter("Result", SqlDbType.Int) {
+        Direction = ParameterDirection.Output
+      };
+
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[UpdateRepositoryAssignableAccounts]",
+        result,
+        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        CreateAccountStubTable("AssignableAccounts", assignableAccounts));
+
+      return ((int)result.Value) != 0;
+    }
+
+    private static SqlParameter CreateAccountStubTable(string name, IEnumerable<AccountStubTableRow> stubAccounts) {
+      var table = new DataTable();
+
+      table.Columns.AddRange(new[] {
+        new DataColumn("AccountId", typeof(int)),
+        new DataColumn("Type", typeof(string)),
+        new DataColumn("Login", typeof(string))
+      });
+
+      foreach (var account in stubAccounts) {
+        table.Rows.Add(account.AccountId, account.Type, account.Login);
+      }
+
+      return new SqlParameter(name, SqlDbType.Structured) {
+        UdtTypeName = "[dbo].[AccountStubTableType]",
+        Value = table
+      };
     }
   }
 }

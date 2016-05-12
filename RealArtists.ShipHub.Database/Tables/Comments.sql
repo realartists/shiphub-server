@@ -6,7 +6,6 @@
   [Body]           NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]      DATETIMEOFFSET NOT NULL,
   [UpdatedAt]      DATETIMEOFFSET NOT NULL,
-  [ExtensionJson]  NVARCHAR(MAX)  NULL,
   [MetaDataId]     BIGINT         NULL,
   [RowVersion]     BIGINT         NULL,
   CONSTRAINT [PK_Comments] PRIMARY KEY CLUSTERED ([Id]),
@@ -28,7 +27,7 @@ GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_MetaDataId]
   ON [dbo].[Comments]([MetaDataId])
-  WHERE [MetaDataId] IS NOT NULL;
+  WHERE ([MetaDataId] IS NOT NULL);
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_RowVersion] ON [dbo].[Comments]([RowVersion]);

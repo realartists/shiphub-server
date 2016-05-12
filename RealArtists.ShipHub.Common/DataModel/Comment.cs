@@ -20,8 +20,6 @@
 
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public string ExtensionJson { get; set; }
-
     public long? MetaDataId { get; set; }
 
     public long? RowVersion { get; set; }

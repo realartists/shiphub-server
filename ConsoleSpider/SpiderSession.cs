@@ -38,9 +38,11 @@
 
         var assignableResponse = await _g.Assignable(repo.FullName);
         var assignable = assignableResponse.Result;
+
         var tasks = assignable.Select(x => queue.UpdateAccount(x, assignableResponse.Date));
         await Task.WhenAll(tasks);
-        //await queue.SendBatch(assignable);
+
+        await queue.UpdateRepositoryAssignable(repo, assignable, assignableResponse.Date);
 
         // enumerate issues
         // TODO: Store them

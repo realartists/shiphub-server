@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="DataModel\AccessToken.cs" />
     <Compile Include="DataModel\Account.cs" />
+    <Compile Include="DataModel\AccountStubTableRow.cs" />
     <Compile Include="DataModel\AuthenticationToken.cs" />
     <Compile Include="DataModel\Comment.cs" />
     <Compile Include="DataModel\Event.cs" />

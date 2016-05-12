@@ -33,5 +33,6 @@
     // Queues [Action + Resource]
     public const string UpdateAccount = UpdatePrefix + Account;
     public const string UpdateRepository = UpdatePrefix + Repository;
+    public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
   }
 }
