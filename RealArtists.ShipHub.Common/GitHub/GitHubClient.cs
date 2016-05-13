@@ -88,7 +88,7 @@
       headers.AcceptEncoding.ParseAdd("deflate");
 
       headers.Accept.Clear();
-      headers.Accept.ParseAdd("application/vnd.github.v3+json");
+      headers.Accept.ParseAdd("application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
 
       headers.AcceptCharset.Clear();
       headers.AcceptCharset.ParseAdd("utf-8");

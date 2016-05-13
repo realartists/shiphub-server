@@ -92,6 +92,8 @@
     <Compile Include="GitHubSettings.cs" />
     <Compile Include="GitHub\GitHubCacheData.cs" />
     <Compile Include="GitHub\GitHubRateLimit.cs" />
+    <Compile Include="GitHub\GitHubReactions.cs" />
+    <Compile Include="GitHub\Models\Reactions.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />

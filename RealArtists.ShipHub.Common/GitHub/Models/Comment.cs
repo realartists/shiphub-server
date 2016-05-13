@@ -8,5 +8,6 @@
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Account User { get; set; }
+    public Reactions Reactions { get; set; }
   }
 }
