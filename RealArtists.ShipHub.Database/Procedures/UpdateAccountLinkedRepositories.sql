@@ -14,7 +14,7 @@ BEGIN
   ON Target.AccountId = Source.AccountId
     AND Target.RepositoryId = Source.RepositoryId
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (AccountId, RepositoryId) VALUES (AccountId, RepositoryId)
+    INSERT (AccountId, RepositoryId, [Hidden]) VALUES (AccountId, RepositoryId, 0)
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
     THEN DELETE;
 

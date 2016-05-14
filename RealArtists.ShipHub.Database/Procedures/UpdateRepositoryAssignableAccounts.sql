@@ -1,18 +1,16 @@
 ﻿CREATE PROCEDURE [dbo].[UpdateRepositoryAssignableAccounts]
   @RepositoryId INT,
-  @AssignableAccounts AccountStubTableType READONLY
+  @AssignableAccountIds IntListTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-  EXEC [dbo].[StubAccounts] @AccountStubs = @AssignableAccounts
-
   MERGE INTO RepositoryAccounts as Target
   USING (
-    SELECT AccountId, @RepositoryId as RepositoryId
-      FROM @AssignableAccounts) as Source
+    SELECT Item as AccountId, @RepositoryId as RepositoryId
+      FROM @AssignableAccountIds) as Source
   ON Target.AccountId = Source.AccountId
     AND Target.RepositoryId = Source.RepositoryId
   WHEN NOT MATCHED BY TARGET THEN

@@ -1,10 +1,8 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
-  using System;
-  using System.Diagnostics;
-  using System.Threading;
+  using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
-  using Microsoft.ServiceBus.Messaging;
+  using QueueClient;
 
   static class Program {
     static void Main() {
@@ -18,12 +16,13 @@
 
       // See https://github.com/Azure/azure-webjobs-sdk/wiki/Running-Locally
       if (config.IsDevelopment) {
-        //config.UseDevelopmentSettings();
-        config.DashboardConnectionString = null;
-        config.Tracing.Tracers.Clear();
-        config.Tracing.ConsoleLevel = TraceLevel.Error;
-        //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+        config.UseDevelopmentSettings();
+        //config.DashboardConnectionString = null;
+        //config.Tracing.Tracers.Clear();
+        //config.Tracing.ConsoleLevel = TraceLevel.Error;
+        sbConfig.MessageOptions.MaxConcurrentCalls = 1;
       }
+
       // https://azure.microsoft.com/en-us/documentation/articles/service-bus-performance-improvements/ recommends
       // 20x the processing rate/sec
       var ratePerSecond = 1;
@@ -31,8 +30,13 @@
 
       config.UseServiceBus(sbConfig);
 
-      var host = new JobHost(config);
-      host.RunAndBlock();
+//#if DEBUG
+//      ShipHubQueueClient.EnsureQueues().Wait();
+//      var qc = new ShipHubQueueClient();
+//      qc.SyncAccount(CloudConfigurationManager.GetSetting("Nick.Revoke.AuthToken")).Wait();
+//#endif
+
+      new JobHost(config).RunAndBlock();
     }
   }
 }

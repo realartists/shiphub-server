@@ -21,7 +21,7 @@
     [StringLength(255)]
     public string FullName { get; set; }
 
-    public DateTimeOffset Date { get; set; }
+    //public DateTimeOffset Date { get; set; }
 
     public long? AssignableMetaDataId { get; set; }
 
@@ -32,8 +32,6 @@
     public long? RowVersion { get; set; }
 
     public virtual Account Account { get; set; }
-
-    public virtual GitHubMetaData MetaData { get; set; }
 
     public virtual GitHubMetaData AssignableMetaData { get; set; }
 

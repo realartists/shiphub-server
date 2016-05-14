@@ -95,10 +95,7 @@
     <Build Include="Tables\RepositoryAccounts.sql" />
     <Build Include="Tables\Hooks.sql" />
     <Build Include="Procedures\UpdateRepositoryAssignableAccounts.sql" />
-    <Build Include="User Defined Types\AccountStubTableType.sql" />
-    <Build Include="Procedures\StubAccounts.sql" />
     <Build Include="Procedures\UpdateAccountLinkedRepositories.sql" />
-    <Build Include="User Defined Types\RepositoryStubTableType.sql" />
     <Build Include="User Defined Types\IntListTableType.sql" />
   </ItemGroup>
   <ItemGroup>

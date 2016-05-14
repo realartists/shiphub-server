@@ -88,5 +88,13 @@
         partitionKey: $"{repo.Id}")
       );
     }
+
+    public Task SyncAccount(string accessToken) {
+      var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
+      var message = new SyncAccountMessage() {
+        AccessToken = accessToken,
+      };
+      return queue.SendAsync(WebJobInterop.CreateMessage(message));
+    }
   }
 }

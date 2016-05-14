@@ -77,7 +77,7 @@
     /// Postcondition: Account is linked to the specified repositories.
     /// </summary>
     public static async Task UpdateAccountRepositories(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepositoryAssignable)] UpdateMessage<AccountRepositoriesMessage> message,
+      [ServiceBusTrigger(ShipHubQueueNames.UpdateAccountRepositories)] UpdateMessage<AccountRepositoriesMessage> message,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var update = message.Value;
@@ -105,13 +105,7 @@
         }
 
         // Bulk update assignable users in a single shot.
-        await context.UpdateRepositoryAssignableAccounts(
-          repo.Id,
-          update.AssignableAccounts.Select(x => new AccountStubTableRow() {
-            Id = x.Id,
-            Type = x.Type == gh.GitHubAccountType.Organization ? Account.OrganizationType : Account.UserType,
-            Login = x.Login,
-          }));
+        await context.UpdateRepositoryAssignableAccounts(repo.Id, update.AssignableAccounts.Select(x => x.Id));
       }
     }
   }

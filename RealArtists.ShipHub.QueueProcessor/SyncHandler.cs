@@ -13,8 +13,8 @@
     /// Postcondition: User saved in DB.
     /// </summary>
     public static async Task SyncAccount(
-      [QueueTrigger(ShipHubQueueNames.SyncAccount)] SyncAccountMessage message,
-      [Queue(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<SyncAccountRepositoriesMessage> syncAccountRepos) {
+      [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] SyncAccountMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<SyncAccountRepositoriesMessage> syncAccountRepos) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       var userResponse = await ghc.User();
@@ -33,9 +33,9 @@
     /// Postcondition: User's repos saved in DB.
     /// </summary>
     public static async Task SyncAccountRepositories(
-      [QueueTrigger(ShipHubQueueNames.SyncAccountRepositories)] SyncAccountRepositoriesMessage message,
-      [Queue(ShipHubQueueNames.SyncRepository)] IAsyncCollector<SyncRepositoryMessage> syncRepo,
-      [Queue(ShipHubQueueNames.UpdateAccountRepositories)] IAsyncCollector<UpdateMessage<AccountRepositoriesMessage>> updateAccountRepos) {
+      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] SyncAccountRepositoriesMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<SyncRepositoryMessage> syncRepo,
+      [ServiceBus(ShipHubQueueNames.UpdateAccountRepositories)] IAsyncCollector<UpdateMessage<AccountRepositoriesMessage>> updateAccountRepos) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       // Get eligible repos
@@ -56,6 +56,8 @@
       // Save Account->Repository mapping
       await updateAccountRepos.AddAsync(new UpdateMessage<AccountRepositoriesMessage>(
         new AccountRepositoriesMessage() {
+          AccountId = message.Account.Id,
+          LinkedRepositoryIds = keepRepos.Select(x => x.Id),
         },
         repoResponse.Date,
         repoResponse.CacheData));
@@ -73,9 +75,9 @@
     /// Postcondition: None.
     /// </summary>
     public static async Task SyncRepository(
-      [QueueTrigger(ShipHubQueueNames.SyncRepository)] SyncRepositoryMessage message,
-      [Queue(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<SyncRepositoryMessage> syncRepoAssignees,
-      [Queue(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<SyncRepositoryMessage> syncRepoMessages) {
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] SyncRepositoryMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<SyncRepositoryMessage> syncRepoAssignees,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<SyncRepositoryMessage> syncRepoMessages) {
       await Task.CompletedTask;
     }
   }

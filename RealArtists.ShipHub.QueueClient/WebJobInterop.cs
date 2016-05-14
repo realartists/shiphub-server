@@ -26,11 +26,14 @@
 
       var result = new BrokeredMessage(stream, ownsStream: true) {
         ContentType = "application/json",
-        PartitionKey = partitionKey,
       };
 
       if (messageId != null) {
         result.MessageId = messageId;
+      }
+
+      if (partitionKey != null) {
+        result.PartitionKey = partitionKey;
       }
 
       return result;

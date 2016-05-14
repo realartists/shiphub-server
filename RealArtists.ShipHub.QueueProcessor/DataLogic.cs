@@ -3,8 +3,8 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Threading.Tasks;
-  using RealArtists.ShipHub.Common.DataModel;
-  using gh = RealArtists.ShipHub.Common.GitHub.Models;
+  using Common.DataModel;
+  using gh = Common.GitHub.Models;
 
   public class DataLogic {
     private ShipHubContext _context;

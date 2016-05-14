@@ -232,7 +232,7 @@
       return ((int)result.Value) != 0;
     }
 
-    public async Task<bool> UpdateRepositoryAssignableAccounts(int repositoryId, IEnumerable<AccountStubTableRow> assignableAccounts) {
+    public async Task<bool> UpdateRepositoryAssignableAccounts(int repositoryId, IEnumerable<int> assignableAccountIds) {
       var result = new SqlParameter("Result", SqlDbType.Int) {
         Direction = ParameterDirection.Output
       };
@@ -240,31 +240,12 @@
       await Database.ExecuteSqlCommandAsync(
         @"EXEC @Result = [dbo].[UpdateRepositoryAssignableAccounts]
           @RepositoryId = @RepositoryId,
-          @AssignableAccounts = @AssignableAccounts;",
+          @AssignableAccountIds = @AssignableAccountIds;",
         result,
         new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
-        CreateAccountStubTable("AssignableAccounts", assignableAccounts));
+        CreateListTable("AssignableAccountIds", "IntListTableType", assignableAccountIds));
 
       return ((int)result.Value) != 0;
-    }
-
-    private static SqlParameter CreateAccountStubTable(string name, IEnumerable<AccountStubTableRow> stubAccounts) {
-      var table = new DataTable();
-
-      table.Columns.AddRange(new[] {
-        new DataColumn("AccountId", typeof(int)),
-        new DataColumn("Type", typeof(string)),
-        new DataColumn("Login", typeof(string))
-      });
-
-      foreach (var account in stubAccounts) {
-        table.Rows.Add(account.Id, account.Type, account.Login);
-      }
-
-      return new SqlParameter(name, SqlDbType.Structured) {
-        TypeName = "[dbo].[AccountStubTableType]",
-        Value = table
-      };
     }
 
     private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {

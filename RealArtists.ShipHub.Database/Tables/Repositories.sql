@@ -4,7 +4,7 @@
   [Private]              BIT            NOT NULL,
   [Name]                 NVARCHAR(100)  NOT NULL,
   [FullName]             NVARCHAR(255)  NOT NULL,
-  [Date]                 DATETIMEOFFSET NOT NULL,
+  --[Date]                 DATETIMEOFFSET NOT NULL,
   [AssignableMetaDataId] BIGINT         NULL,
   [LabelMetaDataId]      BIGINT         NULL,
   [RowVersion]           BIGINT         NULL,
