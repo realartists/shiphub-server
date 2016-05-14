@@ -3,7 +3,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  public partial class Comment : IGitHubResource {
+  public partial class Comment {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 

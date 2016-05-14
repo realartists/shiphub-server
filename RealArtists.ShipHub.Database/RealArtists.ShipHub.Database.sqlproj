@@ -97,6 +97,9 @@
     <Build Include="Procedures\UpdateRepositoryAssignableAccounts.sql" />
     <Build Include="User Defined Types\AccountStubTableType.sql" />
     <Build Include="Procedures\StubAccounts.sql" />
+    <Build Include="Procedures\UpdateAccountLinkedRepositories.sql" />
+    <Build Include="User Defined Types\RepositoryStubTableType.sql" />
+    <Build Include="User Defined Types\IntListTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

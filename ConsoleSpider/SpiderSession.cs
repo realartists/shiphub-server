@@ -1,13 +1,10 @@
 ﻿namespace ConsoleSpider {
   using System;
-  using System.Collections.Generic;
   using System.Linq;
-  using System.Text;
   using System.Threading.Tasks;
   using RealArtists.Ship.Server.QueueClient;
   using RealArtists.ShipHub.Common;
   using RealArtists.ShipHub.Common.GitHub;
-  using RealArtists.ShipHub.Common.GitHub.Models;
 
   public class SpiderSession {
     GitHubClient _g;

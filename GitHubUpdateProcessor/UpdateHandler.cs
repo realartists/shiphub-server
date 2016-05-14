@@ -1,17 +1,16 @@
 ﻿namespace GitHubUpdateProcessor {
   using System;
-  using System.Collections.Generic;
   using System.Data.Entity;
   using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
-  using AutoMapper;
   using Microsoft.Azure.WebJobs;
-  using Newtonsoft.Json;
   using RealArtists.Ship.Server.QueueClient;
   using RealArtists.Ship.Server.QueueClient.Messages;
   using RealArtists.ShipHub.Common.DataModel;
   using gh = RealArtists.ShipHub.Common.GitHub.Models;
+
+  // TODO: The following summary is now completely false.
 
   /// <summary>
   /// It sucks that this class exists.
@@ -32,7 +31,6 @@
   /// updates should do that.
   /// </summary>
   public static class UpdateHandler {
-    // TODO: Locking?
     // TODO: Notifications
 
     /* TODO generally:
@@ -42,21 +40,16 @@
      * Notifications if changed
      */
 
-    public static IMapper Mapper { get; private set; }
-
-    static UpdateHandler() {
-      var config = new MapperConfiguration(cfg => {
-        cfg.AddProfile<GitHubToDataModelProfile>();
-        //cfg.AddProfile<DataModelToApiModelProfile>();
-      });
-      Mapper = config.CreateMapper();
-    }
-
+    /// <summary>
+    /// Precondition: None
+    /// Postcondition: Account saved to DB.
+    /// </summary>
     public static async Task UpdateAccount(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateAccount)] UpdateMessage<gh.Account> message,
-      TextWriter logger) {
+      [ServiceBusTrigger(ShipHubQueueNames.UpdateAccount)] UpdateMessage<gh.Account> message) {
       using (var context = new ShipHubContext()) {
-        await UpdateOrStubAccount(context, message.Value, message.ResponseDate);
+        var logic = new DataLogic(context);
+
+        await logic.UpdateOrStubAccount(message.Value, message.ResponseDate);
 
         if (context.ChangeTracker.HasChanges()) {
           await context.SaveChangesAsync();
@@ -64,24 +57,49 @@
       }
     }
 
+    /// <summary>
+    /// Precondition: None
+    /// Postcondition: Repository and owner saved to DB
+    /// </summary>
     public static async Task UpdateRepository(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepository)] UpdateMessage<gh.Repository> message,
-      TextWriter logger) {
+      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepository)] UpdateMessage<gh.Repository> message) {
       using (var context = new ShipHubContext()) {
-        await UpdateOrStubRepository(context, message.Value, message.ResponseDate);
+        var logic = new DataLogic(context);
+
+        await logic.UpdateOrStubRepository(message.Value, message.ResponseDate);
 
         if (context.ChangeTracker.HasChanges()) {
           await context.SaveChangesAsync();
         }
+      }
+    }
+
+    /// <summary>
+    /// Precondition: Account and repositories exist.
+    /// Postcondition: Account is linked to the specified repositories.
+    /// </summary>
+    public static async Task UpdateAccountRepositories(
+      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepositoryAssignable)] UpdateMessage<AccountRepositoriesMessage> message,
+      TextWriter logger) {
+      using (var context = new ShipHubContext()) {
+        var update = message.Value;
+
+        // TODO: Check and abort or Update MetaData
+
+        // Bulk update linked accounts in a single shot.
+        await context.UpdateAccountLinkedRepositories(
+          update.AccountId,
+          update.LinkedRepositoryIds);
       }
     }
 
     public static async Task UpdateRepositoryAssignable(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepositoryAssignable)] UpdateMessage<RepositoryAssignableMessage> message,
-      TextWriter logger) {
+      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepositoryAssignable)] UpdateMessage<RepositoryAssignableMessage> message) {
       var update = message.Value;
       using (var context = new ShipHubContext()) {
-        var repo = await UpdateOrStubRepository(context, message.Value.Repository, message.ResponseDate);
+        var logic = new DataLogic(context);
+
+        var repo = await logic.UpdateOrStubRepository(message.Value.Repository, message.ResponseDate);
 
         // Ensure repo and owner are saved if new.
         if (context.ChangeTracker.HasChanges()) {
@@ -92,55 +110,11 @@
         await context.UpdateRepositoryAssignableAccounts(
           repo.Id,
           update.AssignableAccounts.Select(x => new AccountStubTableRow() {
-            AccountId = x.Id,
+            Id = x.Id,
             Type = x.Type == gh.GitHubAccountType.Organization ? Account.OrganizationType : Account.UserType,
             Login = x.Login,
           }));
       }
-    }
-
-    [NoAutomaticTrigger]
-    private static async Task<Account> UpdateOrStubAccount(ShipHubContext context, gh.Account account, DateTimeOffset responseDate) {
-      var existing = await context.Accounts.SingleOrDefaultAsync(x => x.Id == account.Id);
-
-      if (existing == null) {
-        if (account.Type == gh.GitHubAccountType.Organization) {
-          existing = context.Accounts.Add(new Organization());
-        } else {
-          existing = context.Accounts.Add(new User());
-        }
-        existing.Id = account.Id;
-      }
-
-      // This works for new additions because DatetTimeOffset defaults to its minimum value.
-      if (existing.Date < responseDate) {
-        Mapper.Map(account, existing);
-
-        // TODO: Gross
-        var trackingState = context.ChangeTracker.Entries<Account>().Single(x => x.Entity.Id == account.Id);
-        if (trackingState.State != EntityState.Unchanged) {
-          existing.Date = responseDate;
-        }
-      }
-
-      return existing;
-    }
-
-    [NoAutomaticTrigger]
-    private static async Task<Repository> UpdateOrStubRepository(ShipHubContext context, gh.Repository repo, DateTimeOffset responseDate) {
-      var owner = await UpdateOrStubAccount(context, repo.Owner, responseDate);
-      var existing = await context.Repositories.SingleOrDefaultAsync(x => x.Id == repo.Id);
-
-      if (existing == null) {
-        existing = context.Repositories.Add(new Repository() {
-          Id = repo.Id,
-        });
-      }
-
-      existing.Account = owner;
-      Mapper.Map(repo, existing);
-
-      return existing;
     }
   }
 }

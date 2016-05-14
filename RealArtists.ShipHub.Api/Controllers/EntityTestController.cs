@@ -13,7 +13,6 @@
       var account = Context.Accounts.Add(new User() {
         Id = UserId,
         Login = "test",
-        Name = "EF Test",
       });
       await Context.SaveChangesAsync();
 
@@ -29,7 +28,6 @@
       var account = (User)Context.Accounts.Add(new User() {
         Id = UserId,
         Login = "test",
-        Name = "EF Test",
       });
       var token = Context.AccessTokens.Add(new AccessToken() {
         Account = account,

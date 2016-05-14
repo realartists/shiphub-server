@@ -60,7 +60,7 @@
     public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Repository> LinkedRepositories { get; set; } = new HashSet<Repository>();
+    public virtual ICollection<AccountRepository> LinkedRepositories { get; set; } = new HashSet<AccountRepository>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> OwnedRepositories { get; set; } = new HashSet<Repository>();

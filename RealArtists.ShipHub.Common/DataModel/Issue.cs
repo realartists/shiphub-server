@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Issue : IGitHubResource {
+  public partial class Issue {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public int Id { get; set; }
 

@@ -17,7 +17,7 @@
          .ToArray();
     }
     // Actions
-    const string RefreshPrefix = "refresh-";
+    const string SyncPrefix = "sync-";
     const string UpdatePrefix = "update-";
 
     // Resources
@@ -31,7 +31,15 @@
     const string RateLimit = "rate-limit";
 
     // Queues [Action + Resource]
+    public const string SyncAccount = SyncPrefix + Account;
+    public const string SyncAccountRepositories = SyncAccount + "-repositories";
+
+    public const string SyncRepository = SyncPrefix + Repository;
+    public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
+    public const string SyncRepositoryIssues = SyncRepository + "-issues";
+
     public const string UpdateAccount = UpdatePrefix + Account;
+    public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
     public const string UpdateRepository = UpdatePrefix + Repository;
     public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
   }

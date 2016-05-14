@@ -107,8 +107,8 @@
 
       mb.Entity<Account>()
         .HasMany(e => e.LinkedRepositories)
-        .WithMany(e => e.LinkedAccounts)
-        .Map(m => m.ToTable("AccountRepositories").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
+        .WithRequired(e => e.Account)
+        .HasForeignKey(e => e.AccountId);
 
       mb.Entity<GitHubMetaData>()
         .HasMany(e => e.Comments)
@@ -166,6 +166,11 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<Repository>()
+        .HasMany(e => e.LinkedAccounts)
+        .WithRequired(e => e.Repository)
+        .HasForeignKey(e => e.RepositoryId);
+
+      mb.Entity<Repository>()
         .HasMany(e => e.AssignableAccounts)
         .WithMany(e => e.AssignableRepositories)
         .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("RepositoryId").MapRightKey("AccountId"));
@@ -211,6 +216,22 @@
       return (long)rangeFirstValue.Value;
     }
 
+    public async Task<bool> UpdateAccountLinkedRepositories(int accountId, IEnumerable<int> repositoryIds) {
+      var result = new SqlParameter("Result", SqlDbType.Int) {
+        Direction = ParameterDirection.Output
+      };
+
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[UpdateAccountLinkedRepositories]
+          @AccountId = @AccountId,
+          @RepositoryIds = @RepositoryIds;",
+        result,
+        new SqlParameter("AccountId", SqlDbType.Int) { Value = accountId },
+        CreateListTable("RepositoryIds", "IntListTableType", repositoryIds));
+
+      return ((int)result.Value) != 0;
+    }
+
     public async Task<bool> UpdateRepositoryAssignableAccounts(int repositoryId, IEnumerable<AccountStubTableRow> assignableAccounts) {
       var result = new SqlParameter("Result", SqlDbType.Int) {
         Direction = ParameterDirection.Output
@@ -237,11 +258,32 @@
       });
 
       foreach (var account in stubAccounts) {
-        table.Rows.Add(account.AccountId, account.Type, account.Login);
+        table.Rows.Add(account.Id, account.Type, account.Login);
       }
 
       return new SqlParameter(name, SqlDbType.Structured) {
         TypeName = "[dbo].[AccountStubTableType]",
+        Value = table
+      };
+    }
+
+    private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {
+      var table = new DataTable();
+
+      table.Columns.AddRange(new[] {
+        new DataColumn("Item", typeof(T)),
+      });
+
+      foreach (var value in values) {
+        table.Rows.Add(value);
+      }
+
+      if (!typeName.Contains("[")) {
+        typeName = $"[dbo].[{typeName}]";
+      }
+
+      return new SqlParameter(parameterName, SqlDbType.Structured) {
+        TypeName = typeName,
         Value = table
       };
     }

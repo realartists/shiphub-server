@@ -148,7 +148,6 @@
         var userInfo = userResponse.Result;
         var user = await Context.Users
           .Include(x => x.AccessTokens)
-          .Include(x => x.MetaData)
           .Include(x => x.Organizations)
           .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
         if (user == null) {
@@ -157,12 +156,6 @@
           });
         }
         Mapper.Map(userInfo, user);
-
-        // CLEAR ANY METADATA - accounts are refreshed at a different endpoint, and eTags won't match, even if token does.
-        if (user.MetaData != null) {
-          Context.GitHubMetaData.Remove(user.MetaData);
-          user.MetaData = null;
-        }
 
         var token = user.AccessTokens.SingleOrDefault(x => x.Token == tokenInfo.Token);
         if (token == null) {
@@ -175,7 +168,9 @@
           });
         }
         token.Scopes = string.Join(",", tokenInfo.Scopes);
-        token.UpdateRateLimits(userResponse);
+
+        // TODO: Update token rate limit.
+        //token.UpdateRateLimits(userResponse);
 
         // Always issues a new token. Maybe collect them later?
         var shipToken = Context.AuthenticationTokens.Add(new AuthenticationToken() {

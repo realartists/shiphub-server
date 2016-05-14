@@ -57,8 +57,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Messages\AccountRepositoriesMessage.cs" />
     <Compile Include="Messages\MinimalAccountInformation.cs" />
+    <Compile Include="Messages\MinimalRepositoryInformation.cs" />
     <Compile Include="Messages\RepositoryAssignableMessage.cs" />
+    <Compile Include="Messages\SyncAccountMessage.cs" />
+    <Compile Include="Messages\SyncAccountRepositoriesMessage.cs" />
+    <Compile Include="Messages\SyncRepositoryMessage.cs" />
     <Compile Include="ShipHubQueueClient.cs" />
     <Compile Include="ShipHubQueueNames.cs" />
     <Compile Include="Messages\UpdateMessage.cs" />
