@@ -2,7 +2,7 @@
   "$schema": "http://schemastore.org/schemas/json/webjobs-list.json",
   "WebJobs": [
     {
-      "filePath": "../GitHubUpdateProcessor/GitHubUpdateProcessor.csproj"
+      "filePath": "../RealArtists.ShipHub.QueueProcessor/RealArtists.ShipHub.QueueProcessor.csproj"
     }
   ]
 }
