@@ -17,7 +17,7 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_Accounts_RowVersion] ON [dbo].[Accounts]([RowVersion])
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RepositoryMetaDataId]

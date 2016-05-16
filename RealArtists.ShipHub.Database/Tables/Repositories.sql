@@ -4,7 +4,7 @@
   [Private]              BIT            NOT NULL,
   [Name]                 NVARCHAR(100)  NOT NULL,
   [FullName]             NVARCHAR(255)  NOT NULL,
-  --[Date]                 DATETIMEOFFSET NOT NULL,
+  [Date]                 DATETIMEOFFSET NOT NULL,
   [AssignableMetaDataId] BIGINT         NULL,
   [LabelMetaDataId]      BIGINT         NULL,
   [RowVersion]           BIGINT         NULL,
@@ -18,7 +18,7 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Repositories_FullName] ON [dbo].[Repositories]([FullName]);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Repositories_RowVersion] ON [dbo].[Repositories]([RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_Repositories_RowVersion] ON [dbo].[Repositories]([RowVersion]);
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [IX_Repositories_AssignableMetaDataId]

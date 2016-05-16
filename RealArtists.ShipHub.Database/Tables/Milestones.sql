@@ -19,7 +19,7 @@
 );
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Milestones_RowVersion] ON [dbo].[Milestones]([RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_Milestones_RowVersion] ON [dbo].[Milestones]([RowVersion]);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Milestones_RepositoryId] ON [dbo].[Milestones]([RepositoryId]);

@@ -1,12 +1,16 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System.Linq;
   using System.Threading.Tasks;
+  using Common;
+  using Common.DataModel;
+  using Common.DataModel.Types;
   using Microsoft.Azure.WebJobs;
   using QueueClient;
   using QueueClient.Messages;
-  using Common;
   using gh = Common.GitHub.Models;
-
+  using AutoMapper;
+  using AutoMapper.QueryableExtensions;
+  using System.Collections.Generic;
   public static class SyncHandler {
     /// <summary>
     /// Precondition: None.
@@ -19,7 +23,10 @@
 
       var userResponse = await ghc.User();
       var user = userResponse.Result;
-      await UpdateHandler.UpdateAccount(new UpdateMessage<gh.Account>(user, userResponse.Date, userResponse.CacheData));
+      //await UpdateHandler.UpdateAccount(new UpdateMessage<gh.Account>(user, userResponse.Date, userResponse.CacheData));
+      using (var context = new ShipHubContext()) {
+        await context.BulkUpdateAccounts(userResponse.Date, new[] { SharedMapper.Map<AccountTableType>(user) });
+      }
 
       // Now that the user is saved in the DB, safe to sync all repos.
       await syncAccountRepos.AddAsync(new SyncAccountRepositoriesMessage() {
@@ -46,10 +53,18 @@
       var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
 
       // Save eligible repos
-      var saveTasks = keepRepos
-        .Select(x => UpdateHandler.UpdateRepository(new UpdateMessage<gh.Repository>(x, repoResponse.Date)))
-        .ToArray();
-      await Task.WhenAll(saveTasks);
+      //var saveTasks = keepRepos
+      //  .Select(x => UpdateHandler.UpdateRepository(new UpdateMessage<gh.Repository>(x, repoResponse.Date)))
+      //  .ToArray();
+      //await Task.WhenAll(saveTasks);
+      using (var context = new ShipHubContext()) {
+        var owners = keepRepos
+          .Select(x => x.Owner)
+          .GroupBy(x => x.Login)
+          .Select(x => x.First());
+        await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
+        await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos));
+      }
 
       // TODO: Update user repoMetaData
 
@@ -82,5 +97,5 @@
     }
   }
 
-  
+
 }

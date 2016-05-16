@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
-  using System.Collections;
   using System.Collections.Generic;
   using System.Data;
   using System.Data.Common;
@@ -8,6 +7,7 @@
   using System.Data.SqlClient;
   using System.Linq;
   using System.Threading.Tasks;
+  using Types;
 
   public partial class ShipHubContext : DbContext {
     static ShipHubContext() {
@@ -248,25 +248,86 @@
       return ((int)result.Value) != 0;
     }
 
-    private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {
-      var table = new DataTable();
+    public async Task BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
+      var tableParam = CreateTableParameter(
+        "Accounts",
+        "[dbo].[AccountTableType]",
+        new[] {
+            Tuple.Create("Id", typeof(int)),
+            Tuple.Create("Type", typeof(string)),
+            Tuple.Create("AvatarURL", typeof(string)),
+            Tuple.Create("Login", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.Type,
+          x.AvatarUrl,
+          x.Login,
+        },
+        accounts);
 
-      table.Columns.AddRange(new[] {
-        new DataColumn("Item", typeof(T)),
-      });
+      await Database.ExecuteSqlCommandAsync(
+        "EXEC [dbo].[BulkUpdateAccounts] @Date = @Date, @Accounts = @Accounts;",
+        new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
+        tableParam);
+    }
 
-      foreach (var value in values) {
-        table.Rows.Add(value);
-      }
+    public async Task BulkUpdateRepositories(DateTimeOffset date, IEnumerable<RepositoryTableType> repositories) {
+      var tableParam = CreateTableParameter(
+        "Repositories",
+        "[dbo].[RepositoryTableType]",
+        new[] {
+            Tuple.Create("Id", typeof(int)),
+            Tuple.Create("AccountId", typeof(int)),
+            Tuple.Create("Private", typeof(bool)),
+            Tuple.Create("Name", typeof(string)),
+            Tuple.Create("FullName", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.AccountId,
+          x.Private,
+          x.Name,
+          x.FullName,
+        },
+        repositories);
 
+      await Database.ExecuteSqlCommandAsync(
+        "EXEC [dbo].[BulkUpdateRepositories] @Date = @Date, @Repositories = @Repositories;",
+        new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
+        tableParam);
+    }
+
+    private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {
       if (!typeName.Contains("[")) {
         typeName = $"[dbo].[{typeName}]";
+      }
+
+      DataTable table = null;
+
+      if (rows != null) {
+        table = new DataTable();
+
+        table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
+
+        foreach (var row in rows) {
+          table.Rows.Add(rowValues(row));
+        }
       }
 
       return new SqlParameter(parameterName, SqlDbType.Structured) {
         TypeName = typeName,
         Value = table
       };
+    }
+
+    private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {
+      return CreateTableParameter(
+        parameterName,
+        typeName,
+        new[] { Tuple.Create("Item", typeof(T)) },
+        x => new object[] { x },
+        values);
     }
   }
 }

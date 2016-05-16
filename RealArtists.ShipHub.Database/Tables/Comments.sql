@@ -30,7 +30,7 @@ CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_MetaDataId]
   WHERE ([MetaDataId] IS NOT NULL);
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_RowVersion] ON [dbo].[Comments]([RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_Comments_RowVersion] ON [dbo].[Comments]([RowVersion]);
 GO
 
 CREATE TRIGGER [dbo].[TRG_Comments_Version]
