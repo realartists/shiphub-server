@@ -159,15 +159,15 @@
       }
     }
 
-    public Task<GitHubResponse<Repository>> Repository(string repoFullName, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}", opts?.CacheOptions);
-      return MakeRequest<Repository>(request, opts?.Credentials);
-    }
+    //public Task<GitHubResponse<Repository>> Repository(string repoFullName, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}", opts?.CacheOptions);
+    //  return MakeRequest<Repository>(request, opts?.Credentials);
+    //}
 
-    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
-      return MakeRequest<Issue>(request, opts?.Credentials);
-    }
+    //public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
+    //  return MakeRequest<Issue>(request, opts?.Credentials);
+    //}
 
     public async Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues", opts?.CacheOptions);
@@ -226,9 +226,40 @@
       }
     }
 
-    public Task<GitHubResponse<Account>> Organization(string login, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"orgs/{login}", opts?.CacheOptions);
-      return MakeRequest<Account>(request, opts?.Credentials);
+    //public Task<GitHubResponse<Account>> Organization(string login, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"orgs/{login}", opts?.CacheOptions);
+    //  return MakeRequest<Account>(request, opts?.Credentials);
+    //}
+
+    public async Task<GitHubResponse<IEnumerable<Account>>> Organizations(IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user/orgs", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Account>>(request, opts?.Credentials);
+
+      if (result.IsError) {
+        return result;
+      }
+      
+      if(result.Pagination != null) {
+        result =  await EnumerateParallel(result, opts?.Credentials);
+      }
+
+      // Seriously GitHub?
+      foreach (var org in result.Result) {
+        org.Type = GitHubAccountType.Organization;
+      }
+
+      return result;
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, IGitHubRequestOptions opts = null) {
+      // defaults: filter=all, role=all
+      var request = new GitHubRequest(HttpMethod.Get, $"/orgs/{orgLogin}/members", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Account>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
     }
 
     public async Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, IGitHubRequestOptions opts = null) {

@@ -1,5 +1,5 @@
 ﻿namespace RealArtists.ShipHub.QueueClient.Messages {
-  public class SyncAccountMessage {
+  public class AccessTokenMessage {
     public string AccessToken { get; set; }
   }
 }

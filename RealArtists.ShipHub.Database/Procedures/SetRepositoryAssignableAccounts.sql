@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE [dbo].[UpdateRepositoryAssignableAccounts]
+﻿CREATE PROCEDURE [dbo].[SetRepositoryAssignableAccounts]
   @RepositoryId INT,
   @AssignableAccountIds IntListTableType READONLY
 AS

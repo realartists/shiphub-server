@@ -94,13 +94,15 @@
     <Build Include="Tables\GitHubMetaData.sql" />
     <Build Include="Tables\RepositoryAccounts.sql" />
     <Build Include="Tables\Hooks.sql" />
-    <Build Include="Procedures\UpdateRepositoryAssignableAccounts.sql" />
-    <Build Include="Procedures\UpdateAccountLinkedRepositories.sql" />
+    <Build Include="Procedures\SetRepositoryAssignableAccounts.sql" />
+    <Build Include="Procedures\SetAccountLinkedRepositories.sql" />
     <Build Include="User Defined Types\IntListTableType.sql" />
     <Build Include="User Defined Types\AccountTableType.sql" />
     <Build Include="User Defined Types\RepositoryTableType.sql" />
     <Build Include="Procedures\BulkUpdateAccounts.sql" />
     <Build Include="Procedures\BulkUpdateRepositories.sql" />
+    <Build Include="Procedures\SetUserOrganizations.sql" />
+    <Build Include="Procedures\SetOrganizationUsers.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

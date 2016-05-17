@@ -1,8 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
-  using System.IO;
-  using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Microsoft.Azure.WebJobs;
   using QueueClient;
   using QueueClient.Messages;
@@ -45,13 +44,7 @@
     public static async Task UpdateAccount(
       [ServiceBusTrigger(ShipHubQueueNames.UpdateAccount)] UpdateMessage<gh.Account> message) {
       using (var context = new ShipHubContext()) {
-        var logic = new DataLogic(context);
-
-        await logic.UpdateOrStubAccount(message.Value, message.ResponseDate);
-
-        if (context.ChangeTracker.HasChanges()) {
-          await context.SaveChangesAsync();
-        }
+        await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value) });
       }
     }
 
@@ -62,50 +55,8 @@
     public static async Task UpdateRepository(
       [ServiceBusTrigger(ShipHubQueueNames.UpdateRepository)] UpdateMessage<gh.Repository> message) {
       using (var context = new ShipHubContext()) {
-        var logic = new DataLogic(context);
-
-        await logic.UpdateOrStubRepository(message.Value, message.ResponseDate);
-
-        if (context.ChangeTracker.HasChanges()) {
-          await context.SaveChangesAsync();
-        }
-      }
-    }
-
-    /// <summary>
-    /// Precondition: Account and repositories exist.
-    /// Postcondition: Account is linked to the specified repositories.
-    /// </summary>
-    public static async Task UpdateAccountRepositories(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateAccountRepositories)] UpdateMessage<AccountRepositoriesMessage> message,
-      TextWriter logger) {
-      using (var context = new ShipHubContext()) {
-        var update = message.Value;
-
-        // TODO: Check and abort or Update MetaData
-
-        // Bulk update linked accounts in a single shot.
-        await context.UpdateAccountLinkedRepositories(
-          update.AccountId,
-          update.LinkedRepositoryIds);
-      }
-    }
-
-    public static async Task UpdateRepositoryAssignable(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepositoryAssignable)] UpdateMessage<RepositoryAssignableMessage> message) {
-      var update = message.Value;
-      using (var context = new ShipHubContext()) {
-        var logic = new DataLogic(context);
-
-        var repo = await logic.UpdateOrStubRepository(message.Value.Repository, message.ResponseDate);
-
-        // Ensure repo and owner are saved if new.
-        if (context.ChangeTracker.HasChanges()) {
-          await context.SaveChangesAsync();
-        }
-
-        // Bulk update assignable users in a single shot.
-        await context.UpdateRepositoryAssignableAccounts(repo.Id, update.AssignableAccounts.Select(x => x.Id));
+        await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value.Owner) });
+        await context.BulkUpdateRepositories(message.ResponseDate, new[] { SharedMapper.Map<RepositoryTableType>(message.Value) });
       }
     }
   }

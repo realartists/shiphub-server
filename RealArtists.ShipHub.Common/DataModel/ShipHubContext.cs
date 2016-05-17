@@ -216,13 +216,13 @@
       return (long)rangeFirstValue.Value;
     }
 
-    public async Task<bool> UpdateAccountLinkedRepositories(int accountId, IEnumerable<int> repositoryIds) {
+    public async Task<bool> SetAccountLinkedRepositories(int accountId, IEnumerable<int> repositoryIds) {
       var result = new SqlParameter("Result", SqlDbType.Int) {
         Direction = ParameterDirection.Output
       };
 
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[UpdateAccountLinkedRepositories]
+        @"EXEC @Result = [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
           @RepositoryIds = @RepositoryIds;",
         result,
@@ -232,18 +232,50 @@
       return ((int)result.Value) != 0;
     }
 
-    public async Task<bool> UpdateRepositoryAssignableAccounts(int repositoryId, IEnumerable<int> assignableAccountIds) {
+    public async Task<bool> SetRepositoryAssignableAccounts(int repositoryId, IEnumerable<int> assignableAccountIds) {
       var result = new SqlParameter("Result", SqlDbType.Int) {
         Direction = ParameterDirection.Output
       };
 
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[UpdateRepositoryAssignableAccounts]
+        @"EXEC @Result = [dbo].[SetRepositoryAssignableAccounts]
           @RepositoryId = @RepositoryId,
           @AssignableAccountIds = @AssignableAccountIds;",
         result,
         new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
         CreateListTable("AssignableAccountIds", "IntListTableType", assignableAccountIds));
+
+      return ((int)result.Value) != 0;
+    }
+
+    public async Task<bool> SetUserOrganizations(int userId, IEnumerable<int> organizationIds) {
+      var result = new SqlParameter("Result", SqlDbType.Int) {
+        Direction = ParameterDirection.Output
+      };
+
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetUserOrganizations]
+          @UserId = @UserId,
+          @OrganizationIds = @OrganizationIds;",
+        result,
+        new SqlParameter("UserId", SqlDbType.Int) { Value = userId },
+        CreateListTable("OrganizationIds", "IntListTableType", organizationIds));
+
+      return ((int)result.Value) != 0;
+    }
+
+    public async Task<bool> SetOrganizationUsers(int organizationId, IEnumerable<int> userIds) {
+      var result = new SqlParameter("Result", SqlDbType.Int) {
+        Direction = ParameterDirection.Output
+      };
+
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetOrganizationUsers]
+          @OrganizationId = @OrganizationId,
+          @UserIds = @UserIds;",
+        result,
+        new SqlParameter("OrganizationId", SqlDbType.Int) { Value = organizationId },
+        CreateListTable("UserIds", "IntListTableType", userIds));
 
       return ((int)result.Value) != 0;
     }

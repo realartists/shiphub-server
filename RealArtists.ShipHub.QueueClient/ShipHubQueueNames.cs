@@ -24,15 +24,19 @@
     const string Account = "account";
     const string Comment = "comment";
     const string Issue = "issue";
-    const string IssueEvent = "issue-event";
+    const string IssueEvent = "issueEvent";
     const string Milestone = "milestone";
+    const string Organization = "organization";
+    const string RateLimit = "rateLimit";
     const string Repository = "repository";
     const string Webhook = "webhook";
-    const string RateLimit = "rate-limit";
 
     // Queues [Action + Resource]
     public const string SyncAccount = SyncPrefix + Account;
     public const string SyncAccountRepositories = SyncAccount + "-repositories";
+    public const string SyncAccountOrganizations = SyncAccount + "-organizations";
+
+    public const string SyncOrganizationMembers = SyncPrefix + Organization + "-members";
 
     public const string SyncRepository = SyncPrefix + Repository;
     public const string SyncRepositoryAssignees = SyncRepository + "-assignees";

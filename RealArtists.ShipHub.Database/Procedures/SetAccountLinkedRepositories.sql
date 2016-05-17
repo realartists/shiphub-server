@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE [dbo].[UpdateAccountLinkedRepositories]
+﻿CREATE PROCEDURE [dbo].[SetAccountLinkedRepositories]
   @AccountId INT,
   @RepositoryIds IntListTableType READONLY
 AS
