@@ -144,10 +144,10 @@
       return MakeRequest<Account>(request, opts?.Credentials);
     }
 
-    public Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
-      return MakeRequest<Account>(request, opts?.Credentials);
-    }
+    //public Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
+    //  return MakeRequest<Account>(request, opts?.Credentials);
+    //}
 
     public async Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user/repos", opts?.CacheOptions);
@@ -209,10 +209,10 @@
       }
     }
 
-    public Task<GitHubResponse<Comment>> Milestone(string repoFullName, int milestoneNumber, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones/{milestoneNumber}", opts?.CacheOptions);
-      return MakeRequest<Comment>(request, opts?.Credentials);
-    }
+    //public Task<GitHubResponse<Comment>> Milestone(string repoFullName, int milestoneNumber, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones/{milestoneNumber}", opts?.CacheOptions);
+    //  return MakeRequest<Comment>(request, opts?.Credentials);
+    //}
 
     public async Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones", opts?.CacheOptions);

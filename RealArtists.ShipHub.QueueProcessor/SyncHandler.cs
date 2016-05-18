@@ -9,6 +9,13 @@
   using QueueClient;
   using QueueClient.Messages;
 
+  /// <summary>
+  /// TODO: ENABLE DUPLICATE DETECTION AND REJECTION ON SYNC QUEUES.
+  /// ONLY ONE SYNC OPERATION PER RESOURCE SHOULD BE OUTSTANDING AT A TIME
+  /// 
+  /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
+  /// </summary>
+
   public static class SyncHandler {
     /// <summary>
     /// Precondition: None.
@@ -123,15 +130,73 @@
     /// Precondition: Repos saved in DB
     /// Postcondition: None.
     /// </summary>
-    //public static async Task SyncRepository(
-    //  [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
-    //  [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
-    //  [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
-    //  [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
-    //  [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
-    //  [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<RepositoryMessage> syncRepoIssues) {
+    public static async Task SyncRepository(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones) {
+      // This is just a fanout point.
+      // Plan to add conditional checks here to reduce polling frequency.
+      await Task.WhenAll(
+        syncRepoAssignees.AddAsync(message),
+        syncRepoMilestones.AddAsync(message)
+      );
+    }
 
-    //  await Task.CompletedTask;
-    //}
+    /// <summary>
+    /// Precondition: Repository exists
+    /// Postcondition: Repository assignees exist and are linked.
+    /// </summary>
+    public static async Task SyncRepositoryAssignees([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryAssignees)] RepositoryMessage message) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var assigneeResponse = await ghc.Assignable(message.Repository.FullName);
+      var assignees = assigneeResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        await context.BulkUpdateAccounts(assigneeResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(assignees));
+        await context.SetRepositoryAssignableAccounts(message.Repository.Id, assignees.Select(x => x.Id));
+      }
+    }
+
+    /// <summary>
+    /// Precondition: Repository exists
+    /// Postcondition: Milestones exist
+    /// </summary>
+    public static async Task SyncRepositoryMilestones(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryMilestones)] RepositoryMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<RepositoryMessage> syncRepoIssues) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var milestoneResponse = await ghc.Milestones(message.Repository.FullName);
+      var milestones = milestoneResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+      }
+
+      await syncRepoIssues.AddAsync(message);
+    }
+
+    /// <summary>
+    /// Precondition: Repository exists
+    /// Postcondition: Labels exist
+    /// </summary>
+    public static async Task SyncRepositoryLabels([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryLabels)] RepositoryMessage message) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var labelResponse = await ghc.Labels(message.Repository.FullName);
+      var labels = labelResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        await context.SetRepositoryLabels(message.Repository.Id, SharedMapper.Map<IEnumerable<LabelTableType>>(labels));
+      }
+    }
+
+    /// <summary>
+    /// Precondition: Repository and Milestones exist
+    /// Postcondition: Issues exist
+    /// </summary>
+    public static async Task SyncRepositoryIssues() {
+    }
   }
 }

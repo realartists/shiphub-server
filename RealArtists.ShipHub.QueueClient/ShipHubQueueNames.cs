@@ -41,10 +41,12 @@
     public const string SyncRepository = SyncPrefix + Repository;
     public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
     public const string SyncRepositoryIssues = SyncRepository + "-issues";
+    public const string SyncRepositoryLabels = SyncRepository + "-labels";
+    public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
 
-    public const string UpdateAccount = UpdatePrefix + Account;
-    public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
-    public const string UpdateRepository = UpdatePrefix + Repository;
-    public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
+    //public const string UpdateAccount = UpdatePrefix + Account;
+    //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
+    //public const string UpdateRepository = UpdatePrefix + Repository;
+    //public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
   }
 }

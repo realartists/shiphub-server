@@ -37,27 +37,27 @@
      * Notifications if changed
      */
 
-    /// <summary>
-    /// Precondition: None
-    /// Postcondition: Account saved to DB.
-    /// </summary>
-    public static async Task UpdateAccount(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateAccount)] UpdateMessage<gh.Account> message) {
-      using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value) });
-      }
-    }
+    ///// <summary>
+    ///// Precondition: None
+    ///// Postcondition: Account saved to DB.
+    ///// </summary>
+    //public static async Task UpdateAccount(
+    //  [ServiceBusTrigger(ShipHubQueueNames.UpdateAccount)] UpdateMessage<gh.Account> message) {
+    //  using (var context = new ShipHubContext()) {
+    //    await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value) });
+    //  }
+    //}
 
-    /// <summary>
-    /// Precondition: None
-    /// Postcondition: Repository and owner saved to DB
-    /// </summary>
-    public static async Task UpdateRepository(
-      [ServiceBusTrigger(ShipHubQueueNames.UpdateRepository)] UpdateMessage<gh.Repository> message) {
-      using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value.Owner) });
-        await context.BulkUpdateRepositories(message.ResponseDate, new[] { SharedMapper.Map<RepositoryTableType>(message.Value) });
-      }
-    }
+    ///// <summary>
+    ///// Precondition: None
+    ///// Postcondition: Repository and owner saved to DB
+    ///// </summary>
+    //public static async Task UpdateRepository(
+    //  [ServiceBusTrigger(ShipHubQueueNames.UpdateRepository)] UpdateMessage<gh.Repository> message) {
+    //  using (var context = new ShipHubContext()) {
+    //    await context.BulkUpdateAccounts(message.ResponseDate, new[] { SharedMapper.Map<AccountTableType>(message.Value.Owner) });
+    //    await context.BulkUpdateRepositories(message.ResponseDate, new[] { SharedMapper.Map<RepositoryTableType>(message.Value) });
+    //  }
+    //}
   }
 }

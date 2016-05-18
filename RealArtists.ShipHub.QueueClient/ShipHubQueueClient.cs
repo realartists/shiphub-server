@@ -56,21 +56,21 @@
       await Task.WhenAll(creations);
     }
 
-    public Task UpdateAccount(Account account, DateTimeOffset responseDate) {
-      var queue = QueueClientForName(ShipHubQueueNames.UpdateAccount);
-      return queue.SendAsync(WebJobInterop.CreateMessage(
-        new UpdateMessage<Account>(account, responseDate),
-        partitionKey: $"{account.Id}")
-      );
-    }
+    //public Task UpdateAccount(Account account, DateTimeOffset responseDate) {
+    //  var queue = QueueClientForName(ShipHubQueueNames.UpdateAccount);
+    //  return queue.SendAsync(WebJobInterop.CreateMessage(
+    //    new UpdateMessage<Account>(account, responseDate),
+    //    partitionKey: $"{account.Id}")
+    //  );
+    //}
 
-    public Task UpdateRepository(Repository repo, DateTimeOffset responseDate, GitHubCacheData cacheData = null) {
-      var queue = QueueClientForName(ShipHubQueueNames.UpdateRepository);
-      return queue.SendAsync(WebJobInterop.CreateMessage(
-        new UpdateMessage<Repository>(repo, responseDate, cacheData),
-        partitionKey: $"{repo.Id}")
-      );
-    }
+    //public Task UpdateRepository(Repository repo, DateTimeOffset responseDate, GitHubCacheData cacheData = null) {
+    //  var queue = QueueClientForName(ShipHubQueueNames.UpdateRepository);
+    //  return queue.SendAsync(WebJobInterop.CreateMessage(
+    //    new UpdateMessage<Repository>(repo, responseDate, cacheData),
+    //    partitionKey: $"{repo.Id}")
+    //  );
+    //}
 
     public Task SyncAccount(string accessToken) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);

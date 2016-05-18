@@ -103,6 +103,12 @@
     <Build Include="Procedures\BulkUpdateRepositories.sql" />
     <Build Include="Procedures\SetUserOrganizations.sql" />
     <Build Include="Procedures\SetOrganizationUsers.sql" />
+    <Build Include="User Defined Types\MilestoneTableType.sql" />
+    <Build Include="User Defined Types\LabelTableType.sql" />
+    <Build Include="Procedures\BulkCreateLabels.sql" />
+    <Build Include="Procedures\GarbageCollectLabels.sql" />
+    <Build Include="Procedures\BulkUpdateMilestones.sql" />
+    <Build Include="Procedures\SetRepositoryLabels.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

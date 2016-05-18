@@ -11,8 +11,6 @@
 
     public int RepositoryId { get; set; }
 
-    public int UserId { get; set; }
-
     public int Number { get; set; }
 
     [Required]
@@ -38,8 +36,6 @@
     public long? MetaDataId { get; set; }
 
     public long? RowVersion { get; set; }
-
-    public virtual User User { get; set; }
 
     public virtual GitHubMetaData MetaData { get; set; }
 

@@ -6,5 +6,5 @@
 )
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Labels_Name_Color] ON [dbo].[Labels]([Name], [Color]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Labels_Color_Name] ON [dbo].[Labels]([Color], [Name]);
 GO

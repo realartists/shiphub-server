@@ -16,7 +16,13 @@ BEGIN
   WHEN NOT MATCHED BY TARGET THEN
     INSERT ([Id], [Type], [AvatarUrl], [Login], [Date])
     VALUES ([Id], [Type], [AvatarUrl], [Login], @Date)
-  WHEN MATCHED AND [Target].[Date] < @Date THEN
+  WHEN MATCHED 
+    AND [Target].[Date] < @Date
+    AND EXISTS (
+      SELECT [Target].[Type], [Target].[AvatarUrl], [Target].[Login]
+      EXCEPT
+      SELECT [Source].[Type], [Source].[AvatarUrl], [Source].[Login]
+    ) THEN
     UPDATE SET
       [Type] = [Source].[Type],
       [AvatarUrl] = [Source].[AvatarUrl],
