@@ -228,6 +228,7 @@
 
         var milestones = issues
           .Select(x => x.Milestone)
+          .Where(x => x != null)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
         await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));

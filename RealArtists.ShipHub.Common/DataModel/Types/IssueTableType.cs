@@ -14,7 +14,7 @@
     public DateTimeOffset? ClosedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public int ClosedById { get; set; }
+    public int? ClosedById { get; set; }
     public string Reactions { get; set; }
   }
 }

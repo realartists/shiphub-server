@@ -270,33 +270,33 @@
         "[dbo].[IssueTableType]",
         new[] {
           Tuple.Create("Id", typeof(int)),
+          Tuple.Create("UserId", typeof(int)),
           Tuple.Create("Number", typeof(int)),
           Tuple.Create("State", typeof(string)),
           Tuple.Create("Title", typeof(string)),
           Tuple.Create("Body", typeof(string)),
           Tuple.Create("AssigneeId", typeof(int)),
-          Tuple.Create("UserId", typeof(int)),
           Tuple.Create("MilestoneId", typeof(int)),
           Tuple.Create("Locked", typeof(bool)),
-          Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
           Tuple.Create("ClosedById", typeof(int)),
           Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
           x.Id,
+          x.UserId,
           x.Number,
           x.State,
           x.Title,
           x.Body,
           x.AssigneeId,
-          x.UserId,
           x.MilestoneId,
           x.Locked,
-          x.ClosedAt,
           x.CreatedAt,
           x.UpdatedAt,
+          x.ClosedAt,
           x.ClosedById,
           x.Reactions,
         },
@@ -344,7 +344,7 @@
     public async Task BulkUpdateIssueEvents(int repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
       var tableParam = CreateTableParameter(
         "IssueEvents",
-        "[dbo].[CommentTableType]",
+        "[dbo].[IssueEventTableType]",
         new[] {
           Tuple.Create("Id", typeof(int)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
@@ -369,7 +369,7 @@
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[SetRepositoryLabels] @RepositoryId = @RepositoryId, @Labels = @Labels;",
         new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
-        Labels);
+        tableParam);
     }
 
     public async Task BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
