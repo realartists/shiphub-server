@@ -3,7 +3,7 @@
   [Number]         INT            NOT NULL,
   [State]          NVARCHAR(10)   NOT NULL,
   [Title]          NVARCHAR(255)  NOT NULL,
-  [Description]    NVARCHAR(255)  NOT NULL,
+  [Description]    NVARCHAR(255)  NULL,
   [CreatedAt]      DATETIMEOFFSET NOT NULL,
   [UpdatedAt]      DATETIMEOFFSET NOT NULL,
   [ClosedAt]       DATETIMEOFFSET NULL,

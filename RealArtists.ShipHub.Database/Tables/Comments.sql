@@ -1,18 +1,17 @@
 ﻿CREATE TABLE [dbo].[Comments] (
-  [Id]             INT            NOT NULL,
-  [IssueId]        INT            NOT NULL,
-  [RepositoryId]   INT            NOT NULL,
-  [UserId]         INT            NOT NULL,
-  [Body]           NVARCHAR(MAX)  NOT NULL,
-  [CreatedAt]      DATETIMEOFFSET NOT NULL,
-  [UpdatedAt]      DATETIMEOFFSET NOT NULL,
-  [MetaDataId]     BIGINT         NULL,
-  [RowVersion]     BIGINT         NULL,
+  [Id]           INT            NOT NULL,
+  [IssueId]      INT            NOT NULL,
+  [RepositoryId] INT            NOT NULL,
+  [UserId]       INT            NOT NULL,
+  [Body]         NVARCHAR(MAX)  NOT NULL,
+  [CreatedAt]    DATETIMEOFFSET NOT NULL,
+  [UpdatedAt]    DATETIMEOFFSET NOT NULL,
+  [Reactions]    NVARCHAR(300)  NULL,
+  [RowVersion]   BIGINT         NULL,
   CONSTRAINT [PK_Comments] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Comments_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues]([Id]),
   CONSTRAINT [FK_Comments_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),
   CONSTRAINT [FK_Comments_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts]([Id]),
-  CONSTRAINT [FK_Comments_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
 );
 GO
 
@@ -23,11 +22,6 @@ CREATE NONCLUSTERED INDEX [IX_Comments_RepositoryId] ON [dbo].[Comments]([Reposi
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Comments_UserId] ON [dbo].[Comments]([UserId]);
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Comments_MetaDataId]
-  ON [dbo].[Comments]([MetaDataId])
-  WHERE ([MetaDataId] IS NOT NULL);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Comments_RowVersion] ON [dbo].[Comments]([RowVersion]);
@@ -46,9 +40,5 @@ BEGIN
   UPDATE Comments SET
     [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
   WHERE Id IN (SELECT Id FROM inserted)
-
-  UPDATE Issues SET
-    [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-  WHERE Id IN (SELECT IssueId FROM inserted)
 END
 GO

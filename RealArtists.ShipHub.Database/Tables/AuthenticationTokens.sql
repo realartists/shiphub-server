@@ -1,5 +1,5 @@
 ﻿CREATE TABLE [dbo].[AuthenticationTokens] (
-  [Token]          UNIQUEIDENTIFIER ROWGUIDCOL NOT NULL,
+  [Token]          UNIQUEIDENTIFIER NOT NULL ROWGUIDCOL,
   [AccountId]      INT              NOT NULL,
   [ClientName]     NVARCHAR (150)   NOT NULL,
   [CreationDate]   DATETIMEOFFSET   NOT NULL,

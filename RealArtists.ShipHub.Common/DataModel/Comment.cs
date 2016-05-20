@@ -20,7 +20,7 @@
 
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public long? MetaDataId { get; set; }
+    public string Reactions { get; set; }
 
     public long? RowVersion { get; set; }
 
@@ -29,7 +29,5 @@
     public virtual Issue Issue { get; set; }
 
     public virtual Repository Repository { get; set; }
-
-    public virtual GitHubMetaData MetaData { get; set; }
   }
 }

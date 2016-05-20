@@ -82,7 +82,6 @@
     <Build Include="Security\RoleMemberships.sql" />
     <Build Include="Procedures\BumpGlobalVersion.sql" />
     <Build Include="Procedures\UpdateRateLimit.sql" />
-    <Build Include="Tables\PollQueueItems.sql" />
     <Build Include="Tables\Issues.sql" />
     <Build Include="Tables\Comments.sql" />
     <Build Include="Tables\Events.sql" />

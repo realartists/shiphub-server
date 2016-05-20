@@ -23,7 +23,6 @@
     [StringLength(255)]
     public string Title { get; set; }
 
-    [Required]
     public string Body { get; set; }
 
     public int? AssigneeId { get; set; }
@@ -39,6 +38,8 @@
     public DateTimeOffset? ClosedAt { get; set; }
 
     public int? ClosedById { get; set; }
+
+    public string Reactions { get; set; }
 
     public long? MetaDataId { get; set; }
 

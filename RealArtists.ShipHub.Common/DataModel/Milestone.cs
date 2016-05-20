@@ -21,7 +21,6 @@
     [StringLength(255)]
     public string Title { get; set; }
 
-    [Required]
     [StringLength(255)]
     public string Description { get; set; }
 
@@ -33,11 +32,7 @@
 
     public DateTimeOffset? DueOn { get; set; }
 
-    public long? MetaDataId { get; set; }
-
     public long? RowVersion { get; set; }
-
-    public virtual GitHubMetaData MetaData { get; set; }
 
     public virtual Repository Repository { get; set; }
 

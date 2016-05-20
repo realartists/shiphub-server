@@ -1,20 +1,21 @@
 ﻿CREATE TABLE [dbo].[Issues] (
-  [Id]           INT NOT NULL,
-  [UserId]       INT NOT NULL,
-  [RepositoryId] INT NOT NULL,
-  [Number]       INT NOT NULL,
-  [State]        NVARCHAR(6) NOT NULL,
-  [Title]        NVARCHAR(255) NOT NULL,
-  [Body]         NVARCHAR(MAX) NOT NULL,
-  [AssigneeId]   INT NULL,
-  [MilestoneId]  INT NULL,
-  [Locked]       BIT NOT NULL,
+  [Id]           INT            NOT NULL,
+  [UserId]       INT            NOT NULL,
+  [RepositoryId] INT            NOT NULL,
+  [Number]       INT            NOT NULL,
+  [State]        NVARCHAR(6)    NOT NULL,
+  [Title]        NVARCHAR(255)  NOT NULL,
+  [Body]         NVARCHAR(MAX)  NULL,
+  [AssigneeId]   INT            NULL,
+  [MilestoneId]  INT            NULL,
+  [Locked]       BIT            NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
   [UpdatedAt]    DATETIMEOFFSET NOT NULL,
   [ClosedAt]     DATETIMEOFFSET NULL,
-  [ClosedById]   INT NULL,
-  [MetaDataId]   BIGINT NULL,
-  [RowVersion]   BIGINT NULL,
+  [ClosedById]   INT            NULL,
+  [Reactions]    NVARCHAR(300)  NULL,
+  [MetaDataId]   BIGINT         NULL,
+  [RowVersion]   BIGINT         NULL,
   CONSTRAINT [PK_Issues] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
@@ -28,7 +29,7 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Issues_UserId] ON [dbo].[Issues]([UserId]);
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Issues_RepositoryId] ON [dbo].[Issues]([RepositoryId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_RepositoryId] ON [dbo].[Issues]([RepositoryId], [Number]);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId]);

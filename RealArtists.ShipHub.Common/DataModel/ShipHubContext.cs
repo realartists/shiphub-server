@@ -105,17 +105,7 @@
         .HasForeignKey(e => e.AccountId);
 
       mb.Entity<GitHubMetaData>()
-        .HasMany(e => e.Comments)
-        .WithOptional(e => e.MetaData)
-        .HasForeignKey(e => e.MetaDataId);
-
-      mb.Entity<GitHubMetaData>()
         .HasMany(e => e.Issues)
-        .WithOptional(e => e.MetaData)
-        .HasForeignKey(e => e.MetaDataId);
-
-      mb.Entity<GitHubMetaData>()
-        .HasMany(e => e.Milestones)
         .WithOptional(e => e.MetaData)
         .HasForeignKey(e => e.MetaDataId);
 
@@ -399,6 +389,23 @@
         TypeName = typeName,
         Value = table
       };
+    }
+
+    private static SqlParameter CreateLabelTable(string parameterName, IEnumerable<LabelTableType> labels) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[LabelTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Color", typeof(string)),
+          Tuple.Create("Name", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.Color,
+          x.Name,
+        },
+        labels);
     }
 
     private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {

@@ -7,11 +7,13 @@
     public int Confused { get; set; }
     public int Heart { get; set; }
     public int Hooray { get; set; }
+    public int PlusOne { get; set; }
+    public int MinusOne { get; set; }
 
     [JsonProperty("+1")]
-    public int PlusOne { get; set; }
+    private int PlusOneSurrogate { set { PlusOne = value; } }
 
     [JsonProperty("-1")]
-    public int MinusOne { get; set; }
+    private int MinusOneSurrogate { set { MinusOne = value; } }
   }
 }
