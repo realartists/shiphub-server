@@ -14,6 +14,8 @@
   /// ONLY ONE SYNC OPERATION PER RESOURCE SHOULD BE OUTSTANDING AT A TIME
   /// 
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
+  /// 
+  /// TODO: Don'e submit empty updates to DB.
   /// </summary>
 
   public static class SyncHandler {
@@ -133,12 +135,14 @@
     public static async Task SyncRepository(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels) {
       // This is just a fanout point.
       // Plan to add conditional checks here to reduce polling frequency.
       await Task.WhenAll(
         syncRepoAssignees.AddAsync(message),
-        syncRepoMilestones.AddAsync(message)
+        syncRepoMilestones.AddAsync(message),
+        syncRepoLabels.AddAsync(message)
       );
     }
 
@@ -188,7 +192,14 @@
       var labels = labelResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.SetRepositoryLabels(message.Repository.Id, SharedMapper.Map<IEnumerable<LabelTableType>>(labels));
+        await context.SetRepositoryLabels(
+          message.Repository.Id,
+          labels.Select(x => new LabelTableType() {
+            Id = message.Repository.Id,
+            Color = x.Color,
+            Name = x.Name
+          })
+        );
       }
     }
 
@@ -196,7 +207,61 @@
     /// Precondition: Repository and Milestones exist
     /// Postcondition: Issues exist
     /// </summary>
-    public static async Task SyncRepositoryIssues() {
+    public static async Task SyncRepositoryIssues([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] RepositoryMessage message) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var issueResponse = await ghc.Issues(message.Repository.FullName);
+      var issues = issueResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        var accounts = issues
+          .SelectMany(x => new[] { x.User, x.Assignee, x.ClosedBy })
+          .Where(x => x != null)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+
+        var milestones = issues
+          .Select(x => x.Milestone)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+
+        await context.BulkUpdateIssues(
+          message.Repository.Id,
+          SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
+          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name })));
+      }
+    }
+
+    public static async Task SyncRepositoryComments([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] RepositoryMessage message) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var commentsResponse = await ghc.Comments(message.Repository.FullName);
+      var comments = commentsResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        var users = comments
+          .Select(x => x.User)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+
+        var issueComments = comments.Where(x => x.IssueNumber != null);
+        await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments));
+      }
+    }
+
+    public static async Task SyncRepositoryEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryEvents)] RepositoryMessage message) {
+      await Task.CompletedTask;
+    }
+
+    public static async Task SyncIssueComments() {
+      await Task.CompletedTask;
+    }
+
+    public static async Task SyncIssueEvents() {
+      await Task.CompletedTask;
     }
   }
 }

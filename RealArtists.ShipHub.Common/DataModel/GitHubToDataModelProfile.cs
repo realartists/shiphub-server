@@ -23,6 +23,8 @@
       CreateMap<g.Account, AccountTableType>(MemberList.Destination)
         .ForMember(x => x.Type, o => o.ResolveUsing(x => x.Type == g.GitHubAccountType.User ? Account.UserType : Account.OrganizationType));
 
+      CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
+
       CreateMap<g.Repository, RepositoryTableType>(MemberList.Destination)
         .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
     }

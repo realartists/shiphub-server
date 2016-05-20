@@ -264,19 +264,85 @@
       return ((int)result.Value) != 0;
     }
 
-    public async Task SetRepositoryLabels(int repositoryId, IEnumerable<LabelTableType> labels) {
-      var tableParam = CreateTableParameter(
-        "Labels",
-        "[dbo].[LabelTableType]",
+    public async Task BulkUpdateIssues(int repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
+      var issueParam = CreateTableParameter(
+        "Issues",
+        "[dbo].[IssueTableType]",
         new[] {
-            Tuple.Create("Color", typeof(string)),
-            Tuple.Create("Name", typeof(string)),
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Number", typeof(int)),
+          Tuple.Create("State", typeof(string)),
+          Tuple.Create("Title", typeof(string)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("AssigneeId", typeof(int)),
+          Tuple.Create("UserId", typeof(int)),
+          Tuple.Create("MilestoneId", typeof(int)),
+          Tuple.Create("Locked", typeof(bool)),
+          Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("ClosedById", typeof(int)),
+          Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
-          x.Color,
-          x.Name,
+          x.Id,
+          x.Number,
+          x.State,
+          x.Title,
+          x.Body,
+          x.AssigneeId,
+          x.UserId,
+          x.MilestoneId,
+          x.Locked,
+          x.ClosedAt,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.ClosedById,
+          x.Reactions,
         },
-        labels);
+        issues);
+
+      var labelParam = CreateLabelTable("Labels", labels);
+
+      await Database.ExecuteSqlCommandAsync(
+        "EXEC [dbo].[BulkUpdateIssues] @RepositoryId = @RepositoryId, @Issues = @Issues, @Labels = @Labels;",
+        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        issueParam,
+        labelParam);
+    }
+
+    public async Task BulkUpdateComments(int repositoryId, IEnumerable<CommentTableType> comments) {
+      var tableParam = CreateTableParameter(
+        "Comments",
+        "[dbo].[CommentTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("IssueNumber", typeof(int)),
+          Tuple.Create("UserId", typeof(int)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("Reactions", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.IssueNumber,
+          x.UserId,
+          x.Body,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.Reactions,
+        },
+        comments);
+
+      await Database.ExecuteSqlCommandAsync(
+        "EXEC [dbo].[BulkUpdateComments] @RepositoryId = @RepositoryId, @Comments = @Comments;",
+        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        tableParam);
+    }
+
+    public async Task SetRepositoryLabels(int repositoryId, IEnumerable<LabelTableType> labels) {
+      var tableParam = CreateLabelTable("Labels", labels);
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[SetRepositoryLabels] @RepositoryId = @RepositoryId, @Labels = @Labels;",
@@ -289,10 +355,10 @@
         "Accounts",
         "[dbo].[AccountTableType]",
         new[] {
-            Tuple.Create("Id", typeof(int)),
-            Tuple.Create("Type", typeof(string)),
-            Tuple.Create("AvatarURL", typeof(string)),
-            Tuple.Create("Login", typeof(string)),
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Type", typeof(string)),
+          Tuple.Create("AvatarURL", typeof(string)),
+          Tuple.Create("Login", typeof(string)),
         },
         x => new object[] {
           x.Id,
@@ -313,15 +379,15 @@
         "Milestones",
         "[dbo].[MilestoneTableType]",
         new[] {
-            Tuple.Create("Id", typeof(int)),
-            Tuple.Create("Number", typeof(int)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("Title", typeof(string)),
-            Tuple.Create("Description", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedAt", typeof(DateTimeOffset?)),
-            Tuple.Create("DueOn", typeof(DateTimeOffset?)),
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Number", typeof(int)),
+          Tuple.Create("State", typeof(string)),
+          Tuple.Create("Title", typeof(string)),
+          Tuple.Create("Description", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("ClosedAt", typeof(DateTimeOffset)), // Nullable types handled by DataTable
+          Tuple.Create("DueOn", typeof(DateTimeOffset)), // Nullable types handled by DataTable
         },
         x => new object[] {
           x.Id,
@@ -347,11 +413,11 @@
         "Repositories",
         "[dbo].[RepositoryTableType]",
         new[] {
-            Tuple.Create("Id", typeof(int)),
-            Tuple.Create("AccountId", typeof(int)),
-            Tuple.Create("Private", typeof(bool)),
-            Tuple.Create("Name", typeof(string)),
-            Tuple.Create("FullName", typeof(string)),
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("AccountId", typeof(int)),
+          Tuple.Create("Private", typeof(bool)),
+          Tuple.Create("Name", typeof(string)),
+          Tuple.Create("FullName", typeof(string)),
         },
         x => new object[] {
           x.Id,

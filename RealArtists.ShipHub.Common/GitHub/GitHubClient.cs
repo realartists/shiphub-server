@@ -189,8 +189,26 @@
       return MakeRequest<Comment>(request, opts?.Credentials);
     }
 
-    public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueId, IGitHubRequestOptions opts = null) {
+    public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/comments", opts?.CacheOptions);
+      if (since != null) {
+        request.AddParameter("since", since);
+      }
+      var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/comments", opts?.CacheOptions);
+      if (since != null) {
+        request.AddParameter("since", since);
+      }
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
       var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;

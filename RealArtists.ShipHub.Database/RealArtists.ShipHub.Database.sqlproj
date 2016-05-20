@@ -108,6 +108,10 @@
     <Build Include="Procedures\GarbageCollectLabels.sql" />
     <Build Include="Procedures\BulkUpdateMilestones.sql" />
     <Build Include="Procedures\SetRepositoryLabels.sql" />
+    <Build Include="User Defined Types\IssueTableType.sql" />
+    <Build Include="Procedures\BulkUpdateIssues.sql" />
+    <Build Include="User Defined Types\CommentTableType.sql" />
+    <Build Include="Procedures\BulkUpdateComments.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

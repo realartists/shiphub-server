@@ -81,6 +81,8 @@
     <Compile Include="DataModel\Repository.cs" />
     <Compile Include="DataModel\ShipHubContext.cs" />
     <Compile Include="DataModel\Types\AccountTableType.cs" />
+    <Compile Include="DataModel\Types\CommentTableType.cs" />
+    <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
