@@ -136,13 +136,15 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<RepositoryMessage> syncRepoIssueEvents) {
       // This is just a fanout point.
       // Plan to add conditional checks here to reduce polling frequency.
       await Task.WhenAll(
         syncRepoAssignees.AddAsync(message),
         syncRepoMilestones.AddAsync(message),
-        syncRepoLabels.AddAsync(message)
+        syncRepoLabels.AddAsync(message),
+        syncRepoIssueEvents.AddAsync(message) // This only works now because we don't parse any event details.
       );
     }
 
@@ -207,7 +209,9 @@
     /// Precondition: Repository and Milestones exist
     /// Postcondition: Issues exist
     /// </summary>
-    public static async Task SyncRepositoryIssues([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] RepositoryMessage message) {
+    public static async Task SyncRepositoryIssues(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] RepositoryMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<RepositoryMessage> syncRepoComments) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       var issueResponse = await ghc.Issues(message.Repository.FullName);
@@ -233,6 +237,8 @@
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
           issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name })));
       }
+
+      await syncRepoComments.AddAsync(message);
     }
 
     public static async Task SyncRepositoryComments([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] RepositoryMessage message) {
@@ -253,7 +259,7 @@
       }
     }
 
-    public static async Task SyncRepositoryEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryEvents)] RepositoryMessage message) {
+    public static async Task SyncRepositoryEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       var eventsResponse = await ghc.Events(message.Repository.FullName);
@@ -261,16 +267,17 @@
 
       using (var context = new ShipHubContext()) {
         // TODO: Parse things out of events
+        // NOTE: Doing so will require we call this last, after Issues and Milestones have been loaded. I think.
         await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events));
       }
     }
 
-    public static async Task SyncIssueComments() {
-      await Task.CompletedTask;
-    }
+    //public static async Task SyncIssueComments() {
+    //  await Task.CompletedTask;
+    //}
 
-    public static async Task SyncIssueEvents() {
-      await Task.CompletedTask;
-    }
+    //public static async Task SyncIssueEvents() {
+    //  await Task.CompletedTask;
+    //}
   }
 }

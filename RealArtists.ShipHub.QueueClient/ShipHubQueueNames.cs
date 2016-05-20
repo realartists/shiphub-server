@@ -44,7 +44,7 @@
     public const string SyncRepositoryLabels = SyncRepository + "-labels";
     public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
     public const string SyncRepositoryComments = SyncRepository + "-comments";
-    public const string SyncRepositoryEvents = SyncRepository + "-events";
+    public const string SyncRepositoryIssueEvents = SyncRepository + "-issueEvents";
 
     //public const string UpdateAccount = UpdatePrefix + Account;
     //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
