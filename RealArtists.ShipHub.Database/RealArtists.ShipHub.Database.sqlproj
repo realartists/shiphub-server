@@ -84,7 +84,7 @@
     <Build Include="Procedures\UpdateRateLimit.sql" />
     <Build Include="Tables\Issues.sql" />
     <Build Include="Tables\Comments.sql" />
-    <Build Include="Tables\Events.sql" />
+    <Build Include="Tables\IssueEvents.sql" />
     <Build Include="Tables\Labels.sql" />
     <Build Include="Tables\Milestones.sql" />
     <Build Include="Tables\AccountRepositories.sql" />
@@ -112,6 +112,8 @@
     <Build Include="Procedures\BulkUpdateIssues.sql" />
     <Build Include="User Defined Types\CommentTableType.sql" />
     <Build Include="Procedures\BulkUpdateComments.sql" />
+    <Build Include="User Defined Types\IssueEventTableType.sql" />
+    <Build Include="Procedures\BulkUpdateIssueEvents.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

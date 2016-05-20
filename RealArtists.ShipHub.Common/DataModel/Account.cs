@@ -35,11 +35,11 @@
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Event> Events { get; set; } = new HashSet<Event>();
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<IssueEvent> Events { get; set; } = new HashSet<IssueEvent>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Event> AssigneeEvents { get; set; } = new HashSet<Event>();
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<IssueEvent> AssigneeEvents { get; set; } = new HashSet<IssueEvent>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> AssignedIssues { get; set; } = new HashSet<Issue>();

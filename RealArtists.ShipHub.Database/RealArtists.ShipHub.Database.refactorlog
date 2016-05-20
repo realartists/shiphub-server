@@ -7,4 +7,11 @@
     <Property Name="ParentElementType" Value="SqlTable" />
     <Property Name="NewName" Value="RepositoryMetaDataId" />
   </Operation>
+  <Operation Name="Rename Refactor" Key="73e59e8e-84dc-4aa4-8e77-cad5676de58b" ChangeDateTime="05/20/2016 19:31:48">
+    <Property Name="ElementName" Value="[dbo].[Events]" />
+    <Property Name="ElementType" Value="SqlTable" />
+    <Property Name="ParentElementName" Value="[dbo]" />
+    <Property Name="ParentElementType" Value="SqlSchema" />
+    <Property Name="NewName" Value="[IssueEvents]" />
+  </Operation>
 </Operations>

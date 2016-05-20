@@ -5,6 +5,7 @@
 
   public static class JsonUtility {
     public static readonly JsonSerializerSettings SaneDefaults = CreateSaneDefaultSettings();
+    public static readonly JsonSerializer SaneSerializer = JsonSerializer.Create(SaneDefaults);
 
     public static JsonSerializerSettings CreateSaneDefaultSettings() {
       var settings = new JsonSerializerSettings() {
@@ -23,8 +24,12 @@
       return settings;
     }
 
-    public static string SerializeObject(this object value) {
-      return JsonConvert.SerializeObject(value, SaneDefaults);
+    public static string SerializeObject(this object value, Formatting? formatting = null) {
+      if (formatting != null) {
+        return JsonConvert.SerializeObject(value, formatting.Value, SaneDefaults);
+      } else {
+        return JsonConvert.SerializeObject(value, SaneDefaults);
+      }
     }
 
     public static T DeserializeObject<T>(this string json) {

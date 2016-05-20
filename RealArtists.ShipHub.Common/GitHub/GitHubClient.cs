@@ -217,6 +217,33 @@
       }
     }
 
+    public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, int eventId, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/events/{eventId}", opts?.CacheOptions);
+      return MakeRequest<IssueEvent>(request, opts?.Credentials);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/events", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
+    public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/events", opts?.CacheOptions);
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
     public async Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/labels", opts?.CacheOptions);
       var result = await MakeRequest<IEnumerable<Label>>(request, opts?.Credentials);
@@ -256,9 +283,9 @@
       if (result.IsError) {
         return result;
       }
-      
-      if(result.Pagination != null) {
-        result =  await EnumerateParallel(result, opts?.Credentials);
+
+      if (result.Pagination != null) {
+        result = await EnumerateParallel(result, opts?.Credentials);
       }
 
       // Seriously GitHub?

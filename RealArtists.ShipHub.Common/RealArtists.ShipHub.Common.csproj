@@ -71,7 +71,7 @@
     <Compile Include="DataModel\AccountRepository.cs" />
     <Compile Include="DataModel\AuthenticationToken.cs" />
     <Compile Include="DataModel\Comment.cs" />
-    <Compile Include="DataModel\Event.cs" />
+    <Compile Include="DataModel\IssueEvent.cs" />
     <Compile Include="DataModel\GitHubMetaData.cs" />
     <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\Issue.cs" />
@@ -82,6 +82,7 @@
     <Compile Include="DataModel\ShipHubContext.cs" />
     <Compile Include="DataModel\Types\AccountTableType.cs" />
     <Compile Include="DataModel\Types\CommentTableType.cs" />
+    <Compile Include="DataModel\Types\IssueEventTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />

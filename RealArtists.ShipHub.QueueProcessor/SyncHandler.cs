@@ -15,7 +15,7 @@
   /// 
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
   /// 
-  /// TODO: Don'e submit empty updates to DB.
+  /// TODO: Don't submit empty updates to DB.
   /// </summary>
 
   public static class SyncHandler {
@@ -211,7 +211,8 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       var issueResponse = await ghc.Issues(message.Repository.FullName);
-      var issues = issueResponse.Result;
+      var issues = issueResponse.Result
+        .Where(x => x.PullRequest == null); // Drop pull requests for now
 
       using (var context = new ShipHubContext()) {
         var accounts = issues
@@ -253,7 +254,15 @@
     }
 
     public static async Task SyncRepositoryEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryEvents)] RepositoryMessage message) {
-      await Task.CompletedTask;
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+
+      var eventsResponse = await ghc.Events(message.Repository.FullName);
+      var events = eventsResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        // TODO: Parse things out of events
+        await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events));
+      }
     }
 
     public static async Task SyncIssueComments() {

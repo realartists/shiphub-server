@@ -37,7 +37,7 @@
     public virtual Repository Repository { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Event> Events { get; set; } = new HashSet<Event>();
+    public virtual ICollection<IssueEvent> Events { get; set; } = new HashSet<IssueEvent>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();

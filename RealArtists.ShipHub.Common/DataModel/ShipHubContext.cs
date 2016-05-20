@@ -30,7 +30,7 @@
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<AuthenticationToken> AuthenticationTokens { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
-    public virtual DbSet<Event> Events { get; set; }
+    public virtual DbSet<IssueEvent> Events { get; set; }
     public virtual DbSet<GitHubMetaData> GitHubMetaData { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
@@ -65,17 +65,17 @@
         .HasForeignKey(e => e.UserId)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Account>()
-        .HasMany(e => e.Events)
-        .WithRequired(e => e.Actor)
-        .HasForeignKey(e => e.ActorId)
-        .WillCascadeOnDelete(false);
+      //mb.Entity<Account>()
+      //  .HasMany(e => e.Events)
+      //  .WithRequired(e => e.Actor)
+      //  .HasForeignKey(e => e.ActorId)
+      //  .WillCascadeOnDelete(false);
 
-      mb.Entity<Account>()
-        .HasMany(e => e.AssigneeEvents)
-        .WithRequired(e => e.Assignee)
-        .HasForeignKey(e => e.AssigneeId)
-        .WillCascadeOnDelete(false);
+      //mb.Entity<Account>()
+      //  .HasMany(e => e.AssigneeEvents)
+      //  .WithRequired(e => e.Assignee)
+      //  .HasForeignKey(e => e.AssigneeId)
+      //  .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
         .HasMany(e => e.AssignedIssues)
@@ -341,6 +341,28 @@
         tableParam);
     }
 
+    public async Task BulkUpdateIssueEvents(int repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
+      var tableParam = CreateTableParameter(
+        "IssueEvents",
+        "[dbo].[CommentTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("ExtensionData", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.CreatedAt,
+          x.ExtensionData,
+        },
+        issueEvents);
+
+      await Database.ExecuteSqlCommandAsync(
+        "EXEC [dbo].[BulkUpdateIssueEvents] @RepositoryId = @RepositoryId, @IssueEvents = @IssueEvents;",
+        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        tableParam);
+    }
+
     public async Task SetRepositoryLabels(int repositoryId, IEnumerable<LabelTableType> labels) {
       var tableParam = CreateLabelTable("Labels", labels);
 
@@ -434,29 +456,6 @@
         tableParam);
     }
 
-    private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {
-      if (!typeName.Contains("[")) {
-        typeName = $"[dbo].[{typeName}]";
-      }
-
-      DataTable table = null;
-
-      if (rows != null) {
-        table = new DataTable();
-
-        table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
-
-        foreach (var row in rows) {
-          table.Rows.Add(rowValues(row));
-        }
-      }
-
-      return new SqlParameter(parameterName, SqlDbType.Structured) {
-        TypeName = typeName,
-        Value = table
-      };
-    }
-
     private static SqlParameter CreateLabelTable(string parameterName, IEnumerable<LabelTableType> labels) {
       return CreateTableParameter(
         parameterName,
@@ -481,6 +480,29 @@
         new[] { Tuple.Create("Item", typeof(T)) },
         x => new object[] { x },
         values);
+    }
+
+    private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {
+      if (!typeName.Contains("[")) {
+        typeName = $"[dbo].[{typeName}]";
+      }
+
+      DataTable table = null;
+
+      if (rows != null) {
+        table = new DataTable();
+
+        table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
+
+        foreach (var row in rows) {
+          table.Rows.Add(rowValues(row));
+        }
+      }
+
+      return new SqlParameter(parameterName, SqlDbType.Structured) {
+        TypeName = typeName,
+        Value = table
+      };
     }
   }
 }
