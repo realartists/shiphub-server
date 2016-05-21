@@ -126,6 +126,7 @@
     <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
+    <Compile Include="Controllers\SyncController.cs" />
     <Compile Include="Controllers\TestController.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="Global.asax.cs">
