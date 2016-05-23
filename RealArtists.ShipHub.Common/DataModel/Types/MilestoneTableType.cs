@@ -2,7 +2,7 @@
   using System;
 
   public class MilestoneTableType {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public int Number { get; set; }
     public string State { get; set; }
     public string Title { get; set; }

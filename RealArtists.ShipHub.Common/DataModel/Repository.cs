@@ -1,5 +1,4 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
-  using System;
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
@@ -7,9 +6,9 @@
 
   public partial class Repository {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
-    public int AccountId { get; set; }
+    public long AccountId { get; set; }
 
     public bool Private { get; set; }
 

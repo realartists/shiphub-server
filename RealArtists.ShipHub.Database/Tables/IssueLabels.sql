@@ -1,5 +1,5 @@
 ﻿CREATE TABLE [dbo].[IssueLabels] (
-  [IssueId]      INT    NOT NULL,
+  [IssueId]      BIGINT NOT NULL,
   [LabelId]      BIGINT NOT NULL,
   CONSTRAINT [PK_IssueLabels] PRIMARY KEY CLUSTERED ([IssueId], [LabelId]),
   CONSTRAINT [FK_IssueLabels_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues]([Id]),

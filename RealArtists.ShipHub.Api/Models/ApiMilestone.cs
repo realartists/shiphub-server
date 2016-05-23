@@ -2,7 +2,7 @@
   using System;
 
   public class ApiMilestone {
-    public int Identifier { get; set; }
+    public long Identifier { get; set; }
     public string MilestoneDescription { get; set; }
     public string Name { get; set; }
     public string State { get; set; }

@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateComments]
-  @RepositoryId INT,
+  @RepositoryId BIGINT,
   @Comments CommentTableType READONLY
 AS
 BEGIN

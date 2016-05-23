@@ -32,7 +32,7 @@
   //}
 
   public class IssueEvent {
-    public int Id { get; set; }
+    public long Id { get; set; }
 
     [JsonIgnore]
     public DateTimeOffset CreatedAt { get { return _extensionData["created_at"].ToObject<DateTimeOffset>(JsonUtility.SaneSerializer); } }

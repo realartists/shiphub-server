@@ -139,7 +139,6 @@
     <Compile Include="Models\ApiLabel.cs" />
     <Compile Include="Models\ApiMilestone.cs" />
     <Compile Include="Models\ApiOrganization.cs" />
-    <Compile Include="Models\ApiRelationship.cs" />
     <Compile Include="Models\ApiRepository.cs" />
     <Compile Include="Models\ApiUser.cs" />
     <Compile Include="Models\DataModelToApiModelProfile.cs" />

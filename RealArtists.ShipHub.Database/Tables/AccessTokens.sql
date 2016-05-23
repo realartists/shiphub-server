@@ -1,6 +1,6 @@
 ﻿CREATE TABLE [dbo].[AccessTokens] (
   [Id]                 BIGINT         IDENTITY(1, 1) NOT NULL,
-  [AccountId]          INT            NOT NULL,
+  [AccountId]          BIGINT         NOT NULL,
   [ApplicationId]      NVARCHAR(64)   NOT NULL,
   [Token]              NVARCHAR(64)   NOT NULL,
   [Scopes]             NVARCHAR(255)  NOT NULL,

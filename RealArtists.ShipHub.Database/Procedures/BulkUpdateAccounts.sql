@@ -9,24 +9,23 @@ BEGIN
 
   MERGE INTO Accounts as [Target]
   USING (
-    SELECT [Id], [Type], [AvatarUrl], [Login]
+    SELECT [Id], [Type], [Login]
     FROM @Accounts
   ) as [Source]
   ON ([Target].Id = [Source].Id)
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [Type], [AvatarUrl], [Login], [Date])
-    VALUES ([Id], [Type], [AvatarUrl], [Login], @Date)
+    INSERT ([Id], [Type], [Login], [Date])
+    VALUES ([Id], [Type], [Login], @Date)
   WHEN MATCHED 
     AND [Target].[Date] < @Date
     AND EXISTS (
-      SELECT [Target].[Type], [Target].[AvatarUrl], [Target].[Login]
+      SELECT [Target].[Type], [Target].[Login]
       EXCEPT
-      SELECT [Source].[Type], [Source].[AvatarUrl], [Source].[Login]
+      SELECT [Source].[Type], [Source].[Login]
     ) THEN
     UPDATE SET
       [Type] = [Source].[Type],
-      [AvatarUrl] = [Source].[AvatarUrl],
       [Login] = [Source].[Login],
       [Date] = @Date;
-  --OUTPUT inserted.[Id], inserted.[Type], inserted.[AvatarUrl], inserted.[Login], inserted.[Date];      
+  --OUTPUT inserted.[Id], inserted.[Type], inserted.[Login], inserted.[Date];      
 END

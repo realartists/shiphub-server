@@ -6,11 +6,9 @@
   }
 
   public abstract class ApiAccount {
-    public int Identifier { get; set; }
-    public string AvatarUrl { get; set; }
+    public long Identifier { get; set; }
     public string Login { get; set; }
     public string Name { get; set; }
-    public long? RowVersion { get; set; }
     public ApiAccountType Type { get; set; }
   }
 }

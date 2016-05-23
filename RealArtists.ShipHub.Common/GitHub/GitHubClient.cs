@@ -184,7 +184,7 @@
       }
     }
 
-    public Task<GitHubResponse<Comment>> Comment(string repoFullName, int commentId, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Comment>> Comment(string repoFullName, long commentId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}", opts?.CacheOptions);
       return MakeRequest<Comment>(request, opts?.Credentials);
     }
@@ -217,7 +217,7 @@
       }
     }
 
-    public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, int eventId, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, long eventId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/events/{eventId}", opts?.CacheOptions);
       return MakeRequest<IssueEvent>(request, opts?.Credentials);
     }

@@ -1,6 +1,6 @@
 ﻿CREATE TABLE [dbo].[Milestones] (
-  [Id]           INT            NOT NULL,
-  [RepositoryId] INT            NOT NULL,
+  [Id]           BIGINT         NOT NULL,
+  [RepositoryId] BIGINT         NOT NULL,
   [Number]       INT            NOT NULL,
   [State]        NVARCHAR(10)   NOT NULL,
   [Title]        NVARCHAR(255)  NOT NULL,

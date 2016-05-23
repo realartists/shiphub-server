@@ -10,10 +10,7 @@
     public const string UserType = "user";
 
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
-
-    [StringLength(500)]
-    public string AvatarUrl { get; set; }
+    public long Id { get; set; }
 
     [Required]
     [StringLength(255)]

@@ -6,7 +6,7 @@
     [Key]
     public Guid Token { get; set; } = Guid.Empty;
 
-    public int AccountId { get; set; }
+    public long AccountId { get; set; }
 
     [Required]
     [StringLength(150)]

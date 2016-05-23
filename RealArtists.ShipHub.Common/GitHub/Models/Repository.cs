@@ -2,7 +2,7 @@
   using System;
 
   public class Repository {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public Account Owner { get; set; }
     public string Name { get; set; }
     public string FullName { get; set; }

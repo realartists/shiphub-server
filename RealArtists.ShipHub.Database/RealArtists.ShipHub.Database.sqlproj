@@ -95,7 +95,7 @@
     <Build Include="Tables\Hooks.sql" />
     <Build Include="Procedures\SetRepositoryAssignableAccounts.sql" />
     <Build Include="Procedures\SetAccountLinkedRepositories.sql" />
-    <Build Include="User Defined Types\IntListTableType.sql" />
+    <Build Include="User Defined Types\ItemListTableType.sql" />
     <Build Include="User Defined Types\AccountTableType.sql" />
     <Build Include="User Defined Types\RepositoryTableType.sql" />
     <Build Include="Procedures\BulkUpdateAccounts.sql" />

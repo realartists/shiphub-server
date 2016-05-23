@@ -1,0 +1,3 @@
+﻿CREATE TYPE [dbo].[ItemListTableType] AS TABLE (
+  [Item] BIGINT  NOT NULL PRIMARY KEY CLUSTERED
+)

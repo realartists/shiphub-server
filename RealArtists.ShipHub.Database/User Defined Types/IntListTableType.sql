@@ -1,3 +1,0 @@
-﻿CREATE TYPE [dbo].[IntListTableType] AS TABLE (
-  [Item] INT  NOT NULL PRIMARY KEY CLUSTERED
-)

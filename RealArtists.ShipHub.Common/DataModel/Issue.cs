@@ -7,11 +7,11 @@
 
   public partial class Issue {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
-    public int UserId { get; set; }
+    public long UserId { get; set; }
 
-    public int RepositoryId { get; set; }
+    public long RepositoryId { get; set; }
 
     public int Number { get; set; }
 
@@ -25,9 +25,9 @@
 
     public string Body { get; set; }
 
-    public int? AssigneeId { get; set; }
+    public long? AssigneeId { get; set; }
 
-    public int? MilestoneId { get; set; }
+    public long? MilestoneId { get; set; }
 
     public bool Locked { get; set; }
 
@@ -37,7 +37,7 @@
 
     public DateTimeOffset? ClosedAt { get; set; }
 
-    public int? ClosedById { get; set; }
+    public long? ClosedById { get; set; }
 
     public string Reactions { get; set; }
 

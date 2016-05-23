@@ -1,6 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[SetUserOrganizations]
-  @UserId INT,
-  @OrganizationIds IntListTableType READONLY
+  @UserId BIGINT,
+  @OrganizationIds ItemListTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from

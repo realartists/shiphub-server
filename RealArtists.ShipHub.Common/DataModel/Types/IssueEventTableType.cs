@@ -2,7 +2,7 @@
   using System;
 
   public class IssueEventTableType {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string ExtensionData { get; set; }
   }

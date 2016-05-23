@@ -5,13 +5,13 @@
 
   public partial class Comment {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
-    public int IssueId { get; set; }
+    public long IssueId { get; set; }
 
-    public int RepositoryId { get; set; }
+    public long RepositoryId { get; set; }
 
-    public int UserId { get; set; }
+    public long UserId { get; set; }
 
     [Required]
     public string Body { get; set; }

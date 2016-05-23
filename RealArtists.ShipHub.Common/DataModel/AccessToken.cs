@@ -12,7 +12,7 @@
 
     public long Id { get; set; }
 
-    public int AccountId { get; set; }
+    public long AccountId { get; set; }
 
     [Required]
     [StringLength(64)]

@@ -5,11 +5,11 @@
   public partial class AccountRepository {
     [Key]
     [Column(Order = 0)]
-    public int AccountId { get; set; }
+    public long AccountId { get; set; }
 
     [Key]
     [Column(Order = 1)]
-    public int RepositoryId { get; set; }
+    public long RepositoryId { get; set; }
 
     public bool Hidden { get; set; }
 

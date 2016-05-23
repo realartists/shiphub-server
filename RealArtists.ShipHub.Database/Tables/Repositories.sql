@@ -1,6 +1,6 @@
 ﻿CREATE TABLE [dbo].[Repositories] (
-  [Id]                   INT            NOT NULL,
-  [AccountId]            INT            NOT NULL,
+  [Id]                   BIGINT         NOT NULL,
+  [AccountId]            BIGINT         NOT NULL,
   [Private]              BIT            NOT NULL,
   [Name]                 NVARCHAR(100)  NOT NULL,
   [FullName]             NVARCHAR(255)  NOT NULL,

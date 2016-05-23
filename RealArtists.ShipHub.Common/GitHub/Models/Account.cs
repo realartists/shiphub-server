@@ -5,8 +5,7 @@
   }
 
   public class Account {
-    public int Id { get; set; }
-    public string AvatarUrl { get; set; }
+    public long Id { get; set; }
     public string Login { get; set; }
     public GitHubAccountType Type { get; set; }
   }

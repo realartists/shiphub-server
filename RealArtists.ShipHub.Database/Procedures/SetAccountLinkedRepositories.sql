@@ -1,6 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[SetAccountLinkedRepositories]
-  @AccountId INT,
-  @RepositoryIds IntListTableType READONLY
+  @AccountId BIGINT,
+  @RepositoryIds ItemListTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from

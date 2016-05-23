@@ -1,7 +1,6 @@
 ﻿CREATE TABLE [dbo].[Accounts] (
-  [Id]                   INT            NOT NULL,
+  [Id]                   BIGINT         NOT NULL,
   [Type]                 NVARCHAR(4)    NOT NULL,
-  [AvatarUrl]            NVARCHAR(500)  NULL,
   [Login]                NVARCHAR(255)  NOT NULL,
   [Date]                 DATETIMEOFFSET NOT NULL,
   [RepositoryMetaDataId] BIGINT         NULL,

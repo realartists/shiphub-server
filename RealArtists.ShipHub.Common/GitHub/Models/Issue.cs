@@ -3,7 +3,7 @@
   using System.Collections.Generic;
 
   public class Issue {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public int Number { get; set; }
     public string State { get; set; }
     public string Title { get; set; }
@@ -13,7 +13,6 @@
     public Account User { get; set; }
     public Milestone Milestone { get; set; }
     public bool Locked { get; set; }
-    public int Comments { get; set; }
     public DateTimeOffset? ClosedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

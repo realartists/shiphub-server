@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateMilestones]
-  @RepositoryId INT,
+  @RepositoryId BIGINT,
   @Milestones MilestoneTableType READONLY
 AS
 BEGIN

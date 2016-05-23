@@ -200,88 +200,24 @@
     //  return (long)rangeFirstValue.Value;
     //}
 
-    public async Task<bool> SetAccountLinkedRepositories(int accountId, IEnumerable<int> repositoryIds) {
-      var result = new SqlParameter("Result", SqlDbType.Int) {
-        Direction = ParameterDirection.Output
-      };
-
-      await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetAccountLinkedRepositories]
-          @AccountId = @AccountId,
-          @RepositoryIds = @RepositoryIds;",
-        result,
-        new SqlParameter("AccountId", SqlDbType.Int) { Value = accountId },
-        CreateListTable("RepositoryIds", "IntListTableType", repositoryIds));
-
-      return ((int)result.Value) != 0;
-    }
-
-    public async Task<bool> SetRepositoryAssignableAccounts(int repositoryId, IEnumerable<int> assignableAccountIds) {
-      var result = new SqlParameter("Result", SqlDbType.Int) {
-        Direction = ParameterDirection.Output
-      };
-
-      await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetRepositoryAssignableAccounts]
-          @RepositoryId = @RepositoryId,
-          @AssignableAccountIds = @AssignableAccountIds;",
-        result,
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
-        CreateListTable("AssignableAccountIds", "IntListTableType", assignableAccountIds));
-
-      return ((int)result.Value) != 0;
-    }
-
-    public async Task<bool> SetUserOrganizations(int userId, IEnumerable<int> organizationIds) {
-      var result = new SqlParameter("Result", SqlDbType.Int) {
-        Direction = ParameterDirection.Output
-      };
-
-      await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetUserOrganizations]
-          @UserId = @UserId,
-          @OrganizationIds = @OrganizationIds;",
-        result,
-        new SqlParameter("UserId", SqlDbType.Int) { Value = userId },
-        CreateListTable("OrganizationIds", "IntListTableType", organizationIds));
-
-      return ((int)result.Value) != 0;
-    }
-
-    public async Task<bool> SetOrganizationUsers(int organizationId, IEnumerable<int> userIds) {
-      var result = new SqlParameter("Result", SqlDbType.Int) {
-        Direction = ParameterDirection.Output
-      };
-
-      await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetOrganizationUsers]
-          @OrganizationId = @OrganizationId,
-          @UserIds = @UserIds;",
-        result,
-        new SqlParameter("OrganizationId", SqlDbType.Int) { Value = organizationId },
-        CreateListTable("UserIds", "IntListTableType", userIds));
-
-      return ((int)result.Value) != 0;
-    }
-
-    public async Task BulkUpdateIssues(int repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
+    public async Task BulkUpdateIssues(long repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
       var issueParam = CreateTableParameter(
         "Issues",
         "[dbo].[IssueTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
-          Tuple.Create("UserId", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("UserId", typeof(long)),
           Tuple.Create("Number", typeof(int)),
           Tuple.Create("State", typeof(string)),
           Tuple.Create("Title", typeof(string)),
           Tuple.Create("Body", typeof(string)),
-          Tuple.Create("AssigneeId", typeof(int)),
-          Tuple.Create("MilestoneId", typeof(int)),
+          Tuple.Create("AssigneeId", typeof(long)),
+          Tuple.Create("MilestoneId", typeof(long)),
           Tuple.Create("Locked", typeof(bool)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
           Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
-          Tuple.Create("ClosedById", typeof(int)),
+          Tuple.Create("ClosedById", typeof(long)),
           Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
@@ -306,19 +242,19 @@
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[BulkUpdateIssues] @RepositoryId = @RepositoryId, @Issues = @Issues, @Labels = @Labels;",
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         issueParam,
         labelParam);
     }
 
-    public async Task BulkUpdateComments(int repositoryId, IEnumerable<CommentTableType> comments) {
+    public async Task BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
       var tableParam = CreateTableParameter(
         "Comments",
         "[dbo].[CommentTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("UserId", typeof(int)),
+          Tuple.Create("UserId", typeof(long)),
           Tuple.Create("Body", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
@@ -337,16 +273,16 @@
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[BulkUpdateComments] @RepositoryId = @RepositoryId, @Comments = @Comments;",
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
     }
 
-    public async Task BulkUpdateIssueEvents(int repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
+    public async Task BulkUpdateIssueEvents(long repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
       var tableParam = CreateTableParameter(
         "IssueEvents",
         "[dbo].[IssueEventTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("ExtensionData", typeof(string)),
         },
@@ -359,16 +295,16 @@
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[BulkUpdateIssueEvents] @RepositoryId = @RepositoryId, @IssueEvents = @IssueEvents;",
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
     }
 
-    public async Task SetRepositoryLabels(int repositoryId, IEnumerable<LabelTableType> labels) {
+    public async Task SetRepositoryLabels(long repositoryId, IEnumerable<LabelTableType> labels) {
       var tableParam = CreateLabelTable("Labels", labels);
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[SetRepositoryLabels] @RepositoryId = @RepositoryId, @Labels = @Labels;",
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
     }
 
@@ -377,15 +313,13 @@
         "Accounts",
         "[dbo].[AccountTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("Type", typeof(string)),
-          Tuple.Create("AvatarURL", typeof(string)),
           Tuple.Create("Login", typeof(string)),
         },
         x => new object[] {
           x.Id,
           x.Type,
-          x.AvatarUrl,
           x.Login,
         },
         accounts);
@@ -396,12 +330,12 @@
         tableParam);
     }
 
-    public async Task BulkUpdateMilestones(int repositoryId, IEnumerable<MilestoneTableType> milestones) {
+    public async Task BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones) {
       var tableParam = CreateTableParameter(
         "Milestones",
         "[dbo].[MilestoneTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("Number", typeof(int)),
           Tuple.Create("State", typeof(string)),
           Tuple.Create("Title", typeof(string)),
@@ -426,7 +360,7 @@
 
       await Database.ExecuteSqlCommandAsync(
         "EXEC [dbo].[BulkUpdateMilestones] @RepositoryId = @RepositoryId, @Milestones = @Milestones;",
-        new SqlParameter("RepositoryId", SqlDbType.Int) { Value = repositoryId },
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
     }
 
@@ -435,8 +369,8 @@
         "Repositories",
         "[dbo].[RepositoryTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
-          Tuple.Create("AccountId", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("AccountId", typeof(long)),
           Tuple.Create("Private", typeof(bool)),
           Tuple.Create("Name", typeof(string)),
           Tuple.Create("FullName", typeof(string)),
@@ -456,12 +390,57 @@
         tableParam);
     }
 
+    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetAccountLinkedRepositories]
+          @AccountId = @AccountId,
+          @RepositoryIds = @RepositoryIds;",
+        new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
+        CreateItemListTable("RepositoryIds", repositoryIds));
+    }
+
+    public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetUserOrganizations]
+          @UserId = @UserId,
+          @OrganizationIds = @OrganizationIds;",
+        new SqlParameter("UserId", SqlDbType.BigInt) { Value = userId },
+        CreateItemListTable("OrganizationIds", organizationIds));
+    }
+
+    public async Task SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetOrganizationUsers]
+          @OrganizationId = @OrganizationId,
+          @UserIds = @UserIds;",
+        new SqlParameter("OrganizationId", SqlDbType.BigInt) { Value = organizationId },
+        CreateItemListTable("UserIds", userIds));
+    }
+
+    public async Task SetRepositoryAssignableAccounts(long repositoryId, IEnumerable<long> assignableAccountIds) {
+      await Database.ExecuteSqlCommandAsync(
+        @"EXEC @Result = [dbo].[SetRepositoryAssignableAccounts]
+          @RepositoryId = @RepositoryId,
+          @AssignableAccountIds = @AssignableAccountIds;",
+        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
+        CreateItemListTable("AssignableAccountIds", assignableAccountIds));
+    }
+
+    private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[ItemListTableType]",
+        new[] { Tuple.Create("Item", typeof(T)) },
+        x => new object[] { x },
+        values);
+    }
+
     private static SqlParameter CreateLabelTable(string parameterName, IEnumerable<LabelTableType> labels) {
       return CreateTableParameter(
         parameterName,
         "[dbo].[LabelTableType]",
         new[] {
-          Tuple.Create("Id", typeof(int)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("Color", typeof(string)),
           Tuple.Create("Name", typeof(string)),
         },
@@ -471,15 +450,6 @@
           x.Name,
         },
         labels);
-    }
-
-    private static SqlParameter CreateListTable<T>(string parameterName, string typeName, IEnumerable<T> values) {
-      return CreateTableParameter(
-        parameterName,
-        typeName,
-        new[] { Tuple.Create("Item", typeof(T)) },
-        x => new object[] { x },
-        values);
     }
 
     private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {

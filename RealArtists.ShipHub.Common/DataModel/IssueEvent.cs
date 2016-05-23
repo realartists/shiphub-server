@@ -5,15 +5,15 @@
 
   public partial class IssueEvent {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
-    public int RepositoryId { get; set; }
+    public long RepositoryId { get; set; }
 
-    //public int ActorId { get; set; }
+    //public long ActorId { get; set; }
 
-    //public int AssigneeId { get; set; }
+    //public long AssigneeId { get; set; }
 
-    //public int AssignerId { get; set; }
+    //public long AssignerId { get; set; }
 
     //[StringLength(40)]
     //public string CommitId { get; set; }
@@ -30,7 +30,7 @@
     //[StringLength(150)]
     //public string LabelName { get; set; }
 
-    //public int? MilestoneId { get; set; }
+    //public long? MilestoneId { get; set; }
 
     //public int? MilestoneNumber { get; set; }
 

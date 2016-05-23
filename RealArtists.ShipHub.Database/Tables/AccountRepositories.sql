@@ -1,7 +1,7 @@
 ﻿CREATE TABLE [dbo].[AccountRepositories] (
-  [AccountId]    INT NOT NULL,
-  [RepositoryId] INT NOT NULL,
-  [Hidden]       BIT NOT NULL,
+  [AccountId]    BIGINT NOT NULL,
+  [RepositoryId] BIGINT NOT NULL,
+  [Hidden]       BIT    NOT NULL,
   CONSTRAINT [PK_AccountRepositories] PRIMARY KEY CLUSTERED ([AccountId], [RepositoryId]),
   CONSTRAINT [FK_AccountRepositories_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_AccountRepositories_REpositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),

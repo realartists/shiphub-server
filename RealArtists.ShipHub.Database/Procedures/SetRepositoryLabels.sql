@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[SetRepositoryLabels]
-  @RepositoryId INT,
+  @RepositoryId BIGINT,
   @Labels LabelTableType READONLY
 AS
 BEGIN

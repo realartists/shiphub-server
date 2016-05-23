@@ -1,8 +1,8 @@
 ﻿CREATE TABLE [dbo].[IssueEvents] (
-  [Id]                   INT            NOT NULL,
-  [RepositoryId]         INT            NOT NULL,
-  --[ActorId]              INT            NOT NULL,
-  --[AssigneeId]           INT            NOT NULL,
+  [Id]                   BIGINT         NOT NULL,
+  [RepositoryId]         BIGINT         NOT NULL,
+  --[ActorId]              BIGINT         NOT NULL,
+  --[AssigneeId]           BIGINT         NOT NULL,
   --[CommitId]             NVARCHAR(40)   NULL,
   --[Type]                 NVARCHAR(64)   NOT NULL,
   [CreatedAt]            DATETIMEOFFSET NOT NULL,
@@ -10,7 +10,7 @@
   --[LabelColor]           NVARCHAR(10)   NULL,
   --[LabelName]            NVARCHAR(150)  NULL,
   ---- Milestone
-  --[MilestoneId]          INT            NULL,
+  --[MilestoneId]          BIGINT         NULL,
   --[MilestoneNumber]      INT            NULL,
   --[MilestoneState]       NVARCHAR(10)   NULL,
   --[MilestoneTitle]       NVARCHAR(255)  NULL,

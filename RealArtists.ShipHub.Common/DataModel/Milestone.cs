@@ -7,9 +7,9 @@
 
   public partial class Milestone {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public int Id { get; set; }
+    public long Id { get; set; }
 
-    public int RepositoryId { get; set; }
+    public long RepositoryId { get; set; }
 
     public int Number { get; set; }
 

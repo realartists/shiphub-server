@@ -1,5 +1,5 @@
 ﻿CREATE TABLE [dbo].[Hooks] (
-  [Id]        INT              NOT NULL,
+  [Id]        BIGINT           NOT NULL,
   [Key]       UNIQUEIDENTIFIER NOT NULL,
   [Active]    BIT              NOT NULL,
   [Events]    NVARCHAR(500)    NOT NULL,

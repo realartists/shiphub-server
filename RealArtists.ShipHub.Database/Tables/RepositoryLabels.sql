@@ -1,5 +1,5 @@
 ﻿CREATE TABLE [dbo].[RepositoryLabels] (
-  [RepositoryId] INT    NOT NULL,
+  [RepositoryId] BIGINT    NOT NULL,
   [LabelId]      BIGINT NOT NULL,
   CONSTRAINT [PK_RepositoryLabels] PRIMARY KEY CLUSTERED ([RepositoryId], [LabelId]),
   CONSTRAINT [FK_RepositoryLabels_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),

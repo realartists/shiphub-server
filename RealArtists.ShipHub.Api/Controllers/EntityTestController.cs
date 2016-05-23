@@ -5,7 +5,7 @@
 
   [RoutePrefix("etest")]
   public class EntityTestController : ShipHubController {
-    const int UserId = -42;
+    const long UserId = -42;
 
     [HttpGet]
     [Route("user")]

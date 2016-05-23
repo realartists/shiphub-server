@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssueEvents]
-  @RepositoryId INT,
+  @RepositoryId BIGINT,
   @IssueEvents IssueEventTableType READONLY
 AS
 BEGIN

@@ -1,8 +1,8 @@
 ﻿CREATE TABLE [dbo].[Comments] (
-  [Id]           INT            NOT NULL,
-  [IssueId]      INT            NOT NULL,
-  [RepositoryId] INT            NOT NULL,
-  [UserId]       INT            NOT NULL,
+  [Id]           BIGINT         NOT NULL,
+  [IssueId]      BIGINT         NOT NULL,
+  [RepositoryId] BIGINT         NOT NULL,
+  [UserId]       BIGINT         NOT NULL,
   [Body]         NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
   [UpdatedAt]    DATETIMEOFFSET NOT NULL,
