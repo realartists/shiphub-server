@@ -1,0 +1,92 @@
+Client Hello:
+
+{
+  msg: "hello",
+  client: "...",
+  repos:
+    [
+      { repo: <int64>, version: <int64> },
+      ...
+    ],
+  orgs:
+    [
+      { org: <int64>, version: <int64> },
+      ...
+    ]
+}
+
+Server reply:
+
+{
+  msg: "sync",
+  logs: [
+    { action: ("set"|"delete"),
+      entity: ("repo", "user", "org", "milestone", "issue", "comment", "event", ...),
+      data: ({ entity json blob }| entity id <int64>),
+    },
+    ...
+  ],
+  versions: [
+    { repo: <int64>, version: <int64> },
+    { repo: <int64>, version: <int64> },
+    { org: <int64>, version: <int64> },
+    { org: <int64>, version: <int64> },
+    ...
+  ],
+  remaining: <int64> // log entries remaining until fully up to date
+}
+
+
+EXAMPLES:
+
+{
+  action: "set",
+  entity: "repo",
+  data: { 
+    // scalar fields
+    name: ..., 
+    hidden: ..., 
+    id: ..., 
+    private: ...,
+    labels: [{name:..., color:...},...],
+    
+    // relationships
+    assignees: [123, 234, 345, ...], // array of user identifiers
+    owner: {
+      // inlined owner data (either user or org)
+    }
+  }
+}
+
+{
+  action: "set",
+  entity: "user",
+  data: {
+    identifier: ...,
+    login: ...
+  }
+}
+
+{
+  action: "set",
+  entity: "issue",
+  data: {
+    identifier: ...,
+    body: ...,
+    closed_at: ...,
+    created_at: ...,
+    locked: ...,
+    number: ...,
+    state: ...,
+    title: ...,
+    updated_at: ...,
+    labels: [...],
+    // relationships. these are all by identifier
+    repository: <int64>, 
+    milestone: <int64>,
+    assignee: <int64>,
+    closed_by: <int64>,
+    originator: <int64>,
+  }
+}
+
