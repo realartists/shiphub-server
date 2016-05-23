@@ -15,7 +15,6 @@
   [ClosedById]   BIGINT         NULL,
   [Reactions]    NVARCHAR(300)  NULL,
   [MetaDataId]   BIGINT         NULL,
-  [RowVersion]   BIGINT         NULL,
   CONSTRAINT [PK_Issues] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
@@ -41,23 +40,4 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_MetaDataId]
   ON [dbo].[Issues]([MetaDataId])
   WHERE ([MetaDataId] IS NOT NULL);
-GO
-
-CREATE NONCLUSTERED INDEX [IX_Issues_RowVersion] ON [dbo].[Issues]([RowVersion]);
-GO
-
-CREATE TRIGGER [dbo].[TRG_Issues_Version]
-ON [dbo].[Issues]
-AFTER INSERT, UPDATE
-NOT FOR REPLICATION
-AS 
-BEGIN
-  -- SET NOCOUNT ON added to prevent extra result sets from
-  -- interfering with SELECT statements.
-  SET NOCOUNT ON;
-
-   UPDATE Issues SET
-    [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-  WHERE Id IN (SELECT Id FROM inserted)
-END
 GO

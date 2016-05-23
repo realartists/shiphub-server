@@ -32,8 +32,6 @@
 
     public DateTimeOffset? DueOn { get; set; }
 
-    public long? RowVersion { get; set; }
-
     public virtual Repository Repository { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

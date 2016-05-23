@@ -20,10 +20,6 @@
 
     public long? RepositoryMetaDataId { get; set; }
 
-    [ConcurrencyCheck]
-    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    public long? RowVersion { get; set; }
-
     public virtual GitHubMetaData RepositoryMetaData { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

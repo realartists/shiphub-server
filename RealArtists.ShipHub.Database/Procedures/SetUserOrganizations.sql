@@ -15,20 +15,4 @@ BEGIN
     VALUES (@UserId, [OrganizationId])
   WHEN NOT MATCHED BY SOURCE AND [Target].[UserId] = @UserId
     THEN DELETE;
-
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    -- TODO: This will cause spurious syncing with clients other than the impacted user.
-    UPDATE Accounts SET
-      [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-    WHERE Id IN (
-      SELECT @UserId
-      UNION
-      SELECT [Item] FROM @OrganizationIds)
-
-    RETURN 1
-  END
-  
-  -- ELSE
-  RETURN 0
 END

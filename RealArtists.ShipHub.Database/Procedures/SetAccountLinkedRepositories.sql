@@ -17,16 +17,4 @@ BEGIN
     INSERT (AccountId, RepositoryId, [Hidden]) VALUES (AccountId, RepositoryId, 0)
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
     THEN DELETE;
-
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    -- TODO: This will cause spurious syncing with clients other than the impacted user.
-    UPDATE Accounts SET
-      [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-    WHERE Id = @AccountId
-    RETURN 1
-  END
-  
-  -- ELSE
-  RETURN 0
 END

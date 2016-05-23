@@ -11,11 +11,11 @@ BEGIN
           @Buffer BIGINT = 1000,
           @Restart NVARCHAR(MAX)
 
-  ;WITH Versions as (
-    SELECT MAX([RowVersion]) as [RowVersion] FROM Accounts
-    UNION SELECT MAX([RowVersion]) FROM Repositories
-  )
-  SELECT @Largest = MAX([RowVersion]) FROM Versions
+  --;WITH Versions as (
+  --  SELECT MAX([RowVersion]) as [RowVersion] FROM Accounts
+  --  UNION SELECT MAX([RowVersion]) FROM Repositories
+  --)
+  --SELECT @Largest = MAX([RowVersion]) FROM Versions
 
   IF(@Largest > @Minimum)
   BEGIN

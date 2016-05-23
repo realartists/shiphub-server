@@ -18,15 +18,4 @@ BEGIN
   WHEN NOT MATCHED BY SOURCE
     AND Target.RepositoryId = @RepositoryId
     THEN DELETE;
-
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    UPDATE Repositories SET
-      [RowVersion] = NEXT VALUE FOR [dbo].[SyncIdentifier]
-    WHERE Id = @RepositoryId
-    RETURN 1
-  END
-  
-  -- ELSE
-  RETURN 0
 END

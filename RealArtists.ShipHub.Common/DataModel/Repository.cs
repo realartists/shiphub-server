@@ -26,10 +26,6 @@
 
     public long? LabelMetaDataId { get; set; }
 
-    [ConcurrencyCheck]
-    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    public long? RowVersion { get; set; }
-
     public virtual Account Account { get; set; }
 
     public virtual GitHubMetaData AssignableMetaData { get; set; }

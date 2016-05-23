@@ -114,6 +114,7 @@
     <Build Include="Procedures\BulkUpdateComments.sql" />
     <Build Include="User Defined Types\IssueEventTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssueEvents.sql" />
+    <Build Include="Tables\RepositoryLog.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

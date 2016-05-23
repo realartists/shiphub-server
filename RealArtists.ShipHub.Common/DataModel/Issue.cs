@@ -43,8 +43,6 @@
 
     public long? MetaDataId { get; set; }
 
-    public long? RowVersion { get; set; }
-
     public virtual Account Assignee { get; set; }
 
     public virtual Account ClosedBy { get; set; }

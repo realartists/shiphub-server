@@ -22,8 +22,6 @@
 
     public string Reactions { get; set; }
 
-    public long? RowVersion { get; set; }
-
     public virtual User User { get; set; }
 
     public virtual Issue Issue { get; set; }
