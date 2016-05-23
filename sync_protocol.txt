@@ -3,16 +3,18 @@ Client Hello:
 {
   msg: "hello",
   client: "...",
-  repos:
-    [
-      { repo: <int64>, version: <int64> },
-      ...
-    ],
-  orgs:
-    [
-      { org: <int64>, version: <int64> },
-      ...
-    ]
+  versions: {
+    repos:
+      [
+        { repo: <int64>, version: <int64> },
+        ...
+      ],
+    orgs:
+      [
+        { org: <int64>, version: <int64> },
+        ...
+      ]
+  }
 }
 
 Server reply:
@@ -26,13 +28,18 @@ Server reply:
     },
     ...
   ],
-  versions: [
-    { repo: <int64>, version: <int64> },
-    { repo: <int64>, version: <int64> },
-    { org: <int64>, version: <int64> },
-    { org: <int64>, version: <int64> },
-    ...
-  ],
+  versions: {
+    repos: [
+      { repo: <int64>, version: <int64> },
+      { repo: <int64>, version: <int64> },
+      ...
+    ],
+    orgs: [
+      { org: <int64>, version: <int64> },
+      { org: <int64>, version: <int64> },
+      ...
+    ]
+  },
   remaining: <int64> // log entries remaining until fully up to date
 }
 
