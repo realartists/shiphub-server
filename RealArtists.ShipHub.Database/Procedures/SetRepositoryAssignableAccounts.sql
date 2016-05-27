@@ -13,9 +13,32 @@ BEGIN
       FROM @AssignableAccountIds) as Source
   ON Target.AccountId = Source.AccountId
     AND Target.RepositoryId = Source.RepositoryId
+  -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (AccountId, RepositoryId) VALUES (AccountId, RepositoryId)
+    INSERT (AccountId, RepositoryId)
+    VALUES (AccountId, RepositoryId)
+  -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND Target.RepositoryId = @RepositoryId
     THEN DELETE;
+
+   IF(@@ROWCOUNT > 0) -- Not a NOP
+   BEGIN
+    -- Update repo record in log
+    UPDATE RepositoryLog
+      SET [RowVersion] = NULL
+    WHERE RepositoryId = @RepositoryId
+      AND [Type] = 'repository'
+      -- AND ItemId = @RepositoryId
+
+    -- Add any missing accounts to the log
+    MERGE INTO RepositoryLog as [Target]
+    USING (SELECT Item as AccountId FROM @AssignableAccountIds) as [Source]
+    ON ([Target].RepositoryId = @RepositoryId
+      AND [Target].[Type] = 'account'
+      AND [Target].ItemId = AccountId)
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (RepositoryId, [Type], ItemId, [Delete])
+      VALUES (@RepositoryId, 'account', AccountId, 0);
+  END
 END

@@ -80,7 +80,6 @@
     <Build Include="Sequences\SyncIdentifier.sql" />
     <Build Include="Tables\AccountOrganizations.sql" />
     <Build Include="Security\RoleMemberships.sql" />
-    <Build Include="Procedures\BumpGlobalVersion.sql" />
     <Build Include="Procedures\UpdateRateLimit.sql" />
     <Build Include="Tables\Issues.sql" />
     <Build Include="Tables\Comments.sql" />

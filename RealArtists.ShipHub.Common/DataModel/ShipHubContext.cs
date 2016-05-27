@@ -169,37 +169,6 @@
     //    new SqlParameter("Reset", SqlDbType.DateTimeOffset) { Value = reset });
     //}
 
-    //public Task<int> BumpGlobalVersion(long minimum) {
-    //  return Database.ExecuteSqlCommandAsync(
-    //    "EXEC [dbo].[BumpGlobalVersion] @Minimum = @Minimum",
-    //    new SqlParameter("Minimum", SqlDbType.BigInt) { Value = minimum });
-    //}
-
-    //public async Task<long> ReserveGlobalVersion(long rangeSize) {
-    //  var result = new SqlParameter("Result", SqlDbType.Int) {
-    //    Direction = ParameterDirection.Output
-    //  };
-
-    //  var rangeFirstValue = new SqlParameter("RangeFirstValue", SqlDbType.Variant) {
-    //    Direction = ParameterDirection.Output
-    //  };
-
-    //  await Database.ExecuteSqlCommandAsync(
-    //    @"EXEC @Result = [sys].[sp_sequence_get_range]
-    //        @sequence_name = '[dbo].[SyncIdentifier]',
-    //        @range_size = @RangeSize,
-    //        @range_first_value = @RangeFirstValue OUTPUT;",
-    //    result,
-    //    rangeFirstValue,
-    //    new SqlParameter("RangeSize", SqlDbType.BigInt) { Value = rangeSize });
-
-    //  if (((int)result.Value) != 0) {
-    //    throw new Exception($"Unable to reserve global version range of size {rangeSize}.");
-    //  }
-
-    //  return (long)rangeFirstValue.Value;
-    //}
-
     public async Task BulkUpdateIssues(long repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
       var issueParam = CreateTableParameter(
         "Issues",
@@ -440,7 +409,7 @@
         parameterName,
         "[dbo].[LabelTableType]",
         new[] {
-          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("ItemId", typeof(long)),
           Tuple.Create("Color", typeof(string)),
           Tuple.Create("Name", typeof(string)),
         },

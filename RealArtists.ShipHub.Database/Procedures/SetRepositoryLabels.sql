@@ -15,10 +15,22 @@ BEGIN
       INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
   ) as [Source]
   ON ([Target].LabelId = [Source].LabelId AND [Target].RepositoryId = @RepositoryId)
+  -- Add
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, LabelId)
     VALUES (@RepositoryId, LabelId)
+  -- Remove
   WHEN NOT MATCHED BY SOURCE
     AND [Target].RepositoryId = @RepositoryId
     THEN DELETE;
+
+  IF(@@ROWCOUNT > 0)
+  BEGIN
+    -- Update repo log entry
+    UPDATE RepositoryLog
+      SET [RowVersion] = NULL
+    WHERE RepositoryId = @RepositoryId
+      AND [Type] = 'repository'
+      -- AND ItemId = @RepositoryId
+  END
 END

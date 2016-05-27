@@ -7,6 +7,11 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
+  DECLARE @Changes TABLE (
+    [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
+  );
+
   MERGE INTO Repositories as [Target]
   USING (
     SELECT [Id], [AccountId], [Private], [Name], [FullName]
@@ -28,6 +33,30 @@ BEGIN
       [Private] = [Source].[Private],
       [Name] = [Source].[Name],
       [FullName] = [Source].[FullName],
-      [Date] = @Date;
-  --OUTPUT inserted.[Id], inserted.[AccountId], inserted.[Private], inserted.[Name], inserted.[FullName], inserted.[Date];
+      [Date] = @Date
+  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
+
+  -- Add milestone changes to log
+  MERGE INTO RepositoryLog as [Target]
+  USING (SELECT Id FROM @Changes) as [Source]
+  ON ([Target].RepositoryId = [Source].Id
+    AND [Target].[Type] = 'repository'
+    AND [Target].ItemId = [Source].Id)
+  -- Insert
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (RepositoryId, [Type], ItemId, [Delete])
+    VALUES (Id, 'repository', Id, 0)
+  -- Update
+  WHEN MATCHED THEN UPDATE SET [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
+
+  -- Best to inline owners too
+  MERGE INTO RepositoryLog as [Target]
+  USING (SELECT Id, AccountId FROM @Changes) as [Source]
+  ON ([Target].RepositoryId = [Source].Id
+    AND [Target].[Type] = 'account'
+    AND [Target].ItemId = [Source].AccountId)
+  -- Insert
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (RepositoryId, [Type], ItemId, [Delete])
+    VALUES (Id, 'account', AccountId, 0);
 END

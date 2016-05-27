@@ -10,9 +10,11 @@ BEGIN
   MERGE INTO AccountOrganizations as [Target]
   USING (SELECT [Item] as [OrganizationId] FROM @OrganizationIds) as [Source]
   ON ([Target].[UserId] = @UserId  AND [Target].[OrganizationId] = [Source].[OrganizationId])
+  -- Add
   WHEN NOT MATCHED BY TARGET THEN
     INSERT ([UserId], [OrganizationId])
     VALUES (@UserId, [OrganizationId])
+  -- Delete
   WHEN NOT MATCHED BY SOURCE AND [Target].[UserId] = @UserId
     THEN DELETE;
 END

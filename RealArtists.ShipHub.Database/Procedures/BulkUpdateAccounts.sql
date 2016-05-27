@@ -7,15 +7,21 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
+  DECLARE @Changes TABLE (
+    [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  );
+
   MERGE INTO Accounts as [Target]
   USING (
-    SELECT [Id], [Type], [Login]
+    SELECT Id, [Type], [Login]
     FROM @Accounts
   ) as [Source]
   ON ([Target].Id = [Source].Id)
+  -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [Type], [Login], [Date])
-    VALUES ([Id], [Type], [Login], @Date)
+    INSERT (Id, [Type], [Login], [Date])
+    VALUES (Id, [Type], [Login], @Date)
+  -- Update
   WHEN MATCHED 
     AND [Target].[Date] < @Date
     AND EXISTS (
@@ -26,6 +32,15 @@ BEGIN
     UPDATE SET
       [Type] = [Source].[Type],
       [Login] = [Source].[Login],
-      [Date] = @Date;
-  --OUTPUT inserted.[Id], inserted.[Type], inserted.[Login], inserted.[Date];      
+      [Date] = @Date
+  OUTPUT INSERTED.Id INTO @Changes (Id);
+
+  -- Other actions manage adding user references to repos.
+  -- Our only job here is to mark still valid references as changed.
+  UPDATE RepositoryLog SET
+    [RowVersion] = NULL -- Causes new ID to be assigned by trigger
+  WHERE [Type] = 'account'
+    AND [Delete] = 0
+    AND ItemId IN (SELECT Id FROM @Changes)
+  OPTION (RECOMPILE)
 END

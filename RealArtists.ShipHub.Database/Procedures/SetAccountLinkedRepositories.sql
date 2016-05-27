@@ -13,8 +13,11 @@ BEGIN
       FROM @RepositoryIds) as Source
   ON Target.AccountId = Source.AccountId
     AND Target.RepositoryId = Source.RepositoryId
+  -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (AccountId, RepositoryId, [Hidden]) VALUES (AccountId, RepositoryId, 0)
+    INSERT (AccountId, RepositoryId, [Hidden])
+    VALUES (AccountId, RepositoryId, 0)
+  -- Remove
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
     THEN DELETE;
 END
