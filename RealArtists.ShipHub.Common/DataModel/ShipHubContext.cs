@@ -361,7 +361,7 @@
 
     public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetAccountLinkedRepositories]
+        @"EXEC [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
           @RepositoryIds = @RepositoryIds;",
         new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
@@ -370,7 +370,7 @@
 
     public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetUserOrganizations]
+        @"EXEC [dbo].[SetUserOrganizations]
           @UserId = @UserId,
           @OrganizationIds = @OrganizationIds;",
         new SqlParameter("UserId", SqlDbType.BigInt) { Value = userId },
@@ -379,7 +379,7 @@
 
     public async Task SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetOrganizationUsers]
+        @"EXEC [dbo].[SetOrganizationUsers]
           @OrganizationId = @OrganizationId,
           @UserIds = @UserIds;",
         new SqlParameter("OrganizationId", SqlDbType.BigInt) { Value = organizationId },
@@ -388,7 +388,7 @@
 
     public async Task SetRepositoryAssignableAccounts(long repositoryId, IEnumerable<long> assignableAccountIds) {
       await Database.ExecuteSqlCommandAsync(
-        @"EXEC @Result = [dbo].[SetRepositoryAssignableAccounts]
+        @"EXEC [dbo].[SetRepositoryAssignableAccounts]
           @RepositoryId = @RepositoryId,
           @AssignableAccountIds = @AssignableAccountIds;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },

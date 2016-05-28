@@ -22,7 +22,7 @@
         config.DashboardConnectionString = null;
         //config.Tracing.Tracers.Clear();
         //config.Tracing.ConsoleLevel = TraceLevel.Error;
-        //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+        sbConfig.MessageOptions.MaxConcurrentCalls = 1;
       }
 
       // https://azure.microsoft.com/en-us/documentation/articles/service-bus-performance-improvements/ recommends
@@ -40,12 +40,16 @@
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
 
-      Console.WriteLine("Sending sync account message");
-      timer.Restart();
-      var qc = new ShipHubQueueClient();
-      qc.SyncAccount(CloudConfigurationManager.GetSetting("Nick.Revoke.AuthToken")).Wait();
-      timer.Stop();
-      Console.WriteLine($"Done in {timer.Elapsed}\n");
+      Console.Write("Send Sync Message? [y/N]: ");
+      var key = Console.Read();
+      if (key == (int)'y') {
+        Console.WriteLine("Sending sync account message");
+        timer.Restart();
+        var qc = new ShipHubQueueClient();
+        qc.SyncAccount(CloudConfigurationManager.GetSetting("Nick.Revoke.AuthToken")).Wait();
+        timer.Stop();
+        Console.WriteLine($"Done in {timer.Elapsed}\n");
+      }
 #endif
 
       Console.WriteLine("Starting job host...\n\n");

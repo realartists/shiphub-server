@@ -58,7 +58,7 @@ BEGIN
   -- Add new account references to log
   MERGE INTO RepositoryLog as [Target]
   USING (
-    SELECT UserId
+    SELECT DISTINCT(UserId)
     FROM Comments as c
       INNER JOIN @Changes as ch ON (c.Id = ch.Id AND ch.[Action] = 'INSERT')
   ) as [Source]
