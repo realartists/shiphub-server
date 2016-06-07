@@ -9,7 +9,7 @@ BEGIN
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
-  MERGE INTO RepositoryLabels as [Target]
+  MERGE INTO RepositoryLabels WITH (SERIALIZABLE) as [Target]
   USING (SELECT L1.Id as LabelId
     FROM Labels as L1
       INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)

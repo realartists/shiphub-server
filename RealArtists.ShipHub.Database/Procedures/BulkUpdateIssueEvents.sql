@@ -11,7 +11,7 @@ BEGIN
     [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   );
 
-  MERGE INTO IssueEvents as [Target]
+  MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], @RepositoryId as [RepositoryId], [CreatedAt], [ExtensionData]
     FROM @IssueEvents

@@ -11,7 +11,7 @@ BEGIN
     [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   );
 
-  MERGE INTO Accounts as [Target]
+  MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Id, [Type], [Login]
     FROM @Accounts

@@ -12,7 +12,7 @@ BEGIN
     [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
   );
 
-  MERGE INTO Repositories as [Target]
+  MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [AccountId], [Private], [Name], [FullName]
     FROM @Repositories
@@ -37,7 +37,7 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
 
   -- Add milestone changes to log
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (SELECT Id FROM @Changes) as [Source]
   ON ([Target].RepositoryId = [Source].Id
     AND [Target].[Type] = 'repository'
@@ -50,7 +50,7 @@ BEGIN
   WHEN MATCHED THEN UPDATE SET [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
 
   -- Best to inline owners too
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (SELECT Id, AccountId FROM @Changes) as [Source]
   ON ([Target].RepositoryId = [Source].Id
     AND [Target].[Type] = 'account'

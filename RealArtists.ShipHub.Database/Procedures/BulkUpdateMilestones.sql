@@ -13,7 +13,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   );
 
-  MERGE INTO Milestones as [Target]
+  MERGE INTO Milestones WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
     FROM @Milestones
@@ -38,7 +38,7 @@ BEGIN
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
 
   -- Add milestone changes to log
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Id, CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT) as [Delete]
     FROM @Changes

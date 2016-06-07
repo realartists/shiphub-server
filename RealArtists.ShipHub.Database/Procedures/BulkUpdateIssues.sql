@@ -12,7 +12,7 @@ BEGIN
     [IssueId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   );
 
-  MERGE INTO Issues as [Target]
+  MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [UserId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [Reactions]
     FROM @Issues
@@ -40,7 +40,7 @@ BEGIN
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
-  MERGE INTO IssueLabels as [Target]
+  MERGE INTO IssueLabels WITH (SERIALIZABLE) as [Target]
   USING (SELECT L1.Id as LabelId, L2.ItemId as IssueId
     FROM Labels as L1
       INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
@@ -56,7 +56,7 @@ BEGIN
     THEN DELETE;
 
   -- Add issue changes to log
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (SELECT IssueId as Id FROM @Changes) as [Source]
   ON ([Target].RepositoryId = @RepositoryId
     AND [Target].[Type] = 'issue'
@@ -71,7 +71,7 @@ BEGIN
 
   -- Add new account references to log
   -- Removed account references are leaked or GC'd later by another process.
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Distinct(UPUserId) as UserId
     FROM Issues as c

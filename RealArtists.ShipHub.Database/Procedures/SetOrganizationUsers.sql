@@ -7,7 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-  MERGE INTO AccountOrganizations as [Target]
+  MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
   USING (SELECT [Item] as [UserId] FROM @UserIds) as [Source]
   ON ([Target].[UserId] = [Source].[UserId]  AND [Target].[OrganizationId] = @OrganizationId)
   -- Add

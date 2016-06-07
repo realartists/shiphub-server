@@ -14,7 +14,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   );
 
-  MERGE INTO Comments as [Target]
+  MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT c.Id, i.Id as [IssueId], c.UserId, c.Body, c.CreatedAt, c.UpdatedAt, c.Reactions
     FROM @Comments as c
@@ -37,7 +37,7 @@ BEGIN
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
 
   -- Add comment changes to log
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Id, CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT) as [Delete]
     FROM @Changes
@@ -56,7 +56,7 @@ BEGIN
       [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
 
   -- Add new account references to log
-  MERGE INTO RepositoryLog as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT DISTINCT(UserId)
     FROM Comments as c

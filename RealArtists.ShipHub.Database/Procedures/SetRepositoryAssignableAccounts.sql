@@ -7,7 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-  MERGE INTO RepositoryAccounts as Target
+  MERGE INTO RepositoryAccounts WITH (SERIALIZABLE) as Target
   USING (
     SELECT Item as AccountId, @RepositoryId as RepositoryId
       FROM @AssignableAccountIds) as Source
@@ -32,7 +32,7 @@ BEGIN
       -- AND ItemId = @RepositoryId
 
     -- Add any missing accounts to the log
-    MERGE INTO RepositoryLog as [Target]
+    MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
     USING (SELECT Item as AccountId FROM @AssignableAccountIds) as [Source]
     ON ([Target].RepositoryId = @RepositoryId
       AND [Target].[Type] = 'account'

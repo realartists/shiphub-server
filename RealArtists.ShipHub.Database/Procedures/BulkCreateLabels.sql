@@ -6,7 +6,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
-  MERGE INTO Labels as [Target]
+  MERGE INTO Labels WITH (SERIALIZABLE) as [Target]
   USING (SELECT Color, Name FROM @Labels) as [Source]
   ON ([Target].Color = [Source].Color AND [Target].Name = [Source].Name)
   WHEN NOT MATCHED BY TARGET THEN
