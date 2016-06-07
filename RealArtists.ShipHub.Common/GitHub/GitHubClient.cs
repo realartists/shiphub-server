@@ -320,8 +320,17 @@
     public async Task<GitHubResponse<bool>> Assignable(string repoFullName, string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/assignees/{login}", opts?.CacheOptions);
       var response = await MakeRequest<bool>(request, opts?.Credentials);
-      if (response.Status == HttpStatusCode.NoContent) {
-        response.Result = true;
+      response.IsError = false;
+      switch (response.Status) {
+        case HttpStatusCode.NotFound:
+          response.Result = false;
+          break;
+        case HttpStatusCode.NoContent:
+          response.Result = true;
+          break;
+        default:
+          response.IsError = true;
+          break;
       }
       return response;
     }
