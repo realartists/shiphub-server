@@ -6,6 +6,10 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2A516802-7BE8-4A67-ABBE-C319EACCBBF8}"
 	ProjectSection(SolutionItems) = preProject
 		App.config = App.config
+		Secret.AppSettings.config = Secret.AppSettings.config
+		Secret.AppSettings.config.example = Secret.AppSettings.config.example
+		Secret.ConnectionStrings.config = Secret.ConnectionStrings.config
+		Secret.ConnectionStrings.config.example = Secret.ConnectionStrings.config.example
 		sync_protocol.txt = sync_protocol.txt
 	EndProjectSection
 EndProject

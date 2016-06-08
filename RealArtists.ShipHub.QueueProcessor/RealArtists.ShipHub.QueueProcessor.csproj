@@ -119,6 +119,12 @@
     <None Include="..\App.config">
       <Link>App.config</Link>
     </None>
+    <None Include="..\Secret.AppSettings.config">
+      <Link>Secret.AppSettings.config</Link>
+    </None>
+    <None Include="..\Secret.ConnectionStrings.config">
+      <Link>Secret.ConnectionStrings.config</Link>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\webjob-publish-settings.json" />
   </ItemGroup>

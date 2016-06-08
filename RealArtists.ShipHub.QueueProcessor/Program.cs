@@ -46,7 +46,7 @@
         Console.WriteLine("Sending sync account message");
         timer.Restart();
         var qc = new ShipHubQueueClient();
-        qc.SyncAccount(CloudConfigurationManager.GetSetting("Nick.Revoke.AuthToken")).Wait();
+        qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
         timer.Stop();
         Console.WriteLine($"Done in {timer.Elapsed}\n");
       }

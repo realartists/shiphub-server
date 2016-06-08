@@ -147,6 +147,12 @@
   <ItemGroup>
     <Content Include="packages.config" />
     <Content Include="Properties\webjobs-list.json" />
+    <Content Include="..\Secret.AppSettings.config">
+      <Link>Secret.AppSettings.config</Link>
+    </Content>
+    <Content Include="..\Secret.ConnectionStrings.config">
+      <Link>Secret.ConnectionStrings.config</Link>
+    </Content>
     <None Include="Properties\PublishProfiles\ra-shiphub-dev - Web Deploy.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

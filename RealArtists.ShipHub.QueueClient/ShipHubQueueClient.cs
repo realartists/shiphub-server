@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueClient {
   using System;
   using System.Collections.Concurrent;
+  using System.Configuration;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.GitHub;
@@ -15,7 +16,7 @@
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
 
     static ShipHubQueueClient() {
-      _connString = CloudConfigurationManager.GetSetting("Microsoft.ServiceBus.ConnectionString");
+      _connString = ConfigurationManager.ConnectionStrings["AzureWebJobsServiceBus"].ConnectionString;
     }
 
     static QueueClient QueueClientForName(string queueName) {
