@@ -13,11 +13,11 @@
     public bool Private { get; set; }
 
     [Required]
-    [StringLength(100)]
+    [StringLength(255)]
     public string Name { get; set; }
 
     [Required]
-    [StringLength(255)]
+    [StringLength(510)]
     public string FullName { get; set; }
 
     //public DateTimeOffset Date { get; set; }

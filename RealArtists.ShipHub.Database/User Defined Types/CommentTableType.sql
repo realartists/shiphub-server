@@ -5,5 +5,5 @@
   [Body]         NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
   [UpdatedAt]    DATETIMEOFFSET NOT NULL,
-  [Reactions]    NVARCHAR(300)  NULL
+  [Reactions]    NVARCHAR(MAX)  NULL
 )

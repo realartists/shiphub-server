@@ -11,7 +11,7 @@
     public string Color { get; set; }
 
     [Required]
-    [StringLength(150)]
+    [StringLength(500)]
     public string Name { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

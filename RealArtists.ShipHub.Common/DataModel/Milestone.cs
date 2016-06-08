@@ -18,10 +18,8 @@
     public string State { get; set; }
 
     [Required]
-    [StringLength(255)]
     public string Title { get; set; }
 
-    [StringLength(255)]
     public string Description { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }

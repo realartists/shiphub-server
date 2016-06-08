@@ -6,7 +6,7 @@
   [Body]         NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
   [UpdatedAt]    DATETIMEOFFSET NOT NULL,
-  [Reactions]    NVARCHAR(300)  NULL,
+  [Reactions]    NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Comments] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Comments_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues]([Id]),
   CONSTRAINT [FK_Comments_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),
