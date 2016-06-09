@@ -36,7 +36,9 @@
       var timer = new Stopwatch();
       Console.WriteLine("Creating Missing Queues");
       timer.Start();
+#endif
       ShipHubQueueClient.EnsureQueues().Wait();
+#if DEBUG
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
 
@@ -53,7 +55,16 @@
 #endif
 
       Console.WriteLine("Starting job host...\n\n");
-      new JobHost(config).RunAndBlock();
+      var host = new JobHost(config);
+#if DEBUG
+      host.Start();
+      Console.WriteLine("Press Any Key to Exit.");
+      Console.ReadKey();
+      Console.WriteLine("Stopping job host...");
+      host.Stop();
+#else
+      host.RunAndBlock();
+#endif
     }
   }
 }
