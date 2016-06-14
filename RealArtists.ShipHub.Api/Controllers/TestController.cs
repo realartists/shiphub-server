@@ -1,14 +1,24 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Net;
+  using System.Net.Http;
+  using System.Net.Mime;
+  using System.Text;
   using System.Web.Http;
 
   [AllowAnonymous]
-  [RoutePrefix("api/test")]
+  [RoutePrefix("test")]
   public class TestController : ApiController {
     [HttpGet]
     [Route("")]
     public string Index() {
       return "This is some text.";
+    }
+
+    [HttpGet]
+    [Route("auth")]
+    public IHttpActionResult Authentication() {
+      return Json(User);
     }
 
     [HttpGet]
@@ -19,8 +29,10 @@
 
     [HttpGet]
     [Route("time")]
-    public string Time() {
-      return $"UTC: {DateTime.UtcNow}\nLocal: {DateTime.Now}";
+    public HttpResponseMessage Time() {
+      return new HttpResponseMessage(HttpStatusCode.OK) {
+        Content = new StringContent($"UTC: {DateTime.UtcNow}\nLocal: {DateTime.Now}", Encoding.UTF8, MediaTypeNames.Text.Plain),
+      };
     }
   }
 }

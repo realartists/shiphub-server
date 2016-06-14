@@ -75,7 +75,6 @@
   <ItemGroup>
     <Build Include="Tables\AccessTokens.sql" />
     <Build Include="Tables\Repositories.sql" />
-    <Build Include="Tables\AuthenticationTokens.sql" />
     <Build Include="Tables\Accounts.sql" />
     <Build Include="Sequences\SyncIdentifier.sql" />
     <Build Include="Tables\AccountOrganizations.sql" />

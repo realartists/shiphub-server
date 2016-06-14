@@ -3,7 +3,7 @@
   using System.Web.Http;
   using Common.DataModel;
 
-  [RoutePrefix("etest")]
+  [RoutePrefix("test/entity")]
   public class EntityTestController : ShipHubController {
     const long UserId = -42;
 

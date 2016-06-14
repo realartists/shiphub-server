@@ -9,7 +9,7 @@
   using System.Threading.Tasks;
   using Types;
 
-  public partial class ShipHubContext : DbContext {
+  public class ShipHubContext : DbContext {
     static ShipHubContext() {
       Database.SetInitializer<ShipHubContext>(null);
     }
@@ -27,15 +27,16 @@
     }
 
     public virtual DbSet<AccessToken> AccessTokens { get; set; }
+    public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
-    public virtual DbSet<AuthenticationToken> AuthenticationTokens { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
-    public virtual DbSet<IssueEvent> Events { get; set; }
     public virtual DbSet<GitHubMetaData> GitHubMetaData { get; set; }
+    public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
+    public virtual DbSet<RepositoryLogEntry> RepositoryLogs { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -45,10 +46,10 @@
     }
 
     protected override void OnModelCreating(DbModelBuilder mb) {
-      mb.Entity<AccessToken>()
-        .HasMany(e => e.MetaData)
-        .WithOptional(e => e.AccessToken)
-        .WillCascadeOnDelete();
+      //mb.Entity<AccessToken>()
+      //  .HasMany(e => e.MetaData)
+      //  .WithOptional(e => e.AccessToken)
+      //  .WillCascadeOnDelete();
 
       mb.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
@@ -62,7 +63,6 @@
       mb.Entity<Account>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.User)
-        .HasForeignKey(e => e.UserId)
         .WillCascadeOnDelete(false);
 
       //mb.Entity<Account>()
@@ -79,55 +79,61 @@
 
       mb.Entity<Account>()
         .HasMany(e => e.AssignedIssues)
-        .WithOptional(e => e.Assignee)
-        .HasForeignKey(e => e.AssigneeId);
+        .WithOptional(e => e.Assignee);
 
       mb.Entity<Account>()
         .HasMany(e => e.ClosedIssues)
-        .WithOptional(e => e.ClosedBy)
-        .HasForeignKey(e => e.ClosedById);
+        .WithOptional(e => e.ClosedBy);
 
       mb.Entity<Account>()
         .HasMany(e => e.Issues)
         .WithRequired(e => e.User)
-        .HasForeignKey(e => e.UserId)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<Account>()
-        .HasMany(e => e.OwnedRepositories)
-        .WithRequired(e => e.Account)
-        .HasForeignKey(e => e.AccountId)
         .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
         .HasMany(e => e.LinkedRepositories)
         .WithRequired(e => e.Account)
-        .HasForeignKey(e => e.AccountId);
+        .WillCascadeOnDelete(false);
 
-      mb.Entity<GitHubMetaData>()
-        .HasMany(e => e.Issues)
-        .WithOptional(e => e.MetaData)
-        .HasForeignKey(e => e.MetaDataId);
+      mb.Entity<Account>()
+        .HasMany(e => e.OwnedRepositories)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.Organizations)
+        .WithMany(e => e.Members)
+        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
+
+      mb.Entity<Account>()
+        .HasMany(e => e.AssignableRepositories)
+        .WithMany(e => e.AssignableAccounts)
+        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
+
+      //mb.Entity<GitHubMetaData>()
+      //  .HasMany(e => e.Issues)
+      //  .WithOptional(e => e.MetaData)
+      //  .HasForeignKey(e => e.MetaDataId);
 
       mb.Entity<Issue>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.Issue)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Label>()
-        .HasMany(e => e.Issues)
-        .WithMany(e => e.Labels)
-        .Map(m => m.ToTable("IssueLabels").MapLeftKey("LabelId").MapRightKey("IssueId"));
+      mb.Entity<Issue>()
+        .HasMany(e => e.Labels)
+        .WithMany(e => e.Issues)
+        .Map(m => m.ToTable("IssueLabels").MapLeftKey("IssueId").MapRightKey("LabelId"));
 
       mb.Entity<Label>()
         .HasMany(e => e.Repositories)
         .WithMany(e => e.Labels)
         .Map(m => m.ToTable("RepositoryLabels").MapLeftKey("LabelId").MapRightKey("RepositoryId"));
 
-      mb.Entity<Organization>()
-        .HasMany(e => e.Members)
-        .WithMany(e => e.Organizations)
-        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("OrganizationId").MapRightKey("UserId"));
+      mb.Entity<Repository>()
+        .HasMany(e => e.LinkedAccounts)
+        .WithRequired(e => e.Repository)
+        .WillCascadeOnDelete(false);
 
       mb.Entity<Repository>()
         .HasMany(e => e.Comments)
@@ -150,14 +156,9 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<Repository>()
-        .HasMany(e => e.LinkedAccounts)
+        .HasMany(e => e.Logs)
         .WithRequired(e => e.Repository)
-        .HasForeignKey(e => e.RepositoryId);
-
-      mb.Entity<Repository>()
-        .HasMany(e => e.AssignableAccounts)
-        .WithMany(e => e.AssignableRepositories)
-        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("RepositoryId").MapRightKey("AccountId"));
+        .WillCascadeOnDelete(false);
     }
 
     //public Task UpdateRateLimit(string token, int limit, int remaining, DateTimeOffset reset) {

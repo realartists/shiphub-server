@@ -58,6 +58,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -69,7 +70,6 @@
     <Compile Include="DataModel\AccessToken.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\AccountRepository.cs" />
-    <Compile Include="DataModel\AuthenticationToken.cs" />
     <Compile Include="DataModel\Comment.cs" />
     <Compile Include="DataModel\IssueEvent.cs" />
     <Compile Include="DataModel\GitHubMetaData.cs" />
@@ -91,6 +91,19 @@
     <Compile Include="AutoMapperExtensions.cs" />
     <Compile Include="DbContextExtensions.cs" />
     <Compile Include="DictionaryExtensions.cs" />
+    <Compile Include="Dump\AccessToken.cs" />
+    <Compile Include="Dump\Account.cs" />
+    <Compile Include="Dump\AccountRepository.cs" />
+    <Compile Include="Dump\Comment.cs" />
+    <Compile Include="Dump\GitHubMetaData.cs" />
+    <Compile Include="Dump\Hook.cs" />
+    <Compile Include="Dump\Issue.cs" />
+    <Compile Include="Dump\IssueEvent.cs" />
+    <Compile Include="Dump\Label.cs" />
+    <Compile Include="Dump\Milestone.cs" />
+    <Compile Include="Dump\Model1.cs" />
+    <Compile Include="Dump\Repository.cs" />
+    <Compile Include="Dump\RepositoryLog.cs" />
     <Compile Include="EntityExtensions.cs" />
     <Compile Include="EnumerableExtensions.cs" />
     <Compile Include="ExceptionUtilities.cs" />
@@ -100,6 +113,7 @@
     <Compile Include="GitHub\GitHubReactions.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
+    <Compile Include="DataModel\RepositoryLogEntry.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />
@@ -143,6 +157,7 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

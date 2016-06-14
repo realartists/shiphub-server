@@ -3,6 +3,6 @@
 
   public class SyncMessageBase {
     [JsonProperty("msg")]
-    public string MessageType { get; set; }
+    public virtual string MessageType { get; set; }
   }
 }

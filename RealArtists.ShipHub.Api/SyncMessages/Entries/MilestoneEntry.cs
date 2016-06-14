@@ -1,17 +1,16 @@
 ﻿namespace RealArtists.ShipHub.Api.SyncMessages.Entries {
   using System;
-  using System.Collections.Generic;
-  using System.Linq;
-  using System.Web;
 
-  public class MilestoneEntry {
+  public class MilestoneEntry : SyncEntity {
     public long Identifier { get; set; }
-    public string MilestoneDescription { get; set; }
-    public string Name { get; set; }
+    public long RepositoryIdentifier { get; set; }
+    public int Number { get; set; }
     public string State { get; set; }
-    public DateTimeOffset? ClosedAt { get; set; }
+    public string Title { get; set; }
+    public string Description { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? DueOn { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DueOn { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
   }
 }

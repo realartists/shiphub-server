@@ -17,9 +17,6 @@
     [EnumMember(Value = "oops")]
     Unspecified = 0, // Catch uninitialized values
 
-    [EnumMember(Value = "account")]
-    Account,
-
     [EnumMember(Value = "comment")]
     Comment,
 
@@ -32,8 +29,14 @@
     [EnumMember(Value = "milestone")]
     Milestone,
 
+    [EnumMember(Value = "org")]
+    Organization,
+
     [EnumMember(Value = "repository")]
     Repository,
+
+    [EnumMember(Value = "user")]
+    User,
   }
 
   public abstract class SyncEntity {
@@ -47,9 +50,7 @@
   }
 
   public class SyncMessage : SyncMessageBase {
-    public SyncMessage() {
-      MessageType = "sync";
-    }
+    public override string MessageType { get { return "sync"; } set { } }
 
     public IEnumerable<SyncLogEntry> Logs { get; set; }
     public VersionDetails Version { get; set; }

@@ -3,7 +3,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Label {
+  public class Label {
     public long Id { get; set; }
 
     [Required]

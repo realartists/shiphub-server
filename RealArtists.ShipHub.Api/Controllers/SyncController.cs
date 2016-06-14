@@ -1,9 +1,13 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Collections.Generic;
+  using System.Data.Entity;
   using System.IO;
   using System.IO.Compression;
+  using System.Linq;
   using System.Net;
   using System.Net.Http;
+  using System.Net.Mime;
   using System.Net.WebSockets;
   using System.Text;
   using System.Threading;
@@ -12,11 +16,14 @@
   using System.Web.Http;
   using System.Web.WebSockets;
   using Common;
+  using Common.DataModel;
   using Common.WebSockets;
   using Newtonsoft.Json.Linq;
   using SyncMessages;
+  using SyncMessages.Entries;
+  using se = SyncMessages.Entries;
 
-  [RoutePrefix("Sync")]
+  [RoutePrefix("api/sync")]
   public class SyncController : ShipHubController {
     [Route("")]
     [HttpGet]
@@ -28,8 +35,10 @@
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }
 
+      var reason = "WebSocket connection required.";
       return new HttpResponseMessage(HttpStatusCode.UpgradeRequired) {
-        ReasonPhrase = "WebSocket connection required."
+        ReasonPhrase = reason,
+        Content = new StringContent(reason, Encoding.UTF8, MediaTypeNames.Text.Plain),
       };
     }
   }
@@ -96,7 +105,145 @@
     }
 
     private async Task SyncIt(HelloMessage hello) {
+      var syncResponse = new SyncMessage();
+      var entries = new List<SyncLogEntry>();
 
+      using (var context = new ShipHubContext()) {
+        // Get all known changes
+        var logsByType = await context.RepositoryLogs
+          .GroupBy(x => x.Type)
+          .ToArrayAsync();
+
+        foreach (var group in logsByType) {
+          switch (group.Key) {
+            case "account":
+              var accountIds = group.Select(x => x.ItemId).ToHashSet();
+              var accounts = await context.Accounts.Where(x => accountIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(accounts.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = typeof(User).IsAssignableFrom(x.GetType()) ? SyncEntityType.User : SyncEntityType.Organization,
+                Data = new AccountEntry() {
+                  Identifier = x.Id,
+                  Login = x.Login,
+                },
+              }));
+              break;
+            case "comment":
+              var commentIds = group.Select(x => x.ItemId).ToHashSet();
+              var comments = await context.Comments.Where(x => commentIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(comments.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = SyncEntityType.Comment,
+                Data = new CommentEntry() {
+                  Body = x.Body,
+                  CreatedAt = x.CreatedAt,
+                  Identifier = x.Id,
+                  IssueIdentifier = x.IssueId,
+                  Reactions = x.Reactions.DeserializeObject<Reactions>(),
+                  RepositoryIdentifier = x.RepositoryId,
+                  UpdatedAt = x.UpdatedAt,
+                  UserIdentifier = x.UserId,
+                },
+              }));
+              break;
+            case "event":
+              var eventIds = group.Select(x => x.ItemId).ToHashSet();
+              var events = await context.IssueEvents.Where(x => eventIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(events.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = SyncEntityType.Event,
+                Data = new EventEntry() {
+                  ExtensionData = x.ExtensionData,
+                  Identifier = x.Id,
+                  RepositoryIdentifier = x.RepositoryId,
+                },
+              }));
+              break;
+            case "issue":
+              var issueIds = group.Select(x => x.ItemId).ToHashSet();
+              var issues = await context.Issues
+                .Include(x => x.Labels)
+                .Where(x => issueIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(issues.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = SyncEntityType.Issue,
+                Data = new IssueEntry() {
+                  AssigneeIdentifier = x.AssigneeId,
+                  Body = x.Body,
+                  ClosedAt = x.ClosedAt,
+                  ClosedByIdentifier = x.ClosedById,
+                  CreatedAt = x.CreatedAt,
+                  Identifier = x.Id,
+                  Labels = x.Labels.Select(y => new se.Label() {
+                    Color = y.Color,
+                    Name = y.Name,
+                  }),
+                  Locked = x.Locked,
+                  MilestoneIdentifier = x.MilestoneId,
+                  Number = x.Number,
+                  Reactions = x.Reactions.DeserializeObject<Reactions>(),
+                  RepositoryIdentifier = x.RepositoryId,
+                  State = x.State,
+                  Title = x.Title,
+                  UpdatedAt = x.UpdatedAt,
+                  UserIdentifier = x.UserId,
+                },
+              }));
+              break;
+            case "milestone":
+              var milestoneIds = group.Select(x => x.ItemId).ToHashSet();
+              var milestones = await context.Milestones.Where(x => milestoneIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(milestones.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = SyncEntityType.Milestone,
+                Data = new MilestoneEntry() {
+                  ClosedAt = x.ClosedAt,
+                  CreatedAt = x.CreatedAt,
+                  Description = x.Description,
+                  DueOn = x.DueOn,
+                  Identifier = x.Id,
+                  Number = x.Number,
+                  RepositoryIdentifier = x.RepositoryId,
+                  State = x.State,
+                  Title = x.Title,
+                  UpdatedAt = x.UpdatedAt,
+                },
+              }));
+              break;
+            case "repository":
+              var repoIds = group.Select(x => x.ItemId).ToHashSet();
+              var repos = await context.Repositories
+                .Include(x => x.Labels)
+                .Where(x => repoIds.Contains(x.Id)).ToArrayAsync();
+              entries.AddRange(repos.Select(x => new SyncLogEntry() {
+                Action = SyncLogAction.Set, // TODO: Handle deletion
+                Entity = SyncEntityType.Repository,
+                Data = new RepositoryEntry() {
+                  AccountIdentifier = x.AccountId,
+                  FullName = x.FullName,
+                  Identifier = x.Id,
+                  Labels = x.Labels.Select(y => new se.Label() {
+                    Color = y.Color,
+                    Name = y.Name,
+                  }),
+                  Name = x.Name,
+                  Private = x.Private,
+                },
+              }));
+              break;
+            default:
+              // Ignore for now
+              break;
+          }
+        }
+
+        // TODO: Version?
+      }
+
+      syncResponse.Logs = entries;
+      syncResponse.Remaining = 0;
+
+      await SendJsonAsync(syncResponse);
     }
   }
 }

@@ -3,7 +3,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  public partial class Comment {
+  public class Comment {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long Id { get; set; }
 

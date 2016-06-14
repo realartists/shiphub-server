@@ -7,13 +7,7 @@
 
   public class GitHubToDataModelProfile : Profile {
     protected override void Configure() {
-      //CreateMap<g.Account, Account>(MemberList.Source)
-      //  .ForSourceMember(x => x.Type, o => o.Ignore())
-      //  .BeforeMap((from, to) => {
-      //    if (from.Id != to.Id) {
-      //      throw new InvalidOperationException($"Cannot update Account {to.Id} with data from GitHub Account {from.Id}");
-      //    }
-      //  });
+      CreateMap<g.Account, Account>(MemberList.Destination);
 
       //CreateMap<g.Repository, Repository>(MemberList.Source)
       //  .ForSourceMember(x => x.HasIssues, o => o.Ignore())

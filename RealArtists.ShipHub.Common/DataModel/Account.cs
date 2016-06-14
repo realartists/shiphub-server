@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public abstract partial class Account  {
+  public abstract class Account  {
     public const string OrganizationType = "org";
     public const string UserType = "user";
 
@@ -18,9 +18,9 @@
 
     public DateTimeOffset Date { get; set; }
 
-    public long? RepositoryMetaDataId { get; set; }
+    //public long? RepositoryMetaDataId { get; set; }
 
-    public virtual GitHubMetaData RepositoryMetaData { get; set; }
+    //public virtual GitHubMetaData RepositoryMetaData { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<AccessToken> AccessTokens { get; set; } = new HashSet<AccessToken>();
@@ -42,9 +42,6 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<AuthenticationToken> AuthenticationTokens { get; set; } = new HashSet<AuthenticationToken>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
