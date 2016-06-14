@@ -1,7 +1,10 @@
-﻿namespace RealArtists.ShipHub.Api.Models {
+﻿namespace RealArtists.ShipHub.Api.SyncMessages.Entries {
   using System;
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Web;
 
-  public class ApiMilestone {
+  public class MilestoneEntry {
     public long Identifier { get; set; }
     public string MilestoneDescription { get; set; }
     public string Name { get; set; }

@@ -131,9 +131,7 @@
     <Compile Include="Legacy\SqlConnectionFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WebSockets\ByteBuffer.cs" />
-    <Compile Include="WebSockets\DefaultWebSocketHandler.cs" />
     <Compile Include="WebSockets\IPerformanceCounter.cs" />
-    <Compile Include="WebSockets\IWebSocket.cs" />
     <Compile Include="WebSockets\TaskAsyncHelper.cs" />
     <Compile Include="WebSockets\TaskAwaiterHelper.cs" />
     <Compile Include="WebSockets\TaskQueue.cs" />

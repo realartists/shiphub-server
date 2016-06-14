@@ -132,17 +132,18 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Models\ApiAccount.cs" />
-    <Compile Include="Models\ApiComment.cs" />
-    <Compile Include="Models\ApiEvent.cs" />
-    <Compile Include="Models\ApiIssue.cs" />
-    <Compile Include="Models\ApiLabel.cs" />
-    <Compile Include="Models\ApiMilestone.cs" />
-    <Compile Include="Models\ApiOrganization.cs" />
-    <Compile Include="Models\ApiRepository.cs" />
-    <Compile Include="Models\ApiUser.cs" />
-    <Compile Include="Models\DataModelToApiModelProfile.cs" />
+    <Compile Include="SyncMessages\DataModelToSyncMessagesProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SyncMessages\Entries\AccountEntry.cs" />
+    <Compile Include="SyncMessages\Entries\CommentEntry.cs" />
+    <Compile Include="SyncMessages\Entries\EventEntry.cs" />
+    <Compile Include="SyncMessages\Entries\IssueEntry.cs" />
+    <Compile Include="SyncMessages\Entries\MilestoneEntry.cs" />
+    <Compile Include="SyncMessages\Entries\Reactions.cs" />
+    <Compile Include="SyncMessages\Entries\RepositoryEntry.cs" />
+    <Compile Include="SyncMessages\HelloMessage.cs" />
+    <Compile Include="SyncMessages\SyncMessage.cs" />
+    <Compile Include="SyncMessages\SyncMessageBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />

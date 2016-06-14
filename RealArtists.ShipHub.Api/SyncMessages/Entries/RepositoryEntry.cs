@@ -1,5 +1,10 @@
-﻿namespace RealArtists.ShipHub.Api.Models {
-  public class ApiRepository {
+﻿namespace RealArtists.ShipHub.Api.SyncMessages.Entries {
+  using System;
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Web;
+
+  public class RepositoryEntry {
     public long Identifier { get; set; }
     public long AccountIdentifier { get; set; }
     public bool Private { get; set; }

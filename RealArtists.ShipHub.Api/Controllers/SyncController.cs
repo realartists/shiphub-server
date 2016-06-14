@@ -13,6 +13,8 @@
   using System.Web.WebSockets;
   using Common;
   using Common.WebSockets;
+  using Newtonsoft.Json.Linq;
+  using SyncMessages;
 
   [RoutePrefix("Sync")]
   public class SyncController : ShipHubController {
@@ -39,16 +41,13 @@
       : base(_MaxMessageSize) {
     }
 
-    public override void OnClose() {
+    public override Task OnClose() {
       // TODO: Remove from active connections
-    }
-
-    public override void OnError() {
-      // OnClose is always called after OnError.
+      return Task.CompletedTask;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
-    public override void OnMessage(byte[] message) {
+    public override Task OnMessage(byte[] message) {
       var gzip = message[0] == 1;
       string json = "";
       if (gzip) {
@@ -62,11 +61,19 @@
         json = Encoding.UTF8.GetString(message, 1, message.Length - 1);
       }
 
-      OnMessage(json);
+      return OnMessage(json);
     }
 
-    public override void OnMessage(string message) {
-      // TODO: Dispatch
+    public override Task OnMessage(string message) {
+      var jobj = JObject.Parse(message);
+      var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
+      switch (data.MessageType) {
+        case "hello":
+          return SyncIt(jobj.ToObject<HelloMessage>(JsonUtility.SaneSerializer));
+        default:
+          // Ignore unknown messages for now
+          return Task.CompletedTask;
+      }
     }
 
     public Task AcceptWebSocketRequest(AspNetWebSocketContext context) {
@@ -86,6 +93,10 @@
 
         return SendAsync(new ArraySegment<byte>(ms.ToArray()), WebSocketMessageType.Binary, true);
       }
+    }
+
+    private async Task SyncIt(HelloMessage hello) {
+
     }
   }
 }

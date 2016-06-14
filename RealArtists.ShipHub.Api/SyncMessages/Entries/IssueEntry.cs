@@ -1,8 +1,10 @@
-﻿namespace RealArtists.ShipHub.Api.Models {
+﻿namespace RealArtists.ShipHub.Api.SyncMessages.Entries {
   using System;
   using System.Collections.Generic;
+  using System.Linq;
+  using System.Web;
 
-  public class ApiIssue {
+  public class IssueEntry {
     public string Body { get; set; }
     public bool Closed { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
