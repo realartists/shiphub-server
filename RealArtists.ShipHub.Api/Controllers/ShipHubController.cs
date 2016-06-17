@@ -1,14 +1,17 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System.Net;
   using System.Runtime.CompilerServices;
-  using System.Threading;
   using System.Web.Http;
   using AutoMapper;
   using Common.DataModel;
+  using Filters;
 
   public abstract class ShipHubController : ApiController {
     private ShipHubContext _Context = new ShipHubContext();
-    public ShipHubContext Context { get { return _Context; } }
+
+    protected ShipHubContext Context { get { return _Context; } }
+    protected ShipHubPrincipal ShipUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
+
     public IMapper Mapper { get; private set; } = AutoMapperConfig.Mapper;
 
     public IHttpActionResult Error(

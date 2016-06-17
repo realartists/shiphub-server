@@ -1,5 +1,6 @@
 ﻿namespace WebSocketTestClient {
   using System;
+  using System.Configuration;
   using System.IO;
   using System.IO.Compression;
   using System.Net.WebSockets;
@@ -15,7 +16,10 @@
 
     static async Task DoAsync() {
       using (var ws = new ClientWebSocket()) {
+        var token = ConfigurationManager.AppSettings["GitHubTestToken"];
+
         ws.Options.AddSubProtocol("V1");
+        ws.Options.SetRequestHeader("Authorization", $"token {token}");
         await ws.ConnectAsync(new Uri("wss://hub-nick.realartists.com/api/sync"), CancellationToken.None);
         if (ws.State != WebSocketState.Open) {
           Console.WriteLine("Unable to open socket.");

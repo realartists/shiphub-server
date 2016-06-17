@@ -4,13 +4,12 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
-  using System.Security.Cryptography;
   using System.Threading.Tasks;
   using System.Web.Http;
   using Common;
   using Common.DataModel;
-  using Models;
   using QueueClient;
+
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
@@ -178,7 +177,7 @@
         //token.UpdateRateLimits(userResponse);
 
         await Context.SaveChangesAsync();
-        
+
         // For now, always sync on hello
         var qc = new ShipHubQueueClient();
         await qc.SyncAccount(token.Token);

@@ -12,6 +12,7 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
 
+  [AllowAnonymous]
   [RoutePrefix("github")]
   public class GitHubWebhookController : ApiController {
     public const string GitHubUserAgent = "GitHub-Hookshot";
