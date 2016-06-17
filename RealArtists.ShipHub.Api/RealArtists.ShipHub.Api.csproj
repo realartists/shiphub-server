@@ -122,7 +122,6 @@
     <Compile Include="App_Start\AutoMapperConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
-    <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SyncController.cs" />

@@ -1,10 +1,10 @@
 ﻿CREATE TABLE [dbo].[RepositoryLog] (
-  [Id]           BIGINT NOT NULL IDENTITY(1,1),
-  [RepositoryId] BIGINT NOT NULL,
+  [Id]           BIGINT       NOT NULL IDENTITY(1,1),
+  [RepositoryId] BIGINT       NOT NULL,
   [Type]         NVARCHAR(20) NOT NULL,
-  [ItemId]       BIGINT NOT NULL,
-  [Delete]       BIT NOT NULL,
-  [RowVersion]   BIGINT NULL,
+  [ItemId]       BIGINT       NOT NULL,
+  [Delete]       BIT          NOT NULL,
+  [RowVersion]   BIGINT       NULL,
   CONSTRAINT [PK_RepositoryLog] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_RepositoryLog_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
 )

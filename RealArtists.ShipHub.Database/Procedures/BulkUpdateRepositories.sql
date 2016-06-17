@@ -36,7 +36,7 @@ BEGIN
       [Date] = @Date
   OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
 
-  -- Add milestone changes to log
+  -- Add repository changes to log
   MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (SELECT Id FROM @Changes) as [Source]
   ON ([Target].RepositoryId = [Source].Id
