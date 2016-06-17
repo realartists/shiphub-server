@@ -32,7 +32,8 @@
           }
         }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
-      CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination);
+      CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination)
+        .ForMember(x => x.ActorId, o => o.ResolveUsing(x => x.Assigner?.Id ?? x.Actor.Id));
 
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
 

@@ -253,7 +253,12 @@
         "[dbo].[IssueEventTableType]",
         new[] {
           Tuple.Create("Id", typeof(long)),
+          Tuple.Create("ActorId", typeof(long)),
+          Tuple.Create("CommitId", typeof(string)),
+          Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
+          Tuple.Create("MilestoneId", typeof(long)), // Nullable types handled by DataTable
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
