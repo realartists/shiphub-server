@@ -138,11 +138,11 @@
                   Body = x.Body,
                   CreatedAt = x.CreatedAt,
                   Identifier = x.Id,
-                  IssueIdentifier = x.IssueId,
+                  Issue = x.IssueId,
                   Reactions = x.Reactions.DeserializeObject<Reactions>(),
-                  RepositoryIdentifier = x.RepositoryId,
+                  Repository = x.RepositoryId,
                   UpdatedAt = x.UpdatedAt,
-                  UserIdentifier = x.UserId,
+                  User = x.UserId,
                 },
               }));
               break;
@@ -155,7 +155,7 @@
                 Data = new EventEntry() {
                   ExtensionData = x.ExtensionData,
                   Identifier = x.Id,
-                  RepositoryIdentifier = x.RepositoryId,
+                  Repository = x.RepositoryId,
                 },
               }));
               break;
@@ -168,10 +168,10 @@
                 Action = SyncLogAction.Set, // TODO: Handle deletion
                 Entity = SyncEntityType.Issue,
                 Data = new IssueEntry() {
-                  AssigneeIdentifier = x.AssigneeId,
+                  Assignee = x.AssigneeId,
                   Body = x.Body,
                   ClosedAt = x.ClosedAt,
-                  ClosedByIdentifier = x.ClosedById,
+                  ClosedBy = x.ClosedById,
                   CreatedAt = x.CreatedAt,
                   Identifier = x.Id,
                   Labels = x.Labels.Select(y => new se.Label() {
@@ -179,14 +179,14 @@
                     Name = y.Name,
                   }),
                   Locked = x.Locked,
-                  MilestoneIdentifier = x.MilestoneId,
+                  Milestone = x.MilestoneId,
                   Number = x.Number,
                   Reactions = x.Reactions.DeserializeObject<Reactions>(),
-                  RepositoryIdentifier = x.RepositoryId,
+                  Repository = x.RepositoryId,
                   State = x.State,
                   Title = x.Title,
                   UpdatedAt = x.UpdatedAt,
-                  UserIdentifier = x.UserId,
+                  User = x.UserId,
                 },
               }));
               break;
@@ -203,7 +203,7 @@
                   DueOn = x.DueOn,
                   Identifier = x.Id,
                   Number = x.Number,
-                  RepositoryIdentifier = x.RepositoryId,
+                  Repository = x.RepositoryId,
                   State = x.State,
                   Title = x.Title,
                   UpdatedAt = x.UpdatedAt,
@@ -214,12 +214,14 @@
               var repoIds = group.Select(x => x.ItemId).ToHashSet();
               var repos = await context.Repositories
                 .Include(x => x.Labels)
+                .Include(x => x.AssignableAccounts)
                 .Where(x => repoIds.Contains(x.Id)).ToArrayAsync();
               entries.AddRange(repos.Select(x => new SyncLogEntry() {
                 Action = SyncLogAction.Set, // TODO: Handle deletion
                 Entity = SyncEntityType.Repository,
                 Data = new RepositoryEntry() {
-                  AccountIdentifier = x.AccountId,
+                  Assignees = x.AssignableAccounts.Select(y => y.Id).ToArray(),
+                  Owner = x.AccountId,
                   FullName = x.FullName,
                   Identifier = x.Id,
                   Labels = x.Labels.Select(y => new se.Label() {

@@ -32,7 +32,7 @@
     [EnumMember(Value = "org")]
     Organization,
 
-    [EnumMember(Value = "repository")]
+    [EnumMember(Value = "repo")]
     Repository,
 
     [EnumMember(Value = "user")]

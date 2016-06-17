@@ -6,7 +6,7 @@
 
   public class EventEntry : SyncEntity {
     public long Identifier { get; set; }
-    public long RepositoryIdentifier { get; set; }
+    public long Repository { get; set; }
 
     [JsonExtensionData]
     public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();

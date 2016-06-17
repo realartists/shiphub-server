@@ -3,7 +3,7 @@
 
   public class MilestoneEntry : SyncEntity {
     public long Identifier { get; set; }
-    public long RepositoryIdentifier { get; set; }
+    public long Repository { get; set; }
     public int Number { get; set; }
     public string State { get; set; }
     public string Title { get; set; }
