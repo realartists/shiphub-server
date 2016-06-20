@@ -153,8 +153,14 @@
                 Action = SyncLogAction.Set, // TODO: Handle deletion
                 Entity = SyncEntityType.Event,
                 Data = new EventEntry() {
+                  Actor = x.ActorId,
+                  Assignee = x.AssigneeId,
+                  CommitId = x.CommitId,
+                  CreatedAt = x.CreatedAt,
+                  Event = x.Event,
                   ExtensionData = x.ExtensionData,
                   Identifier = x.Id,
+                  Milestone = x.MilestoneId,
                   Repository = x.RepositoryId,
                 },
               }));
