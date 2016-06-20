@@ -263,7 +263,12 @@
         },
         x => new object[] {
           x.Id,
+          x.ActorId,
+          x.CommitId,
+          x.Event,
           x.CreatedAt,
+          x.AssigneeId,
+          x.MilestoneId,
           x.ExtensionData,
         },
         issueEvents);
