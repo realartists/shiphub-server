@@ -6,6 +6,5 @@
   [Event]         NVARCHAR(64)   NOT NULL,
   [CreatedAt]     DATETIMEOFFSET NOT NULL,
   [AssigneeId]    BIGINT         NULL,
-  [MilestoneId]   BIGINT         NULL,
   [ExtensionData] NVARCHAR(MAX)  NOT NULL
 )

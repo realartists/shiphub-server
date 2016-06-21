@@ -261,7 +261,6 @@
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
-          Tuple.Create("MilestoneId", typeof(long)), // Nullable types handled by DataTable
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
@@ -272,7 +271,6 @@
           x.Event,
           x.CreatedAt,
           x.AssigneeId,
-          x.MilestoneId,
           x.ExtensionData,
         },
         issueEvents);

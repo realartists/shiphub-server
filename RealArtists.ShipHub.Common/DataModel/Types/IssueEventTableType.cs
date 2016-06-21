@@ -9,7 +9,6 @@
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public long? AssigneeId { get; set; }
-    public long? MilestoneId { get; set; }
     public string ExtensionData { get; set; }
   }
 }
