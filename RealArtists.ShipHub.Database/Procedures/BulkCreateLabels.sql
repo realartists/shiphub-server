@@ -11,5 +11,6 @@ BEGIN
   ON ([Target].Color = [Source].Color AND [Target].Name = [Source].Name)
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (Color, Name)
-    VALUES (Color, Name);
+    VALUES (Color, Name)
+  OPTION (RECOMPILE);
 END

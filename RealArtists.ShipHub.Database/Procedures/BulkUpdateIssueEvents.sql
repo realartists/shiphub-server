@@ -20,10 +20,11 @@ BEGIN
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (Id, RepositoryId, ActorId, CommitId, [Event], CreatedAt, AssigneeId, MilestoneId, ExtensionData)
     VALUES (Id, @RepositoryId, ActorId, CommitId, [Event], CreatedAt, AssigneeId, MilestoneId, ExtensionData)
-  OUTPUT INSERTED.Id INTO @Changes (IssueEventId);
+  OUTPUT INSERTED.Id INTO @Changes (IssueEventId)
+  OPTION (RECOMPILE);
 
   -- Events are only ever added
-  INSERT INTO RepositoryLog (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'event', IssueEventId, 0
   FROM @Changes
 
@@ -43,5 +44,6 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
+  OPTION (RECOMPILE);
 END

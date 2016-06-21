@@ -22,13 +22,14 @@ BEGIN
   -- Remove
   WHEN NOT MATCHED BY SOURCE
     AND [Target].RepositoryId = @RepositoryId
-    THEN DELETE;
+    THEN DELETE
+  OPTION (RECOMPILE);
 
   IF(@@ROWCOUNT > 0)
   BEGIN
     -- Update repo log entry
-    UPDATE RepositoryLog
-      SET [RowVersion] = NULL
+    UPDATE RepositoryLog WITH (SERIALIZABLE)
+      SET [RowVersion] = DEFAULT
     WHERE RepositoryId = @RepositoryId
       AND [Type] = 'repository'
       -- AND ItemId = @RepositoryId

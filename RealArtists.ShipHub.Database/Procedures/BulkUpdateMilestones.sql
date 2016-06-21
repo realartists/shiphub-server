@@ -35,24 +35,26 @@ BEGIN
       UpdatedAt = [Source].UpdatedAt,
       ClosedAt = [Source].ClosedAt,
       DueOn = [Source].DueOn
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action])
+  OPTION (RECOMPILE);
 
-  -- Add milestone changes to log
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
-  USING (
-    SELECT Id, CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT) as [Delete]
+  -- Deleted or edited milestones
+  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+    [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
+    [RowVersion] = DEFAULT
+  FROM RepositoryLog as rl
+    INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
+  WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
+  OPTION (RECOMPILE)
+
+  -- New milestones
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  SELECT @RepositoryId, 'milestone', Id, 0
     FROM @Changes
-  ) as [Source]
-  ON ([Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'milestone'
-    AND [Target].ItemId = [Source].Id)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'milestone', Id, [Delete])
-  -- Update/Delete
-  WHEN MATCHED THEN
-    UPDATE SET
-      [Delete] = [Source].[Delete],
-      [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
+  WHERE Id NOT IN (
+    SELECT ItemId
+    FROM RepositoryLog
+    WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
+  )
+  OPTION (RECOMPILE)
 END

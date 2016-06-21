@@ -20,13 +20,14 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND Target.RepositoryId = @RepositoryId
-    THEN DELETE;
+    THEN DELETE
+  OPTION (RECOMPILE);
 
    IF(@@ROWCOUNT > 0) -- Not a NOP
    BEGIN
     -- Update repo record in log
-    UPDATE RepositoryLog
-      SET [RowVersion] = NULL
+    UPDATE RepositoryLog WITH (SERIALIZABLE)
+      SET [RowVersion] = DEFAULT
     WHERE RepositoryId = @RepositoryId
       AND [Type] = 'repository'
       -- AND ItemId = @RepositoryId
@@ -39,6 +40,7 @@ BEGIN
       AND [Target].ItemId = AccountId)
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (RepositoryId, [Type], ItemId, [Delete])
-      VALUES (@RepositoryId, 'account', AccountId, 0);
+      VALUES (@RepositoryId, 'account', AccountId, 0)
+    OPTION (RECOMPILE);
   END
 END
