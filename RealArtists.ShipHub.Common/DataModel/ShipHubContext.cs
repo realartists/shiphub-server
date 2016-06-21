@@ -211,6 +211,7 @@
       var labelParam = CreateLabelTable("Labels", labels);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateIssues] @RepositoryId = @RepositoryId, @Issues = @Issues, @Labels = @Labels;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         issueParam,
@@ -242,6 +243,7 @@
         comments);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateComments] @RepositoryId = @RepositoryId, @Comments = @Comments;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
@@ -274,6 +276,7 @@
         issueEvents);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateIssueEvents] @RepositoryId = @RepositoryId, @IssueEvents = @IssueEvents;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
@@ -283,6 +286,7 @@
       var tableParam = CreateLabelTable("Labels", labels);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[SetRepositoryLabels] @RepositoryId = @RepositoryId, @Labels = @Labels;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
@@ -305,6 +309,7 @@
         accounts);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateAccounts] @Date = @Date, @Accounts = @Accounts;",
         new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
         tableParam);
@@ -339,6 +344,7 @@
         milestones);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateMilestones] @RepositoryId = @RepositoryId, @Milestones = @Milestones;",
         new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
         tableParam);
@@ -365,6 +371,7 @@
         repositories);
 
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[BulkUpdateRepositories] @Date = @Date, @Repositories = @Repositories;",
         new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
         tableParam);
@@ -372,6 +379,7 @@
 
     public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
           @RepositoryIds = @RepositoryIds;",
@@ -381,6 +389,7 @@
 
     public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetUserOrganizations]
           @UserId = @UserId,
           @OrganizationIds = @OrganizationIds;",
@@ -390,6 +399,7 @@
 
     public async Task SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetOrganizationUsers]
           @OrganizationId = @OrganizationId,
           @UserIds = @UserIds;",
@@ -399,6 +409,7 @@
 
     public async Task SetRepositoryAssignableAccounts(long repositoryId, IEnumerable<long> assignableAccountIds) {
       await Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetRepositoryAssignableAccounts]
           @RepositoryId = @RepositoryId,
           @AssignableAccountIds = @AssignableAccountIds;",
