@@ -9,6 +9,8 @@
 
     public long RepositoryId { get; set; }
 
+    public long IssueId { get; set; }
+
     public long ActorId { get; set; }
 
     [StringLength(40)]
@@ -27,6 +29,8 @@
     public long? MilestoneId { get; set; }
 
     public virtual Repository Repository { get; set; }
+
+    public virtual Issue Issue { get; set; }
 
     public virtual User Actor { get; set; }
 

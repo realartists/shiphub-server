@@ -152,7 +152,7 @@
               entries.AddRange(events.Select(x => new SyncLogEntry() {
                 Action = SyncLogAction.Set, // TODO: Handle deletion
                 Entity = SyncEntityType.Event,
-                Data = new EventEntry() {
+                Data = new IssueEventEntry() {
                   Actor = x.ActorId,
                   Assignee = x.AssigneeId,
                   CommitId = x.CommitId,
@@ -160,6 +160,7 @@
                   Event = x.Event,
                   ExtensionData = x.ExtensionData,
                   Identifier = x.Id,
+                  Issue = x.IssueId,
                   Milestone = x.MilestoneId,
                   Repository = x.RepositoryId,
                 },

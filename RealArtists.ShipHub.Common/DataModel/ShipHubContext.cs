@@ -255,6 +255,7 @@
         "[dbo].[IssueEventTableType]",
         new[] {
           Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("ActorId", typeof(long)),
           Tuple.Create("CommitId", typeof(string)),
           Tuple.Create("Event", typeof(string)),
@@ -265,6 +266,7 @@
         },
         x => new object[] {
           x.Id,
+          x.IssueId,
           x.ActorId,
           x.CommitId,
           x.Event,

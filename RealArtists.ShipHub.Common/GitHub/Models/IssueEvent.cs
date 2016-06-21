@@ -59,6 +59,7 @@
     public Account Assigner { get; set; }
     public Milestone Milestone { get; set; }
     //public IssueRename Rename { get; set; }
+    public Issue Issue { get; set; }  // Only present when requesting repository events.
 
     /// <summary>
     /// Just in case (for future compatibility)
