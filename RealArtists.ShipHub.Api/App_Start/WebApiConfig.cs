@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
   using System.Net.Http.Formatting;
+  using System.Web;
   using System.Web.Http;
   using Common;
   using Filters;
@@ -9,8 +10,8 @@
   public static class WebApiConfig {
     public static void Register(HttpConfiguration config) {
       config.Filters.Add(new DeaggregateExceptionFilterAttribute());
-      //config.Filters.Add(new ShipAuthenticationAttribute());
-      //config.Filters.Add(new AuthorizeAttribute());
+      config.Filters.Add(new ShipHubAuthenticationAttribute());
+      config.Filters.Add(new AuthorizeAttribute());
 
       RaygunWebApiClient.Attach(config, GenerateRaygunClient);
 
@@ -41,10 +42,10 @@
     public static RaygunWebApiClient GenerateRaygunClient() {
       var client = new RaygunWebApiClient();
       client.AddWrapperExceptions(typeof(AggregateException));
-      //var user = HttpContext.Current?.User as ShipPrincipal;
-      //if (user != null) {
-      //  client.User = $"{user.UserId}/{user.OrganizationId}";
-      //}
+      var user = HttpContext.Current?.User as ShipHubPrincipal;
+      if (user != null) {
+        client.User = $"{user.Login} ({user.UserId})";
+      }
       return client;
     }
   }

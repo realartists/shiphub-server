@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Models {
   using AutoMapper;
   using Common.DataModel;
+  using SyncMessages.Entries;
 
   public class DataModelToApiModelProfile : Profile {
     protected override void Configure() {
@@ -10,14 +11,7 @@
         .AddMember<NameSplitMember>()
         .AddName<PrePostfixName>(_ => _.AddStrings(p => p.DestinationPostfixes, "entifier"));
 
-      CreateMap<User, ApiUser>(MemberList.Destination)
-        .ForMember(x => x.Type, opts => opts.UseValue(ApiAccountType.User));
-
-      CreateMap<Organization, ApiOrganization>(MemberList.Destination)
-        .ForMember(x => x.Type, opts => opts.UseValue(ApiAccountType.Organization));
-
-      CreateMap<Repository, ApiRepository>(MemberList.Destination)
-        .ForMember(x => x.Hidden, opts => opts.UseValue(false));
+      
     }
   }
 }

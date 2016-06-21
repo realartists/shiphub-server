@@ -6,7 +6,7 @@
   using System.Diagnostics.CodeAnalysis;
 
   [Table("GitHubMetaData")]
-  public partial class GitHubMetaData {
+  public class GitHubMetaData {
     public long Id { get; set; }
 
     [StringLength(64)]
@@ -18,17 +18,17 @@
 
     public DateTimeOffset? LastRefresh { get; set; }
 
-    public long? AccessTokenId { get; set; }
+    //public long? AccessTokenId { get; set; }
 
-    public virtual AccessToken AccessToken { get; set; }
+    //public virtual AccessToken AccessToken { get; set; }
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
   }
 }

@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Milestone {
+  public class Milestone {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long Id { get; set; }
 
@@ -31,9 +31,6 @@
     public DateTimeOffset? DueOn { get; set; }
 
     public virtual Repository Repository { get; set; }
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<IssueEvent> Events { get; set; } = new HashSet<IssueEvent>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();

@@ -5,7 +5,7 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class Issue {
+  public class Issue {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long Id { get; set; }
 
@@ -40,7 +40,7 @@
 
     public string Reactions { get; set; }
 
-    public long? MetaDataId { get; set; }
+    //public long? MetaDataId { get; set; }
 
     public virtual Account Assignee { get; set; }
 
@@ -48,7 +48,7 @@
 
     public virtual Account User { get; set; }
 
-    public virtual GitHubMetaData MetaData { get; set; }
+    //public virtual GitHubMetaData MetaData { get; set; }
 
     public virtual Milestone Milestone { get; set; }
 

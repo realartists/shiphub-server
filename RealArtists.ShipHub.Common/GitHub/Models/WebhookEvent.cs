@@ -27,6 +27,6 @@
     WatchEvent,
   }
 
-  public class Event {
+  public class WebhookEvent {
   }
 }

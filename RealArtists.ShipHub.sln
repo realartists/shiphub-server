@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealArtists.ShipHub.QueueCl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealArtists.ShipHub.QueueProcessor", "RealArtists.ShipHub.QueueProcessor\RealArtists.ShipHub.QueueProcessor.csproj", "{87CE7F09-BEE2-411E-A2BB-BD9B135CA74C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebSocketTestClient", "WebSocketTestClient\WebSocketTestClient.csproj", "{71FBEA84-9867-4332-85BB-5C8B88B94D6A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,7 +39,6 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|ARM.ActiveCfg = Debug|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|ARM.Build.0 = Debug|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|ARM.Deploy.0 = Debug|Any CPU
@@ -49,7 +50,6 @@ Global
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Debug|x86.Deploy.0 = Debug|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|Any CPU.Deploy.0 = Release|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|ARM.ActiveCfg = Release|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|ARM.Build.0 = Release|Any CPU
 		{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}.Release|ARM.Deploy.0 = Release|Any CPU
@@ -123,6 +123,22 @@ Global
 		{87CE7F09-BEE2-411E-A2BB-BD9B135CA74C}.Release|x64.Build.0 = Release|Any CPU
 		{87CE7F09-BEE2-411E-A2BB-BD9B135CA74C}.Release|x86.ActiveCfg = Release|Any CPU
 		{87CE7F09-BEE2-411E-A2BB-BD9B135CA74C}.Release|x86.Build.0 = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|ARM.Build.0 = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|x64.Build.0 = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Debug|x86.Build.0 = Debug|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|ARM.ActiveCfg = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|ARM.Build.0 = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|x64.ActiveCfg = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|x64.Build.0 = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|x86.ActiveCfg = Release|Any CPU
+		{71FBEA84-9867-4332-85BB-5C8B88B94D6A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

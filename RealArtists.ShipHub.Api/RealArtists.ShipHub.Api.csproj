@@ -122,27 +122,28 @@
     <Compile Include="App_Start\AutoMapperConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
-    <Compile Include="Controllers\AuthTestController.cs" />
-    <Compile Include="Controllers\EntityTestController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SyncController.cs" />
     <Compile Include="Controllers\TestController.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
+    <Compile Include="Filters\ShipHubAuthenticationAttribute.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Models\ApiAccount.cs" />
-    <Compile Include="Models\ApiComment.cs" />
-    <Compile Include="Models\ApiEvent.cs" />
-    <Compile Include="Models\ApiIssue.cs" />
-    <Compile Include="Models\ApiLabel.cs" />
-    <Compile Include="Models\ApiMilestone.cs" />
-    <Compile Include="Models\ApiOrganization.cs" />
-    <Compile Include="Models\ApiRepository.cs" />
-    <Compile Include="Models\ApiUser.cs" />
-    <Compile Include="Models\DataModelToApiModelProfile.cs" />
+    <Compile Include="SyncMessages\DataModelToSyncMessagesProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SyncMessages\Entries\AccountEntry.cs" />
+    <Compile Include="SyncMessages\Entries\CommentEntry.cs" />
+    <Compile Include="SyncMessages\Entries\EventEntry.cs" />
+    <Compile Include="SyncMessages\Entries\IssueEntry.cs" />
+    <Compile Include="SyncMessages\Entries\Label.cs" />
+    <Compile Include="SyncMessages\Entries\MilestoneEntry.cs" />
+    <Compile Include="SyncMessages\Entries\Reactions.cs" />
+    <Compile Include="SyncMessages\Entries\RepositoryEntry.cs" />
+    <Compile Include="SyncMessages\HelloMessage.cs" />
+    <Compile Include="SyncMessages\SyncMessage.cs" />
+    <Compile Include="SyncMessages\SyncMessageBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="packages.config" />
@@ -174,6 +175,10 @@
     <ProjectReference Include="..\RealArtists.ShipHub.Database\RealArtists.ShipHub.Database.sqlproj">
       <Project>{10d8e4b1-08ec-4c3a-a018-ed7a398da39d}</Project>
       <Name>RealArtists.ShipHub.Database</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
+      <Project>{B4688837-CA13-4503-B0D9-C255129ECB76}</Project>
+      <Name>RealArtists.ShipHub.QueueClient</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

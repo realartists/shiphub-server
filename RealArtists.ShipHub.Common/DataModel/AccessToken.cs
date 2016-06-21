@@ -4,10 +4,10 @@
   using System.ComponentModel.DataAnnotations;
   using System.Diagnostics.CodeAnalysis;
 
-  public partial class AccessToken {
+  public class AccessToken {
     [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors")]
     public AccessToken() {
-      MetaData = new HashSet<GitHubMetaData>();
+      //MetaData = new HashSet<GitHubMetaData>();
     }
 
     public long Id { get; set; }
@@ -36,7 +36,7 @@
 
     public virtual Account Account { get; set; }
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<GitHubMetaData> MetaData { get; set; }
+    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    //public virtual ICollection<GitHubMetaData> MetaData { get; set; }
   }
 }

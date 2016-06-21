@@ -16,5 +16,6 @@ BEGIN
     VALUES ([UserId], @OrganizationId)
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND [Target].[OrganizationId] = @OrganizationId
-    THEN DELETE;
+    THEN DELETE
+  OPTION (RECOMPILE);
 END

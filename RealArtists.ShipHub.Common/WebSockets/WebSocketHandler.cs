@@ -24,15 +24,15 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       _maxIncomingMessageSize = maxIncomingMessageSize;
     }
 
-    public virtual void OnOpen() { }
+    public virtual Task OnOpen() { return TaskAsyncHelper.Empty; }
 
-    public virtual void OnMessage(string message) { throw new NotImplementedException(); }
+    public virtual Task OnMessage(string message) { throw new NotImplementedException(); }
 
-    public virtual void OnMessage(byte[] message) { throw new NotImplementedException(); }
+    public virtual Task OnMessage(byte[] message) { throw new NotImplementedException(); }
 
-    public virtual void OnError() { }
+    public virtual Task OnError() { return TaskAsyncHelper.Empty; }
 
-    public virtual void OnClose() { }
+    public virtual Task OnClose() { return TaskAsyncHelper.Empty; }
 
     // Sends a text message to the client
     public virtual Task Send(string message) {
@@ -131,18 +131,18 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       try {
         // first, set primitives and initialize the object
         WebSocket = webSocket;
-        OnOpen();
+        await OnOpen();
 
         // dispatch incoming messages
         while (!disconnectToken.IsCancellationRequested && !closedReceived) {
           WebSocketMessage incomingMessage = await messageRetriever(state).PreserveCulture();
           switch (incomingMessage.MessageType) {
             case WebSocketMessageType.Binary:
-              OnMessage((byte[])incomingMessage.Data);
+              await OnMessage((byte[])incomingMessage.Data);
               break;
 
             case WebSocketMessageType.Text:
-              OnMessage((string)incomingMessage.Data);
+              await OnMessage((string)incomingMessage.Data);
               break;
 
             default:
@@ -160,18 +160,18 @@ namespace RealArtists.ShipHub.Common.WebSockets {
         // ex.CancellationToken never has the token that was actually cancelled
         if (!disconnectToken.IsCancellationRequested) {
           Error = ex;
-          OnError();
+          await OnError();
         }
       } catch (ObjectDisposedException) {
         // If the websocket was disposed while we were reading then noop
       } catch (Exception ex) {
         if (IsFatalException(ex)) {
           Error = ex;
-          OnError();
+          await OnError();
         }
       }
 
-      OnClose();
+      await OnClose();
     }
 
     // returns true if this is a fatal exception (e.g. OnError should be called)

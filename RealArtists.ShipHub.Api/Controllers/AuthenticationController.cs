@@ -4,12 +4,11 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
-  using System.Security.Cryptography;
   using System.Threading.Tasks;
   using System.Web.Http;
   using Common;
   using Common.DataModel;
-  using Models;
+  using QueueClient;
 
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
@@ -142,10 +141,15 @@
         var userResponse = await userClient.User();
 
         if (userResponse.IsError) {
-          Error("Unable to determine current user.", HttpStatusCode.InternalServerError, userResponse.Error);
+          Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
         }
 
         var userInfo = userResponse.Result;
+
+        if (userInfo.Type != Common.GitHub.Models.GitHubAccountType.User) {
+          Error("Token must be for a user.", HttpStatusCode.BadRequest);
+        }
+
         var user = await Context.Users
           .Include(x => x.AccessTokens)
           .Include(x => x.Organizations)
@@ -172,29 +176,14 @@
         // TODO: Update token rate limit.
         //token.UpdateRateLimits(userResponse);
 
-        // Always issues a new token. Maybe collect them later?
-        var shipToken = Context.AuthenticationTokens.Add(new AuthenticationToken() {
-          Token = new Guid(GetRandomBytes(16)),
-          ClientName = request.ClientName,
-          Account = user,
-        });
-        user.AuthenticationTokens.Add(shipToken);
-
         await Context.SaveChangesAsync();
 
-        return Ok(new {
-          Session = shipToken.Token,
-          User = Mapper.Map<ApiUser>(user),
-        });
-      }
-    }
+        // For now, always sync on hello
+        var qc = new ShipHubQueueClient();
+        await qc.SyncAccount(token.Token);
 
-    public static byte[] GetRandomBytes(int length) {
-      var result = new byte[length];
-      using (var rng = new RNGCryptoServiceProvider()) {
-        rng.GetBytes(result);
+        return Ok(userInfo);
       }
-      return result;
     }
   }
 }

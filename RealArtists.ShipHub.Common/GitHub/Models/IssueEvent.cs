@@ -5,20 +5,35 @@
   using Newtonsoft.Json.Linq;
 
   //public enum IssueEventType {
+  //  [EnumMember(Value = "closed")]
   //  Closed,
+  //  [EnumMember(Value = "reopened")]
   //  Reopened,
+  //  [EnumMember(Value = "subscribed")]
   //  Subscribed,
+  //  [EnumMember(Value = "merged")]
   //  Merged,
+  //  [EnumMember(Value = "referenced")]
   //  Referenced,
+  //  [EnumMember(Value = "mentioned")]
   //  Mentioned,
+  //  [EnumMember(Value = "assigned")]
   //  Assigned,
+  //  [EnumMember(Value = "unassigned")]
   //  Unassigned,
+  //  [EnumMember(Value = "labeled")]
   //  Labeled,
+  //  [EnumMember(Value = "unlabeled")]
   //  Unlabeled,
+  //  [EnumMember(Value = "milestoned")]
   //  Milestoned,
+  //  [EnumMember(Value = "demilestoned")]
   //  Demilestoned,
+  //  [EnumMember(Value = "renamed")]
   //  Renamed,
+  //  [EnumMember(Value = "locked")]
   //  Locked,
+  //  [EnumMember(Value = "unlocked")]
   //  Unlocked,
   //  [EnumMember(Value = "head_ref_deleted")]
   //  HeadRefDeleted,
@@ -26,26 +41,28 @@
   //  HeadRefRestored
   //}
 
-  //public class IssueRename {
-  //  public string From { get; set; }
-  //  public string To { get; set; }
-  //}
+  public class IssueRename {
+    public string From { get; set; }
+    public string To { get; set; }
+  }
 
   public class IssueEvent {
     public long Id { get; set; }
-
-    [JsonIgnore]
-    public DateTimeOffset CreatedAt { get { return _extensionData["created_at"].ToObject<DateTimeOffset>(JsonUtility.SaneSerializer); } }
-
-    //public Account Actor { get; set; }
-    //public Account Assignee { get; set; }
-    //public Account Assigner { get; set; }
-    //public string CommitId { get; set; }
+    public Account Actor { get; set; }
+    public string CommitId { get; set; }
+    public string CommitUrl { get; set; }
     //public IssueEventType Event { get; set; }
+    public string Event { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
     //public Label Label { get; set; }
-    //public Milestone Milestone { get; set; }
+    public Account Assignee { get; set; }
+    public Account Assigner { get; set; }
+    public Milestone Milestone { get; set; }
     //public IssueRename Rename { get; set; }
 
+    /// <summary>
+    /// Just in case (for future compatibility)
+    /// </summary>
     [JsonExtensionData]
     public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();
 

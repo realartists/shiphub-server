@@ -34,29 +34,33 @@ BEGIN
       [Name] = [Source].[Name],
       [FullName] = [Source].[FullName],
       [Date] = @Date
-  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
+  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId)
+  OPTION (RECOMPILE);
 
-  -- Add milestone changes to log
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
-  USING (SELECT Id FROM @Changes) as [Source]
-  ON ([Target].RepositoryId = [Source].Id
-    AND [Target].[Type] = 'repository'
-    AND [Target].ItemId = [Source].Id)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (Id, 'repository', Id, 0)
-  -- Update
-  WHEN MATCHED THEN UPDATE SET [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
+  -- Bump existing repos
+  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+    [RowVersion] = DEFAULT
+  FROM RepositoryLog as rl
+    INNER JOIN @Changes as c ON (rl.[Type] = 'repository' AND rl.ItemId = c.Id)
+  OPTION (RECOMPILE)
+
+  -- New repositories reference themselves
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  SELECT Id, 'repository', Id, 0
+    FROM @Changes as c
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM RepositoryLog
+    WHERE RepositoryId = c.Id AND [Type] = 'repository' AND ItemId = c.Id)
+  OPTION (RECOMPILE)
 
   -- Best to inline owners too
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
-  USING (SELECT Id, AccountId FROM @Changes) as [Source]
-  ON ([Target].RepositoryId = [Source].Id
-    AND [Target].[Type] = 'account'
-    AND [Target].ItemId = [Source].AccountId)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (Id, 'account', AccountId, 0);
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  SELECT Id, 'account', AccountId, 0
+    FROM @Changes as c
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM RepositoryLog
+    WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
+  OPTION (RECOMPILE)
 END

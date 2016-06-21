@@ -2,7 +2,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
-  public partial class AccountRepository {
+  public class AccountRepository {
     [Key]
     [Column(Order = 0)]
     public long AccountId { get; set; }

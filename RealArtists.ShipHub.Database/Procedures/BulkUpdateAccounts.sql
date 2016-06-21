@@ -33,12 +33,13 @@ BEGIN
       [Type] = [Source].[Type],
       [Login] = [Source].[Login],
       [Date] = @Date
-  OUTPUT INSERTED.Id INTO @Changes (Id);
+  OUTPUT INSERTED.Id INTO @Changes (Id)
+  OPTION (RECOMPILE);
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.
-  UPDATE RepositoryLog SET
-    [RowVersion] = NULL -- Causes new ID to be assigned by trigger
+  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+    [RowVersion] = DEFAULT -- Bump version
   WHERE [Type] = 'account'
     AND [Delete] = 0
     AND ItemId IN (SELECT Id FROM @Changes)

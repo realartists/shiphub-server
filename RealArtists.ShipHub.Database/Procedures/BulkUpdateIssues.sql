@@ -36,7 +36,8 @@ BEGIN
       [ClosedAt] = [Source].[ClosedAt],
       [ClosedById] = [Source].[ClosedById],
       [Reactions] = [Source].[Reactions]
-  OUTPUT INSERTED.Id INTO @Changes (IssueId);
+  OUTPUT INSERTED.Id INTO @Changes (IssueId)
+  OPTION (RECOMPILE);
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
@@ -53,21 +54,27 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT DISTINCT(ItemId) FROM @Labels)
-    THEN DELETE;
+    THEN DELETE
+  OPTION (RECOMPILE);
 
-  -- Add issue changes to log
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
-  USING (SELECT IssueId as Id FROM @Changes) as [Source]
-  ON ([Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'issue'
-    AND [Target].ItemId = [Source].Id)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'issue', Id, 0)
-  -- Update/Delete
-  WHEN MATCHED THEN
-    UPDATE SET [RowVersion] = NULL; -- Causes new ID to be assigned by trigger
+  -- Update existing issues
+  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+    [RowVersion] = DEFAULT
+  FROM RepositoryLog as rl
+    INNER JOIN @Changes as c ON (rl.ItemId = c.IssueId)
+  WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
+  OPTION (RECOMPILE)
+
+  -- New issues
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  SELECT @RepositoryId, 'issue', IssueId, 0
+    FROM @Changes
+  WHERE IssueId NOT IN (
+    SELECT ItemId
+    FROM RepositoryLog
+    WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
+  )
+  OPTION (RECOMPILE)
 
   -- Add new account references to log
   -- Removed account references are leaked or GC'd later by another process.
@@ -84,5 +91,6 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
+  OPTION (RECOMPILE);
 END

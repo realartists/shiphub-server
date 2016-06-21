@@ -19,5 +19,6 @@ BEGIN
     VALUES (AccountId, RepositoryId, 0)
   -- Remove
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
-    THEN DELETE;
+    THEN DELETE
+  OPTION (RECOMPILE);
 END
