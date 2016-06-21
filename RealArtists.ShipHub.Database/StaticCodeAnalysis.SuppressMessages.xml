@@ -3,6 +3,9 @@
   <SuppressedFile FilePath="Procedures\BulkUpdateComments.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0004" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\BulkUpdateIssues.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0004" />
+  </SuppressedFile>
   <SuppressedFile FilePath="Procedures\BulkUpdateMilestones.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0004" />
   </SuppressedFile>

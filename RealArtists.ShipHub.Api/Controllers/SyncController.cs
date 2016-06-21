@@ -161,7 +161,6 @@
                   ExtensionData = x.ExtensionData,
                   Identifier = x.Id,
                   Issue = x.IssueId,
-                  Milestone = x.MilestoneId,
                   Repository = x.RepositoryId,
                 },
               }));

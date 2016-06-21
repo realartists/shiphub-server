@@ -1,0 +1,4 @@
+﻿CREATE TYPE [dbo].[VersionTableType] AS TABLE (
+  [ItemId]     BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+  [RowVersion] BIGINT NOT NULL
+)
