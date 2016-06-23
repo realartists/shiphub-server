@@ -134,7 +134,7 @@ BEGIN
     -- Repository Labels
     SELECT rl.RepositoryId, labels.Name, labels.Color
     FROM Labels as labels
-      INNER JOIN RepositoryLabels as rl ON (labels.Id = rl.RepositoryId)
+      INNER JOIN RepositoryLabels as rl ON (labels.Id = rl.LabelId)
       INNER JOIN @Logs as l ON (rl.RepositoryId = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
