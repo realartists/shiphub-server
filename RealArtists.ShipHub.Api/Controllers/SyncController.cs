@@ -268,7 +268,7 @@
                 var repoLabels = new Dictionary<long, List<se.Label>>();
                 reader.NextResult();
                 while (reader.Read()) {
-                  issueLabels
+                  repoLabels
                     .Valn((long)ddr.RepositoryId)
                     .Add(new se.Label() {
                       Color = ddr.Color,
