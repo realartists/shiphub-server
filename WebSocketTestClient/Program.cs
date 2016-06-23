@@ -36,11 +36,13 @@
           },
         });
 
-        // Read response
-        while (ws.State == WebSocketState.Open) {
-          var response = await ReadMessage(ws);
-          Console.WriteLine(response);
-        }
+        try {
+          // Read response
+          while (ws.State == WebSocketState.Open) {
+            var response = await ReadMessage(ws);
+            Console.WriteLine(response);
+          }
+        } catch { }
       }
     }
 
