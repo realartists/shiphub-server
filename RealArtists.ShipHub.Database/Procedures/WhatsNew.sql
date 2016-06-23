@@ -1,5 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[WhatsNew]
-  @Token NVARCHAR(64),
+  @UserId BIGINT,
+  @PageSize BIGINT = 1000,
   @RepositoryVersions VersionTableType READONLY,
   @OrganizationVersions VersionTableType READONLY
 AS
@@ -7,9 +8,6 @@ BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
-
-  DECLARE @AccountId BIGINT
-  SELECT @AccountId = AccountId FROM AccessTokens WHERE Token = @Token
 
   DECLARE @Logs TABLE (
     [RowNumber]    BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
@@ -25,13 +23,12 @@ BEGIN
     FROM RepositoryLog as rl
       INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = rl.RepositoryId)
       LEFT OUTER JOIN @RepositoryVersions as rv ON (rv.ItemId = rl.RepositoryId)
-    WHERE ar.AccountId = @AccountId
+    WHERE ar.AccountId = @UserId
       AND ISNULL(rv.[RowVersion], 0) < rl.[RowVersion]
   OPTION (RECOMPILE)
 
   DECLARE
     @TotalLogs BIGINT = @@ROWCOUNT,
-    @PageSize BIGINT = 1000,
     @WindowBegin BIGINT = 1;
 
   DECLARE @WindowEnd BIGINT = @PageSize;
@@ -42,62 +39,65 @@ BEGIN
   WHILE @WindowBegin < @TotalLogs
   BEGIN
     -- Accounts
-    SELECT [e].[Id], [e].[Type], [e].[Login], [e].[Date], [e].[RepositoryMetaDataId]
+    SELECT [e].[Id], [e].[Type], [e].[Login], [l].[Delete], [l].[RowVersion], [l].[RepositoryId]
     FROM Accounts as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'account'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'account')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Comments
     SELECT [e].[Id], [e].[IssueId], [e].[RepositoryId], [e].[UserId], [e].[Body], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[Reactions]
+           [e].[UpdatedAt], [e].[Reactions], [l].[Delete], [l].[RowVersion], [l].[RepositoryId]
     FROM Comments as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'comment'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'comment')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Events
     SELECT [e].[Id], [e].[RepositoryId], [e].[IssueId], [e].[ActorId], [e].[CommitId], [e].[Event],
-           [e].[CreatedAt], [e].[AssigneeId], [e].[ExtensionData]
+           [e].[CreatedAt], [e].[AssigneeId], [e].[ExtensionData], [l].[Delete], [l].[RowVersion],
+           [l].[RepositoryId]
     FROM IssueEvents as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'event'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'event')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Issues
     SELECT [e].[Id], [e].[UserId], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title],
            [e].[Body], [e].[AssigneeId], [e].[MilestoneId], [e].[Locked], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[ClosedAt], [e].[ClosedById], [e].[Reactions], [e].[MetaDataId]
+           [e].[UpdatedAt], [e].[ClosedAt], [e].[ClosedById], [e].[Reactions], [e].[MetaDataId],
+           [l].[Delete], [l].[RowVersion], [l].[RepositoryId]
     FROM Issues as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'issue'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Milestone
-    SELECT [e].[Id], [e].[UserId], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title],
-           [e].[Body], [e].[AssigneeId], [e].[MilestoneId], [e].[Locked], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[ClosedAt], [e].[ClosedById], [e].[Reactions], [e].[MetaDataId]
-    FROM Issues as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'milestone'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+    SELECT [e].[Id], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title], [e].[Description],
+           [e].[CreatedAt], [e].[UpdatedAt], [e].[ClosedAt], [e].[DueOn], [l].[Delete],
+           [l].[RowVersion], [l].[RepositoryId]
+    FROM Milestones as e
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'milestone')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Repository
-    SELECT [e].[Id], [e].[UserId], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title],
-           [e].[Body], [e].[AssigneeId], [e].[MilestoneId], [e].[Locked], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[ClosedAt], [e].[ClosedById], [e].[Reactions], [e].[MetaDataId]
-    FROM Issues as e
-      INNER JOIN @Logs as l ON (e.Id = l.ItemId)
-    WHERE l.[Type] = 'repository'
-      AND l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+    SELECT [e].[Id], [e].[AccountId], [e].[Private], [e].[Name], [e].[FullName], [l].[Delete],
+           [l].[RowVersion], [l].[RepositoryId]
+    FROM Repositories as e
+      INNER JOIN @Logs as l ON (e.Id = l.ItemId AND l.[Type] = 'repository')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+    OPTION (RECOMPILE)
+
+    -- Current Versions
+    SELECT RepositoryId, MAX([RowVersion]) as [RowVersion]
+    FROM @Logs
+    WHERE RowNumber BETWEEN @WindowBegin AND @WindowEnd
+    GROUP BY RepositoryId
     OPTION (RECOMPILE)
 
     SET @WindowBegin = @WindowBegin + @PageSize
+    SET @WindowEnd = @WindowEnd + @PageSize
   END
 
   -- TODO: Orgs

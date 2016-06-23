@@ -7,6 +7,7 @@
   using System.Data.SqlClient;
   using System.Linq;
   using System.Threading.Tasks;
+  using Legacy;
   using Types;
 
   public class ShipHubContext : DbContext {
@@ -377,6 +378,16 @@
         tableParam);
     }
 
+    public DynamicStoredProcedure PrepareWhatsNew(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+      var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
+      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
+      dsp.UserId = userId;
+      dsp.PageSize = pageSize;
+      dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
+      dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
+      return dsp;
+    }
+
     public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       await Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
@@ -441,6 +452,21 @@
           x.Name,
         },
         labels);
+    }
+
+    private static SqlParameter CreateVersionTableType(string parameterName, IEnumerable<VersionTableType> versions) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[VersionTableType]",
+        new[] {
+          Tuple.Create("ItemId", typeof(long)),
+          Tuple.Create("RowVersion", typeof(long)),
+        },
+        x => new object[] {
+          x.ItemId,
+          x.RowVersion,
+        },
+        versions);
     }
 
     private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {

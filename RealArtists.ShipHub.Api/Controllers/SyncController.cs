@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Data.Entity;
   using System.IO;
   using System.IO.Compression;
   using System.Linq;
@@ -17,6 +16,7 @@
   using System.Web.WebSockets;
   using Common;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.WebSockets;
   using Newtonsoft.Json.Linq;
   using SyncMessages;
@@ -30,7 +30,7 @@
     public HttpResponseMessage Sync() {
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {
-        var handler = new SyncConnection();
+        var handler = new SyncConnection(ShipUser.UserId);
         context.AcceptWebSocketRequest(handler.AcceptWebSocketRequest, new AspNetWebSocketOptions() { SubProtocol = "V1" });
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }
@@ -46,8 +46,11 @@
   public class SyncConnection : WebSocketHandler {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
 
-    public SyncConnection()
+    private long _userId;
+
+    public SyncConnection(long userId)
       : base(_MaxMessageSize) {
+      _userId = userId;
     }
 
     public override Task OnClose() {
@@ -105,153 +108,189 @@
     }
 
     private async Task SyncIt(HelloMessage hello) {
-      var syncResponse = new SyncMessage();
-      var entries = new List<SyncLogEntry>();
+      var pageSize = 100;
+      var tasks = new List<Task>();
 
       using (var context = new ShipHubContext()) {
-        // Get all known changes
-        var logsByType = await context.RepositoryLogs
-          .GroupBy(x => x.Type)
-          .ToArrayAsync();
+        var clientRepoVersions = hello.Versions?.Repositories ?? new RepositoryVersion[0];
+        var clientOrgVersions = hello.Versions?.Organizations ?? new OrganizationVersion[0];
+        var dsp = context.PrepareWhatsNew(
+          _userId,
+          pageSize,
+          clientRepoVersions.Select(x => new VersionTableType() {
+            ItemId = x.Id,
+            RowVersion = x.Version,
+          }),
+          clientOrgVersions.Select(x => new VersionTableType() {
+            ItemId = x.Id,
+            RowVersion = x.Version,
+          })
+        );
 
-        foreach (var group in logsByType) {
-          switch (group.Key) {
-            case "account":
-              var accountIds = group.Select(x => x.ItemId).ToHashSet();
-              var accounts = await context.Accounts.Where(x => accountIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(accounts.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
-                Entity = typeof(User).IsAssignableFrom(x.GetType()) ? SyncEntityType.User : SyncEntityType.Organization,
+        var entries = new List<SyncLogEntry>();
+        var sentLogs = 0;
+        var repoVersions = hello.Versions.Repositories.ToDictionary(x => x.Id, x => x.Version);
+        var orgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
+        using (var reader = await dsp.ExecuteReaderAsync()) {
+          dynamic ddr = reader;
+
+          // Total logs
+          reader.Read();
+          var totalLogs = (long)ddr.TotalLogs;
+
+          do {
+            entries.Clear();
+
+            // TODO: Deduplicate?
+
+            // Accounts
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = (string)ddr.Type == "user" ? SyncEntityType.User : SyncEntityType.Organization,
                 Data = new AccountEntry() {
-                  Identifier = x.Id,
-                  Login = x.Login,
+                  Identifier = ddr.Id,
+                  Login = ddr.Login,
                 },
-              }));
-              break;
-            case "comment":
-              var commentIds = group.Select(x => x.ItemId).ToHashSet();
-              var comments = await context.Comments.Where(x => commentIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(comments.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
+              });
+            }
+
+            // Comments
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Comment,
                 Data = new CommentEntry() {
-                  Body = x.Body,
-                  CreatedAt = x.CreatedAt,
-                  Identifier = x.Id,
-                  Issue = x.IssueId,
-                  Reactions = x.Reactions.DeserializeObject<Reactions>(),
-                  Repository = x.RepositoryId,
-                  UpdatedAt = x.UpdatedAt,
-                  User = x.UserId,
+                  Body = ddr.Body,
+                  CreatedAt = ddr.CreatedAt,
+                  Identifier = ddr.Id,
+                  Issue = ddr.IssueId,
+                  Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
+                  Repository = ddr.RepositoryId,
+                  UpdatedAt = ddr.UpdatedAt,
+                  User = ddr.UserId,
                 },
-              }));
-              break;
-            case "event":
-              var eventIds = group.Select(x => x.ItemId).ToHashSet();
-              var events = await context.IssueEvents.Where(x => eventIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(events.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
+              });
+            }
+
+            // Events
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Event,
                 Data = new IssueEventEntry() {
-                  Actor = x.ActorId,
-                  Assignee = x.AssigneeId,
-                  CommitId = x.CommitId,
-                  CreatedAt = x.CreatedAt,
-                  Event = x.Event,
-                  ExtensionData = x.ExtensionData,
-                  Identifier = x.Id,
-                  Issue = x.IssueId,
-                  Repository = x.RepositoryId,
+                  Actor = ddr.ActorId,
+                  Assignee = ddr.AssigneeId,
+                  CommitId = ddr.CommitId,
+                  CreatedAt = ddr.CreatedAt,
+                  Event = ddr.Event,
+                  ExtensionData = ddr.ExtensionData,
+                  Identifier = ddr.Id,
+                  Issue = ddr.IssueId,
+                  Repository = ddr.RepositoryId,
                 },
-              }));
-              break;
-            case "issue":
-              var issueIds = group.Select(x => x.ItemId).ToHashSet();
-              var issues = await context.Issues
-                .Include(x => x.Labels)
-                .Where(x => issueIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(issues.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
+              });
+            }
+
+            // Issues
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Issue,
                 Data = new IssueEntry() {
-                  Assignee = x.AssigneeId,
-                  Body = x.Body,
-                  ClosedAt = x.ClosedAt,
-                  ClosedBy = x.ClosedById,
-                  CreatedAt = x.CreatedAt,
-                  Identifier = x.Id,
-                  Labels = x.Labels.Select(y => new se.Label() {
-                    Color = y.Color,
-                    Name = y.Name,
-                  }),
-                  Locked = x.Locked,
-                  Milestone = x.MilestoneId,
-                  Number = x.Number,
-                  Reactions = x.Reactions.DeserializeObject<Reactions>(),
-                  Repository = x.RepositoryId,
-                  State = x.State,
-                  Title = x.Title,
-                  UpdatedAt = x.UpdatedAt,
-                  User = x.UserId,
+                  Assignee = ddr.AssigneeId,
+                  Body = ddr.Body,
+                  ClosedAt = ddr.ClosedAt,
+                  ClosedBy = ddr.ClosedById,
+                  CreatedAt = ddr.CreatedAt,
+                  Identifier = ddr.Id,
+                  //Labels = x.Labels.Select(y => new se.Label() {
+                  //  Color = y.Color,
+                  //  Name = y.Name,
+                  //}),
+                  Locked = ddr.Locked,
+                  Milestone = ddr.MilestoneId,
+                  Number = ddr.Number,
+                  Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
+                  Repository = ddr.RepositoryId,
+                  State = ddr.State,
+                  Title = ddr.Title,
+                  UpdatedAt = ddr.UpdatedAt,
+                  User = ddr.UserId,
                 },
-              }));
-              break;
-            case "milestone":
-              var milestoneIds = group.Select(x => x.ItemId).ToHashSet();
-              var milestones = await context.Milestones.Where(x => milestoneIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(milestones.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
+              });
+            }
+
+            // Milestones
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Milestone,
                 Data = new MilestoneEntry() {
-                  ClosedAt = x.ClosedAt,
-                  CreatedAt = x.CreatedAt,
-                  Description = x.Description,
-                  DueOn = x.DueOn,
-                  Identifier = x.Id,
-                  Number = x.Number,
-                  Repository = x.RepositoryId,
-                  State = x.State,
-                  Title = x.Title,
-                  UpdatedAt = x.UpdatedAt,
+                  ClosedAt = ddr.ClosedAt,
+                  CreatedAt = ddr.CreatedAt,
+                  Description = ddr.Description,
+                  DueOn = ddr.DueOn,
+                  Identifier = ddr.Id,
+                  Number = ddr.Number,
+                  Repository = ddr.RepositoryId,
+                  State = ddr.State,
+                  Title = ddr.Title,
+                  UpdatedAt = ddr.UpdatedAt,
                 },
-              }));
-              break;
-            case "repository":
-              var repoIds = group.Select(x => x.ItemId).ToHashSet();
-              var repos = await context.Repositories
-                .Include(x => x.Labels)
-                .Include(x => x.AssignableAccounts)
-                .Where(x => repoIds.Contains(x.Id)).ToArrayAsync();
-              entries.AddRange(repos.Select(x => new SyncLogEntry() {
-                Action = SyncLogAction.Set, // TODO: Handle deletion
+              });
+            }
+
+            // Repositories
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Repository,
                 Data = new RepositoryEntry() {
-                  Assignees = x.AssignableAccounts.Select(y => y.Id).ToArray(),
-                  Owner = x.AccountId,
-                  FullName = x.FullName,
-                  Identifier = x.Id,
-                  Labels = x.Labels.Select(y => new se.Label() {
-                    Color = y.Color,
-                    Name = y.Name,
-                  }),
-                  Name = x.Name,
-                  Private = x.Private,
+                  //Assignees = x.AssignableAccounts.Select(y => y.Id).ToArray(),
+                  Owner = ddr.AccountId,
+                  FullName = ddr.FullName,
+                  Identifier = ddr.Id,
+                  //Labels = x.Labels.Select(y => new se.Label() {
+                  //  Color = y.Color,
+                  //  Name = y.Name,
+                  //}),
+                  Name = ddr.Name,
+                  Private = ddr.Private,
                 },
-              }));
-              break;
-            default:
-              // Ignore for now
-              break;
-          }
-        }
+              });
+            }
 
-        // TODO: Version?
+            // Versions
+            reader.NextResult();
+            while (reader.Read()) {
+              repoVersions[(long)ddr.RepositoryId] = (long)ddr.RowVersion;
+            }
+
+            // Send page
+            sentLogs += entries.Count();
+            tasks.Add(SendJsonAsync(new SyncMessage() {
+              Logs = entries,
+              Remaining = totalLogs - sentLogs,
+              Version = new VersionDetails() {
+                Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+              }
+            }));
+          }
+          while (entries.Count == pageSize);
+
+          // TODO: Orgs
+        }
       }
 
-      syncResponse.Logs = entries;
-      syncResponse.Remaining = 0;
-
-      await SendJsonAsync(syncResponse);
+      await Task.WhenAll(tasks);
     }
   }
 }
