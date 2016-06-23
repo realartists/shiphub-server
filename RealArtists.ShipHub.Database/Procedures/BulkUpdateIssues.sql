@@ -22,7 +22,7 @@ BEGIN
   WHEN NOT MATCHED BY TARGET THEN
     INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [Reactions])
     VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [Reactions])
-  -- Update
+  -- Update (this bumps for label only changes too)
   WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
     UPDATE SET
       [UserId] = [Source].[UserId], -- This can change to ghost

@@ -107,13 +107,16 @@
       }
     }
 
+    private static readonly RepositoryVersion[] _EmptyRepoVersion = new RepositoryVersion[0];
+    private static readonly OrganizationVersion[] _EmptyOrgVersion = new OrganizationVersion[0];
+
     private async Task SyncIt(HelloMessage hello) {
       var pageSize = 100;
       var tasks = new List<Task>();
 
       using (var context = new ShipHubContext()) {
-        var clientRepoVersions = hello.Versions?.Repositories ?? new RepositoryVersion[0];
-        var clientOrgVersions = hello.Versions?.Organizations ?? new OrganizationVersion[0];
+        var clientRepoVersions = hello.Versions?.Repositories ?? _EmptyRepoVersion;
+        var clientOrgVersions = hello.Versions?.Organizations ?? _EmptyOrgVersion;
         var dsp = context.PrepareWhatsNew(
           _userId,
           pageSize,
@@ -138,155 +141,192 @@
           reader.Read();
           var totalLogs = (long)ddr.TotalLogs;
 
-          do {
-            entries.Clear();
+          // TODO: Deleted / revoked repos?
 
-            // TODO: Deduplicate?
+          while (reader.NextResult()) {
+            // Get type
+            reader.Read();
+            int type = ddr.Type;
 
-            // Accounts
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = (string)ddr.Type == "user" ? SyncEntityType.User : SyncEntityType.Organization,
-                Data = new AccountEntry() {
-                  Identifier = ddr.Id,
-                  Login = ddr.Login,
-                },
-              });
+            switch (type) {
+              case 1:
+                entries.Clear();
+
+                // Accounts
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = SyncLogAction.Set,
+                    Entity = (string)ddr.Type == "user" ? SyncEntityType.User : SyncEntityType.Organization,
+                    Data = new AccountEntry() {
+                      Identifier = ddr.Id,
+                      Login = ddr.Login,
+                    },
+                  });
+                }
+
+                // Comments
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                    Entity = SyncEntityType.Comment,
+                    Data = new CommentEntry() {
+                      Body = ddr.Body,
+                      CreatedAt = ddr.CreatedAt,
+                      Identifier = ddr.Id,
+                      Issue = ddr.IssueId,
+                      Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
+                      Repository = ddr.RepositoryId,
+                      UpdatedAt = ddr.UpdatedAt,
+                      User = ddr.UserId,
+                    },
+                  });
+                }
+
+                // Events
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = SyncLogAction.Set,
+                    Entity = SyncEntityType.Event,
+                    Data = new IssueEventEntry() {
+                      Actor = ddr.ActorId,
+                      Assignee = ddr.AssigneeId,
+                      CommitId = ddr.CommitId,
+                      CreatedAt = ddr.CreatedAt,
+                      Event = ddr.Event,
+                      ExtensionData = ddr.ExtensionData,
+                      Identifier = ddr.Id,
+                      Issue = ddr.IssueId,
+                      Repository = ddr.RepositoryId,
+                    },
+                  });
+                }
+
+                // Milestones
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                    Entity = SyncEntityType.Milestone,
+                    Data = new MilestoneEntry() {
+                      ClosedAt = ddr.ClosedAt,
+                      CreatedAt = ddr.CreatedAt,
+                      Description = ddr.Description,
+                      DueOn = ddr.DueOn,
+                      Identifier = ddr.Id,
+                      Number = ddr.Number,
+                      Repository = ddr.RepositoryId,
+                      State = ddr.State,
+                      Title = ddr.Title,
+                      UpdatedAt = ddr.UpdatedAt,
+                    },
+                  });
+                }
+
+                // Issue Labels
+                var issueLabels = new Dictionary<long, List<se.Label>>();
+                reader.NextResult();
+                while (reader.Read()) {
+                  issueLabels
+                    .Valn((long)ddr.IssueId)
+                    .Add(new se.Label() {
+                      Color = ddr.Color,
+                      Name = ddr.Name,
+                    });
+                }
+
+                // Issues
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = SyncLogAction.Set,
+                    Entity = SyncEntityType.Issue,
+                    Data = new IssueEntry() {
+                      Assignee = ddr.AssigneeId,
+                      Body = ddr.Body,
+                      ClosedAt = ddr.ClosedAt,
+                      ClosedBy = ddr.ClosedById,
+                      CreatedAt = ddr.CreatedAt,
+                      Identifier = ddr.Id,
+                      Labels = issueLabels.Val((long)ddr.Id),
+                      Locked = ddr.Locked,
+                      Milestone = ddr.MilestoneId,
+                      Number = ddr.Number,
+                      Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
+                      Repository = ddr.RepositoryId,
+                      State = ddr.State,
+                      Title = ddr.Title,
+                      UpdatedAt = ddr.UpdatedAt,
+                      User = ddr.UserId,
+                    },
+                  });
+                }
+
+                // Repository Labels
+                var repoLabels = new Dictionary<long, List<se.Label>>();
+                reader.NextResult();
+                while (reader.Read()) {
+                  issueLabels
+                    .Valn((long)ddr.RepositoryId)
+                    .Add(new se.Label() {
+                      Color = ddr.Color,
+                      Name = ddr.Name,
+                    });
+                }
+
+                // Repository Assignable Users
+                var repoAssignable = new Dictionary<long, List<long>>();
+                reader.NextResult();
+                while (reader.Read()) {
+                  repoAssignable
+                    .Valn((long)ddr.RepositoryId)
+                    .Add((long)ddr.AccountId);
+                }
+
+                // Repositories
+                reader.NextResult();
+                while (reader.Read()) {
+                  entries.Add(new SyncLogEntry() {
+                    Action = SyncLogAction.Set,
+                    Entity = SyncEntityType.Repository,
+                    Data = new RepositoryEntry() {
+                      Assignees = repoAssignable.Val((long)ddr.Id),
+                      Owner = ddr.AccountId,
+                      FullName = ddr.FullName,
+                      Identifier = ddr.Id,
+                      Labels = repoLabels.Val((long)ddr.Id),
+                      Name = ddr.Name,
+                      Private = ddr.Private,
+                    },
+                  });
+                }
+
+                // Versions
+                reader.NextResult();
+                while (reader.Read()) {
+                  repoVersions[(long)ddr.RepositoryId] = (long)ddr.RowVersion;
+                }
+
+                // Send page
+                sentLogs += entries.Count();
+                tasks.Add(SendJsonAsync(new SyncMessage() {
+                  Logs = entries,
+                  Remaining = totalLogs - sentLogs,
+                  Version = new VersionDetails() {
+                    Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                    Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+                  }
+                }));
+                break;
+              case 2:
+                // TODO: Orgs
+                break;
+              default:
+                throw new InvalidOperationException($"Invalid page type: {type}");
             }
-
-            // Comments
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Comment,
-                Data = new CommentEntry() {
-                  Body = ddr.Body,
-                  CreatedAt = ddr.CreatedAt,
-                  Identifier = ddr.Id,
-                  Issue = ddr.IssueId,
-                  Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
-                  Repository = ddr.RepositoryId,
-                  UpdatedAt = ddr.UpdatedAt,
-                  User = ddr.UserId,
-                },
-              });
-            }
-
-            // Events
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Event,
-                Data = new IssueEventEntry() {
-                  Actor = ddr.ActorId,
-                  Assignee = ddr.AssigneeId,
-                  CommitId = ddr.CommitId,
-                  CreatedAt = ddr.CreatedAt,
-                  Event = ddr.Event,
-                  ExtensionData = ddr.ExtensionData,
-                  Identifier = ddr.Id,
-                  Issue = ddr.IssueId,
-                  Repository = ddr.RepositoryId,
-                },
-              });
-            }
-
-            // Issues
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Issue,
-                Data = new IssueEntry() {
-                  Assignee = ddr.AssigneeId,
-                  Body = ddr.Body,
-                  ClosedAt = ddr.ClosedAt,
-                  ClosedBy = ddr.ClosedById,
-                  CreatedAt = ddr.CreatedAt,
-                  Identifier = ddr.Id,
-                  //Labels = x.Labels.Select(y => new se.Label() {
-                  //  Color = y.Color,
-                  //  Name = y.Name,
-                  //}),
-                  Locked = ddr.Locked,
-                  Milestone = ddr.MilestoneId,
-                  Number = ddr.Number,
-                  Reactions = ((string)ddr.Reactions).DeserializeObject<Reactions>(),
-                  Repository = ddr.RepositoryId,
-                  State = ddr.State,
-                  Title = ddr.Title,
-                  UpdatedAt = ddr.UpdatedAt,
-                  User = ddr.UserId,
-                },
-              });
-            }
-
-            // Milestones
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Milestone,
-                Data = new MilestoneEntry() {
-                  ClosedAt = ddr.ClosedAt,
-                  CreatedAt = ddr.CreatedAt,
-                  Description = ddr.Description,
-                  DueOn = ddr.DueOn,
-                  Identifier = ddr.Id,
-                  Number = ddr.Number,
-                  Repository = ddr.RepositoryId,
-                  State = ddr.State,
-                  Title = ddr.Title,
-                  UpdatedAt = ddr.UpdatedAt,
-                },
-              });
-            }
-
-            // Repositories
-            reader.NextResult();
-            while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Repository,
-                Data = new RepositoryEntry() {
-                  //Assignees = x.AssignableAccounts.Select(y => y.Id).ToArray(),
-                  Owner = ddr.AccountId,
-                  FullName = ddr.FullName,
-                  Identifier = ddr.Id,
-                  //Labels = x.Labels.Select(y => new se.Label() {
-                  //  Color = y.Color,
-                  //  Name = y.Name,
-                  //}),
-                  Name = ddr.Name,
-                  Private = ddr.Private,
-                },
-              });
-            }
-
-            // Versions
-            reader.NextResult();
-            while (reader.Read()) {
-              repoVersions[(long)ddr.RepositoryId] = (long)ddr.RowVersion;
-            }
-
-            // Send page
-            sentLogs += entries.Count();
-            tasks.Add(SendJsonAsync(new SyncMessage() {
-              Logs = entries,
-              Remaining = totalLogs - sentLogs,
-              Version = new VersionDetails() {
-                Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-              }
-            }));
           }
-          while (entries.Count == pageSize);
-
-          // TODO: Orgs
         }
       }
 
