@@ -57,8 +57,9 @@
     //public Label Label { get; set; }
     public Account Assignee { get; set; }
     public Account Assigner { get; set; }
-    public Milestone Milestone { get; set; }
+    //public Milestone Milestone { get; set; } // What GitHub sends is incomplete and nearly useless. No need to parse.
     //public IssueRename Rename { get; set; }
+    public Issue Issue { get; set; }  // Only present when requesting repository events.
 
     /// <summary>
     /// Just in case (for future compatibility)

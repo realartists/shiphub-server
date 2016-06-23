@@ -5,15 +5,15 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
 
-  public class EventEntry : SyncEntity {
+  public class IssueEventEntry : SyncEntity {
     public long Identifier { get; set; }
     public long Repository { get; set; }
+    public long Issue { get; set; }
     public long Actor { get; set; }
     public string CommitId { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public long? Assignee { get; set; }
-    public long? Milestone { get; set; }
 
     [JsonExtensionData]
     public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();

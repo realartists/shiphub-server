@@ -7,6 +7,7 @@
   using System.Data.SqlClient;
   using System.Linq;
   using System.Threading.Tasks;
+  using Legacy;
   using Types;
 
   public class ShipHubContext : DbContext {
@@ -255,22 +256,22 @@
         "[dbo].[IssueEventTableType]",
         new[] {
           Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("ActorId", typeof(long)),
           Tuple.Create("CommitId", typeof(string)),
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
-          Tuple.Create("MilestoneId", typeof(long)), // Nullable types handled by DataTable
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
           x.Id,
+          x.IssueId,
           x.ActorId,
           x.CommitId,
           x.Event,
           x.CreatedAt,
           x.AssigneeId,
-          x.MilestoneId,
           x.ExtensionData,
         },
         issueEvents);
@@ -377,6 +378,16 @@
         tableParam);
     }
 
+    public DynamicStoredProcedure PrepareWhatsNew(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+      var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
+      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
+      dsp.UserId = userId;
+      dsp.PageSize = pageSize;
+      dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
+      dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
+      return dsp;
+    }
+
     public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       await Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
@@ -441,6 +452,21 @@
           x.Name,
         },
         labels);
+    }
+
+    private static SqlParameter CreateVersionTableType(string parameterName, IEnumerable<VersionTableType> versions) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[VersionTableType]",
+        new[] {
+          Tuple.Create("ItemId", typeof(long)),
+          Tuple.Create("RowVersion", typeof(long)),
+        },
+        x => new object[] {
+          x.ItemId,
+          x.RowVersion,
+        },
+        versions);
     }
 
     private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {

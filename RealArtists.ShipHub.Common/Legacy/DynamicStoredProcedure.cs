@@ -137,25 +137,21 @@
         _command.Parameters.Add(key, SqlDbType.Time).Value = value;
       else if (type.IsArray && type.GetElementType() == typeof(byte))
         _command.Parameters.Add(key, SqlDbType.VarBinary).Value = value;
-      //else if (type == typeof(SqlGeography))
-      //{
-      //   var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //   param.Value = value;
-      //   param.UdtTypeName = "Geography";
-      //}
-      //else if (type == typeof(SqlGeometry))
-      //{
-      //   var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //   param.Value = value;
-      //   param.UdtTypeName = "Geometry";
-      //}
-      //else if (type == typeof(SqlHierarchyId))
-      //{
-      //   var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //   param.Value = value;
-      //   param.UdtTypeName = "HierarchyId";
-      //}
-      else
+      else if (type == typeof(SqlParameter)) {
+        _command.Parameters.Add((SqlParameter)value);
+      //} else if (type == typeof(SqlGeography)) {
+      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+      //  param.Value = value;
+      //  param.UdtTypeName = "Geography";
+      //} else if (type == typeof(SqlGeometry)) {
+      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+      //  param.Value = value;
+      //  param.UdtTypeName = "Geometry";
+      //} else if (type == typeof(SqlHierarchyId)) {
+      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+      //  param.Value = value;
+      //  param.UdtTypeName = "HierarchyId";
+      } else
         throw new InvalidOperationException($"Parameters of type: {type.FullName} are not supported.");
     }
 

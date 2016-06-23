@@ -120,6 +120,8 @@
     <Build Include="User Defined Types\IssueEventTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssueEvents.sql" />
     <Build Include="Tables\RepositoryLog.sql" />
+    <Build Include="Procedures\WhatsNew.sql" />
+    <Build Include="User Defined Types\VersionTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

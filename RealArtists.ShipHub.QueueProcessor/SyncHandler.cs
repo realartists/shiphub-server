@@ -260,15 +260,21 @@
       }
     }
 
-    public static async Task SyncRepositoryEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message) {
+    public static async Task SyncRepositoryIssueEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
 
       var eventsResponse = await ghc.Events(message.Repository.FullName);
       var events = eventsResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        // TODO: Parse things out of events
-        // NOTE: Doing so will require we call this last, after Issues and Milestones have been loaded. I think.
+        // For now only grab accounts from the response.
+        // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+        var accounts = events
+          .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+          .Where(x => x != null)
+          .GroupBy(x => x.Login)
+          .Select(x => x.First());
+        await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
         await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events));
       }
     }
