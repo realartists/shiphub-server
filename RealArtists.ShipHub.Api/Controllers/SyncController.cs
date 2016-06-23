@@ -132,8 +132,8 @@
 
         var entries = new List<SyncLogEntry>();
         var sentLogs = 0;
-        var repoVersions = hello.Versions.Repositories.ToDictionary(x => x.Id, x => x.Version);
-        var orgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
+        var repoVersions = clientRepoVersions.ToDictionary(x => x.Id, x => x.Version);
+        var orgVersions = clientOrgVersions.ToDictionary(x => x.Id, x => x.Version);
         using (var reader = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = reader;
 
