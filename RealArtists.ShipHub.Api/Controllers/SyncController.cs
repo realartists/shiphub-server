@@ -111,7 +111,7 @@
     private static readonly OrganizationVersion[] _EmptyOrgVersion = new OrganizationVersion[0];
 
     private async Task SyncIt(HelloMessage hello) {
-      var pageSize = 100;
+      var pageSize = 1000;
       var tasks = new List<Task>();
 
       using (var context = new ShipHubContext()) {
