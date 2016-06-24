@@ -49,8 +49,10 @@
           //DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
 
           EnableBatchedOperations = true,
+          EnableDeadLetteringOnMessageExpiration = true,
           EnablePartitioning = true,
           IsAnonymousAccessible = false,
+          MaxDeliveryCount = 10,
           MaxSizeInMegabytes = 5120,
         }));
 

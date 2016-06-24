@@ -13,6 +13,9 @@
 
       sbConfig.MessageOptions.MaxConcurrentCalls = 128;
 
+      // Adjust this based on real performance data
+      //sbConfig.MessageOptions.AutoRenewTimeout = 
+
       // TOOD: Override default messaging provider?
       //sbConfig.MessagingProvider = 
 
@@ -20,6 +23,7 @@
       if (config.IsDevelopment) {
         config.UseDevelopmentSettings();
         config.DashboardConnectionString = null;
+        sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10);
         //config.Tracing.Tracers.Clear();
         //config.Tracing.ConsoleLevel = TraceLevel.Error;
         //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
