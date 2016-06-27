@@ -148,10 +148,10 @@
             reader.Read();
             int type = ddr.Type;
 
+            entries.Clear();
+
             switch (type) {
               case 1:
-                entries.Clear();
-
                 // Accounts
                 reader.NextResult();
                 while (reader.Read()) {
@@ -321,7 +321,63 @@
                 }));
                 break;
               case 2:
-                // TODO: Orgs
+                var orgAccounts = new Dictionary<long, OrganizationEntry>();
+                var orgMembers = new Dictionary<long, List<long>>();
+
+                // Accounts
+                reader.NextResult();
+                while (reader.Read()) {
+                  if ((string)ddr.Type == "user") {
+                    entries.Add(new SyncLogEntry() {
+                      Action = SyncLogAction.Set,
+                      Entity = SyncEntityType.User,
+                      Data = new AccountEntry() {
+                        Identifier = ddr.Id,
+                        Login = ddr.Login,
+                      }
+                    });
+                  } else {
+                    var org = new OrganizationEntry() {
+                      Identifier = ddr.Id,
+                      Login = ddr.Login,
+                      // Users set later
+                    };
+                    orgAccounts.Add(org.Identifier, org);
+                  }
+                }
+
+                // Org Membership
+                reader.NextResult();
+                while (reader.Read()) {
+                  orgMembers.Valn((long)ddr.OrganizationId).Add((long)ddr.UserId);
+                }
+
+                // Fixup
+                foreach (var kv in orgMembers) {
+                  orgAccounts[kv.Key].Users = kv.Value;
+                }
+                entries.AddRange(orgAccounts.Values.Select(x => new SyncLogEntry() {
+                  Action = SyncLogAction.Set,
+                  Entity = SyncEntityType.Organization,
+                  Data = x,
+                }));
+
+                // Versions
+                reader.NextResult();
+                while (reader.Read()) {
+                  orgVersions[(long)ddr.OrganizationId] = (long)ddr.RowVersion;
+                }
+
+                // Send orgs
+                sentLogs += entries.Count();
+                tasks.Add(SendJsonAsync(new SyncMessage() {
+                  Logs = entries,
+                  Remaining = 0, // Orgs are last
+                  Version = new VersionDetails() {
+                    Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                    Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+                  }
+                }));
                 break;
               default:
                 throw new InvalidOperationException($"Invalid page type: {type}");

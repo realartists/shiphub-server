@@ -140,6 +140,7 @@
     <Compile Include="SyncMessages\Entries\IssueEntry.cs" />
     <Compile Include="SyncMessages\Entries\Label.cs" />
     <Compile Include="SyncMessages\Entries\MilestoneEntry.cs" />
+    <Compile Include="SyncMessages\Entries\OrganizationEntry.cs" />
     <Compile Include="SyncMessages\Entries\Reactions.cs" />
     <Compile Include="SyncMessages\Entries\RepositoryEntry.cs" />
     <Compile Include="SyncMessages\HelloMessage.cs" />
