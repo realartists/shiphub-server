@@ -37,8 +37,8 @@ BEGIN
     FROM RepositoryLog as rl
       INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = rl.RepositoryId)
       LEFT OUTER JOIN @RepositoryVersions as rv ON (rv.ItemId = rl.RepositoryId)
-    WHERE ar.AccountId = @UserId
-      AND ISNULL(rv.[RowVersion], 0) < rl.[RowVersion]
+  WHERE ar.AccountId = @UserId
+    AND ISNULL(rv.[RowVersion], 0) < rl.[RowVersion]
 
   -- Split out versions
   INSERT INTO @Versions

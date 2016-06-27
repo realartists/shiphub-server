@@ -8,14 +8,14 @@ BEGIN
   SET NOCOUNT ON;
 
   MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
-  USING (SELECT [Item] as [UserId] FROM @UserIds) as [Source]
-  ON ([Target].[UserId] = [Source].[UserId]  AND [Target].[OrganizationId] = @OrganizationId)
+  USING (SELECT Item as UserId FROM @UserIds) as [Source]
+  ON ([Target].UserId = [Source].UserId  AND [Target].OrganizationId = @OrganizationId)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([UserId], [OrganizationId])
-    VALUES ([UserId], @OrganizationId)
+    INSERT (UserId, OrganizationId)
+    VALUES (UserId, @OrganizationId)
   -- Delete
-  WHEN NOT MATCHED BY SOURCE AND [Target].[OrganizationId] = @OrganizationId
+  WHEN NOT MATCHED BY SOURCE AND [Target].OrganizationId = @OrganizationId
     THEN DELETE
   OPTION (RECOMPILE);
 END

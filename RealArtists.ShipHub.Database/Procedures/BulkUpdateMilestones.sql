@@ -49,12 +49,8 @@ BEGIN
 
   -- New milestones
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'milestone', Id, 0
-    FROM @Changes
-  WHERE Id NOT IN (
-    SELECT ItemId
-    FROM RepositoryLog
-    WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
-  )
+  SELECT @RepositoryId, 'milestone', c.Id, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
   OPTION (RECOMPILE)
 END
