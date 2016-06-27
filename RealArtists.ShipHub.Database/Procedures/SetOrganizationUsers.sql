@@ -7,6 +7,11 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
+  DECLARE @Changes TABLE (
+    [UserId] BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [Action] NVARCHAR(10) NOT NULL
+  )
+
   MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
   USING (SELECT Item as UserId FROM @UserIds) as [Source]
   ON ([Target].UserId = [Source].UserId  AND [Target].OrganizationId = @OrganizationId)
@@ -17,5 +22,21 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND [Target].OrganizationId = @OrganizationId
     THEN DELETE
+  OUTPUT COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (UserId, [Action])
   OPTION (RECOMPILE);
+
+  -- Deleted or edited users
+  UPDATE OrganizationLog WITH (SERIALIZABLE) SET
+    [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
+    [RowVersion] = DEFAULT
+  FROM @Changes 
+    INNER JOIN OrganizationLog ON (UserId = AccountId AND OrganizationId = @OrganizationId)
+  OPTION (RECOMPILE)
+
+  -- New users
+  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  SELECT @OrganizationId, c.UserId, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
+  OPTION (RECOMPILE)
 END

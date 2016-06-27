@@ -8,7 +8,8 @@ BEGIN
   SET NOCOUNT ON;
 
   DECLARE @Changes TABLE (
-    [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+    [Id]   BIGINT      NOT NULL PRIMARY KEY CLUSTERED,
+    [Type] NVARCHAR(4) NOT NULL
   );
 
   MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
@@ -33,8 +34,16 @@ BEGIN
       [Type] = [Source].[Type],
       [Login] = [Source].[Login],
       [Date] = @Date
-  OUTPUT INSERTED.Id INTO @Changes (Id)
+  OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type])
   OPTION (RECOMPILE);
+
+  -- New Organizations reference themselves
+  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  SELECT c.Id, c.Id, 0
+  FROM @Changes as c
+  WHERE c.[Type] = 'org'
+    AND NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)
+  OPTION (RECOMPILE)
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.
