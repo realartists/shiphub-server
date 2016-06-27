@@ -13,6 +13,7 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Linq;
+  using Newtonsoft.Json.Serialization;
   using Serialization;
 
   public static class HeaderUtility {
@@ -45,7 +46,9 @@
 
     static GitHubClient() {
       JsonSettings = new JsonSerializerSettings() {
-        ContractResolver = new SnakeCasePropertyNamesContractResolver(),
+        ContractResolver = new DefaultContractResolver() {
+          NamingStrategy = new SnakeCaseNamingStrategy(),
+        },
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Include,
       };
