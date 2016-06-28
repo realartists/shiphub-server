@@ -9,6 +9,18 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON;
 
+  -- Inform the client of any repos and orgs they can no longer access
+  SELECT ItemId as RepositoryId
+  FROM @RepositoryVersions as rv
+  WHERE NOT EXISTS(SELECT 1 FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId)
+  OPTION (RECOMPILE)
+
+  SELECT ItemId as OrganizationId
+  FROM @OrganizationVersions as ov
+  WHERE NOT EXISTS(SELECT 1 FROM AccountOrganizations WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
+  OPTION (RECOMPILE)
+
+  -- Start sync!
   DECLARE @AllRepoLogs TABLE (
     [RowNumber]    BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [RepositoryId] BIGINT       NOT NULL,

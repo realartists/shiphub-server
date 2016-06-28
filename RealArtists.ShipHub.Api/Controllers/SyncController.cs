@@ -137,7 +137,47 @@
         using (var reader = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = reader;
 
+          // Removed Repos
+          while (reader.Read()) {
+            long repoId = ddr.RepositoryId;
+            entries.Add(new SyncLogEntry() {
+              Action = SyncLogAction.Delete,
+              Entity = SyncEntityType.Repository,
+              Data = new RepositoryEntry() {
+                Identifier = repoId,
+              },
+            });
+            repoVersions.Remove(repoId);
+          }
+
+          // Removed Orgs
+          reader.NextResult();
+          while (reader.Read()) {
+            long orgId = ddr.OrganizationId;
+            entries.Add(new SyncLogEntry() {
+              Action = SyncLogAction.Delete,
+              Entity = SyncEntityType.Organization,
+              Data = new OrganizationEntry() {
+                Identifier = orgId,
+              },
+            });
+            orgVersions.Remove(orgId);
+          }
+
+          // Send
+          if (entries.Any()) {
+            tasks.Add(SendJsonAsync(new SyncMessage() {
+              Logs = entries,
+              Remaining = 0,
+              Version = new VersionDetails() {
+                Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+              }
+            }));
+          }
+
           // Total logs
+          reader.NextResult();
           reader.Read();
           var totalLogs = (long)ddr.TotalLogs;
 
@@ -310,15 +350,17 @@
                 }
 
                 // Send page
-                sentLogs += entries.Count();
-                tasks.Add(SendJsonAsync(new SyncMessage() {
-                  Logs = entries,
-                  Remaining = totalLogs - sentLogs,
-                  Version = new VersionDetails() {
-                    Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                    Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-                  }
-                }));
+                if (entries.Any()) {
+                  sentLogs += entries.Count();
+                  tasks.Add(SendJsonAsync(new SyncMessage() {
+                    Logs = entries,
+                    Remaining = totalLogs - sentLogs,
+                    Version = new VersionDetails() {
+                      Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                      Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+                    }
+                  }));
+                }
                 break;
               case 2:
                 var orgAccounts = new Dictionary<long, OrganizationEntry>();
@@ -369,15 +411,16 @@
                 }
 
                 // Send orgs
-                sentLogs += entries.Count();
-                tasks.Add(SendJsonAsync(new SyncMessage() {
-                  Logs = entries,
-                  Remaining = 0, // Orgs are last
-                  Version = new VersionDetails() {
-                    Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                    Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-                  }
-                }));
+                if (entries.Any()) {
+                  tasks.Add(SendJsonAsync(new SyncMessage() {
+                    Logs = entries,
+                    Remaining = 0, // Orgs are last
+                    Version = new VersionDetails() {
+                      Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+                      Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+                    }
+                  }));
+                }
                 break;
               default:
                 throw new InvalidOperationException($"Invalid page type: {type}");
