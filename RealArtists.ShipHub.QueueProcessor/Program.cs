@@ -41,7 +41,7 @@
       Console.WriteLine("Creating Missing Queues");
       timer.Start();
 #endif
-      ShipHubQueueClient.EnsureQueues().Wait();
+      ShipHubBusClient.EnsureQueues().Wait();
 #if DEBUG
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
@@ -51,7 +51,7 @@
       if (key == (int)'y') {
         Console.WriteLine("Sending sync account message");
         timer.Restart();
-        var qc = new ShipHubQueueClient();
+        var qc = new ShipHubBusClient();
         qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
         timer.Stop();
         Console.WriteLine($"Done in {timer.Elapsed}\n");

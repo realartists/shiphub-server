@@ -60,12 +60,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Messages\AccessTokenMessage.cs" />
-    <Compile Include="Messages\LoginMessage.cs" />
     <Compile Include="Messages\AccountMessage.cs" />
     <Compile Include="Messages\RepositoryMessage.cs" />
-    <Compile Include="ShipHubQueueClient.cs" />
+    <Compile Include="ShipHubBusClient.cs" />
+    <Compile Include="ShipHubTopicNames.cs" />
     <Compile Include="ShipHubQueueNames.cs" />
-    <Compile Include="Messages\UpdateMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WebJobInterop.cs" />
   </ItemGroup>
