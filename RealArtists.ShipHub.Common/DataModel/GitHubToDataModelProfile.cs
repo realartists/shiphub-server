@@ -6,7 +6,7 @@
   using g = GitHub.Models;
 
   public class GitHubToDataModelProfile : Profile {
-    protected override void Configure() {
+    public GitHubToDataModelProfile() {
       CreateMap<g.Account, Account>(MemberList.Destination);
 
       //CreateMap<g.Repository, Repository>(MemberList.Source)
