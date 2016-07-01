@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.SyncMessages {
+﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using Newtonsoft.Json;
 
   public class SyncMessageBase {
