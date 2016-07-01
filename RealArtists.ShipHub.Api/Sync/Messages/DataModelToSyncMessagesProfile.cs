@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using AutoMapper;
+  using AutoMapper.Configuration.Conventions;
 
   public class DataModelToApiModelProfile : Profile {
     public DataModelToApiModelProfile() {
