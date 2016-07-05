@@ -9,11 +9,11 @@
 )
 GO
 
-CREATE NONCLUSTERED INDEX [IX_OrganizationLog_OrganizationId] ON [dbo].[OrganizationLog]([OrganizationId]);
+CREATE NONCLUSTERED INDEX [IX_OrganizationLog_OrganizationId] ON [dbo].[OrganizationLog]([OrganizationId])
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_OrganizationLog_AccountId_OrganizationId] ON [dbo].[OrganizationLog]([AccountId], [OrganizationId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_OrganizationLog_AccountId_OrganizationId] ON [dbo].[OrganizationLog]([AccountId], [OrganizationId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_OrganizationLog_OrganizationId_RowVersion] ON [dbo].[OrganizationLog]([OrganizationId], [RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_OrganizationLog_OrganizationId_RowVersion] ON [dbo].[OrganizationLog]([OrganizationId], [RowVersion])
 GO

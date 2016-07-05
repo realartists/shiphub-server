@@ -5,7 +5,7 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   DECLARE @Changes TABLE (
     [UserId] BIGINT NOT NULL PRIMARY KEY CLUSTERED,

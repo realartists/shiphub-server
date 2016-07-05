@@ -5,12 +5,12 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   DECLARE @Changes TABLE (
     [Id]   BIGINT      NOT NULL PRIMARY KEY CLUSTERED,
     [Type] NVARCHAR(4) NOT NULL
-  );
+  )
 
   MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
   USING (

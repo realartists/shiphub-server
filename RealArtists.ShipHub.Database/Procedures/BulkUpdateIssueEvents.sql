@@ -5,11 +5,11 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   DECLARE @Changes TABLE (
     [IssueEventId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
-  );
+  )
 
   MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
   USING (
@@ -31,7 +31,7 @@ BEGIN
   -- Milestones referenced are either already referenced or have been deleted.
 
   -- Add missing account references to log
-  ;MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Distinct(UPUserId) as UserId
     FROM IssueEvents as e

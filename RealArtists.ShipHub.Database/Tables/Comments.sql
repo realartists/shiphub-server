@@ -11,14 +11,14 @@
   CONSTRAINT [FK_Comments_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues]([Id]),
   CONSTRAINT [FK_Comments_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),
   CONSTRAINT [FK_Comments_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts]([Id]),
-);
+)
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Comments_IssueId] ON [dbo].[Comments]([IssueId]);
+CREATE NONCLUSTERED INDEX [IX_Comments_IssueId] ON [dbo].[Comments]([IssueId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Comments_RepositoryId] ON [dbo].[Comments]([RepositoryId]);
+CREATE NONCLUSTERED INDEX [IX_Comments_RepositoryId] ON [dbo].[Comments]([RepositoryId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Comments_UserId] ON [dbo].[Comments]([UserId]);
+CREATE NONCLUSTERED INDEX [IX_Comments_UserId] ON [dbo].[Comments]([UserId])
 GO

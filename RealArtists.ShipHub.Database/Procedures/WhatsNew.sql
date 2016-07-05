@@ -7,7 +7,7 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   -- Inform the client of any repos and orgs they can no longer access
   SELECT ItemId as RepositoryId
@@ -62,7 +62,7 @@ BEGIN
   SELECT RowNumber, [Type], ItemId, [Delete]
   FROM @AllRepoLogs
 
-  ;WITH logs as (
+  WITH logs as (
     SELECT ROW_NUMBER() OVER (PARTITION BY [Type], ItemId ORDER BY RowNumber ASC) as RowNumber
     FROM @RepoLogs
   )
@@ -71,9 +71,9 @@ BEGIN
   -- Done with work table
   DELETE @AllRepoLogs
 
-  DECLARE @TotalLogs BIGINT, @RealLogs BIGINT;
-  SELECT @TotalLogs = COUNT(1) FROM @RepoVersions;
-  SELECT @RealLogs = COUNT(1) FROM @RepoLogs;
+  DECLARE @TotalLogs BIGINT, @RealLogs BIGINT
+  SELECT @TotalLogs = COUNT(1) FROM @RepoVersions
+  SELECT @RealLogs = COUNT(1) FROM @RepoLogs
 
   IF @PageSize < 100
   BEGIN
@@ -81,7 +81,7 @@ BEGIN
   END
 
   DECLARE  @WindowBegin BIGINT = 1,
-           @WindowEnd   BIGINT = @PageSize;
+           @WindowEnd   BIGINT = @PageSize
 
   -- Total number of log entries to be returned
   -- Contains duplicates
