@@ -8,6 +8,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [UserId] BIGINT       NOT NULL,
@@ -63,4 +64,9 @@ BEGIN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
     VALUES (@RepositoryId, 'account', [Source].UserId, 0)
   OPTION (RECOMPILE);
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
+  OPTION (RECOMPILE)
 END

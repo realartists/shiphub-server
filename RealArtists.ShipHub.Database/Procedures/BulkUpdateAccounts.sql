@@ -7,9 +7,16 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [Id]   BIGINT      NOT NULL PRIMARY KEY CLUSTERED,
     [Type] NVARCHAR(4) NOT NULL
+  )
+
+  -- For sync events
+  DECLARE @Updates TABLE (
+    [OrganizationId] BIGINT NULL,
+    [RepositoryId]   BIGINT NULL
   )
 
   MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
@@ -39,6 +46,7 @@ BEGIN
 
   -- New Organizations reference themselves
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  OUTPUT INSERTED.OrganizationId INTO @Updates (OrganizationId)
   SELECT c.Id, c.Id, 0
   FROM @Changes as c
   WHERE c.[Type] = 'org'
@@ -49,8 +57,12 @@ BEGIN
   -- Our only job here is to mark still valid references as changed.
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
     [RowVersion] = DEFAULT -- Bump version
+  OUTPUT INSERTED.RepositoryId INTO @Updates (RepositoryId)
   WHERE [Type] = 'account'
     AND [Delete] = 0
     AND ItemId IN (SELECT Id FROM @Changes)
   OPTION (RECOMPILE)
+
+  -- Return updated organizations and repositories
+  SELECT DISTINCT OrganizationId, RepositoryId FROM @Updates OPTION (RECOMPILE)
 END

@@ -7,6 +7,8 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  DECLARE @Changes BIT = 0
+
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
   MERGE INTO RepositoryLabels WITH (SERIALIZABLE) as [Target]
@@ -27,6 +29,8 @@ BEGIN
 
   IF(@@ROWCOUNT > 0)
   BEGIN
+    SET @Changes = 1
+
     -- Update repo log entry
     UPDATE RepositoryLog WITH (SERIALIZABLE)
       SET [RowVersion] = DEFAULT
@@ -34,4 +38,7 @@ BEGIN
       AND [Type] = 'repository'
       -- AND ItemId = @RepositoryId
   END
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId WHERE @Changes = 1
 END

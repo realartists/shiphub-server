@@ -7,6 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [UserId] BIGINT NOT NULL PRIMARY KEY CLUSTERED,
     [Action] NVARCHAR(10) NOT NULL
@@ -38,5 +39,10 @@ BEGIN
   SELECT @OrganizationId, c.UserId, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
+  OPTION (RECOMPILE)
+
+  -- Return updated organizations and repositories
+  SELECT @OrganizationId as OrganizationId, NULL as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
   OPTION (RECOMPILE)
 END
