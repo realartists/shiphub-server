@@ -115,7 +115,6 @@
     <Compile Include="GitHub\GitHubReactions.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
-    <Compile Include="DataModel\RepositoryLogEntry.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />

@@ -37,7 +37,6 @@
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
-    public virtual DbSet<RepositoryLogEntry> RepositoryLogs { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -153,11 +152,6 @@
 
       mb.Entity<Repository>()
         .HasMany(e => e.Milestones)
-        .WithRequired(e => e.Repository)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<Repository>()
-        .HasMany(e => e.Logs)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
     }

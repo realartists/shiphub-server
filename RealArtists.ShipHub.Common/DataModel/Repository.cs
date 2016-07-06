@@ -52,8 +52,5 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Label> Labels { get; set; } = new HashSet<Label>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<RepositoryLogEntry> Logs { get; set; } = new HashSet<RepositoryLogEntry>();
   }
 }
