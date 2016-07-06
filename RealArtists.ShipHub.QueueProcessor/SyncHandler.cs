@@ -278,13 +278,5 @@
         await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events));
       }
     }
-
-    //public static async Task SyncIssueComments() {
-    //  await Task.CompletedTask;
-    //}
-
-    //public static async Task SyncIssueEvents() {
-    //  await Task.CompletedTask;
-    //}
   }
 }

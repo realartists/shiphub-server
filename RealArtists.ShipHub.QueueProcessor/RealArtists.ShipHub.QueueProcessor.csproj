@@ -108,7 +108,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataLogic.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="SharedMapper.cs" />
     <Compile Include="SyncHandler.cs" />
