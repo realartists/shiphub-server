@@ -61,6 +61,7 @@
   <ItemGroup>
     <Compile Include="Messages\AccessTokenMessage.cs" />
     <Compile Include="Messages\AccountMessage.cs" />
+    <Compile Include="Messages\ChangeMessage.cs" />
     <Compile Include="Messages\RepositoryMessage.cs" />
     <Compile Include="ShipHubBusClient.cs" />
     <Compile Include="ShipHubTopicNames.cs" />
