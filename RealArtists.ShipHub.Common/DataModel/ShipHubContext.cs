@@ -12,6 +12,8 @@
 
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
+      // Tell EF to leave our DB alone.
+      // Maybe do migrations with dacpacs when possible later.
       Database.SetInitializer<ShipHubContext>(null);
     }
 
@@ -21,10 +23,12 @@
 
     public ShipHubContext(string nameOrConnectionString)
       : base(nameOrConnectionString) {
+      ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
     }
 
     public ShipHubContext(DbConnection existingConnection, bool contextOwnsConnection)
       : base(existingConnection, contextOwnsConnection) {
+      ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
     }
 
     public virtual DbSet<AccessToken> AccessTokens { get; set; }
@@ -40,6 +44,8 @@
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
+
+    public SqlConnectionFactory ConnectionFactory { get; private set; }
 
     public override int SaveChanges() {
       throw new NotImplementedException("Please use SaveChangesAsync instead.");
@@ -156,16 +162,107 @@
         .WillCascadeOnDelete(false);
     }
 
-    //public Task UpdateRateLimit(string token, int limit, int remaining, DateTimeOffset reset) {
-    //  return Database.ExecuteSqlCommandAsync(
-    //    "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @Limit, @RateLimitRemaining = @Remaining, @RateLimitReset = @Reset",
-    //    new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = token },
-    //    new SqlParameter("Limit", SqlDbType.Int) { Value = limit },
-    //    new SqlParameter("Remaining", SqlDbType.Int) { Value = remaining },
-    //    new SqlParameter("Reset", SqlDbType.DateTimeOffset) { Value = reset });
-    //}
+    private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
+      var result = new ChangeSummary();
 
-    public async Task BulkUpdateIssues(long repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
+      using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
+        applyParams(dsp);
+
+        using (var sdr = await dsp.ExecuteReaderAsync(CommandBehavior.SingleResult)) {
+          while (sdr.Read()) {
+            result.Add((long?)sdr["OrganizationId"], (long?)sdr["RepositoryId"]);
+          }
+        }
+      }
+
+      return result;
+    }
+
+    public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
+      var tableParam = CreateTableParameter(
+        "Accounts",
+        "[dbo].[AccountTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("Type", typeof(string)),
+          Tuple.Create("Login", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.Type,
+          x.Login,
+        },
+        accounts);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
+        x.Date = date;
+        x.Accounts = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
+      var tableParam = CreateTableParameter(
+        "Comments",
+        "[dbo].[CommentTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueNumber", typeof(int)),
+          Tuple.Create("UserId", typeof(long)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("Reactions", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.IssueNumber,
+          x.UserId,
+          x.Body,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.Reactions,
+        },
+        comments);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
+        x.RepositoryId = repositoryId;
+        x.Comments = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssueEvents(long repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
+      var tableParam = CreateTableParameter(
+        "IssueEvents",
+        "[dbo].[IssueEventTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueId", typeof(long)),
+          Tuple.Create("ActorId", typeof(long)),
+          Tuple.Create("CommitId", typeof(string)),
+          Tuple.Create("Event", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
+          Tuple.Create("ExtensionData", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.IssueId,
+          x.ActorId,
+          x.CommitId,
+          x.Event,
+          x.CreatedAt,
+          x.AssigneeId,
+          x.ExtensionData,
+        },
+        issueEvents);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueEvents]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueEvents = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssues(long repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
       var issueParam = CreateTableParameter(
         "Issues",
         "[dbo].[IssueTableType]",
@@ -205,112 +302,14 @@
 
       var labelParam = CreateLabelTable("Labels", labels);
 
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateIssues] @RepositoryId = @RepositoryId, @Issues = @Issues, @Labels = @Labels;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        issueParam,
-        labelParam);
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssues]", x => {
+        x.RepositoryId = repositoryId;
+        x.Issues = issueParam;
+        x.Labels = labelParam;
+      });
     }
 
-    public async Task BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
-      var tableParam = CreateTableParameter(
-        "Comments",
-        "[dbo].[CommentTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("Reactions", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.IssueNumber,
-          x.UserId,
-          x.Body,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.Reactions,
-        },
-        comments);
-
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateComments] @RepositoryId = @RepositoryId, @Comments = @Comments;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        tableParam);
-    }
-
-    public async Task BulkUpdateIssueEvents(long repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
-      var tableParam = CreateTableParameter(
-        "IssueEvents",
-        "[dbo].[IssueEventTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueId", typeof(long)),
-          Tuple.Create("ActorId", typeof(long)),
-          Tuple.Create("CommitId", typeof(string)),
-          Tuple.Create("Event", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
-          Tuple.Create("ExtensionData", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.IssueId,
-          x.ActorId,
-          x.CommitId,
-          x.Event,
-          x.CreatedAt,
-          x.AssigneeId,
-          x.ExtensionData,
-        },
-        issueEvents);
-
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateIssueEvents] @RepositoryId = @RepositoryId, @IssueEvents = @IssueEvents;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        tableParam);
-    }
-
-    public async Task SetRepositoryLabels(long repositoryId, IEnumerable<LabelTableType> labels) {
-      var tableParam = CreateLabelTable("Labels", labels);
-
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[SetRepositoryLabels] @RepositoryId = @RepositoryId, @Labels = @Labels;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        tableParam);
-    }
-
-    public async Task BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      var tableParam = CreateTableParameter(
-        "Accounts",
-        "[dbo].[AccountTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Type", typeof(string)),
-          Tuple.Create("Login", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.Type,
-          x.Login,
-        },
-        accounts);
-
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateAccounts] @Date = @Date, @Accounts = @Accounts;",
-        new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
-        tableParam);
-    }
-
-    public async Task BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones) {
+    public Task<ChangeSummary> BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones) {
       var tableParam = CreateTableParameter(
         "Milestones",
         "[dbo].[MilestoneTableType]",
@@ -338,14 +337,13 @@
         },
         milestones);
 
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateMilestones] @RepositoryId = @RepositoryId, @Milestones = @Milestones;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        tableParam);
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
+        x.RepositoryId = repositoryId;
+        x.Milestones = tableParam;
+      });
     }
 
-    public async Task BulkUpdateRepositories(DateTimeOffset date, IEnumerable<RepositoryTableType> repositories) {
+    public Task<ChangeSummary> BulkUpdateRepositories(DateTimeOffset date, IEnumerable<RepositoryTableType> repositories) {
       var tableParam = CreateTableParameter(
         "Repositories",
         "[dbo].[RepositoryTableType]",
@@ -365,11 +363,19 @@
         },
         repositories);
 
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[BulkUpdateRepositories] @Date = @Date, @Repositories = @Repositories;",
-        new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date },
-        tableParam);
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateRepositories]", x => {
+        x.Date = date;
+        x.Repositories = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> SetRepositoryLabels(long repositoryId, IEnumerable<LabelTableType> labels) {
+      var tableParam = CreateLabelTable("Labels", labels);
+
+      return ExecuteAndReadChanges("[dbo].[SetRepositoryLabels]", x => {
+        x.RepositoryId = repositoryId;
+        x.Labels = tableParam;
+      });
     }
 
     public DynamicStoredProcedure PrepareWhatsNew(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
@@ -402,24 +408,18 @@
         CreateItemListTable("OrganizationIds", organizationIds));
     }
 
-    public async Task SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        @"EXEC [dbo].[SetOrganizationUsers]
-          @OrganizationId = @OrganizationId,
-          @UserIds = @UserIds;",
-        new SqlParameter("OrganizationId", SqlDbType.BigInt) { Value = organizationId },
-        CreateItemListTable("UserIds", userIds));
+    public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
+      return ExecuteAndReadChanges("[dbo].[SetOrganizationUsers]", x => {
+        x.OrganizationId = organizationId;
+        x.UserIds = CreateItemListTable("UserIds", userIds);
+      });
     }
 
-    public async Task SetRepositoryAssignableAccounts(long repositoryId, IEnumerable<long> assignableAccountIds) {
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        @"EXEC [dbo].[SetRepositoryAssignableAccounts]
-          @RepositoryId = @RepositoryId,
-          @AssignableAccountIds = @AssignableAccountIds;",
-        new SqlParameter("RepositoryId", SqlDbType.BigInt) { Value = repositoryId },
-        CreateItemListTable("AssignableAccountIds", assignableAccountIds));
+    public Task<ChangeSummary> SetRepositoryAssignableAccounts(long repositoryId, IEnumerable<long> assignableAccountIds) {
+      return ExecuteAndReadChanges("[dbo].[SetRepositoryAssignableAccounts]", x => {
+        x.RepositoryId = repositoryId;
+        x.AssignableAccountIds = CreateItemListTable("AssignableAccountIds", assignableAccountIds);
+      });
     }
 
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {

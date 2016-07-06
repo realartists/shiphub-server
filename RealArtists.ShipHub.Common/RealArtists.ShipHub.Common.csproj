@@ -88,6 +88,7 @@
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
+    <Compile Include="DataModel\Types\ChangeSummary.cs" />
     <Compile Include="DataModel\Types\VersionTableType.cs" />
     <Compile Include="DataModel\User.cs" />
     <Compile Include="AutoMapperExtensions.cs" />
