@@ -94,7 +94,7 @@
         var clientRepoVersions = hello.Versions?.Repositories ?? _EmptyRepoVersion;
         var clientOrgVersions = hello.Versions?.Organizations ?? _EmptyOrgVersion;
         var dsp = context.PrepareWhatsNew(
-          _userId,
+          UserId,
           pageSize,
           clientRepoVersions.Select(x => new VersionTableType() {
             ItemId = x.Id,

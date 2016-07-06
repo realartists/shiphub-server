@@ -12,9 +12,9 @@
   using System.Reactive;
   using System.Reactive.Linq;
   using System.Reactive.Subjects;
-  using System.Reactive.Subjects;
+  using System.Threading;
 
-  public class SyncManager {
+  public class SyncManager : IDisposable {
     private class RepositoryReference {
       public long UserId { get; set; }
       public int MyProperty { get; set; }
@@ -33,9 +33,11 @@
     private Subject<Unit> _syncSubject = new Subject<Unit>();
 
 
-    public async Task SubscribeEvents() {
+    public Task SubscribeEvents() {
       // Subscribe to changes
+      return Task.CompletedTask;
     }
+
     private void SubscribeSync() {
       _syncSubject
         .Throttle(TimeSpan.FromSeconds(1))  // Throttle observes on its own thread.
@@ -102,6 +104,28 @@
           _syncPending.UnionWith(uids);
         }
       }
+    }
+
+    public Task<Unit> Sync() {
+      return Task.FromResult(Unit.Default);
+    }
+
+    private bool disposedValue = false; // To detect redundant calls
+
+    protected virtual void Dispose(bool disposing) {
+      if (!disposedValue) {
+        if (disposing) {
+          if (_syncSubject != null) {
+            _syncSubject.Dispose();
+          }
+        }
+
+        disposedValue = true;
+      }
+    }
+
+    public void Dispose() {
+      Dispose(true);
     }
   }
 }

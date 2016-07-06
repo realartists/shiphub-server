@@ -1,17 +1,19 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
+  using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
 
   public class Label {
     public long Id { get; set; }
 
     [Required]
-    [StringLength(6)]
+    [Column(TypeName = "char")]
+    [StringLength(6, MinimumLength = 6)]
     public string Color { get; set; }
 
     [Required]
-    [StringLength(500)]
+    [StringLength(400)]
     public string Name { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
