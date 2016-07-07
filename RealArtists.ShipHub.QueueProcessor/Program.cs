@@ -1,6 +1,10 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using System.Diagnostics;
+  using System.IO;
+  using System.Text;
+  using System.Threading;
+  using System.Threading.Tasks;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
@@ -69,6 +73,20 @@
         Console.WriteLine($"Done in {timer.Elapsed}\n");
       }
 #endif
+
+      // HACKS!
+
+      //ShipHubBusClient.EnsureSubscription(ShipHubTopicNames.Changes, "DEBUGGING").Wait();
+      //var changes = ShipHubBusClient.SubscriptionClientForName(ShipHubTopicNames.Changes, "DEBUGGING");
+      //changes.OnMessage(m => {
+      //  using (var body = m.GetBody<Stream>())
+      //  using (var reader = new StreamReader(body, Encoding.UTF8)) {
+      //    Console.WriteLine(reader.ReadToEnd());
+      //  }
+      //  m.Complete();
+      //});
+
+      // END HACKS!
 
       Console.WriteLine("Starting job host...\n\n");
       var host = new JobHost(config);

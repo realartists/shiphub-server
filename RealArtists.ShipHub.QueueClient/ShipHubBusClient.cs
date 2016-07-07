@@ -10,12 +10,14 @@
 
   public class ShipHubBusClient {
     static readonly string _connString;
+    static readonly NamespaceManager _namespaceManager;
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
     static ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
     static ConcurrentDictionary<string, SubscriptionClient> _subscriptionClients = new ConcurrentDictionary<string, SubscriptionClient>();
 
     static ShipHubBusClient() {
       _connString = ConfigurationManager.ConnectionStrings["AzureWebJobsServiceBus"].ConnectionString;
+      _namespaceManager = NamespaceManager.CreateFromConnectionString(_connString);
     }
 
     static T CacheLookup<T>(ConcurrentDictionary<string, T> cache, string key, Func<T> valueCreator)
@@ -36,21 +38,31 @@
       return CacheLookup(_topicClients, topicName, () => TopicClient.CreateFromConnectionString(_connString, topicName));
     }
 
-    static SubscriptionClient SubscriptionClientForName(string topicName, string subscriptionName) {
+    // TODO: Non-public
+    public static SubscriptionClient SubscriptionClientForName(string topicName, string subscriptionName) {
       return CacheLookup(_subscriptionClients, topicName, () => SubscriptionClient.CreateFromConnectionString(_connString, topicName, subscriptionName));
     }
 
+    // TODO: Roll into client creation
+    public static async Task EnsureSubscription(string topicName, string subscriptionName) {
+      if (!await _namespaceManager.SubscriptionExistsAsync(topicName, subscriptionName)) {
+        await _namespaceManager.CreateSubscriptionAsync(new SubscriptionDescription(topicName, subscriptionName) {
+          AutoDeleteOnIdle = TimeSpan.FromMinutes(5), // Minimum
+          EnableBatchedOperations = true,
+        });
+      }
+    }
+
     public static async Task EnsureQueues() {
-      var nm = NamespaceManager.CreateFromConnectionString(_connString);
       var checks = ShipHubQueueNames.AllQueues
-        .Select(x => new { QueueName = x, ExistsTask = nm.QueueExistsAsync(x) })
+        .Select(x => new { QueueName = x, ExistsTask = _namespaceManager.QueueExistsAsync(x) })
         .ToArray();
 
       await Task.WhenAll(checks.Select(x => x.ExistsTask));
 
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
-        .Select(x => nm.CreateQueueAsync(new QueueDescription(x.QueueName) {
+        .Select(x => _namespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
           //DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
           DefaultMessageTimeToLive = TimeSpan.FromDays(7),
 
@@ -67,9 +79,8 @@
     }
 
     public static async Task EnsureTopics() {
-      var nm = NamespaceManager.CreateFromConnectionString(_connString);
       var checks = ShipHubTopicNames.AllTopics
-        .Select(x => new { TopicName = x, ExistsTask = nm.TopicExistsAsync(x) })
+        .Select(x => new { TopicName = x, ExistsTask = _namespaceManager.TopicExistsAsync(x) })
         .ToArray();
 
       await Task.WhenAll(checks.Select(x => x.ExistsTask));
@@ -77,7 +88,7 @@
       // Ensure AutoDeleteOnIdle IS NOT SET on the topic. Only subscriptions should delete.
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
-        .Select(x => nm.CreateTopicAsync(new TopicDescription(x.TopicName) {
+        .Select(x => _namespaceManager.CreateTopicAsync(new TopicDescription(x.TopicName) {
           DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
           EnableExpress = true,
           EnableBatchedOperations = true,

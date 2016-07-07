@@ -1,7 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using AutoMapper;
-  using Common.DataModel;
-  using SyncMessages.Entries;
 
   public class DataModelToApiModelProfile : Profile {
     protected override void Configure() {
@@ -11,7 +9,7 @@
         .AddMember<NameSplitMember>()
         .AddName<PrePostfixName>(_ => _.AddStrings(p => p.DestinationPostfixes, "entifier"));
 
-      
+
     }
   }
 }
