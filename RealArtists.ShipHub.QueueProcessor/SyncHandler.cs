@@ -261,6 +261,7 @@
         .Where(x => x.PullRequest == null); // Drop pull requests for now
 
       using (var context = new ShipHubContext()) {
+        // TODO: Support multiple assignees.
         var accounts = issues
           .SelectMany(x => new[] { x.User, x.Assignee, x.ClosedBy })
           .Where(x => x != null)
@@ -275,6 +276,7 @@
           .Select(x => x.First());
         changes.UnionWith(await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
+        // TODO: Support multiple assignees.
         changes.UnionWith(await context.BulkUpdateIssues(
           message.Repository.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
