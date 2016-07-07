@@ -169,8 +169,9 @@
         applyParams(dsp);
 
         using (var sdr = await dsp.ExecuteReaderAsync(CommandBehavior.SingleResult)) {
+          dynamic ddr = sdr;
           while (sdr.Read()) {
-            result.Add((long?)sdr["OrganizationId"], (long?)sdr["RepositoryId"]);
+            result.Add(ddr.OrganizationId, ddr.RepositoryId);
           }
         }
       }
