@@ -74,6 +74,7 @@
 
       await Task.WhenAll(checks.Select(x => x.ExistsTask));
 
+      // Ensure AutoDeleteOnIdle IS NOT SET on the topic. Only subscriptions should delete.
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
         .Select(x => nm.CreateTopicAsync(new TopicDescription(x.TopicName) {

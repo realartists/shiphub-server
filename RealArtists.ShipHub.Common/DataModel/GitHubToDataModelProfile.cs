@@ -9,11 +9,6 @@
     public GitHubToDataModelProfile() {
       CreateMap<g.Account, Account>(MemberList.Destination);
 
-      //CreateMap<g.Repository, Repository>(MemberList.Source)
-      //  .ForSourceMember(x => x.HasIssues, o => o.Ignore())
-      //  .ForSourceMember(x => x.UpdatedAt, o => o.Ignore())
-      //  .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
-
       // Table Types
       CreateMap<g.Account, AccountTableType>(MemberList.Destination)
         .ForMember(x => x.Type, o => o.ResolveUsing(x => x.Type == g.GitHubAccountType.User ? Account.UserType : Account.OrganizationType));
