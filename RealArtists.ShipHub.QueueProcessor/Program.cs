@@ -41,7 +41,19 @@
       Console.WriteLine("Creating Missing Queues");
       timer.Start();
 #endif
+
       ShipHubBusClient.EnsureQueues().Wait();
+
+#if DEBUG
+      timer.Stop();
+      Console.WriteLine($"Done in {timer.Elapsed}\n");
+
+      Console.WriteLine("Creating Missing Topics");
+      timer.Restart();
+#endif
+
+      ShipHubBusClient.EnsureTopics().Wait();
+
 #if DEBUG
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
