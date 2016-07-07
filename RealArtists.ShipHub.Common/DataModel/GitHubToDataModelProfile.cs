@@ -6,7 +6,7 @@
   using g = GitHub.Models;
 
   public class GitHubToDataModelProfile : Profile {
-    public GitHubToDataModelProfile() {
+    protected override void Configure() {
       CreateMap<g.Account, Account>(MemberList.Destination);
 
       // Table Types
