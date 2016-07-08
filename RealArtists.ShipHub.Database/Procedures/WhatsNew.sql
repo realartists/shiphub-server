@@ -62,7 +62,7 @@ BEGIN
   SELECT RowNumber, [Type], ItemId, [Delete]
   FROM @AllRepoLogs
 
-  WITH logs as (
+  ;WITH logs as (
     SELECT ROW_NUMBER() OVER (PARTITION BY [Type], ItemId ORDER BY RowNumber ASC) as RowNumber
     FROM @RepoLogs
   )
