@@ -20,5 +20,6 @@
 
     public Reactions Reactions { get; set; }
     public PullRequest PullRequest { get; set; }
+    public IEnumerable<Account> Assignees { get; set; }
   }
 }

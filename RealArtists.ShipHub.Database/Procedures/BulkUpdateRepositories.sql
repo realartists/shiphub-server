@@ -5,12 +5,13 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED,
     [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
-  );
+  )
 
   MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
   USING (
@@ -62,5 +63,10 @@ BEGIN
     SELECT 1
     FROM RepositoryLog
     WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
+  OPTION (RECOMPILE)
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, Id as RepositoryId
+  FROM @Changes
   OPTION (RECOMPILE)
 END

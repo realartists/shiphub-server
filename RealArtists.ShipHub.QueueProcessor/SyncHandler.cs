@@ -26,14 +26,15 @@
     public static async Task SyncAccount(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] AccessTokenMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<AccountMessage> syncAccountRepos,
-      [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<AccountMessage> syncAccountOrgs) {
+      [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<AccountMessage> syncAccountOrgs,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var userResponse = await ghc.User();
       var user = userResponse.Result;
-      //await UpdateHandler.UpdateAccount(new UpdateMessage<gh.Account>(user, userResponse.Date, userResponse.CacheData));
       using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(userResponse.Date, new[] { SharedMapper.Map<AccountTableType>(user) });
+        changes = await context.BulkUpdateAccounts(userResponse.Date, new[] { SharedMapper.Map<AccountTableType>(user) });
       }
 
       // Now that the user is saved in the DB, safe to sync all repos and user's orgs
@@ -43,6 +44,7 @@
       };
 
       await Task.WhenAll(
+        changes.Empty ? Task.CompletedTask : notifyChanges.AddAsync(new ChangeMessage(changes)),
         syncAccountRepos.AddAsync(am),
         syncAccountOrgs.AddAsync(am));
     }
@@ -53,8 +55,10 @@
     /// </summary>
     public static async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo) {
+      [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var repoResponse = await ghc.Repositories();
       var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
@@ -67,8 +71,8 @@
           .Select(x => x.Owner)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
-        await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos));
+        changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
+        changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
         await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id));
       }
 
@@ -76,7 +80,11 @@
       var syncTasks = keepRepos.Select(x => syncRepo.AddAsync(new RepositoryMessage() {
         AccessToken = message.AccessToken,
         Repository = x,
-      })).ToArray();
+      })).ToList();
+
+      if (!changes.Empty) {
+        syncTasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
+      }
 
       await Task.WhenAll(syncTasks);
     }
@@ -93,14 +101,16 @@
     /// </summary>
     public static async Task SyncAccountOrganizations(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] AccountMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers) {
+      [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var orgResponse = await ghc.Organizations();
       var orgs = orgResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
+        changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
         await context.SetUserOrganizations(message.Account.Id, orgs.Select(x => x.Id));
       }
 
@@ -108,7 +118,12 @@
         Select(x => syncOrgMembers.AddAsync(new AccountMessage() {
           AccessToken = message.AccessToken,
           Account = x,
-        })).ToArray();
+        })).ToList();
+
+      if (!changes.Empty) {
+        memberSyncMessages.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
+      }
+
       await Task.WhenAll(memberSyncMessages);
     }
 
@@ -116,15 +131,22 @@
     /// Precondition: Organizations exist.
     /// Postcondition: Org members exist and Org membership is up to date.
     /// </summary>
-    public static async Task SyncOrganizationMembers([ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] AccountMessage message) {
+    public static async Task SyncOrganizationMembers(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] AccountMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var memberResponse = await ghc.OrganizationMembers(message.Account.Login);
       var members = memberResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(memberResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(members));
-        await context.SetOrganizationUsers(message.Account.Id, members.Select(x => x.Id));
+        changes = await context.BulkUpdateAccounts(memberResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(members));
+        changes.UnionWith(await context.SetOrganizationUsers(message.Account.Id, members.Select(x => x.Id)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
     }
 
@@ -152,15 +174,22 @@
     /// Precondition: Repository exists
     /// Postcondition: Repository assignees exist and are linked.
     /// </summary>
-    public static async Task SyncRepositoryAssignees([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryAssignees)] RepositoryMessage message) {
+    public static async Task SyncRepositoryAssignees(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryAssignees)] RepositoryMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var assigneeResponse = await ghc.Assignable(message.Repository.FullName);
       var assignees = assigneeResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.BulkUpdateAccounts(assigneeResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(assignees));
-        await context.SetRepositoryAssignableAccounts(message.Repository.Id, assignees.Select(x => x.Id));
+        changes = await context.BulkUpdateAccounts(assigneeResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(assignees));
+        changes.UnionWith(await context.SetRepositoryAssignableAccounts(message.Repository.Id, assignees.Select(x => x.Id)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
     }
 
@@ -170,31 +199,38 @@
     /// </summary>
     public static async Task SyncRepositoryMilestones(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryMilestones)] RepositoryMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<RepositoryMessage> syncRepoIssues) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<RepositoryMessage> syncRepoIssues,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var milestoneResponse = await ghc.Milestones(message.Repository.FullName);
       var milestones = milestoneResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+        changes = await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
       }
 
-      await syncRepoIssues.AddAsync(message);
+      await Task.WhenAll(
+        changes.Empty ? Task.CompletedTask : notifyChanges.AddAsync(new ChangeMessage(changes)),
+        syncRepoIssues.AddAsync(message));
     }
 
     /// <summary>
     /// Precondition: Repository exists
     /// Postcondition: Labels exist
     /// </summary>
-    public static async Task SyncRepositoryLabels([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryLabels)] RepositoryMessage message) {
+    public static async Task SyncRepositoryLabels(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryLabels)] RepositoryMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var labelResponse = await ghc.Labels(message.Repository.FullName);
       var labels = labelResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        await context.SetRepositoryLabels(
+        changes = await context.SetRepositoryLabels(
           message.Repository.Id,
           labels.Select(x => new LabelTableType() {
             Id = message.Repository.Id,
@@ -202,6 +238,10 @@
             Name = x.Name
           })
         );
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
     }
 
@@ -211,39 +251,48 @@
     /// </summary>
     public static async Task SyncRepositoryIssues(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] RepositoryMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<RepositoryMessage> syncRepoComments) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<RepositoryMessage> syncRepoComments,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var issueResponse = await ghc.Issues(message.Repository.FullName);
       var issues = issueResponse.Result
         .Where(x => x.PullRequest == null); // Drop pull requests for now
 
       using (var context = new ShipHubContext()) {
+        // TODO: Support multiple assignees.
         var accounts = issues
           .SelectMany(x => new[] { x.User, x.Assignee, x.ClosedBy })
           .Where(x => x != null)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
-        await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        changes = await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
 
         var milestones = issues
           .Select(x => x.Milestone)
           .Where(x => x != null)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
-        await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+        changes.UnionWith(await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
-        await context.BulkUpdateIssues(
+        // TODO: Support multiple assignees.
+        changes.UnionWith(await context.BulkUpdateIssues(
           message.Repository.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
-          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name })));
+          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name }))));
       }
 
-      await syncRepoComments.AddAsync(message);
+      await Task.WhenAll(
+        changes.Empty ? Task.CompletedTask : notifyChanges.AddAsync(new ChangeMessage(changes)),
+        syncRepoComments.AddAsync(message));
     }
 
-    public static async Task SyncRepositoryComments([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] RepositoryMessage message) {
+    public static async Task SyncRepositoryComments(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] RepositoryMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var commentsResponse = await ghc.Comments(message.Repository.FullName);
       var comments = commentsResponse.Result;
@@ -253,15 +302,22 @@
           .Select(x => x.User)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
-        await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+        changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         var issueComments = comments.Where(x => x.IssueNumber != null);
-        await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments));
+        changes.UnionWith(await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
     }
 
-    public static async Task SyncRepositoryIssueEvents([ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message) {
+    public static async Task SyncRepositoryIssueEvents(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
       var eventsResponse = await ghc.Events(message.Repository.FullName);
       var events = eventsResponse.Result;
@@ -274,17 +330,13 @@
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events));
+        changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
     }
-
-    //public static async Task SyncIssueComments() {
-    //  await Task.CompletedTask;
-    //}
-
-    //public static async Task SyncIssueEvents() {
-    //  await Task.CompletedTask;
-    //}
   }
 }

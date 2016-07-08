@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using AutoMapper;
   using Common.DataModel;
-  using Models;
+  using Sync.Messages;
 
   public static class AutoMapperConfig {
     public static IMapper Mapper { get; private set; }

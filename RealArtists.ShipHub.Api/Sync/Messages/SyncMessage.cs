@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.SyncMessages {
+﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using System.Collections.Generic;
   using System.Runtime.Serialization;
 

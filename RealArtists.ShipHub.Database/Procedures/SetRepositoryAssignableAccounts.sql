@@ -5,7 +5,9 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
+
+  DECLARE @Changes BIT = 0
 
   MERGE INTO RepositoryAccounts WITH (SERIALIZABLE) as Target
   USING (
@@ -23,8 +25,10 @@ BEGIN
     THEN DELETE
   OPTION (RECOMPILE);
 
-   IF(@@ROWCOUNT > 0) -- Not a NOP
-   BEGIN
+  IF(@@ROWCOUNT > 0) -- Not a NOP
+  BEGIN
+    SET @Changes = 1
+
     -- Update repo record in log
     UPDATE RepositoryLog WITH (SERIALIZABLE)
       SET [RowVersion] = DEFAULT
@@ -43,4 +47,7 @@ BEGIN
       VALUES (@RepositoryId, 'account', AccountId, 0)
     OPTION (RECOMPILE);
   END
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId WHERE @Changes = 1
 END

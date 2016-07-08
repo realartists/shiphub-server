@@ -5,11 +5,12 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [IssueEventId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
-  );
+  )
 
   MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
   USING (
@@ -31,7 +32,7 @@ BEGIN
   -- Milestones referenced are either already referenced or have been deleted.
 
   -- Add missing account references to log
-  ;MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
   USING (
     SELECT Distinct(UPUserId) as UserId
     FROM IssueEvents as e
@@ -46,4 +47,9 @@ BEGIN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
     VALUES (@RepositoryId, 'account', [Source].UserId, 0)
   OPTION (RECOMPILE);
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
+  OPTION (RECOMPILE)
 END

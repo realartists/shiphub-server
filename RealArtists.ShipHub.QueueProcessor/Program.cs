@@ -1,6 +1,10 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using System.Diagnostics;
+  using System.IO;
+  using System.Text;
+  using System.Threading;
+  using System.Threading.Tasks;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
@@ -13,6 +17,9 @@
 
       sbConfig.MessageOptions.MaxConcurrentCalls = 128;
 
+      // Adjust this based on real performance data
+      //sbConfig.MessageOptions.AutoRenewTimeout = 
+
       // TOOD: Override default messaging provider?
       //sbConfig.MessagingProvider = 
 
@@ -20,6 +27,7 @@
       if (config.IsDevelopment) {
         config.UseDevelopmentSettings();
         config.DashboardConnectionString = null;
+        sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10);
         //config.Tracing.Tracers.Clear();
         //config.Tracing.ConsoleLevel = TraceLevel.Error;
         //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
@@ -37,7 +45,19 @@
       Console.WriteLine("Creating Missing Queues");
       timer.Start();
 #endif
-      ShipHubQueueClient.EnsureQueues().Wait();
+
+      ShipHubBusClient.EnsureQueues().Wait();
+
+#if DEBUG
+      timer.Stop();
+      Console.WriteLine($"Done in {timer.Elapsed}\n");
+
+      Console.WriteLine("Creating Missing Topics");
+      timer.Restart();
+#endif
+
+      ShipHubBusClient.EnsureTopics().Wait();
+
 #if DEBUG
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
@@ -47,12 +67,26 @@
       if (key == (int)'y') {
         Console.WriteLine("Sending sync account message");
         timer.Restart();
-        var qc = new ShipHubQueueClient();
+        var qc = new ShipHubBusClient();
         qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
         timer.Stop();
         Console.WriteLine($"Done in {timer.Elapsed}\n");
       }
 #endif
+
+      // HACKS!
+
+      //ShipHubBusClient.EnsureSubscription(ShipHubTopicNames.Changes, "DEBUGGING").Wait();
+      //var changes = ShipHubBusClient.SubscriptionClientForName(ShipHubTopicNames.Changes, "DEBUGGING");
+      //changes.OnMessage(m => {
+      //  using (var body = m.GetBody<Stream>())
+      //  using (var reader = new StreamReader(body, Encoding.UTF8)) {
+      //    Console.WriteLine(reader.ReadToEnd());
+      //  }
+      //  m.Complete();
+      //});
+
+      // END HACKS!
 
       Console.WriteLine("Starting job host...\n\n");
       var host = new JobHost(config);

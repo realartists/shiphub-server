@@ -6,11 +6,12 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [IssueId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
-  );
+  )
 
   MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
   USING (
@@ -67,13 +68,9 @@ BEGIN
 
   -- New issues
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'issue', IssueId, 0
-    FROM @Changes
-  WHERE IssueId NOT IN (
-    SELECT ItemId
-    FROM RepositoryLog
-    WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
-  )
+  SELECT @RepositoryId, 'issue', c.IssueId, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
   OPTION (RECOMPILE)
 
   -- Add new account references to log
@@ -93,4 +90,9 @@ BEGIN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
     VALUES (@RepositoryId, 'account', [Source].UserId, 0)
   OPTION (RECOMPILE);
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
+  OPTION (RECOMPILE)
 END

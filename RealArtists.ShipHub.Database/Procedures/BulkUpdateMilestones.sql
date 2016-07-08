@@ -6,12 +6,13 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [Action] NVARCHAR(10) NOT NULL
-  );
+  )
 
   MERGE INTO Milestones WITH (SERIALIZABLE) as [Target]
   USING (
@@ -49,12 +50,13 @@ BEGIN
 
   -- New milestones
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'milestone', Id, 0
-    FROM @Changes
-  WHERE Id NOT IN (
-    SELECT ItemId
-    FROM RepositoryLog
-    WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
-  )
+  SELECT @RepositoryId, 'milestone', c.Id, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
+  OPTION (RECOMPILE)
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
   OPTION (RECOMPILE)
 END

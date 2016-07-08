@@ -6,13 +6,14 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
+  -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
     [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [UserId] BIGINT       NOT NULL,
     [Action] NVARCHAR(10) NOT NULL
-  );
+  )
 
   MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
   USING (
@@ -41,33 +42,31 @@ BEGIN
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
     [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
-  WHERE RepositoryId = @RepositoryId AND [Type] = 'comment'
+  FROM @Changes as c
+    INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
   OPTION (RECOMPILE)
 
   -- New comments
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'comment', Id, 0
-    FROM @Changes
-  WHERE Id NOT IN (
-    SELECT ItemId
-    FROM RepositoryLog
-    WHERE RepositoryId = @RepositoryId AND [Type] = 'comment'
-  )
+  SELECT @RepositoryId, 'comment', c.Id, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
   OPTION (RECOMPILE)
 
   -- Add new account references to log
   MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
-  USING (
-    SELECT DISTINCT(UserId) FROM @Changes WHERE [Action] = 'INSERT'
-  ) as [Source]
-  ON ([Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'account'
-    AND [Target].ItemId = [Source].UserId)
+  USING (SELECT DISTINCT(UserId) FROM @Changes WHERE [Action] = 'INSERT') as [Source]
+  ON ([Target].ItemId = [Source].UserId
+    AND [Target].RepositoryId = @RepositoryId
+    AND [Target].[Type] = 'account')
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
     VALUES (@RepositoryId, 'account', [Source].UserId, 0)
   OPTION (RECOMPILE);
+
+  -- Return updated organizations and repositories
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  WHERE EXISTS(SELECT 1 FROM @Changes)
+  OPTION (RECOMPILE)
 END

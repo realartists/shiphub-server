@@ -122,13 +122,13 @@
     <Build Include="Tables\RepositoryLog.sql" />
     <Build Include="Procedures\WhatsNew.sql" />
     <Build Include="User Defined Types\VersionTableType.sql" />
+    <Build Include="Tables\OrganizationLog.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="LocalDB.scmp" />
-    <None Include="StaticCodeAnalysis.SuppressMessages.xml" />
   </ItemGroup>
   <ItemGroup>
     <RefactorLog Include="RealArtists.ShipHub.Database.refactorlog" />

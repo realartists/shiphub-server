@@ -17,34 +17,36 @@
          .ToArray();
     }
     // Actions
-    const string SyncPrefix = "sync-";
-    const string UpdatePrefix = "update-";
+    const string SyncPrefix = "sync";
+    //const string UpdatePrefix = "update";
 
     // Resources
-    const string Account = "account";
-    const string Comment = "comment";
-    const string Issue = "issue";
-    const string IssueEvent = "issueEvent";
-    const string Milestone = "milestone";
-    const string Organization = "organization";
-    const string RateLimit = "rateLimit";
-    const string Repository = "repository";
-    const string Webhook = "webhook";
+    const string Account = "-account";
+    const string Comments = "-comments";
+    const string Issues = "-issues";
+    const string IssueEvents = "-issueEvents";
+    const string Milestones = "-milestones";
+    const string Organization = "-organization";
+    const string Organizations = "-organizations";
+    //const string RateLimit = "-rateLimit";
+    const string Repository = "-repository";
+    const string Repositories = "-repositories";
+    //const string Webhook = "-webhook";
 
     // Queues [Action + Resource]
     public const string SyncAccount = SyncPrefix + Account;
-    public const string SyncAccountRepositories = SyncAccount + "-repositories";
-    public const string SyncAccountOrganizations = SyncAccount + "-organizations";
+    public const string SyncAccountRepositories = SyncAccount + Repositories;
+    public const string SyncAccountOrganizations = SyncAccount + Organizations;
 
     public const string SyncOrganizationMembers = SyncPrefix + Organization + "-members";
 
     public const string SyncRepository = SyncPrefix + Repository;
     public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
-    public const string SyncRepositoryIssues = SyncRepository + "-issues";
+    public const string SyncRepositoryIssues = SyncRepository + Issues;
     public const string SyncRepositoryLabels = SyncRepository + "-labels";
-    public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
-    public const string SyncRepositoryComments = SyncRepository + "-comments";
-    public const string SyncRepositoryIssueEvents = SyncRepository + "-issueEvents";
+    public const string SyncRepositoryMilestones = SyncRepository + Milestones;
+    public const string SyncRepositoryComments = SyncRepository + Comments;
+    public const string SyncRepositoryIssueEvents = SyncRepository + IssueEvents;
 
     //public const string UpdateAccount = UpdatePrefix + Account;
     //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";

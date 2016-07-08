@@ -11,6 +11,7 @@
     <AssemblyName>RealArtists.ShipHub.Common</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -45,8 +46,8 @@
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.SqlServer.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.9.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -87,6 +88,7 @@
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
+    <Compile Include="DataModel\Types\ChangeSummary.cs" />
     <Compile Include="DataModel\Types\VersionTableType.cs" />
     <Compile Include="DataModel\User.cs" />
     <Compile Include="AutoMapperExtensions.cs" />
@@ -114,7 +116,6 @@
     <Compile Include="GitHub\GitHubReactions.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
-    <Compile Include="DataModel\RepositoryLogEntry.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />
@@ -137,10 +138,7 @@
     <Compile Include="GitHub\Models\Repository.cs" />
     <Compile Include="GitHub\Models\Webhook.cs" />
     <Compile Include="GitHub\Models\WebhookPayload.cs" />
-    <Compile Include="GitHub\Serialization\EpochDateTimeConverter.cs" />
     <Compile Include="GitHub\Serialization\EpochUtility.cs" />
-    <Compile Include="GitHub\Serialization\SnakeCasePropertyNamesContractResolver.cs" />
-    <Compile Include="GitHub\Serialization\SnakeCaseUtility.cs" />
     <Compile Include="Legacy\DynamicDataReader.cs" />
     <Compile Include="Legacy\DynamicStoredProcedure.cs" />
     <Compile Include="Legacy\SqlConnectionFactory.cs" />

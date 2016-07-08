@@ -10,13 +10,13 @@
   [CreatedAt]          DATETIMEOFFSET NOT NULL,
   CONSTRAINT [PK_AccessTokens] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_AccessTokens_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
-);
+)
 GO
 
-CREATE NONCLUSTERED INDEX [IX_AccessTokens_AccountId] ON [dbo].[AccessTokens]([AccountId]);
+CREATE NONCLUSTERED INDEX [IX_AccessTokens_AccountId] ON [dbo].[AccessTokens]([AccountId])
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_AccessTokens_Token] ON [dbo].[AccessTokens]([Token]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_AccessTokens_Token] ON [dbo].[AccessTokens]([Token])
 GO
 
 CREATE TRIGGER [dbo].[TRG_AccessTokens_Delete]
@@ -27,7 +27,7 @@ AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
-  SET NOCOUNT ON;
+  SET NOCOUNT ON
 
   UPDATE g SET
       AccessTokenId = NULL,

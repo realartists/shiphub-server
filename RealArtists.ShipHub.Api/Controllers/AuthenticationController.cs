@@ -179,7 +179,7 @@
         await Context.SaveChangesAsync();
 
         // For now, always sync on hello
-        var qc = new ShipHubQueueClient();
+        var qc = new ShipHubBusClient();
         await qc.SyncAccount(token.Token);
 
         return Ok(userInfo);

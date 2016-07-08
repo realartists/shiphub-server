@@ -10,14 +10,14 @@
 )
 GO
 
-CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId] ON [dbo].[RepositoryLog]([RepositoryId]);
+CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId] ON [dbo].[RepositoryLog]([RepositoryId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId_Type] ON [dbo].[RepositoryLog]([RepositoryId], [Type]);
+CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId_Type] ON [dbo].[RepositoryLog]([RepositoryId], [Type])
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_RepositoryLog_Type_ItemId_RepositoryId] ON [dbo].[RepositoryLog]([Type], [ItemId], [RepositoryId]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_RepositoryLog_Type_ItemId_RepositoryId] ON [dbo].[RepositoryLog]([Type], [ItemId], [RepositoryId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId_RowVersion] ON [dbo].[RepositoryLog]([RepositoryId], [RowVersion]);
+CREATE NONCLUSTERED INDEX [IX_RepositoryLog_RepositoryId_RowVersion] ON [dbo].[RepositoryLog]([RepositoryId], [RowVersion])
 GO

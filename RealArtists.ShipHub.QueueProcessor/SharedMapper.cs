@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using AutoMapper;
-  using RealArtists.ShipHub.Common.DataModel;
+  using Common.DataModel;
 
   public static class SharedMapper {
     public static IMapper Mapper { get; private set; }

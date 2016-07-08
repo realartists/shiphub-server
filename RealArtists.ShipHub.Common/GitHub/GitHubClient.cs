@@ -13,6 +13,7 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Linq;
+  using Newtonsoft.Json.Serialization;
   using Serialization;
 
   public static class HeaderUtility {
@@ -45,7 +46,9 @@
 
     static GitHubClient() {
       JsonSettings = new JsonSerializerSettings() {
-        ContractResolver = new SnakeCasePropertyNamesContractResolver(),
+        ContractResolver = new DefaultContractResolver() {
+          NamingStrategy = new SnakeCaseNamingStrategy(),
+        },
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Include,
       };
@@ -88,7 +91,12 @@
       headers.AcceptEncoding.ParseAdd("deflate");
 
       headers.Accept.Clear();
-      headers.Accept.ParseAdd("application/vnd.github.mockingbird-preview, application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
+      // https://developer.github.com/changes/
+      // application/vnd.github.cerberus-preview is multiple issue assignees
+      // application/vnd.github.the-key-preview+sha is issue locking/unlocking (add)
+      // application/vnd.github.mockingbird-preview is timeline
+      // application/vnd.github.squirrel-girl-preview is reactions
+      headers.Accept.ParseAdd("application/vnd.github.cerberus-preview, application/vnd.github.mockingbird-preview, application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
 
       headers.AcceptCharset.Clear();
       headers.AcceptCharset.ParseAdd("utf-8");

@@ -22,22 +22,22 @@
   CONSTRAINT [FK_Issues_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_ClosedById_Accounts_Id] FOREIGN KEY ([ClosedById]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
-);
+)
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Issues_UserId] ON [dbo].[Issues]([UserId]);
+CREATE NONCLUSTERED INDEX [IX_Issues_UserId] ON [dbo].[Issues]([UserId])
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_RepositoryId] ON [dbo].[Issues]([RepositoryId], [Number]);
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_RepositoryId] ON [dbo].[Issues]([RepositoryId], [Number])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId]);
+CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Issues_ClosedById] ON [dbo].[Issues]([ClosedById]);
+CREATE NONCLUSTERED INDEX [IX_Issues_ClosedById] ON [dbo].[Issues]([ClosedById])
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_MetaDataId]
   ON [dbo].[Issues]([MetaDataId])
-  WHERE ([MetaDataId] IS NOT NULL);
+  WHERE ([MetaDataId] IS NOT NULL)
 GO
