@@ -3,7 +3,7 @@
   using System.Linq;
   using Common.DataModel.Types;
 
-  public class ChangeMessage {
+  public class ChangeMessage: IChangeSummary {
     public ChangeMessage() { }
     public ChangeMessage(IChangeSummary changes) {
       // Copy for safety from underlying modifications.

@@ -17,20 +17,38 @@
   using Messages.Entries;
   using Newtonsoft.Json.Linq;
   using se = Messages.Entries;
+  using System.Reactive.Disposables;
+  using System.Reactive.Linq;
+  using System.Reactive.Concurrency;
+  using System.Reactive;
+  using System.Diagnostics;
 
   public class SyncConnection : WebSocketHandler {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
 
+    private SyncManager _syncManager;
+    private IDisposable _subscription;
+
     public long UserId { get; private set; }
     public SyncVersions SyncVersions { get; private set; } = new SyncVersions();
 
-    public SyncConnection(long userId)
+    private VersionDetails VersionDetails {
+      get {
+        return new VersionDetails() {
+          Organizations = SyncVersions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+          Repositories = SyncVersions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+        };
+      }
+    }
+
+    public SyncConnection(long userId, SyncManager syncManager)
       : base(_MaxMessageSize) {
       UserId = userId;
+      _syncManager = syncManager;
     }
 
     public override Task OnClose() {
-      // TODO: Remove from active connections
+      UnsubscribeFromChanges();
       return Task.CompletedTask;
     }
 
@@ -52,15 +70,25 @@
       return OnMessage(json);
     }
 
-    public override Task OnMessage(string message) {
+    public override async Task OnMessage(string message) {
       var jobj = JObject.Parse(message);
       var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
       switch (data.MessageType) {
         case "hello":
-          return SyncIt(jobj.ToObject<HelloMessage>(JsonUtility.SaneSerializer));
+          // parse message, update local versions
+          var hello = jobj.ToObject<HelloMessage>(JsonUtility.SaneSerializer);
+          SyncVersions.OrgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
+          SyncVersions.RepoVersions = hello.Versions.Repositories.ToDictionary(x => x.Id, x => x.Version);
+
+          // Do initial sync
+          await Sync();
+
+          // Subscribe
+          SubscribeToChanges();
+          return;
         default:
           // Ignore unknown messages for now
-          return Task.CompletedTask;
+          return;
       }
     }
 
@@ -83,33 +111,62 @@
       }
     }
 
-    private static readonly RepositoryVersion[] _EmptyRepoVersion = new RepositoryVersion[0];
-    private static readonly OrganizationVersion[] _EmptyOrgVersion = new OrganizationVersion[0];
+    private void SubscribeToChanges() {
+      if (_subscription != null) {
+        throw new InvalidOperationException("Already subscribed to changes.");
+      }
 
-    private async Task SyncIt(HelloMessage hello) {
+      // Subscribe to changes
+      _syncManager.Changes
+        .ObserveOn(TaskPoolScheduler.Default)
+        .Select(changes => Observable.FromAsync(async () => {
+          // Check if this user is affected and if so, sync.
+          if (changes.Organizations.Intersect(SyncVersions.OrgVersions.Keys).Any()
+            || changes.Repositories.Intersect(SyncVersions.RepoVersions.Keys).Any()) {
+            await Sync();
+          }
+        }))
+        .Concat()
+        .Subscribe(
+          changes => { /* Work already done */ },
+          error => {
+            // TODO: Logging?
+            // TODO: Disconnect? Resubscribe?
+#if DEBUG
+            Debugger.Break();
+#endif
+          },
+          () => { /* This should never occur. */ });
+    }
+
+    private void UnsubscribeFromChanges() {
+      // Unsubscribe from changes
+      if (_subscription != null) {
+        _subscription.Dispose();
+        _subscription = null;
+      }
+    }
+
+    private async Task Sync() {
       var pageSize = 1000;
       var tasks = new List<Task>();
 
       using (var context = new ShipHubContext()) {
-        var clientRepoVersions = hello.Versions?.Repositories ?? _EmptyRepoVersion;
-        var clientOrgVersions = hello.Versions?.Organizations ?? _EmptyOrgVersion;
         var dsp = context.PrepareWhatsNew(
           UserId,
           pageSize,
-          clientRepoVersions.Select(x => new VersionTableType() {
-            ItemId = x.Id,
-            RowVersion = x.Version,
+          SyncVersions.RepoVersions.Select(x => new VersionTableType() {
+            ItemId = x.Key,
+            RowVersion = x.Value,
           }),
-          clientOrgVersions.Select(x => new VersionTableType() {
-            ItemId = x.Id,
-            RowVersion = x.Version,
+          SyncVersions.OrgVersions.Select(x => new VersionTableType() {
+            ItemId = x.Key,
+            RowVersion = x.Value,
           })
         );
 
         var entries = new List<SyncLogEntry>();
         var sentLogs = 0;
-        var repoVersions = clientRepoVersions.ToDictionary(x => x.Id, x => x.Version);
-        var orgVersions = clientOrgVersions.ToDictionary(x => x.Id, x => x.Version);
         using (var reader = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = reader;
 
@@ -123,7 +180,7 @@
                 Identifier = repoId,
               },
             });
-            repoVersions.Remove(repoId);
+            SyncVersions.RepoVersions.Remove(repoId);
           }
 
           // Removed Orgs
@@ -137,7 +194,7 @@
                 Identifier = orgId,
               },
             });
-            orgVersions.Remove(orgId);
+            SyncVersions.OrgVersions.Remove(orgId);
           }
 
           // Send
@@ -145,10 +202,7 @@
             tasks.Add(SendJsonAsync(new SyncMessage() {
               Logs = entries,
               Remaining = 0,
-              Version = new VersionDetails() {
-                Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-              }
+              Version = VersionDetails,
             }));
           }
 
@@ -322,7 +376,7 @@
                 // Versions
                 reader.NextResult();
                 while (reader.Read()) {
-                  repoVersions[(long)ddr.RepositoryId] = (long)ddr.RowVersion;
+                  SyncVersions.RepoVersions[(long)ddr.RepositoryId] = (long)ddr.RowVersion;
                 }
 
                 // Send page
@@ -331,10 +385,7 @@
                   tasks.Add(SendJsonAsync(new SyncMessage() {
                     Logs = entries,
                     Remaining = totalLogs - sentLogs,
-                    Version = new VersionDetails() {
-                      Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                      Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-                    }
+                    Version = VersionDetails,
                   }));
                 }
                 break;
@@ -383,7 +434,7 @@
                 // Versions
                 reader.NextResult();
                 while (reader.Read()) {
-                  orgVersions[(long)ddr.OrganizationId] = (long)ddr.RowVersion;
+                  SyncVersions.OrgVersions[(long)ddr.OrganizationId] = (long)ddr.RowVersion;
                 }
 
                 // Send orgs
@@ -391,10 +442,7 @@
                   tasks.Add(SendJsonAsync(new SyncMessage() {
                     Logs = entries,
                     Remaining = 0, // Orgs are last
-                    Version = new VersionDetails() {
-                      Organizations = orgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-                      Repositories = repoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-                    }
+                    Version = VersionDetails,
                   }));
                 }
                 break;

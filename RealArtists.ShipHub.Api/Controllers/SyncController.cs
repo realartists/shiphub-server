@@ -10,12 +10,14 @@
 
   [RoutePrefix("api/sync")]
   public class SyncController : ShipHubController {
+    private static readonly SyncManager _SyncManager = new SyncManager();
+
     [Route("")]
     [HttpGet]
     public HttpResponseMessage Sync() {
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {
-        var handler = new SyncConnection(ShipUser.UserId);
+        var handler = new SyncConnection(ShipUser.UserId, _SyncManager);
         context.AcceptWebSocketRequest(handler.AcceptWebSocketRequest, new AspNetWebSocketOptions() { SubProtocol = "V1" });
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }

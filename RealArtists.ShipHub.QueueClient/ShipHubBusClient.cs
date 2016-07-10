@@ -19,7 +19,6 @@
     static readonly NamespaceManager _namespaceManager;
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
     static ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
-    static ConcurrentDictionary<string, SubscriptionClient> _subscriptionClients = new ConcurrentDictionary<string, SubscriptionClient>();
 
     static ShipHubBusClient() {
       _connString = ConfigurationManager.ConnectionStrings["AzureWebJobsServiceBus"].ConnectionString;
@@ -45,12 +44,20 @@
     }
 
     // TODO: Non-public
-    public static SubscriptionClient SubscriptionClientForName(string topicName, string subscriptionName) {
-      return CacheLookup(_subscriptionClients, topicName, () => SubscriptionClient.CreateFromConnectionString(_connString, topicName, subscriptionName));
+    public static async Task<SubscriptionClient> SubscriptionClientForName(string topicName, string subscriptionName = null) {
+      // For auto expiring subscriptions we only care that the names never overlap
+      if (string.IsNullOrWhiteSpace(subscriptionName)) {
+        subscriptionName = Guid.NewGuid().ToString("N");
+      }
+
+      // ensure the subscription exists
+      // safe to do this every time even though it's slow because there should be few, long-lived subscriptons
+      await EnsureSubscription(topicName, subscriptionName);
+
+      return SubscriptionClient.CreateFromConnectionString(_connString, topicName, subscriptionName);
     }
 
-    // TODO: Roll into client creation
-    public static async Task EnsureSubscription(string topicName, string subscriptionName) {
+    private static async Task EnsureSubscription(string topicName, string subscriptionName) {
       if (!await _namespaceManager.SubscriptionExistsAsync(topicName, subscriptionName)) {
         await _namespaceManager.CreateSubscriptionAsync(new SubscriptionDescription(topicName, subscriptionName) {
           AutoDeleteOnIdle = TimeSpan.FromMinutes(5), // Minimum
