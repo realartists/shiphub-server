@@ -1,10 +1,13 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics;
   using System.IO;
   using System.IO.Compression;
   using System.Linq;
   using System.Net.WebSockets;
+  using System.Reactive.Concurrency;
+  using System.Reactive.Linq;
   using System.Text;
   using System.Threading;
   using System.Threading.Tasks;
@@ -17,11 +20,6 @@
   using Messages.Entries;
   using Newtonsoft.Json.Linq;
   using se = Messages.Entries;
-  using System.Reactive.Disposables;
-  using System.Reactive.Linq;
-  using System.Reactive.Concurrency;
-  using System.Reactive;
-  using System.Diagnostics;
 
   public class SyncConnection : WebSocketHandler {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
@@ -77,8 +75,14 @@
         case "hello":
           // parse message, update local versions
           var hello = jobj.ToObject<HelloMessage>(JsonUtility.SaneSerializer);
-          SyncVersions.OrgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
-          SyncVersions.RepoVersions = hello.Versions.Repositories.ToDictionary(x => x.Id, x => x.Version);
+          if (hello.Versions != null) {
+            if (hello.Versions.Organizations != null) {
+              SyncVersions.OrgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
+            }
+            if (hello.Versions.Repositories != null) {
+              SyncVersions.RepoVersions = hello.Versions.Repositories.ToDictionary(x => x.Id, x => x.Version);
+            }
+          }
 
           // Do initial sync
           await Sync();
