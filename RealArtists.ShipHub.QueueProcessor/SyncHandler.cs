@@ -313,8 +313,32 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueEvents(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+    //public static async Task SyncRepositoryIssueEvents(
+    //  [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+    //  [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+    //  var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+    //  ChangeSummary changes;
+
+    //  var eventsResponse = await ghc.Events(message.Repository.FullName);
+    //  var events = eventsResponse.Result;
+
+    //  using (var context = new ShipHubContext()) {
+    //    // For now only grab accounts from the response.
+    //    // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+    //    var accounts = events
+    //      .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+    //      .Where(x => x != null)
+    //      .GroupBy(x => x.Login)
+    //      .Select(x => x.First());
+    //    changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+    //    changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+    //  }
+
+    //  if (!changes.Empty) {
+    //    await notifyChanges.AddAsync(new ChangeMessage(changes));
+    //  }
+    //}
+
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
