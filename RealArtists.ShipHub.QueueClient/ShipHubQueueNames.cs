@@ -25,6 +25,7 @@
     const string Comments = "-comments";
     const string Issues = "-issues";
     const string IssueEvents = "-issueEvents";
+    const string IssueTimeline = "-issueTimeline";
     const string Milestones = "-milestones";
     const string Organization = "-organization";
     const string Organizations = "-organizations";
@@ -47,6 +48,7 @@
     public const string SyncRepositoryMilestones = SyncRepository + Milestones;
     public const string SyncRepositoryComments = SyncRepository + Comments;
     public const string SyncRepositoryIssueEvents = SyncRepository + IssueEvents;
+    public const string SyncRepositoryIssueTimeline = SyncRepository + IssueTimeline;
 
     //public const string UpdateAccount = UpdatePrefix + Account;
     //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";

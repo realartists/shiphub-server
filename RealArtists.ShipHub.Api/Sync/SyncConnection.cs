@@ -19,6 +19,7 @@
   using Messages;
   using Messages.Entries;
   using Newtonsoft.Json.Linq;
+  using QueueClient;
   using se = Messages.Entries;
 
   public class SyncConnection : WebSocketHandler {
@@ -26,6 +27,7 @@
 
     private SyncManager _syncManager;
     private IDisposable _subscription;
+    private string _accessToken;
 
     public long UserId { get; private set; }
     public SyncVersions SyncVersions { get; private set; } = new SyncVersions();
@@ -39,9 +41,10 @@
       }
     }
 
-    public SyncConnection(long userId, SyncManager syncManager)
+    public SyncConnection(long userId, string accessToken, SyncManager syncManager)
       : base(_MaxMessageSize) {
       UserId = userId;
+      _accessToken = accessToken;
       _syncManager = syncManager;
     }
 
@@ -89,6 +92,14 @@
 
           // Subscribe
           SubscribeToChanges();
+          return;
+        case "viewing":
+          var viewing = jobj.ToObject<ViewingRequest>(JsonUtility.SaneSerializer);
+          var parts = viewing.Issue.Split('#');
+          var repoFullName = parts[0];
+          var issueNumber = int.Parse(parts[1]);
+          var qc = new ShipHubBusClient();
+          await qc.SyncRepositoryIssueTimeline(_accessToken, repoFullName, issueNumber);
           return;
         default:
           // Ignore unknown messages for now

@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
@@ -10,9 +11,6 @@
   using QueueClient.Messages;
 
   /// <summary>
-  /// TODO: ENABLE DUPLICATE DETECTION AND REJECTION ON SYNC QUEUES.
-  /// ONLY ONE SYNC OPERATION PER RESOURCE SHOULD BE OUTSTANDING AT A TIME
-  /// 
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
   /// 
   /// TODO: Don't submit empty updates to DB.
@@ -154,6 +152,7 @@
     /// Precondition: Repos saved in DB
     /// Postcondition: None.
     /// </summary>
+    /// TODO: Should this be inlined?
     public static async Task SyncRepository(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
@@ -339,23 +338,35 @@
     //  }
     //}
 
+    public static async Task SyncRepositoryIssueTimeline(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var eventsResponse = await ghc.Events(message.Repository.FullName);
-      var events = eventsResponse.Result;
+      var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
+      var timeline = timelineResponse.Result;
 
       using (var context = new ShipHubContext()) {
+        // TODO: I don't like this
+        var issueDetails = await context.Issues
+          .Where(x => x.Repository.FullName == message.RepositoryFullName)
+          .Where(x => x.Number == message.Number)
+          .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
+          .SingleAsync();
         // For now only grab accounts from the response.
         // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
-        var accounts = events
-          .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+        var accounts = timeline
+          .SelectMany(x => new[] { x.Actor, x.Assignee })
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+        changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
+        foreach (var item in events) {
+          item.IssueId = issueDetails.IssueId;
+        }
+        changes.UnionWith(await context.BulkUpdateIssueEvents(issueDetails.RepositoryId, events));
       }
 
       if (!changes.Empty) {

@@ -125,5 +125,15 @@
       var topic = TopicClientForName(ShipHubTopicNames.Changes);
       return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
     }
+
+    public Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
+      var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
+      var message = new IssueMessage() {
+        AccessToken = accessToken,
+        RepositoryFullName = repositoryFullName,
+        Number = issueNumber,
+      };
+      return queue.SendAsync(WebJobInterop.CreateMessage(message));
+    }
   }
 }

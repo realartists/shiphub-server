@@ -162,6 +162,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Sync\Messages\ViewingRequest.cs" />
     <Compile Include="Sync\SyncConnection.cs" />
     <Compile Include="Sync\SyncManager.cs" />
     <Compile Include="Sync\Messages\DataModelToSyncMessagesProfile.cs" />
