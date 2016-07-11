@@ -70,11 +70,11 @@
 
     public override async Task OnMessage(string message) {
       var jobj = JObject.Parse(message);
-      var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
+      var data = jobj.ToObject<SyncRequestBase>(JsonUtility.SaneSerializer);
       switch (data.MessageType) {
         case "hello":
           // parse message, update local versions
-          var hello = jobj.ToObject<HelloMessage>(JsonUtility.SaneSerializer);
+          var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
           if (hello.Versions != null) {
             if (hello.Versions.Organizations != null) {
               SyncVersions.OrgVersions = hello.Versions.Organizations.ToDictionary(x => x.Id, x => x.Version);
@@ -203,10 +203,10 @@
 
           // Send
           if (entries.Any()) {
-            tasks.Add(SendJsonAsync(new SyncMessage() {
+            tasks.Add(SendJsonAsync(new SyncResponse() {
               Logs = entries,
               Remaining = 0,
-              Version = VersionDetails,
+              Versions = VersionDetails,
             }));
           }
 
@@ -386,10 +386,10 @@
                 // Send page
                 if (entries.Any()) {
                   sentLogs += entries.Count();
-                  tasks.Add(SendJsonAsync(new SyncMessage() {
+                  tasks.Add(SendJsonAsync(new SyncResponse() {
                     Logs = entries,
                     Remaining = totalLogs - sentLogs,
-                    Version = VersionDetails,
+                    Versions = VersionDetails,
                   }));
                 }
                 break;
@@ -443,10 +443,10 @@
 
                 // Send orgs
                 if (entries.Any()) {
-                  tasks.Add(SendJsonAsync(new SyncMessage() {
+                  tasks.Add(SendJsonAsync(new SyncResponse() {
                     Logs = entries,
                     Remaining = 0, // Orgs are last
-                    Version = VersionDetails,
+                    Versions = VersionDetails,
                   }));
                 }
                 break;

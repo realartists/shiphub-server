@@ -49,11 +49,11 @@
     public SyncEntity Data { get; set; }
   }
 
-  public class SyncMessage : SyncMessageBase {
+  public class SyncResponse : SyncRequestBase {
     public override string MessageType { get { return "sync"; } set { } }
 
     public IEnumerable<SyncLogEntry> Logs { get; set; }
-    public VersionDetails Version { get; set; }
+    public VersionDetails Versions { get; set; }
     public long Remaining { get; set; }
   }
 }

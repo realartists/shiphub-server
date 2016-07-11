@@ -22,7 +22,7 @@
     public IEnumerable<OrganizationVersion> Organizations { get; set; }
   }
 
-  public class HelloMessage : SyncMessageBase {
+  public class HelloRequest : SyncRequestBase {
     public string Client { get; set; }
     public VersionDetails Versions { get; set; }
   }

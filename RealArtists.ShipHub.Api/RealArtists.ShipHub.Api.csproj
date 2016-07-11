@@ -175,9 +175,9 @@
     <Compile Include="Sync\Messages\Entries\OrganizationEntry.cs" />
     <Compile Include="Sync\Messages\Entries\Reactions.cs" />
     <Compile Include="Sync\Messages\Entries\RepositoryEntry.cs" />
-    <Compile Include="Sync\Messages\HelloMessage.cs" />
-    <Compile Include="Sync\Messages\SyncMessage.cs" />
-    <Compile Include="Sync\Messages\SyncMessageBase.cs" />
+    <Compile Include="Sync\Messages\HelloRequest.cs" />
+    <Compile Include="Sync\Messages\SyncResponse.cs" />
+    <Compile Include="Sync\Messages\SyncRequestBase.cs" />
     <Compile Include="Sync\SyncVersions.cs" />
   </ItemGroup>
   <ItemGroup>
