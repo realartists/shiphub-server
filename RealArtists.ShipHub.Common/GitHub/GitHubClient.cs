@@ -92,11 +92,11 @@
 
       headers.Accept.Clear();
       // https://developer.github.com/changes/
-      // application/vnd.github.cerberus-preview is multiple issue assignees
+      // application/vnd.github.cerberus-preview is multiple issue assignees (add)
       // application/vnd.github.the-key-preview+sha is issue locking/unlocking (add)
       // application/vnd.github.mockingbird-preview is timeline
       // application/vnd.github.squirrel-girl-preview is reactions
-      headers.Accept.ParseAdd("application/vnd.github.cerberus-preview, application/vnd.github.mockingbird-preview, application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
+      headers.Accept.ParseAdd("application/vnd.github.mockingbird-preview, application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
 
       headers.AcceptCharset.Clear();
       headers.AcceptCharset.ParseAdd("utf-8");
@@ -172,6 +172,16 @@
     //  return MakeRequest<Repository>(request, opts?.Credentials);
     //}
 
+    public async Task<GitHubResponse<IEnumerable<TimelineEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}/timeline", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<TimelineEvent>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
     //public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
     //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
     //  return MakeRequest<Issue>(request, opts?.Credentials);
@@ -225,32 +235,32 @@
       }
     }
 
-    public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, long eventId, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/events/{eventId}", opts?.CacheOptions);
-      return MakeRequest<IssueEvent>(request, opts?.Credentials);
-    }
+    //public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, long eventId, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/events/{eventId}", opts?.CacheOptions);
+    //  return MakeRequest<IssueEvent>(request, opts?.Credentials);
+    //}
 
-    public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/events", opts?.CacheOptions);
-      var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
-      if (result.IsError || result.Pagination == null) {
-        return result;
-      } else {
-        return await EnumerateParallel(result, opts?.Credentials);
-      }
-    }
+    //public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/events", opts?.CacheOptions);
+    //  var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
+    //  if (result.IsError || result.Pagination == null) {
+    //    return result;
+    //  } else {
+    //    return await EnumerateParallel(result, opts?.Credentials);
+    //  }
+    //}
 
-    public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/events", opts?.CacheOptions);
-      request.AddParameter("sort", "updated");
-      request.AddParameter("direction", "asc");
-      var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
-      if (result.IsError || result.Pagination == null) {
-        return result;
-      } else {
-        return await EnumerateParallel(result, opts?.Credentials);
-      }
-    }
+    //public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, IGitHubRequestOptions opts = null) {
+    //  var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/events", opts?.CacheOptions);
+    //  request.AddParameter("sort", "updated");
+    //  request.AddParameter("direction", "asc");
+    //  var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
+    //  if (result.IsError || result.Pagination == null) {
+    //    return result;
+    //  } else {
+    //    return await EnumerateParallel(result, opts?.Credentials);
+    //  }
+    //}
 
     public async Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/labels", opts?.CacheOptions);

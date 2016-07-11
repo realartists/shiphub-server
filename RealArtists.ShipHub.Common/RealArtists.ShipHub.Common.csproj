@@ -115,6 +115,7 @@
     <Compile Include="GitHub\GitHubCacheData.cs" />
     <Compile Include="GitHub\GitHubRateLimit.cs" />
     <Compile Include="GitHub\GitHubReactions.cs" />
+    <Compile Include="GitHub\Models\TimelineEvent.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
     <Compile Include="JsonUtility.cs" />
