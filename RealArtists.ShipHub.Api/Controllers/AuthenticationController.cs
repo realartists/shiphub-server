@@ -13,6 +13,8 @@
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
+    private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
+
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "user:email",
       "repo",
@@ -178,9 +180,7 @@
 
         await Context.SaveChangesAsync();
 
-        // For now, always sync on hello
-        var qc = new ShipHubBusClient();
-        await qc.SyncAccount(token.Token);
+        await _QueueClient.SyncAccount(user.Id);
 
         return Ok(userInfo);
       }

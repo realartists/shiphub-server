@@ -10,7 +10,7 @@
     private ShipHubContext _Context = new ShipHubContext();
 
     protected ShipHubContext Context { get { return _Context; } }
-    protected ShipHubPrincipal ShipUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
+    protected ShipHubPrincipal ShipHubUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
 
     public IMapper Mapper { get; private set; } = AutoMapperConfig.Mapper;
 
