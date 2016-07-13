@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
+  using System;
   using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
@@ -20,7 +21,7 @@
     [StringLength(510)]
     public string FullName { get; set; }
 
-    //public DateTimeOffset Date { get; set; }
+    public DateTimeOffset Date { get; set; }
 
     //public long? AssignableMetaDataId { get; set; }
 
