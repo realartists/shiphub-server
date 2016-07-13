@@ -8,7 +8,7 @@
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
 
-  public class ShipHubBusClient {
+  public class ShipHubBusClient : IShipHubBusClient {
     static readonly string _connString;
     static readonly NamespaceManager _namespaceManager;
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
