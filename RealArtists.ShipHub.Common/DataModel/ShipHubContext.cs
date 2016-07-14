@@ -443,7 +443,7 @@
           Tuple.Create("Name", typeof(string)),
         },
         x => new object[] {
-          x.Id,
+          x.ItemId,
           x.Color,
           x.Name,
         },

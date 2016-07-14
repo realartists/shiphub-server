@@ -232,7 +232,7 @@
         changes = await context.SetRepositoryLabels(
           message.Repository.Id,
           labels.Select(x => new LabelTableType() {
-            Id = message.Repository.Id,
+            ItemId = message.Repository.Id,
             Color = x.Color,
             Name = x.Name
           })
@@ -279,7 +279,7 @@
         changes.UnionWith(await context.BulkUpdateIssues(
           message.Repository.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
-          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name }))));
+          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name }))));
       }
 
       await Task.WhenAll(
