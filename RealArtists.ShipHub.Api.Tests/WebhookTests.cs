@@ -70,6 +70,17 @@ namespace RealArtists.ShipHub.Api.Tests {
       return changeSummary;
     }
 
+    private static JObject IssueChange(string action, Issue issue, long repositoryId) {
+      return new JObject(
+        new JProperty("action", "opened"),
+        new JProperty("issue", JObject.FromObject(issue, JsonSerializer.CreateDefault(GitHubClient.JsonSettings))),
+        new JProperty("sender", null),
+        new JProperty("repository", new JObject(
+          new JProperty("id", repositoryId)
+          )),
+        new JProperty("organization", null));
+    }
+
     [Fact]
     [AutoRollback]
     public async Task TestIssueOpened() {
@@ -121,15 +132,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         User = account,
       };
 
-      IChangeSummary changeSummary = await CallHook(new JObject(
-        new JProperty("action", "opened"),
-        new JProperty("issue", JObject.FromObject(issue, JsonSerializer.CreateDefault(GitHubClient.JsonSettings))),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repo.Id)
-          )),
-        new JProperty("organization", null)
-        ));
+      IChangeSummary changeSummary = await CallHook(IssueChange("opened", issue, repo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -150,5 +153,278 @@ namespace RealArtists.ShipHub.Api.Tests {
       Assert.Equal("Red", labels[1].Name);
       Assert.Equal("ff0000", labels[1].Color);
     }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueClosed() {
+      var context = new Common.DataModel.ShipHubContext();
+
+      var account = new Account() {
+        Id = 3001,
+        Login = "aroon",
+        Type = GitHubAccountType.User,
+      };
+
+      var user = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+        Id = account.Id,
+        Date = DateTimeOffset.Now,
+      });
+      AutoMapper().Map(account, user);
+
+      var repo = new Common.DataModel.Repository() {
+        Id = 2001,
+        Name = "myrepo",
+        FullName = "aroon/myrepo",
+        AccountId = account.Id,
+        Private = true,
+        Account = user,
+        Date = DateTimeOffset.Now,
+      };
+      context.Repositories.Add(repo);
+
+      context.Issues.Add(new Common.DataModel.Issue() {
+        Id = 1001,
+        UserId = user.Id,
+        User = user,
+        RepositoryId = repo.Id,
+        Repository = repo,
+        Number = 5,
+        State = "open",
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+      });
+
+      await context.SaveChangesAsync();
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "closed",
+        Number = 5,
+        Labels = new List<Label> {
+          new Label() {
+            Color = "ff0000",
+            Name = "Red",
+          },
+          new Label() {
+            Color = "0000ff",
+            Name = "Blue",
+          },
+        },
+        User = account,
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("closed", issue, repo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      var updatedIssue = new Common.DataModel.ShipHubContext().Issues.Where(x => x.Id == 1001).First();
+      Assert.Equal("closed", updatedIssue.State);
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueReopened() {
+      var context = new Common.DataModel.ShipHubContext();
+
+      var account = new Account() {
+        Id = 3001,
+        Login = "aroon",
+        Type = GitHubAccountType.User,
+      };
+
+      var user = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+        Id = account.Id,
+        Date = DateTimeOffset.Now,
+      });
+      AutoMapper().Map(account, user);
+
+      var repo = new Common.DataModel.Repository() {
+        Id = 2001,
+        Name = "myrepo",
+        FullName = "aroon/myrepo",
+        AccountId = account.Id,
+        Private = true,
+        Account = user,
+        Date = DateTimeOffset.Now,
+      };
+      context.Repositories.Add(repo);
+
+      context.Issues.Add(new Common.DataModel.Issue() {
+        Id = 1001,
+        UserId = user.Id,
+        User = user,
+        RepositoryId = repo.Id,
+        Repository = repo,
+        Number = 5,
+        State = "closed",
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+      });
+
+      await context.SaveChangesAsync();
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label>(),
+        User = account,
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("reopened", issue, repo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      var updatedIssue = new Common.DataModel.ShipHubContext().Issues.Where(x => x.Id == 1001).First();
+      Assert.Equal("open", updatedIssue.State);
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueAssigned() {
+      var context = new Common.DataModel.ShipHubContext();
+
+      var account = new Account() {
+        Id = 3001,
+        Login = "aroon",
+        Type = GitHubAccountType.User,
+      };
+
+      var user = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+        Id = account.Id,
+        Date = DateTimeOffset.Now,
+      });
+      AutoMapper().Map(account, user);
+
+      var repo = new Common.DataModel.Repository() {
+        Id = 2001,
+        Name = "myrepo",
+        FullName = "aroon/myrepo",
+        AccountId = account.Id,
+        Private = true,
+        Account = user,
+        Date = DateTimeOffset.Now,
+      };
+      context.Repositories.Add(repo);
+
+      context.Issues.Add(new Common.DataModel.Issue() {
+        Id = 1001,
+        UserId = user.Id,
+        User = user,
+        RepositoryId = repo.Id,
+        Repository = repo,
+        Number = 5,
+        State = "open",
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+      });
+
+      await context.SaveChangesAsync();
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "closed",
+        Number = 5,
+        Labels = new List<Label>(),
+        User = account,
+        Assignee = account,
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("assigned", issue, repo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      var updatedIssue = new Common.DataModel.ShipHubContext().Issues.Where(x => x.Id == 1001).First();
+      Assert.Equal(3001, updatedIssue.Assignee.Id);
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueUnassigned() {
+      var context = new Common.DataModel.ShipHubContext();
+
+      var account = new Account() {
+        Id = 3001,
+        Login = "aroon",
+        Type = GitHubAccountType.User,
+      };
+
+      var user = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+        Id = account.Id,
+        Date = DateTimeOffset.Now,
+      });
+      AutoMapper().Map(account, user);
+      
+      var repo = new Common.DataModel.Repository() {
+        Id = 2001,
+        Name = "myrepo",
+        FullName = "aroon/myrepo",
+        AccountId = account.Id,
+        Private = true,
+        Account = user,
+        Date = DateTimeOffset.Now,
+      };
+      context.Repositories.Add(repo);
+
+      context.Issues.Add(new Common.DataModel.Issue() {
+        Id = 1001,
+        UserId = user.Id,
+        User = user,
+        RepositoryId = repo.Id,
+        Repository = repo,
+        Number = 5,
+        State = "open",
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        AssigneeId = account.Id,
+        Assignee = user,
+      });
+
+      await context.SaveChangesAsync();
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "closed",
+        Number = 5,
+        Labels = new List<Label>(),
+        User = account,
+        Assignee = null,
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("unassigned", issue, repo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      var updatedIssue = new Common.DataModel.ShipHubContext().Issues.Where(x => x.Id == 1001).First();
+      Assert.Null(updatedIssue.Assignee);
+    }    
   }
 }

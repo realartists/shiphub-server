@@ -72,9 +72,19 @@
 
       switch (eventName) {
         case "issues":
-          var action = data["action"].ToString();
-          if (action.Equals("opened")) {
-            await HandleIssueOpened(data);
+          var actions = new string[] {
+            "opened",
+            "closed",
+            "reopened",
+            "edited",
+            "labeled",
+            "unlabeled",
+            "assigned",
+            "unassigned",
+          };
+
+          if (actions.Contains(data["action"].ToString())) {
+            await HandleIssueUpdate(data);
           }
           break;
         default:
@@ -84,7 +94,7 @@
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleIssueOpened(JObject data) {
+    private async Task HandleIssueUpdate(JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
 
       var item = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
