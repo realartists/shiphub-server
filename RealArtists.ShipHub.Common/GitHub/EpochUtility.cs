@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Common.GitHub.Serialization {
+﻿namespace RealArtists.ShipHub.Common.GitHub {
   using System;
 
   public class EpochUtility {

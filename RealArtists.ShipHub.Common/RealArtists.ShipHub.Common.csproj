@@ -140,7 +140,7 @@
     <Compile Include="GitHub\Models\Repository.cs" />
     <Compile Include="GitHub\Models\Webhook.cs" />
     <Compile Include="GitHub\Models\WebhookPayload.cs" />
-    <Compile Include="GitHub\Serialization\EpochUtility.cs" />
+    <Compile Include="GitHub\EpochUtility.cs" />
     <Compile Include="Legacy\DynamicDataReader.cs" />
     <Compile Include="Legacy\DynamicStoredProcedure.cs" />
     <Compile Include="Legacy\SqlConnectionFactory.cs" />
