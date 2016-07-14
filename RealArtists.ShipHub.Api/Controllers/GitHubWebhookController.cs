@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Collections.Generic;
   using System.IO;
   using System.Linq;
   using System.Net;
@@ -8,9 +9,13 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using AutoMapper;
+  using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
+  using QueueClient;
 
   [AllowAnonymous]
   public class GitHubWebhookController : ApiController {
@@ -18,6 +23,15 @@
     public const string EventHeaderName = "X-GitHub-Event";
     public const string DeliveryIdHeaderName = "X-GitHub-Delivery";
     public const string SignatureHeaderName = "X-Hub-Signature";
+
+    private IShipHubBusClient _busClient;
+
+    public GitHubWebhookController() : this(new ShipHubBusClient()) {
+    }
+
+    public GitHubWebhookController(IShipHubBusClient busClient) {
+      _busClient = busClient;
+    }
 
     [HttpPost]
     [AllowAnonymous]
@@ -41,7 +55,7 @@
       var secretBytes = Encoding.ASCII.GetBytes(secret);
 
       JObject data;
-      
+
       using (var hmac = new HMACSHA1(secretBytes))
       using (var bodyStream = await Request.Content.ReadAsStreamAsync())
       using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
@@ -56,12 +70,44 @@
         }
       }
 
-      //switch (eventName) {
-      //  default:
-      //    return StatusCode(HttpStatusCode.InternalServerError);
-      //}
+      switch (eventName) {
+        case "issues":
+          var action = data["action"].ToString();
+          if (action.Equals("opened")) {
+            await HandleIssueOpened(data);
+          }
+          break;
+        default:
+          return StatusCode(HttpStatusCode.InternalServerError);
+      }
 
       return StatusCode(HttpStatusCode.Accepted);
+    }
+
+    private async Task HandleIssueOpened(JObject data) {
+      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+
+      var item = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
+      long repositoryId = data["repository"]["id"].Value<long>();
+
+      var issues = new List<Common.GitHub.Models.Issue> { item };
+
+      var config = new MapperConfiguration(cfg => {
+        cfg.AddProfile<GitHubToDataModelProfile>();
+      });
+      var mapper = config.CreateMapper();
+      var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
+      
+      var labels = item.Labels.Select(x => new LabelTableType() {
+        Id = item.Id,
+        Color = x.Color,
+        Name = x.Name
+      });
+
+      var context = new ShipHubContext();
+      ChangeSummary changeSummary = await context.BulkUpdateIssues(repositoryId, issuesMapped, labels);
+
+      await _busClient.NotifyChanges(changeSummary);
     }
   }
 }

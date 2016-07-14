@@ -4,6 +4,7 @@
   using System.Configuration;
   using System.Linq;
   using System.Threading.Tasks;
+  using Common.DataModel.Types;
   using Messages;
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
@@ -106,6 +107,11 @@
         AccessToken = accessToken,
       };
       return queue.SendAsync(WebJobInterop.CreateMessage(message));
+    }
+
+    public Task NotifyChanges(IChangeSummary changeSummary) {
+      var topic = TopicClientForName(ShipHubTopicNames.Changes);
+      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
     }
   }
 }
