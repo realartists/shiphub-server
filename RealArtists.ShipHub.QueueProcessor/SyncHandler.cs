@@ -60,7 +60,7 @@
 
       var repoResponse = await ghc.Repositories();
       var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
-      var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.Assignable(x.FullName, message.Account.Login));
+      var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.IsAssignable(x.FullName, message.Account.Login));
       await Task.WhenAll(assignableRepos.Values.ToArray());
       var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
 

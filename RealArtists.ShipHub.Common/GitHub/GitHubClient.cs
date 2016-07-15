@@ -317,7 +317,7 @@
       }
     }
 
-    public async Task<GitHubResponse<bool>> Assignable(string repoFullName, string login, IGitHubRequestOptions opts = null) {
+    public async Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/assignees/{login}", opts?.CacheOptions);
       var response = await MakeRequest<bool>(request, opts?.Credentials);
       response.IsError = false;
