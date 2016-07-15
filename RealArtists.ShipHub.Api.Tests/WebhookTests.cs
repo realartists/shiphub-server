@@ -41,18 +41,16 @@ namespace RealArtists.ShipHub.Api.Tests {
     private static async Task<IChangeSummary> CallHook(JObject obj) {
       var json = JsonConvert.SerializeObject(obj, GitHubClient.JsonSettings);
       var signature = SignatureForPayload("698DACE9-6267-4391-9B1C-C6F74DB43710", json);
-      var webhookGuid = Guid.NewGuid();
 
       var config = new HttpConfiguration();
-      var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook/" + webhookGuid.ToString());
+      var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook");
       request.Headers.Add("User-Agent", GitHubWebhookController.GitHubUserAgent);
       request.Headers.Add(GitHubWebhookController.EventHeaderName, "issues");
       request.Headers.Add(GitHubWebhookController.SignatureHeaderName, signature);
       request.Headers.Add(GitHubWebhookController.DeliveryIdHeaderName, Guid.NewGuid().ToString());
       request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
 
-      var route = config.Routes.MapHttpRoute("blah", "webhook/{rid}");
-      var routeData = new HttpRouteData(route, new HttpRouteValueDictionary { { "controller", "test" } });
+      var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Webhook", "webhook"));
 
       IChangeSummary changeSummary = null;
 
@@ -66,7 +64,7 @@ namespace RealArtists.ShipHub.Api.Tests {
       controller.Request = request;
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
 
-      await controller.HandleHook(webhookGuid);
+      await controller.HandleHook();
 
       return changeSummary;
     }

@@ -35,8 +35,8 @@
 
     [HttpPost]
     [AllowAnonymous]
-    [Route("hook/{rid}")]
-    public async Task<IHttpActionResult> HandleHook(Guid rid) {
+    [Route("webhook")]
+    public async Task<IHttpActionResult> HandleHook() {
       if (Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) {
         return BadRequest("Not you.");
       }
