@@ -141,16 +141,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         UpdatedAt = DateTimeOffset.Now,
         State = "open",
         Number = 1,
-        Labels = new List<Label> {
-          new Label() {
-            Color = "ff0000",
-            Name = "Red",
-          },
-          new Label() {
-            Color = "0000ff",
-            Name = "Blue",
-          },
-        },
+        Labels = new List<Label>(),
         User = new Account() {
           Id = user.Id,
           Login = user.Login,
@@ -172,13 +163,6 @@ namespace RealArtists.ShipHub.Api.Tests {
         Assert.Equal("open", newIssue.State);
         Assert.Equal(2001, newIssue.RepositoryId);
         Assert.Equal(3001, newIssue.UserId);
-
-        var labels = newIssue.Labels.OrderBy(x => x.Name).ToArray();
-        Assert.Equal(2, labels.Count());
-        Assert.Equal("Blue", labels[0].Name);
-        Assert.Equal("0000ff", labels[0].Color);
-        Assert.Equal("Red", labels[1].Name);
-        Assert.Equal("ff0000", labels[1].Color);
       }
     }
 
@@ -265,6 +249,57 @@ namespace RealArtists.ShipHub.Api.Tests {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
         Assert.Equal("open", updatedIssue.State);
       }        
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueEdited() {
+      Common.DataModel.User testUser;
+      Common.DataModel.Repository testRepo;
+      Common.DataModel.Issue testIssue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        testUser = MakeTestUser(context);
+        testRepo = MakeTestRepo(context, testUser.Id);
+        testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "A New Title",
+        Body = "A New Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label> {
+          new Label() {
+            Color = "ff0000",
+            Name = "Red",
+          },
+          new Label() {
+            Color = "0000ff",
+            Name = "Blue",
+          },
+        },
+        User = new Account() {
+          Id = testUser.Id,
+          Login = testUser.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("edited", issue, testRepo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        Assert.Equal("A New Title", updatedIssue.Title);
+        Assert.Equal("A New Body", updatedIssue.Body);
+      };
     }
 
     [Fact]
@@ -356,6 +391,128 @@ namespace RealArtists.ShipHub.Api.Tests {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
         Assert.Null(updatedIssue.Assignee);
       }
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueLabeled() {
+      Common.DataModel.User testUser;
+      Common.DataModel.Repository testRepo;
+      Common.DataModel.Issue testIssue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        testUser = MakeTestUser(context);
+        testRepo = MakeTestRepo(context, testUser.Id);
+        testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label> {
+          new Label() {
+            Color = "ff0000",
+            Name = "Red",
+          },
+          new Label() {
+            Color = "0000ff",
+            Name = "Blue",
+          },
+        },
+        User = new Account() {
+          Id = testUser.Id,
+          Login = testUser.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("labeled", issue, testRepo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        var labels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.Equal(2, labels.Count());
+        Assert.Equal("Blue", labels[0].Name);
+        Assert.Equal("0000ff", labels[0].Color);
+        Assert.Equal("Red", labels[1].Name);
+        Assert.Equal("ff0000", labels[1].Color);
+      };
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueUnlabeled() {
+      Common.DataModel.User testUser;
+      Common.DataModel.Repository testRepo;
+      Common.DataModel.Issue testIssue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        testUser = MakeTestUser(context);
+        testRepo = MakeTestRepo(context, testUser.Id);
+        testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      // First add the labels Red and Blue
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label> {
+          new Label() {
+            Color = "ff0000",
+            Name = "Red",
+          },
+          new Label() {
+            Color = "0000ff",
+            Name = "Blue",
+          },
+        },
+        User = new Account() {
+          Id = testUser.Id,
+          Login = testUser.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await CallHook(IssueChange("edited", issue, testRepo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        var labels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.Equal(2, labels.Count());
+      };
+
+      // Then remove the Red label.
+      issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
+      changeSummary = await CallHook(IssueChange("unlabeled", issue, testRepo.Id));
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(0, changeSummary.Repositories.Count());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        var labels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.Equal(1, labels.Count());
+        Assert.Equal("Blue", labels[0].Name);
+        Assert.Equal("0000ff", labels[0].Color);
+      };
     }
   }
 }
