@@ -14,7 +14,6 @@
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Linq;
   using Newtonsoft.Json.Serialization;
-  using Serialization;
 
   public static class HeaderUtility {
     public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
@@ -34,7 +33,8 @@
     public const bool UseFiddler = false;
 #endif
 
-    public const int ConcurrencyLimit = 128;
+    public const int ConcurrencyLimit = 16;
+    public const int MaxRetries = 2;
 
     static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
     static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
@@ -91,12 +91,7 @@
       headers.AcceptEncoding.ParseAdd("deflate");
 
       headers.Accept.Clear();
-      // https://developer.github.com/changes/
-      // application/vnd.github.cerberus-preview is multiple issue assignees (add)
-      // application/vnd.github.the-key-preview+sha is issue locking/unlocking (add)
-      // application/vnd.github.mockingbird-preview is timeline
-      // application/vnd.github.squirrel-girl-preview is reactions
-      headers.Accept.ParseAdd("application/vnd.github.mockingbird-preview, application/vnd.github.squirrel-girl-preview, application/vnd.github.v3+json");
+      headers.Accept.ParseAdd("application/vnd.github.v3+json");
 
       headers.AcceptCharset.Clear();
       headers.AcceptCharset.ParseAdd("utf-8");
@@ -152,11 +147,6 @@
       return MakeRequest<Account>(request, opts?.Credentials);
     }
 
-    //public Task<GitHubResponse<Account>> User(string login, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"users/{login}", opts?.CacheOptions);
-    //  return MakeRequest<Account>(request, opts?.Credentials);
-    //}
-
     public async Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user/repos", opts?.CacheOptions);
       var result = await MakeRequest<IEnumerable<Repository>>(request, opts?.Credentials);
@@ -167,13 +157,13 @@
       }
     }
 
-    //public Task<GitHubResponse<Repository>> Repository(string repoFullName, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}", opts?.CacheOptions);
-    //  return MakeRequest<Repository>(request, opts?.Credentials);
-    //}
-
     public async Task<GitHubResponse<IEnumerable<TimelineEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}/timeline", opts?.CacheOptions);
+
+      // Timeline support (application/vnd.github.mockingbird-preview+json)
+      // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
+      request.AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json";
+
       var result = await MakeRequest<IEnumerable<TimelineEvent>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
@@ -182,11 +172,6 @@
       }
     }
 
-    //public Task<GitHubResponse<Issue>> Issue(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}", opts?.CacheOptions);
-    //  return MakeRequest<Issue>(request, opts?.Credentials);
-    //}
-
     public async Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues", opts?.CacheOptions);
       if (since != null) {
@@ -194,6 +179,13 @@
       }
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
+
+      // Multiple Assignees (application/vnd.github.cerberus-preview+json)
+      // https://developer.github.com/changes/2016-5-27-multiple-assignees/
+      // Reactions (application/vnd.github.squirrel-girl-preview+json)
+      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
+      request.AcceptHeaderOverride = "application/vnd.github.cerberus-preview+json, application/vnd.github.squirrel-girl-preview+json";
+
       var result = await MakeRequest<IEnumerable<Issue>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
@@ -202,16 +194,16 @@
       }
     }
 
-    public Task<GitHubResponse<Comment>> Comment(string repoFullName, long commentId, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}", opts?.CacheOptions);
-      return MakeRequest<Comment>(request, opts?.Credentials);
-    }
-
     public async Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/comments", opts?.CacheOptions);
       if (since != null) {
         request.AddParameter("since", since);
       }
+
+      // Reactions (application/vnd.github.squirrel-girl-preview+json)
+      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
+
       var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
@@ -227,6 +219,11 @@
       }
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
+
+      // Reactions (application/vnd.github.squirrel-girl-preview+json)
+      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
+
       var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
@@ -234,11 +231,6 @@
         return await EnumerateParallel(result, opts?.Credentials);
       }
     }
-
-    //public Task<GitHubResponse<IssueEvent>> Event(string repoFullName, long eventId, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/events/{eventId}", opts?.CacheOptions);
-    //  return MakeRequest<IssueEvent>(request, opts?.Credentials);
-    //}
 
     //public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
     //  var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/{issueNumber}/events", opts?.CacheOptions);
@@ -272,11 +264,6 @@
       }
     }
 
-    //public Task<GitHubResponse<Comment>> Milestone(string repoFullName, int milestoneNumber, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones/{milestoneNumber}", opts?.CacheOptions);
-    //  return MakeRequest<Comment>(request, opts?.Credentials);
-    //}
-
     public async Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/milestones", opts?.CacheOptions);
       request.AddParameter("state", "all");
@@ -288,11 +275,6 @@
         return await EnumerateParallel(result, opts?.Credentials);
       }
     }
-
-    //public Task<GitHubResponse<Account>> Organization(string login, IGitHubRequestOptions opts = null) {
-    //  var request = new GitHubRequest(HttpMethod.Get, $"orgs/{login}", opts?.CacheOptions);
-    //  return MakeRequest<Account>(request, opts?.Credentials);
-    //}
 
     public async Task<GitHubResponse<IEnumerable<Account>>> Organizations(IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, "user/orgs", opts?.CacheOptions);
@@ -371,6 +353,10 @@
       if (!string.IsNullOrWhiteSpace(request.ETag)) {
         httpRequest.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(request.ETag));
       }
+      if (request.AcceptHeaderOverride != null) {
+        httpRequest.Headers.Accept.Clear();
+        httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
+      }
 
       // Authentication
       credentials = credentials ?? DefaultCredentials;
@@ -420,12 +406,15 @@
       result.CacheData.Expires = expires;
 
       // Rate Limits
-      result.RateLimit = new GitHubRateLimit() {
-        AccessToken = credentials.Parameter,
-        RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
-        RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
-        RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
-      };
+      // These aren't always sent. Check for presence and fail gracefully.
+      if (response.Headers.Contains("X-RateLimit-Limit")) {
+        result.RateLimit = new GitHubRateLimit() {
+          AccessToken = credentials.Parameter,
+          RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
+          RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
+          RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
+        };
+      }
 
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
@@ -443,9 +432,12 @@
       return result;
     }
 
-    public async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
+    private async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
       var results = new List<T>(firstPage.Result);
       IEnumerable<GitHubResponse<IEnumerable<T>>> batch;
+
+      // TODO: Cancellation (for when errors are encountered)?
+      // TODO: Retry failed requests?
 
       // Only support extrapolation when using pages.
       if (firstPage.Pagination?.CanInterpolate == true) {
@@ -501,10 +493,6 @@
       return final;
     }
 
-    public Task<IEnumerable<T>> Batch<T>(params Func<Task<T>>[] batch) {
-      return Batch(batch);
-    }
-
     public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batch) {
       var tasks = new List<Task<T>>();
       using (var limit = new SemaphoreSlim(ConcurrencyLimit, ConcurrencyLimit)) {
@@ -530,15 +518,15 @@
       }
     }
 
-    public static string SerializeObject(object value) {
+    private static string SerializeObject(object value) {
       return JsonConvert.SerializeObject(value, JsonSettings);
     }
 
-    public static T DeserializeObject<T>(string json) {
+    private static T DeserializeObject<T>(string json) {
       return JsonConvert.DeserializeObject<T>(json, JsonSettings);
     }
 
-    public static T JsonRoundTrip<T>(object self) {
+    private static T JsonRoundTrip<T>(object self) {
       return DeserializeObject<T>(SerializeObject(self));
     }
 
