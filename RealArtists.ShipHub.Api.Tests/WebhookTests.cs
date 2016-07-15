@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,6 +10,7 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Hosting;
+using System.Web.Http.Results;
 using System.Web.Http.Routing;
 using AutoMapper;
 using Moq;
@@ -38,20 +40,25 @@ namespace RealArtists.ShipHub.Api.Tests {
       return mapper;
     }
 
-    private static async Task<IChangeSummary> CallHook(JObject obj) {
-      var json = JsonConvert.SerializeObject(obj, GitHubClient.JsonSettings);
-      var signature = SignatureForPayload("698DACE9-6267-4391-9B1C-C6F74DB43710", json);
+    private static void ConfigureController(ApiController controller, string eventName, JObject body, string secretKey) {
+      var json = JsonConvert.SerializeObject(body, GitHubClient.JsonSettings);
+      var signature = SignatureForPayload(secretKey, json);
 
       var config = new HttpConfiguration();
       var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook");
       request.Headers.Add("User-Agent", GitHubWebhookController.GitHubUserAgent);
-      request.Headers.Add(GitHubWebhookController.EventHeaderName, "issues");
+      request.Headers.Add(GitHubWebhookController.EventHeaderName, eventName);
       request.Headers.Add(GitHubWebhookController.SignatureHeaderName, signature);
       request.Headers.Add(GitHubWebhookController.DeliveryIdHeaderName, Guid.NewGuid().ToString());
       request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
-
       var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Webhook", "webhook"));
+      
+      controller.ControllerContext = new HttpControllerContext(config, routeData, request);
+      controller.Request = request;
+      controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
+    }
 
+    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj) {
       IChangeSummary changeSummary = null;
 
       var mockBusClient = new Mock<IShipHubBusClient>();
@@ -60,11 +67,11 @@ namespace RealArtists.ShipHub.Api.Tests {
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
-      controller.ControllerContext = new HttpControllerContext(config, routeData, request);
-      controller.Request = request;
-      controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
+      ConfigureController(controller, "issues", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
 
-      await controller.HandleHook();
+      IHttpActionResult result = await controller.HandleHook();
+      Assert.IsType<StatusCodeResult>(result);
+      Assert.Equal(HttpStatusCode.Accepted, (result as StatusCodeResult).StatusCode);
 
       return changeSummary;
     }
@@ -121,6 +128,26 @@ namespace RealArtists.ShipHub.Api.Tests {
 
     [Fact]
     [AutoRollback]
+    public async Task TestPing() {
+      var obj = new JObject(
+        new JProperty("zen", "It's not fully shipped until it's fast."),
+        new JProperty("hook_id", 1234),
+        new JProperty("hook", null),
+        new JProperty("sender", null),
+        new JProperty("repository", new JObject(
+          new JProperty("id", 1234)
+          )),
+        new JProperty("organization", null));
+
+      var controller = new GitHubWebhookController();
+      ConfigureController(controller, "ping", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
+      var result = await controller.HandleHook();
+      Assert.IsType<StatusCodeResult>(result);
+      Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+    }
+
+    [Fact]
+    [AutoRollback]
     public async Task TestIssueOpened() {
       Common.DataModel.User user;
       Common.DataModel.Repository repo;
@@ -147,7 +174,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("opened", issue, repo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -194,7 +221,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("closed", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -238,7 +265,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("reopened", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -288,7 +315,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("edited", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -335,7 +362,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("assigned", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -380,7 +407,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         Assignee = null,
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("unassigned", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -430,7 +457,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("labeled", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -486,7 +513,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await CallHook(IssueChange("edited", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -499,7 +526,7 @@ namespace RealArtists.ShipHub.Api.Tests {
 
       // Then remove the Red label.
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
-      changeSummary = await CallHook(IssueChange("unlabeled", issue, testRepo.Id));
+      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id));
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(0, changeSummary.Repositories.Count());

@@ -87,6 +87,8 @@
             await HandleIssueUpdate(data);
           }
           break;
+        case "ping":
+          break;
         default:
           return StatusCode(HttpStatusCode.InternalServerError);
       }
