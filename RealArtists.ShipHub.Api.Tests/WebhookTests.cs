@@ -58,7 +58,7 @@ namespace RealArtists.ShipHub.Api.Tests {
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj) {
+    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string secret) {
       IChangeSummary changeSummary = null;
 
       var mockBusClient = new Mock<IShipHubBusClient>();
@@ -67,7 +67,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
-      ConfigureController(controller, "issues", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
+      ConfigureController(controller, "issues", obj, secret);
 
       IHttpActionResult result = await controller.HandleHook();
       Assert.IsType<StatusCodeResult>(result);
@@ -126,24 +126,127 @@ namespace RealArtists.ShipHub.Api.Tests {
       return issue;
     }
 
+    private Common.DataModel.Hook MakeTestRepoHook(Common.DataModel.ShipHubContext context, long creatorId, long repoId) {
+      return context.Hooks.Add(new Common.DataModel.Hook() {
+        Id = 5001,
+        Secret = Guid.NewGuid(),
+        Active = true,
+        Events = "event1,event2",
+        CreatorAccountId = creatorId,
+        RepositoryId = repoId,
+      });
+    }
+
     [Fact]
     [AutoRollback]
-    public async Task TestPing() {
-      var obj = new JObject(
+    public async Task TestPingSucceedsIfSignatureMatches() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = MakeTestUser(context);
+        var repo = MakeTestRepo(context, user.Id);
+        var hook = MakeTestRepoHook(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = new JObject(
         new JProperty("zen", "It's not fully shipped until it's fast."),
         new JProperty("hook_id", 1234),
         new JProperty("hook", null),
         new JProperty("sender", null),
         new JProperty("repository", new JObject(
-          new JProperty("id", 1234)
-          )),
-        new JProperty("organization", null));
+          new JProperty("id", repo.Id)
+          )));
 
-      var controller = new GitHubWebhookController();
-      ConfigureController(controller, "ping", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
-      var result = await controller.HandleHook();
-      Assert.IsType<StatusCodeResult>(result);
-      Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+        var controller = new GitHubWebhookController();
+        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
+        var result = await controller.HandleHook();
+        Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      }
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestPingFailsWithInvalidSignature() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = MakeTestUser(context);
+        var repo = MakeTestRepo(context, user.Id);
+
+        var hook = context.Hooks.Add(new Common.DataModel.Hook() {
+          Secret = Guid.NewGuid(),
+          Active = true,
+          Events = "",
+          CreatorAccountId = user.Id,
+          RepositoryId = repo.Id,
+        });
+
+        await context.SaveChangesAsync();
+
+        var obj = new JObject(
+        new JProperty("zen", "It's not fully shipped until it's fast."),
+        new JProperty("hook_id", 1234),
+        new JProperty("hook", null),
+        new JProperty("sender", null),
+        new JProperty("repository", new JObject(
+          new JProperty("id", repo.Id)
+          )));
+
+        var controller = new GitHubWebhookController();
+        ConfigureController(controller, "ping", obj, "someIncorrectSignature");
+        var result = await controller.HandleHook();
+        Assert.IsType<BadRequestErrorMessageResult>(result);
+        Assert.Equal("Invalid signature.", ((BadRequestErrorMessageResult)result).Message);
+      }
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestPingFailsIfRepoAndOrgObjectsAreNotValid() {
+      var tests = new List<JObject> {
+        // Neither repository nor organization is present.
+        new JObject(
+          new JProperty("zen", "It's not fully shipped until it's fast."),
+          new JProperty("hook_id", 1234),
+          new JProperty("hook", null),
+          new JProperty("sender", null)),
+        // The repository object exists, but has no id.
+        new JObject(
+          new JProperty("zen", "It's not fully shipped until it's fast."),
+          new JProperty("hook_id", 1234),
+          new JProperty("hook", null),
+          new JProperty("sender", null),
+          new JProperty("repository", new JObject())),
+        // repository exists, but is not an object.
+        new JObject(
+          new JProperty("zen", "It's not fully shipped until it's fast."),
+          new JProperty("hook_id", 1234),
+          new JProperty("hook", null),
+          new JProperty("sender", null),
+          new JProperty("repository", "not an object")),
+        // The organization object exists, but has no id.
+        new JObject(
+          new JProperty("zen", "It's not fully shipped until it's fast."),
+          new JProperty("hook_id", 1234),
+          new JProperty("hook", null),
+          new JProperty("sender", null),
+          new JProperty("organization", new JObject())),
+        // organization exists, but is not an object.
+        new JObject(
+          new JProperty("zen", "It's not fully shipped until it's fast."),
+          new JProperty("hook_id", 1234),
+          new JProperty("hook", null),
+          new JProperty("sender", null),
+          new JProperty("organization", "not an object")),
+      };
+
+      foreach (var test in tests) {
+        var controller = new GitHubWebhookController();
+        ConfigureController(controller, "ping", test, "698DACE9-6267-4391-9B1C-C6F74DB43710");
+        var result = await controller.HandleHook();
+        Assert.IsType<BadRequestErrorMessageResult>(result);
+        Assert.Equal(
+          "Payload must include repository and/or organization objects.",
+          ((BadRequestErrorMessageResult)result).Message);
+      }
     }
 
     [Fact]
@@ -151,10 +254,12 @@ namespace RealArtists.ShipHub.Api.Tests {
     public async Task TestIssueOpened() {
       Common.DataModel.User user;
       Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         user = MakeTestUser(context);
         repo = MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
         await context.SaveChangesAsync();
       }
       
@@ -174,7 +279,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), hook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -197,11 +302,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
       }
 
@@ -221,7 +328,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -238,11 +345,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
 
         testIssue.State = "closed";
 
@@ -265,7 +374,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -282,11 +391,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
       }
 
@@ -315,7 +426,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -333,11 +444,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
       }
 
@@ -362,7 +475,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -379,11 +492,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
 
         testIssue.Assignee = testUser;
 
@@ -407,7 +522,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         Assignee = null,
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -424,11 +539,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
       }
 
@@ -457,7 +574,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -479,11 +596,13 @@ namespace RealArtists.ShipHub.Api.Tests {
       Common.DataModel.User testUser;
       Common.DataModel.Repository testRepo;
       Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         testUser = MakeTestUser(context);
         testRepo = MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
       }
 
@@ -513,7 +632,7 @@ namespace RealArtists.ShipHub.Api.Tests {
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id));
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -526,7 +645,7 @@ namespace RealArtists.ShipHub.Api.Tests {
 
       // Then remove the Red label.
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
-      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id));
+      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(0, changeSummary.Repositories.Count());

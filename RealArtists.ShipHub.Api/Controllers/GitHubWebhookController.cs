@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics;
   using System.IO;
   using System.Linq;
   using System.Net;
@@ -46,30 +47,58 @@
       var signatureHeader = Request.Headers.GetValues(SignatureHeaderName).Single();
 
       // header of form "sha1=..."
-      var signature = SoapHexBinary.Parse(signatureHeader.Substring(5));
+      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       var deliveryId = Guid.Parse(deliveryIdHeader);
 
-      // lookup hook
-      // TODO: Look this up from the hook id
-      var secret = "698DACE9-6267-4391-9B1C-C6F74DB43710";
-      var secretBytes = Encoding.ASCII.GetBytes(secret);
+      var json = await Request.Content.ReadAsStringAsync();
+      var data = JsonConvert.DeserializeObject<JObject>(json, GitHubClient.JsonSettings);
 
-      JObject data;
+      long? repositoryId = null;
+      long? organizationId = null;
+      
+      if (
+        data["repository"] != null &&
+        data["repository"].Type == JTokenType.Object &&
+        data["repository"]["id"] != null &&
+        data["repository"]["id"].Type == JTokenType.Integer) {
+        repositoryId = data["repository"]["id"].ToObject<long>();
+      }
 
-      using (var hmac = new HMACSHA1(secretBytes))
-      using (var bodyStream = await Request.Content.ReadAsStreamAsync())
-      using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
-      using (var textReader = new StreamReader(hmacStream, Encoding.UTF8)) {
-        var json = await textReader.ReadToEndAsync();
-        textReader.Close();
+      if (
+        data["organization"] != null &&
+        data["organization"].Type == JTokenType.Object &&
+        data["organization"]["id"] != null &&
+        data["organization"]["id"].Type == JTokenType.Integer) {
+        organizationId = data["organization"]["id"].ToObject<long>();
+      }
+
+      if (repositoryId == null && organizationId == null) {
+        return BadRequest("Payload must include repository and/or organization objects.");
+      }
+
+      var context = new ShipHubContext();
+      var hooks = context.Hooks
+        .Where(x => (repositoryId != null && x.RepositoryId == repositoryId) || (organizationId != null && x.OrganizationId == organizationId))
+        .ToList();
+
+      string payload = await Request.Content.ReadAsStringAsync();
+      Hook matchingHook = null;
+
+      foreach (var hook in hooks) {
+        Debug.Assert(repositoryId == hook.RepositoryId || organizationId == hook.OrganizationId);
+        var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()));
+        byte[] hash = hmac.ComputeHash(await Request.Content.ReadAsStreamAsync());
         // We're not worth launching a timing attack against.
-        if (signature.Value.SequenceEqual(hmac.Hash)) {
-          data = JsonConvert.DeserializeObject<JObject>(json, GitHubClient.JsonSettings);
-        } else {
-          return BadRequest("Invalid signature.");
+        if (hash.SequenceEqual(signature)) {
+          matchingHook = hook;
+          break;
         }
       }
 
+      if (matchingHook == null) {
+        return BadRequest("Invalid signature.");
+      }
+      
       switch (eventName) {
         case "issues":
           var actions = new string[] {

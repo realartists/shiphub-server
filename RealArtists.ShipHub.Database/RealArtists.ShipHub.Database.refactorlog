@@ -14,4 +14,18 @@
     <Property Name="ParentElementType" Value="SqlSchema" />
     <Property Name="NewName" Value="[IssueEvents]" />
   </Operation>
+  <Operation Name="Rename Refactor" Key="75a58946-41d2-4831-bf3b-1689e74528c8" ChangeDateTime="07/15/2016 18:41:41">
+    <Property Name="ElementName" Value="[dbo].[FK_Hooks_CreatorAccountId_Accounts_]" />
+    <Property Name="ElementType" Value="SqlForeignKeyConstraint" />
+    <Property Name="ParentElementName" Value="[dbo].[Hooks]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="[FK_Hooks_CreatorAccountId_Accounts_Id]" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="07da5b04-97c7-4051-8a29-64f7b53f28bb" ChangeDateTime="07/15/2016 20:34:44">
+    <Property Name="ElementName" Value="[dbo].[Hooks].[Key]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[Hooks]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="Secret" />
+  </Operation>
 </Operations>
