@@ -302,6 +302,38 @@ namespace RealArtists.ShipHub.Api.Tests {
 
     [Fact]
     [AutoRollback]
+    public async Task TestWebhookCallUpdatesLastSeen() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = MakeTestUser(context);
+        var repo = MakeTestRepo(context, user.Id);
+        var hook = MakeTestRepoHook(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        Assert.Null(hook.LastSeen);
+
+        var obj = new JObject(
+        new JProperty("zen", "It's not fully shipped until it's fast."),
+        new JProperty("hook_id", 1234),
+        new JProperty("hook", null),
+        new JProperty("sender", null),
+        new JProperty("repository", new JObject(
+          new JProperty("id", repo.Id)
+          )));
+
+        var controller = new GitHubWebhookController();
+        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
+        var result = await controller.HandleHook();
+        Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+
+        context.Entry(hook).Reload();
+        Assert.NotNull(hook.LastSeen);
+      }
+    }
+
+    [Fact]
+    [AutoRollback]
     public async Task TestIssueOpened() {
       Common.DataModel.User user;
       Common.DataModel.Repository repo;

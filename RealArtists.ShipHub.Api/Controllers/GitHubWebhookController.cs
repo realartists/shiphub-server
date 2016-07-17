@@ -98,6 +98,9 @@
       if (matchingHook == null) {
         return BadRequest("Invalid signature.");
       }
+
+      matchingHook.LastSeen = DateTimeOffset.Now;
+      await context.SaveChangesAsync();
       
       switch (eventName) {
         case "issues":
