@@ -110,6 +110,14 @@ namespace RealArtists.ShipHub.Api.Tests {
       return repo;
     }
 
+    private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
+      return (Common.DataModel.Organization)context.Accounts.Add(new Common.DataModel.Organization() {
+        Id = 6001,
+        Login = "myorg",        
+        Date = DateTimeOffset.Now,
+      });
+    }
+
     private static Common.DataModel.Issue MakeTestIssue(Common.DataModel.ShipHubContext context, long accountId, long repoId) {
       var issue = new Common.DataModel.Issue() {
         Id = 1001,
@@ -137,9 +145,20 @@ namespace RealArtists.ShipHub.Api.Tests {
       });
     }
 
+    private Common.DataModel.Hook MakeTestOrgHook(Common.DataModel.ShipHubContext context, long creatorId, long orgId) {
+      return context.Hooks.Add(new Common.DataModel.Hook() {
+        Id = 5001,
+        Secret = Guid.NewGuid(),
+        Active = true,
+        Events = "event1,event2",
+        CreatorAccountId = creatorId,
+        OrganizationId = orgId,
+      });
+    }
+
     [Fact]
     [AutoRollback]
-    public async Task TestPingSucceedsIfSignatureMatches() {
+    public async Task TestPingSucceedsIfSignatureMatchesRepoHook() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = MakeTestUser(context);
         var repo = MakeTestRepo(context, user.Id);
@@ -155,6 +174,38 @@ namespace RealArtists.ShipHub.Api.Tests {
         new JProperty("repository", new JObject(
           new JProperty("id", repo.Id)
           )));
+
+        var controller = new GitHubWebhookController();
+        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
+        var result = await controller.HandleHook();
+        Assert.IsType<StatusCodeResult>(result);
+        Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      }
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestPingSucceedsIfSignatureMatchesOrgHook() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = MakeTestUser(context);
+        var org = MakeTestOrg(context);
+        var repo = MakeTestRepo(context, user.Id);
+        var hook = MakeTestOrgHook(context, user.Id, org.Id);
+        org.Members.Add(user);
+        await context.SaveChangesAsync();
+
+        var obj = new JObject(
+        new JProperty("zen", "It's not fully shipped until it's fast."),
+        new JProperty("hook_id", 1234),
+        new JProperty("hook", null),
+        new JProperty("sender", null),
+        new JProperty("repository", new JObject(
+          new JProperty("id", repo.Id)
+          )),
+        new JProperty("organization", new JObject(
+          new JProperty("id", org.Id)
+          ))
+        );
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
