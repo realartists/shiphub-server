@@ -1,11 +1,13 @@
 ﻿CREATE TABLE [dbo].[Accounts] (
-  [Id]                   BIGINT         NOT NULL,
-  [Type]                 NVARCHAR(4)    NOT NULL,
-  [Login]                NVARCHAR(255)  NOT NULL,
-  [Date]                 DATETIMEOFFSET NOT NULL,
-  [RepositoryMetaDataId] BIGINT         NULL,
+  [Id]                     BIGINT         NOT NULL,
+  [Type]                   NVARCHAR(4)    NOT NULL,
+  [Login]                  NVARCHAR(255)  NOT NULL,
+  [Date]                   DATETIMEOFFSET NOT NULL,
+  [RepositoryMetaDataId]   BIGINT         NULL,
+  [OrganizationMetaDataId] BIGINT         NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Accounts_RepositoryMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([RepositoryMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
+  CONSTRAINT [FK_Accounts_OrganizationMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([OrganizationMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
 )
 GO
 
@@ -18,4 +20,9 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_RepositoryMetaDataId]
   ON [dbo].[Accounts]([RepositoryMetaDataId])
   WHERE ([RepositoryMetaDataId] IS NOT NULL)
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_OrganizationMetaDataId]
+  ON [dbo].[Accounts]([OrganizationMetaDataId])
+  WHERE ([OrganizationMetaDataId] IS NOT NULL)
 GO
