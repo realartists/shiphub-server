@@ -63,11 +63,6 @@
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
 
       mb.Entity<Account>()
-        .HasMany(e => e.AccessTokens)
-        .WithRequired(e => e.Account)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<Account>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.User)
         .WillCascadeOnDelete(false);
@@ -98,24 +93,9 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
-        .HasMany(e => e.LinkedRepositories)
-        .WithRequired(e => e.Account)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<Account>()
         .HasMany(e => e.OwnedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
-
-      mb.Entity<User>()
-        .HasMany(e => e.Organizations)
-        .WithMany(e => e.Members)
-        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
-
-      mb.Entity<Account>()
-        .HasMany(e => e.AssignableRepositories)
-        .WithMany(e => e.AssignableAccounts)
-        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
 
       //mb.Entity<GitHubMetaData>()
       //  .HasMany(e => e.Issues)
@@ -161,6 +141,26 @@
         .HasMany(e => e.Milestones)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.AccessTokens)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.AssignableRepositories)
+        .WithMany(e => e.AssignableAccounts)
+        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
+
+      mb.Entity<User>()
+        .HasMany(e => e.LinkedRepositories)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.Organizations)
+        .WithMany(e => e.Members)
+        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {

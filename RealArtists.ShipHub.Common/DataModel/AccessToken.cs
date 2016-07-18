@@ -34,7 +34,7 @@
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    public virtual Account Account { get; set; }
+    public virtual User Account { get; set; }
 
     //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     //public virtual ICollection<GitHubMetaData> MetaData { get; set; }

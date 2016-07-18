@@ -18,12 +18,8 @@
 
     public DateTimeOffset Date { get; set; }
 
-    //public long? RepositoryMetaDataId { get; set; }
-
-    //public virtual GitHubMetaData RepositoryMetaData { get; set; }
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<AccessToken> AccessTokens { get; set; } = new HashSet<AccessToken>();
+    // Most of these really only apply to users, but GitHub allows users to convert to orgs
+    // so some of these may exist from before the conversion.
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
@@ -43,12 +39,7 @@
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<AccountRepository> LinkedRepositories { get; set; } = new HashSet<AccountRepository>();
-
+    // This applies to users and orgs
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> OwnedRepositories { get; set; } = new HashSet<Repository>();
   }
