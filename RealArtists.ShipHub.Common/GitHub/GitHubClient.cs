@@ -180,11 +180,9 @@
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
 
-      // Multiple Assignees (application/vnd.github.cerberus-preview+json)
-      // https://developer.github.com/changes/2016-5-27-multiple-assignees/
       // Reactions (application/vnd.github.squirrel-girl-preview+json)
       // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
-      request.AcceptHeaderOverride = "application/vnd.github.cerberus-preview+json, application/vnd.github.squirrel-girl-preview+json";
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
 
       var result = await MakeRequest<IEnumerable<Issue>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
