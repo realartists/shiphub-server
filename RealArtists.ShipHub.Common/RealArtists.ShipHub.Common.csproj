@@ -68,7 +68,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DataModel\AccessToken.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\AccountRepository.cs" />
     <Compile Include="DataModel\Hook.cs" />

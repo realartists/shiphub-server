@@ -5,6 +5,11 @@
   [Date]                   DATETIMEOFFSET NOT NULL,
   [RepositoryMetaDataId]   BIGINT         NULL,
   [OrganizationMetaDataId] BIGINT         NULL,
+  [Token]                  NVARCHAR(64)   NULL,
+  [Scopes]                 NVARCHAR(255)  NOT NULL,
+  [RateLimit]              INT            NOT NULL,
+  [RateLimitRemaining]     INT            NOT NULL,
+  [RateLimitReset]         DATETIMEOFFSET NOT NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Accounts_RepositoryMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([RepositoryMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
   CONSTRAINT [FK_Accounts_OrganizationMetaDataId_GitHubMetaData_Id] FOREIGN KEY ([OrganizationMetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
@@ -25,4 +30,9 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_OrganizationMetaDataId]
   ON [dbo].[Accounts]([OrganizationMetaDataId])
   WHERE ([OrganizationMetaDataId] IS NOT NULL)
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Token]
+  ON [dbo].[Accounts]([Token])
+  WHERE ([Token] IS NOT NULL)
 GO

@@ -15,9 +15,6 @@
     public virtual GitHubMetaData OrganizationMetaData { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<AccessToken> AccessTokens { get; set; } = new HashSet<AccessToken>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

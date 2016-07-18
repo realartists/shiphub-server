@@ -4,6 +4,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
+  using GitHub;
 
   public abstract class Account  {
     public const string OrganizationType = "org";
@@ -20,6 +21,19 @@
 
     // Most of these really only apply to users, but GitHub allows users to convert to orgs
     // so some of these may exist from before the conversion.
+
+    [StringLength(64)]
+    public string Token { get; set; }
+
+    [Required(AllowEmptyStrings = true)]
+    [StringLength(255)]
+    public string Scopes { get; set; } = "";
+
+    public int RateLimit { get; set; } = 0;
+
+    public int RateLimitRemaining { get; set; } = 0;
+
+    public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();

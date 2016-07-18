@@ -9,6 +9,7 @@
   using System.Threading.Tasks;
   using Legacy;
   using Types;
+  using gh = GitHub;
 
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
@@ -31,7 +32,6 @@
       ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
     }
 
-    public virtual DbSet<AccessToken> AccessTokens { get; set; }
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
@@ -53,11 +53,6 @@
     }
 
     protected override void OnModelCreating(DbModelBuilder mb) {
-      //mb.Entity<AccessToken>()
-      //  .HasMany(e => e.MetaData)
-      //  .WithOptional(e => e.AccessToken)
-      //  .WillCascadeOnDelete();
-
       mb.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
@@ -143,11 +138,6 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<User>()
-        .HasMany(e => e.AccessTokens)
-        .WithRequired(e => e.Account)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<User>()
         .HasMany(e => e.AssignableRepositories)
         .WithMany(e => e.AssignableAccounts)
         .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
@@ -161,6 +151,16 @@
         .HasMany(e => e.Organizations)
         .WithMany(e => e.Members)
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
+    }
+
+    public Task UpdateRateLimits(gh.GitHubRateLimit limit) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        new SqlParameter("Token", limit.AccessToken),
+        new SqlParameter("RateLimit", limit.RateLimit),
+        new SqlParameter("RateLimitRemaining", limit.RateLimitRemaining),
+        new SqlParameter("RateLimitReset", limit.RateLimitReset));
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {

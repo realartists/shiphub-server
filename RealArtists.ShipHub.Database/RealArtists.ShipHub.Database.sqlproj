@@ -80,7 +80,6 @@
     <PostDeploy Include="PostDeployment.sql" />
   </ItemGroup>
   <ItemGroup>
-    <Build Include="Tables\AccessTokens.sql" />
     <Build Include="Tables\Repositories.sql" />
     <Build Include="Tables\Accounts.sql" />
     <Build Include="Sequences\SyncIdentifier.sql" />
@@ -129,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="LocalDB.scmp" />
+    <None Include="StaticCodeAnalysis.SuppressMessages.xml" />
   </ItemGroup>
   <ItemGroup>
     <RefactorLog Include="RealArtists.ShipHub.Database.refactorlog" />
