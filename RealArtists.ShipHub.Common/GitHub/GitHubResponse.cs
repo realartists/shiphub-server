@@ -14,6 +14,7 @@
 
     public GitHubCacheData CacheData { get; set; }
     public GitHubRateLimit RateLimit { get; set; }
+    public TimeSpan PollInterval { get; set; } = TimeSpan.Zero;
   }
 
   public class GitHubResponse<T> : GitHubResponse {

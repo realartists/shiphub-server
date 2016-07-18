@@ -414,6 +414,12 @@
         };
       }
 
+      // Poll Interval
+      // Not always sent. Check for presence and fail gracefully.
+      if (response.Headers.Contains("X-Poll-Interval")) {
+        result.PollInterval = response.ParseHeader("X-Poll-Interval", x => TimeSpan.FromSeconds(int.Parse(x)));
+      }
+
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
