@@ -112,7 +112,6 @@
     <Compile Include="SharedMapper.cs" />
     <Compile Include="SyncHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UpdateHandler.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\App.config">
