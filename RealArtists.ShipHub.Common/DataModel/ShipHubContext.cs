@@ -153,11 +153,11 @@
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
-    public Task UpdateRateLimits(gh.GitHubRateLimit limit) {
+    public Task UpdateRateLimits(string accessToken, gh.GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
-        new SqlParameter("Token", limit.AccessToken),
+        new SqlParameter("Token", accessToken),
         new SqlParameter("RateLimit", limit.RateLimit),
         new SqlParameter("RateLimitRemaining", limit.RateLimitRemaining),
         new SqlParameter("RateLimitReset", limit.RateLimitReset));

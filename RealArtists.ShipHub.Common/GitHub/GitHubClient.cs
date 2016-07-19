@@ -33,6 +33,7 @@
     public const bool UseFiddler = false;
 #endif
 
+    public const int RateLimitReserve = 1250; // Try to keep at least this many requests as rate limit buffer 
     public const int ConcurrencyLimit = 16;
     public const int MaxRetries = 2;
 
@@ -69,9 +70,11 @@
     private HttpClient _httpClient;
 
     public IGitHubCredentials DefaultCredentials { get; set; }
+    public GitHubRateLimit LatestRateLimit { get; private set; }
 
-    public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null) {
+    public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null, GitHubRateLimit rateLimit = null) {
       DefaultCredentials = credentials;
+      LatestRateLimit = rateLimit;
 
       // TODO: Only one handler for all clients?
       var handler = new HttpClientHandler() {
@@ -334,6 +337,13 @@
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubCredentials credentials = null, GitHubRedirect redirect = null) {
+      // TODO: Different priorities here
+      // Have ability to mark requests important, and only fail if completely out of requests
+      var rateLimit = LatestRateLimit;
+      if (rateLimit != null && rateLimit.IsOverLimit(RateLimitReserve)) {
+        throw new GitHubException($"Rate limit exceeded. Only {rateLimit.RateLimitRemaining} requests left until {rateLimit.RateLimitReset:o}.");
+      }
+
       // Always request the biggest page size
       if (request.Method == HttpMethod.Get
         && typeof(IEnumerable).IsAssignableFrom(typeof(T))
@@ -378,6 +388,7 @@
       }
 
       var result = new GitHubResponse<T>() {
+        Credentials = credentials,
         Date = response.Headers.Date.Value,
         IsError = !response.IsSuccessStatusCode,
         Redirect = redirect,
@@ -391,6 +402,9 @@
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
       };
+
+      // Poll Interval
+      result.CacheData.PollInterval = response.ParseHeader("X-Poll-Interval", x => (x == null) ? TimeSpan.Zero : TimeSpan.FromSeconds(int.Parse(x)));
 
       // Expires and Caching Max-Age
       var expires = response.Content?.Headers?.Expires;
@@ -407,17 +421,13 @@
       // These aren't always sent. Check for presence and fail gracefully.
       if (response.Headers.Contains("X-RateLimit-Limit")) {
         result.RateLimit = new GitHubRateLimit() {
-          AccessToken = credentials.Parameter,
           RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
           RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
           RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
         };
-      }
 
-      // Poll Interval
-      // Not always sent. Check for presence and fail gracefully.
-      if (response.Headers.Contains("X-Poll-Interval")) {
-        result.PollInterval = response.ParseHeader("X-Poll-Interval", x => TimeSpan.FromSeconds(int.Parse(x)));
+        // TODO: Move this up into calling methods to make parallel requests less contentious?
+        UpdateInternalRateLimit(result.RateLimit);
       }
 
       // Pagination
@@ -434,6 +444,17 @@
       }
 
       return result;
+    }
+
+    private void UpdateInternalRateLimit(GitHubRateLimit rateLimit) {
+      // TODO: Does this need a lock?
+      lock (this) {
+        if (LatestRateLimit == null
+          || LatestRateLimit.RateLimitReset < rateLimit.RateLimitReset
+          || LatestRateLimit.RateLimitRemaining > rateLimit.RateLimitRemaining) {
+          LatestRateLimit = rateLimit;
+        }
+      }
     }
 
     private async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
