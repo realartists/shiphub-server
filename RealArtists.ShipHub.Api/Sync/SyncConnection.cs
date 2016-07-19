@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
-  using System.Collections.Generic;
   using System.Diagnostics;
   using System.IO;
   using System.IO.Compression;
@@ -14,15 +13,11 @@
   using System.Threading.Tasks;
   using System.Web.WebSockets;
   using Common;
-  using Common.DataModel;
-  using Common.DataModel.Types;
   using Common.WebSockets;
   using Filters;
   using Messages;
-  using Messages.Entries;
   using Newtonsoft.Json.Linq;
   using QueueClient;
-  using se = Messages.Entries;
 
   public class SyncConnection : WebSocketHandler {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
@@ -32,7 +27,6 @@
       Observable.Interval(TimeSpan.FromMinutes(2))
       .Publish()
       .RefCount();
-
 
     private ShipHubPrincipal _user;
     private SyncManager _syncManager;
