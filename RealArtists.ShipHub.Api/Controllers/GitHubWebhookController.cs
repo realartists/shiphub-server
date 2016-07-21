@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Diagnostics;
-  using System.IO;
   using System.Linq;
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
@@ -19,7 +18,7 @@
   using QueueClient;
 
   [AllowAnonymous]
-  public class GitHubWebhookController : ApiController {
+  public class GitHubWebhookController : ShipHubController {
     public const string GitHubUserAgent = "GitHub-Hookshot";
     public const string EventHeaderName = "X-GitHub-Event";
     public const string DeliveryIdHeaderName = "X-GitHub-Delivery";
@@ -50,44 +49,27 @@
       byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       var deliveryId = Guid.Parse(deliveryIdHeader);
 
-      var json = await Request.Content.ReadAsStringAsync();
-      var data = JsonConvert.DeserializeObject<JObject>(json, GitHubClient.JsonSettings);
+      var payload = await Request.Content.ReadAsStringAsync();
+      var payloadBytes = Encoding.UTF8.GetBytes(payload);
+      var data = JsonConvert.DeserializeObject<JObject>(payload, GitHubClient.JsonSettings);
 
-      long? repositoryId = null;
-      long? organizationId = null;
-      
-      if (
-        data["repository"] != null &&
-        data["repository"].Type == JTokenType.Object &&
-        data["repository"]["id"] != null &&
-        data["repository"]["id"].Type == JTokenType.Integer) {
-        repositoryId = data["repository"]["id"].ToObject<long>();
-      }
-
-      if (
-        data["organization"] != null &&
-        data["organization"].Type == JTokenType.Object &&
-        data["organization"]["id"] != null &&
-        data["organization"]["id"].Type == JTokenType.Integer) {
-        organizationId = data["organization"]["id"].ToObject<long>();
-      }
+      long? repositoryId = (data["repository"] as JObject)?["id"]?.ToObject<long?>();
+      long? organizationId = (data["organization"] as JObject)?["id"]?.ToObject<long?>();
 
       if (repositoryId == null && organizationId == null) {
         return BadRequest("Payload must include repository and/or organization objects.");
       }
 
-      var context = new ShipHubContext();
-      var hooks = context.Hooks
+      var hooks = Context.Hooks
         .Where(x => (repositoryId != null && x.RepositoryId == repositoryId) || (organizationId != null && x.OrganizationId == organizationId))
         .ToList();
 
-      string payload = await Request.Content.ReadAsStringAsync();
       Hook matchingHook = null;
 
       foreach (var hook in hooks) {
         Debug.Assert(repositoryId == hook.RepositoryId || organizationId == hook.OrganizationId);
         var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()));
-        byte[] hash = hmac.ComputeHash(await Request.Content.ReadAsStreamAsync());
+        byte[] hash = hmac.ComputeHash(payloadBytes);
         // We're not worth launching a timing attack against.
         if (hash.SequenceEqual(signature)) {
           matchingHook = hook;
@@ -100,7 +82,7 @@
       }
 
       matchingHook.LastSeen = DateTimeOffset.Now;
-      await context.SaveChangesAsync();
+      await Context.SaveChangesAsync();
       
       switch (eventName) {
         case "issues":
@@ -148,8 +130,7 @@
         Name = x.Name
       });
 
-      var context = new ShipHubContext();
-      ChangeSummary changeSummary = await context.BulkUpdateIssues(repositoryId, issuesMapped, labels);
+      ChangeSummary changeSummary = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels);
 
       await _busClient.NotifyChanges(changeSummary);
     }

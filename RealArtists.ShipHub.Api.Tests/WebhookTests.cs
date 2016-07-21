@@ -1,35 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using System.Web.Http;
-using System.Web.Http.Controllers;
-using System.Web.Http.Hosting;
-using System.Web.Http.Results;
-using System.Web.Http.Routing;
-using AutoMapper;
-using Moq;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using RealArtists.ShipHub.Api.Controllers;
-using RealArtists.ShipHub.Common.DataModel.Types;
-using RealArtists.ShipHub.Common.GitHub;
-using RealArtists.ShipHub.Common.GitHub.Models;
-using RealArtists.ShipHub.QueueClient;
-using Xunit;
+﻿namespace RealArtists.ShipHub.Api.Tests {
+  using System;
+  using System.Collections.Generic;
+  using System.Linq;
+  using System.Net;
+  using System.Net.Http;
+  using System.Runtime.Remoting.Metadata.W3cXsd2001;
+  using System.Security.Cryptography;
+  using System.Text;
+  using System.Threading.Tasks;
+  using System.Web.Http;
+  using System.Web.Http.Controllers;
+  using System.Web.Http.Hosting;
+  using System.Web.Http.Results;
+  using System.Web.Http.Routing;
+  using AutoMapper;
+  using Moq;
+  using Newtonsoft.Json;
+  using Newtonsoft.Json.Linq;
+  using RealArtists.ShipHub.Api.Controllers;
+  using RealArtists.ShipHub.Common.DataModel.Types;
+  using RealArtists.ShipHub.Common.GitHub;
+  using RealArtists.ShipHub.Common.GitHub.Models;
+  using RealArtists.ShipHub.QueueClient;
+  using Xunit;
 
-namespace RealArtists.ShipHub.Api.Tests {
   public class WebhookTests {
 
     private static string SignatureForPayload(string key, string payload) {
-      var hmac = new HMACSHA1(System.Text.Encoding.UTF8.GetBytes(key));
-      byte[] hash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(payload));
-      return "sha1=" + BitConverter.ToString(hash).Replace("-", string.Empty).ToLower();
+      var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(key));
+      byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+      return "sha1=" + new SoapHexBinary(hash).ToString();
     }
     
     private static IMapper AutoMapper() {
@@ -77,14 +77,14 @@ namespace RealArtists.ShipHub.Api.Tests {
     }
 
     private static JObject IssueChange(string action, Issue issue, long repositoryId) {
-      return new JObject(
-        new JProperty("action", "opened"),
-        new JProperty("issue", JObject.FromObject(issue, JsonSerializer.CreateDefault(GitHubClient.JsonSettings))),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repositoryId)
-          )),
-        new JProperty("organization", null));
+      var obj = new {
+        action = "opened",
+        issue = issue,
+        repository = new {
+          id = repositoryId,
+        },
+      };
+      return JObject.FromObject(obj, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
     }
 
     private static Common.DataModel.User MakeTestUser(Common.DataModel.ShipHubContext context) {
@@ -166,14 +166,12 @@ namespace RealArtists.ShipHub.Api.Tests {
 
         await context.SaveChangesAsync();
 
-        var obj = new JObject(
-        new JProperty("zen", "It's not fully shipped until it's fast."),
-        new JProperty("hook_id", 1234),
-        new JProperty("hook", null),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repo.Id)
-          )));
+        var obj = JObject.FromObject(new {
+          hook_id = 1234,
+          repository = new {
+            id = repo.Id,
+          },
+        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -194,18 +192,15 @@ namespace RealArtists.ShipHub.Api.Tests {
         org.Members.Add(user);
         await context.SaveChangesAsync();
 
-        var obj = new JObject(
-        new JProperty("zen", "It's not fully shipped until it's fast."),
-        new JProperty("hook_id", 1234),
-        new JProperty("hook", null),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repo.Id)
-          )),
-        new JProperty("organization", new JObject(
-          new JProperty("id", org.Id)
-          ))
-        );
+        var obj = JObject.FromObject(new {
+          hook_id = 1234,
+          repository = new {
+            id = repo.Id,
+          },
+          organization = new {
+            id = org.Id,
+          },
+        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -232,14 +227,12 @@ namespace RealArtists.ShipHub.Api.Tests {
 
         await context.SaveChangesAsync();
 
-        var obj = new JObject(
-        new JProperty("zen", "It's not fully shipped until it's fast."),
-        new JProperty("hook_id", 1234),
-        new JProperty("hook", null),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repo.Id)
-          )));
+        var obj = JObject.FromObject(new {
+          hook_id = 1234,
+          repository = new {
+            id = repo.Id,
+          },
+        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
@@ -252,46 +245,37 @@ namespace RealArtists.ShipHub.Api.Tests {
     [Fact]
     [AutoRollback]
     public async Task TestPingFailsIfRepoAndOrgObjectsAreNotValid() {
-      var tests = new List<JObject> {
+      var tests = new List<dynamic> {
         // Neither repository nor organization is present.
-        new JObject(
-          new JProperty("zen", "It's not fully shipped until it's fast."),
-          new JProperty("hook_id", 1234),
-          new JProperty("hook", null),
-          new JProperty("sender", null)),
+        new {
+          hook_id = 1234,
+        },
         // The repository object exists, but has no id.
-        new JObject(
-          new JProperty("zen", "It's not fully shipped until it's fast."),
-          new JProperty("hook_id", 1234),
-          new JProperty("hook", null),
-          new JProperty("sender", null),
-          new JProperty("repository", new JObject())),
+        new {
+          hook_id = 1234,
+          repository = new { },
+        },
         // repository exists, but is not an object.
-        new JObject(
-          new JProperty("zen", "It's not fully shipped until it's fast."),
-          new JProperty("hook_id", 1234),
-          new JProperty("hook", null),
-          new JProperty("sender", null),
-          new JProperty("repository", "not an object")),
+        new {
+          hook_id = 1234,
+          repository = "not an object",
+        },
         // The organization object exists, but has no id.
-        new JObject(
-          new JProperty("zen", "It's not fully shipped until it's fast."),
-          new JProperty("hook_id", 1234),
-          new JProperty("hook", null),
-          new JProperty("sender", null),
-          new JProperty("organization", new JObject())),
+        new {
+          hook_id = 1234,
+          organization = new { },
+        },
         // organization exists, but is not an object.
-        new JObject(
-          new JProperty("zen", "It's not fully shipped until it's fast."),
-          new JProperty("hook_id", 1234),
-          new JProperty("hook", null),
-          new JProperty("sender", null),
-          new JProperty("organization", "not an object")),
+        new {
+          hook_id = 1234,
+          organization = "not an object",
+        },
       };
 
       foreach (var test in tests) {
+        var obj = JObject.FromObject(test, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
         var controller = new GitHubWebhookController();
-        ConfigureController(controller, "ping", test, "698DACE9-6267-4391-9B1C-C6F74DB43710");
+        ConfigureController(controller, "ping", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
         var result = await controller.HandleHook();
         Assert.IsType<BadRequestErrorMessageResult>(result);
         Assert.Equal(

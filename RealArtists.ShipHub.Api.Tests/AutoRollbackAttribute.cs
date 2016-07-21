@@ -1,25 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Transactions;
-using Xunit.Sdk;
-
-/// <summary>
+﻿/// <summary>
 /// Taken from https://github.com/xunit/samples.xunit/blob/master/AutoRollbackExample/AutoRollbackAttribute.cs
 /// </summary>
 namespace RealArtists.ShipHub.Api.Tests
 {
-    /// <summary>
-    /// Apply this attribute to your test method to automatically create a <see cref="TransactionScope"/>
-    /// that is rolled back when the test is finished.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
+  using System;
+  using System.Reflection;
+  using System.Transactions;
+  using Xunit.Sdk;
+
+  /// <summary>
+  /// Apply this attribute to your test method to automatically create a <see cref="TransactionScope"/>
+  /// that is rolled back when the test is finished.
+  /// </summary>
+  [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
     public sealed class AutoRollbackAttribute : BeforeAfterTestAttribute
     {
-        TransactionScope scope;
+        private TransactionScope scope;
 
         /// <summary>
         /// Gets or sets whether transaction flow across thread continuations is enabled for TransactionScope.
