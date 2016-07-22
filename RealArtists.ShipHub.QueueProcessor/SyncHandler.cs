@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
@@ -9,12 +10,18 @@
   using QueueClient;
   using QueueClient.Messages;
 
+  public static class SyncHandlerExtensions {
+    public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
+      if (summary != null && !summary.Empty) {
+        return topic.AddAsync(new ChangeMessage(summary));
+      }
+      return Task.CompletedTask;
+    }
+  }
+
   /// <summary>
-  /// TODO: ENABLE DUPLICATE DETECTION AND REJECTION ON SYNC QUEUES.
-  /// ONLY ONE SYNC OPERATION PER RESOURCE SHOULD BE OUTSTANDING AT A TIME
-  /// 
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
-  /// 
+  /// TODO: Incremental sync when possible
   /// TODO: Don't submit empty updates to DB.
   /// </summary>
 
@@ -62,7 +69,7 @@
 
       var repoResponse = await ghc.Repositories();
       var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
-      var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.Assignable(x.FullName, message.Account.Login));
+      var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.IsAssignable(x.FullName, message.Account.Login));
       await Task.WhenAll(assignableRepos.Values.ToArray());
       var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
 
@@ -73,7 +80,7 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
         changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-        await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id));
+        await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id), GitHubMetaData.FromResponse(repoResponse));
       }
 
       // Now that owners, repos, and links are saved, safe to sync the repos themselves.
@@ -154,6 +161,7 @@
     /// Precondition: Repos saved in DB
     /// Postcondition: None.
     /// </summary>
+    /// TODO: Should this be inlined?
     public static async Task SyncRepository(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
@@ -233,7 +241,7 @@
         changes = await context.SetRepositoryLabels(
           message.Repository.Id,
           labels.Select(x => new LabelTableType() {
-            Id = message.Repository.Id,
+            ItemId = message.Repository.Id,
             Color = x.Color,
             Name = x.Name
           })
@@ -280,7 +288,7 @@
         changes.UnionWith(await context.BulkUpdateIssues(
           message.Repository.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
-          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = x.Id, Color = y.Color, Name = y.Name }))));
+          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name }))));
       }
 
       await Task.WhenAll(
@@ -313,25 +321,61 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueEvents(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+    //public static async Task SyncRepositoryIssueEvents(
+    //  [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+    //  [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+    //  var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+    //  ChangeSummary changes;
+
+    //  var eventsResponse = await ghc.Events(message.Repository.FullName);
+    //  var events = eventsResponse.Result;
+
+    //  using (var context = new ShipHubContext()) {
+    //    // For now only grab accounts from the response.
+    //    // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+    //    var accounts = events
+    //      .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+    //      .Where(x => x != null)
+    //      .GroupBy(x => x.Login)
+    //      .Select(x => x.First());
+    //    changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+    //    changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+    //  }
+
+    //  if (!changes.Empty) {
+    //    await notifyChanges.AddAsync(new ChangeMessage(changes));
+    //  }
+    //}
+
+    public static async Task SyncRepositoryIssueTimeline(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var eventsResponse = await ghc.Events(message.Repository.FullName);
-      var events = eventsResponse.Result;
+      var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
+      var timeline = timelineResponse.Result;
 
       using (var context = new ShipHubContext()) {
+        // TODO: I don't like this
+        var issueDetails = await context.Issues
+          .Where(x => x.Repository.FullName == message.RepositoryFullName)
+          .Where(x => x.Number == message.Number)
+          .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
+          .SingleAsync();
         // For now only grab accounts from the response.
         // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
-        var accounts = events
-          .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+        var accounts = timeline
+          .SelectMany(x => new[] { x.Actor, x.Assignee })
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+        changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
+        foreach (var item in events) {
+          item.IssueId = issueDetails.IssueId;
+        }
+        changes.UnionWith(await context.BulkUpdateIssueEvents(issueDetails.RepositoryId, events));
       }
 
       if (!changes.Empty) {

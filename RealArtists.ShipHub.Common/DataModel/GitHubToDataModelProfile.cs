@@ -30,6 +30,9 @@
       CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination)
         .ForMember(x => x.ActorId, o => o.ResolveUsing(x => x.Assigner?.Id ?? x.Actor.Id));
 
+      CreateMap<g.TimelineEvent, IssueEventTableType>(MemberList.Destination)
+        .ForMember(x => x.IssueId, o => o.Ignore());
+
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
 
       CreateMap<g.Repository, RepositoryTableType>(MemberList.Destination)

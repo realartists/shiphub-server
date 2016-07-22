@@ -1,6 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[SetAccountLinkedRepositories]
   @AccountId BIGINT,
-  @RepositoryIds ItemListTableType READONLY
+  @RepositoryIds ItemListTableType READONLY,
+  @MetaData NVARCHAR(MAX)
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -21,4 +22,9 @@ BEGIN
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
     THEN DELETE
   OPTION (RECOMPILE);
+
+  UPDATE Accounts SET
+    RepoMetaDataJson = @MetaData
+  WHERE Id = @AccountId
+    AND (RepoMetaDataJson IS NULL OR CAST(JSON_VALUE(RepoMetaDataJson, '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET))
 END

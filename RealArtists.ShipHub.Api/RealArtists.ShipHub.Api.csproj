@@ -62,6 +62,10 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Microsoft.ServiceBus, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\WindowsAzure.ServiceBus.3.3.1\lib\net45-full\Microsoft.ServiceBus.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Mindscape.Raygun4Net, Version=5.3.1.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Mindscape.Raygun4Net.Core.5.3.1\lib\net40\Mindscape.Raygun4Net.dll</HintPath>
       <Private>True</Private>
@@ -102,6 +106,7 @@
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Security" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Web.Cors, Version=5.2.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.AspNet.Cors.5.2.3\lib\net45\System.Web.Cors.dll</HintPath>
       <Private>True</Private>
@@ -157,7 +162,9 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Sync\Messages\ViewingRequest.cs" />
     <Compile Include="Sync\SyncConnection.cs" />
+    <Compile Include="Sync\SyncContext.cs" />
     <Compile Include="Sync\SyncManager.cs" />
     <Compile Include="Sync\Messages\DataModelToSyncMessagesProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -170,9 +177,9 @@
     <Compile Include="Sync\Messages\Entries\OrganizationEntry.cs" />
     <Compile Include="Sync\Messages\Entries\Reactions.cs" />
     <Compile Include="Sync\Messages\Entries\RepositoryEntry.cs" />
-    <Compile Include="Sync\Messages\HelloMessage.cs" />
-    <Compile Include="Sync\Messages\SyncMessage.cs" />
-    <Compile Include="Sync\Messages\SyncMessageBase.cs" />
+    <Compile Include="Sync\Messages\HelloRequest.cs" />
+    <Compile Include="Sync\Messages\SyncResponse.cs" />
+    <Compile Include="Sync\Messages\SyncRequestBase.cs" />
     <Compile Include="Sync\SyncVersions.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -46,7 +46,7 @@
     public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Account> AssignableAccounts { get; set; } = new HashSet<Account>();
+    public virtual ICollection<User> AssignableAccounts { get; set; } = new HashSet<User>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<AccountRepository> LinkedAccounts { get; set; } = new HashSet<AccountRepository>();

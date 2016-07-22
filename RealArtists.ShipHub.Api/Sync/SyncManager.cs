@@ -1,131 +1,47 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
-  using System.Collections.Concurrent;
-  using System.Collections.Generic;
-  using System.Collections.Immutable;
   using System.Linq;
-  using System.Threading.Tasks;
-  using System.Web;
-  using Common;
-  using Controllers;
-  using Sync;
-  using System.Reactive;
+  using System.Reactive.Concurrency;
+  using System.Reactive.Disposables;
   using System.Reactive.Linq;
-  using System.Reactive.Subjects;
-  using System.Threading;
+  using Common.DataModel.Types;
+  using Microsoft.ServiceBus.Messaging;
+  using QueueClient;
+  using QueueClient.Messages;
 
-  public class SyncManager : IDisposable {
-    private class RepositoryReference {
-      public long UserId { get; set; }
-      public int MyProperty { get; set; }
-    }
+  public class SyncManager {
+    // TODO: Pick a real value for these
+    private const int _BatchSize = 1024;
+    private static readonly TimeSpan _WindowTimeout = TimeSpan.FromSeconds(2);
 
-    // TODO: Finer grained locking.
-    private object _theLock = new object();
+    public IObservable<ChangeSummary> Changes { get; private set; }
 
-    private Dictionary<long, HashSet<SyncConnection>> _userConnections = new Dictionary<long, HashSet<SyncConnection>>();
-    private Dictionary<long, HashSet<long>> _repoUsers = new Dictionary<long, HashSet<long>>();
-    private Dictionary<long, HashSet<long>> _orgUsers = new Dictionary<long, HashSet<long>>();
+    public SyncManager() {
+      Changes = Observable
+        .Create<ChangeSummary>(async observer => { // TODO: Support cancellation? 
+          // topic creation is handled by the webjob(s)
+          var client = await ShipHubBusClient.SubscriptionClientForName(ShipHubTopicNames.Changes);
+          client.PrefetchCount = _BatchSize;
 
-    private HashSet<long> _syncPending = new HashSet<long>();
-    private HashSet<long> _syncPendingTemp = new HashSet<long>();
+          // TODO: convert to batches?
+          client.OnMessage(message => {
+            var changes = WebJobInterop.UnpackMessage<ChangeMessage>(message);
+            observer.OnNext(new ChangeSummary(changes));
+          }, new OnMessageOptions() {
+            AutoComplete = true,
+            AutoRenewTimeout = TimeSpan.FromMinutes(1), // Has to be less than 5 or subscription will idle and expire
+            // TODO: Increase this to at least be the number of partitions
+            MaxConcurrentCalls = 1
+          });
 
-    private Subject<Unit> _syncSubject = new Subject<Unit>();
-
-
-    public Task SubscribeEvents() {
-      // Subscribe to changes
-      return Task.CompletedTask;
-    }
-
-    private void SubscribeSync() {
-      _syncSubject
-        .Throttle(TimeSpan.FromSeconds(1))  // Throttle observes on its own thread.
-        .SelectMany(_ => Observable.FromAsync(Sync))
-        .Subscribe(
-          _ => { },             // On next, do nothing.
-          e => SubscribeSync(), // TODO: Log Error?
-          SubscribeSync         // On completion, resubscribe (used by reload).
-        );
-    }
-
-    public void AddConnection(SyncConnection connection) {
-      // Register interest in orgs and repos here.
-      // On change, remove and re-add.
-      lock (_theLock) {
-        _userConnections.Valn(connection.UserId).Add(connection);
-
-        foreach (var repo in connection.SyncVersions.RepositoryVersions) {
-          _repoUsers.Valn(repo.Key).Add(connection.UserId);
-        }
-
-        foreach (var org in connection.SyncVersions.OrgVersions) {
-          _orgUsers.Valn(org.Key).Add(org.Value);
-        }
-      }
-    }
-
-    public void RemoveConnection(SyncConnection connection) {
-      // TODO: Cleanup stale repo and org subscriptions
-
-      lock (_theLock) {
-        _userConnections.Val(connection.UserId)?.Remove(connection);
-      }
-    }
-
-    public void MarkForSync(IEnumerable<long> userIds = null, IEnumerable<long> repoIds = null, IEnumerable<long> orgIds = null) {
-      // In the end it's all userIds that map to connections.
-      var uids = new HashSet<long>();
-
-      if (userIds != null && userIds.Any()) {
-        uids.UnionWith(userIds);
-      }
-
-      lock (_theLock) {
-        if (repoIds != null && repoIds.Any()) {
-          foreach (var repoId in repoIds) {
-            if (_repoUsers.ContainsKey(repoId)) {
-              uids.UnionWith(_repoUsers[repoId]);
-            }
-          }
-        }
-
-        if (orgIds != null && orgIds.Any()) {
-          foreach (var orgId in orgIds) {
-            if (_orgUsers.ContainsKey(orgId)) {
-              uids.UnionWith(_orgUsers[orgId]);
-            }
-          }
-        }
-      }
-
-      if (uids.Any()) {
-        lock (_syncPending) {
-          _syncPending.UnionWith(uids);
-        }
-      }
-    }
-
-    public Task<Unit> Sync() {
-      return Task.FromResult(Unit.Default);
-    }
-
-    private bool disposedValue = false; // To detect redundant calls
-
-    protected virtual void Dispose(bool disposing) {
-      if (!disposedValue) {
-        if (disposing) {
-          if (_syncSubject != null) {
-            _syncSubject.Dispose();
-          }
-        }
-
-        disposedValue = true;
-      }
-    }
-
-    public void Dispose() {
-      Dispose(true);
+          // When disconnected, stop listening for changes.
+          return Disposable.Create(() => client.Close());
+        })
+        .Buffer(_WindowTimeout)
+        .Select(x => ChangeSummary.UnionAll(x))
+        .SubscribeOn(TaskPoolScheduler.Default) // TODO: Is this the right scheduler?
+        .Publish()
+        .RefCount();
     }
   }
 }

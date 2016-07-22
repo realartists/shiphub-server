@@ -17,6 +17,7 @@
     public string Path { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? LastModified { get; set; }
+    public string AcceptHeaderOverride { get; set; }
 
     // Arguably should allow duplicate keys, but no. Don't do that.
     // Should it be case sensitive? Meh.

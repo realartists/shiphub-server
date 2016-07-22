@@ -7,6 +7,7 @@
   using System.Data.SqlClient;
   using System.Linq;
   using System.Threading.Tasks;
+  using GitHub;
   using Legacy;
   using Types;
 
@@ -31,7 +32,6 @@
       ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
     }
 
-    public virtual DbSet<AccessToken> AccessTokens { get; set; }
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
@@ -53,19 +53,9 @@
     }
 
     protected override void OnModelCreating(DbModelBuilder mb) {
-      //mb.Entity<AccessToken>()
-      //  .HasMany(e => e.MetaData)
-      //  .WithOptional(e => e.AccessToken)
-      //  .WillCascadeOnDelete();
-
       mb.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
-
-      mb.Entity<Account>()
-        .HasMany(e => e.AccessTokens)
-        .WithRequired(e => e.Account)
-        .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
         .HasMany(e => e.Comments)
@@ -98,29 +88,9 @@
         .WillCascadeOnDelete(false);
 
       mb.Entity<Account>()
-        .HasMany(e => e.LinkedRepositories)
-        .WithRequired(e => e.Account)
-        .WillCascadeOnDelete(false);
-
-      mb.Entity<Account>()
         .HasMany(e => e.OwnedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
-
-      mb.Entity<User>()
-        .HasMany(e => e.Organizations)
-        .WithMany(e => e.Members)
-        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
-
-      mb.Entity<Account>()
-        .HasMany(e => e.AssignableRepositories)
-        .WithMany(e => e.AssignableAccounts)
-        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
-
-      //mb.Entity<GitHubMetaData>()
-      //  .HasMany(e => e.Issues)
-      //  .WithOptional(e => e.MetaData)
-      //  .HasForeignKey(e => e.MetaDataId);
 
       mb.Entity<Issue>()
         .HasMany(e => e.Comments)
@@ -161,6 +131,44 @@
         .HasMany(e => e.Milestones)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.AssignableRepositories)
+        .WithMany(e => e.AssignableAccounts)
+        .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
+
+      mb.Entity<User>()
+        .HasMany(e => e.LinkedRepositories)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      mb.Entity<User>()
+        .HasMany(e => e.Organizations)
+        .WithMany(e => e.Members)
+        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
+    }
+
+    public Task UpdateMetaLimit(string table, string column, long id, GitHubMetaData metaData, string accessToken, GitHubRateLimit limit) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        $"UPDATE [{table}] SET [{column}] = @MetaData WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET))"
+        + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
+        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() },
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
+        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
+        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
+        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
+    }
+
+    public Task UpdateRateLimits(string accessToken, GitHubRateLimit limit) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
+        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
+        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
+        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
@@ -180,8 +188,16 @@
       return result;
     }
 
+    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetaData metaData) {
+      return BulkUpdateAccounts(date, new[] { account }, metaData);
+    }
+
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      var tableParam = CreateTableParameter(
+      return BulkUpdateAccounts(date, accounts, null);
+    }
+
+    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetaData metaData) {
+      var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
         new[] {
@@ -198,7 +214,11 @@
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
         x.Date = date;
-        x.Accounts = tableParam;
+        x.Accounts = accountsParam;
+
+        if (metaData != null) {
+          x.MetaData = metaData.SerializeObject();
+        }
       });
     }
 
@@ -390,14 +410,15 @@
       return dsp;
     }
 
-    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
+    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetaData metaData) {
       await Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
           @RepositoryIds = @RepositoryIds;",
         new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
-        CreateItemListTable("RepositoryIds", repositoryIds));
+        CreateItemListTable("RepositoryIds", repositoryIds),
+        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() });
     }
 
     public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
@@ -443,7 +464,7 @@
           Tuple.Create("Name", typeof(string)),
         },
         x => new object[] {
-          x.Id,
+          x.ItemId,
           x.Color,
           x.Name,
         },

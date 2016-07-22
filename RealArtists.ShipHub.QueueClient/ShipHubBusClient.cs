@@ -12,6 +12,7 @@
   public interface IShipHubBusClient {
     Task NotifyChanges(IChangeSummary changeSummary);
     Task SyncAccount(string accessToken);
+    Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber);
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
@@ -19,7 +20,6 @@
     static readonly NamespaceManager _namespaceManager;
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
     static ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
-    static ConcurrentDictionary<string, SubscriptionClient> _subscriptionClients = new ConcurrentDictionary<string, SubscriptionClient>();
 
     static ShipHubBusClient() {
       _connString = ConfigurationManager.ConnectionStrings["AzureWebJobsServiceBus"].ConnectionString;
@@ -45,12 +45,20 @@
     }
 
     // TODO: Non-public
-    public static SubscriptionClient SubscriptionClientForName(string topicName, string subscriptionName) {
-      return CacheLookup(_subscriptionClients, topicName, () => SubscriptionClient.CreateFromConnectionString(_connString, topicName, subscriptionName));
+    public static async Task<SubscriptionClient> SubscriptionClientForName(string topicName, string subscriptionName = null) {
+      // For auto expiring subscriptions we only care that the names never overlap
+      if (string.IsNullOrWhiteSpace(subscriptionName)) {
+        subscriptionName = Guid.NewGuid().ToString("N");
+      }
+
+      // ensure the subscription exists
+      // safe to do this every time even though it's slow because there should be few, long-lived subscriptons
+      await EnsureSubscription(topicName, subscriptionName);
+
+      return SubscriptionClient.CreateFromConnectionString(_connString, topicName, subscriptionName);
     }
 
-    // TODO: Roll into client creation
-    public static async Task EnsureSubscription(string topicName, string subscriptionName) {
+    private static async Task EnsureSubscription(string topicName, string subscriptionName) {
       if (!await _namespaceManager.SubscriptionExistsAsync(topicName, subscriptionName)) {
         await _namespaceManager.CreateSubscriptionAsync(new SubscriptionDescription(topicName, subscriptionName) {
           AutoDeleteOnIdle = TimeSpan.FromMinutes(5), // Minimum
@@ -106,6 +114,11 @@
       await Task.WhenAll(creations);
     }
 
+    public Task NotifyChanges(IChangeSummary changeSummary) {
+      var topic = TopicClientForName(ShipHubTopicNames.Changes);
+      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
+    }
+
     public Task SyncAccount(string accessToken) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
       var message = new AccessTokenMessage() {
@@ -114,9 +127,14 @@
       return queue.SendAsync(WebJobInterop.CreateMessage(message));
     }
 
-    public Task NotifyChanges(IChangeSummary changeSummary) {
-      var topic = TopicClientForName(ShipHubTopicNames.Changes);
-      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
+    public Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
+      var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
+      var message = new IssueMessage() {
+        AccessToken = accessToken,
+        RepositoryFullName = repositoryFullName,
+        Number = issueNumber,
+      };
+      return queue.SendAsync(WebJobInterop.CreateMessage(message));
     }
   }
 }

@@ -32,9 +32,9 @@
 
     public virtual Issue Issue { get; set; }
 
-    public virtual User Actor { get; set; }
+    public virtual Account Actor { get; set; }
 
-    public virtual User Assignee { get; set; }
+    public virtual Account Assignee { get; set; }
 
     public virtual Milestone Milestone { get; set; }
 

@@ -38,17 +38,15 @@
 
     public static async Task<ShipHubPrincipal> ValidateToken(string token) {
       using (var s = new ShipHubContext()) {
-        var tokenInfo = await s.AccessTokens
-          .Include(x => x.Account)
+        var user = await s.Users
           .SingleOrDefaultAsync(x => x.Token == token)
           .ConfigureAwait(false);
 
-        if (tokenInfo == null) {
+        if (user == null) {
           return null;
         }
 
-        var account = tokenInfo.Account;
-        return new ShipHubPrincipal(account.Id, account.Login);
+        return new ShipHubPrincipal(user.Id, user.Login, user.Token);
       }
     }
 
@@ -89,8 +87,9 @@
   }
 
   public static class ShipHubClaimTypes {
-    public const string UserId = "UserId";
-    public const string Login = "Login";
+    public const string UserId = "ShipHub-UserId";
+    public const string Login = "ShipHub-Login";
+    public const string Token = "ShipHub-Token";
   }
 
   public static class ShipHubUserExtensions {
@@ -100,7 +99,7 @@
   }
 
   public class ShipHubIdentity : ClaimsIdentity {
-    public ShipHubIdentity(long userId, string login)
+    public ShipHubIdentity(long userId, string login, string token)
        : base("ShipHub") {
       AddClaims(new Claim[] {
          // Begin required for CSRF tokens
@@ -108,22 +107,24 @@
         new Claim("http://schemas.microsoft.com/accesscontrolservice/2010/07/claims/identityprovider", "com.realartists.ship/ShipHubIdentity"),
          // End required for CSRF tokens
         new Claim(ClaimTypes.Name, login),
-        //new Claim(ClaimTypes.Email, email),
         new Claim(ShipHubClaimTypes.UserId, userId.ToString()),
         new Claim(ShipHubClaimTypes.Login, login),
+        new Claim(ShipHubClaimTypes.Token, token),
       });
     }
   }
 
   public class ShipHubPrincipal : ClaimsPrincipal {
-    public ShipHubPrincipal(long userId, string login)
-      : base(new ShipHubIdentity(userId, login)) {
+    public ShipHubPrincipal(long userId, string login, string token)
+      : base(new ShipHubIdentity(userId, login, token)) {
       UserId = userId;
       Login = login;
+      Token = token;
     }
 
     public long UserId { get; private set; }
     public string Login { get; private set; }
+    public string Token { get; private set; }
   }
 
   public class ShipHubChallengeWrapperResult : IHttpActionResult {

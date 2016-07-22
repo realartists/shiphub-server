@@ -13,6 +13,8 @@
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
+    private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
+
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "user:email",
       "repo",
@@ -151,7 +153,6 @@
         }
 
         var user = await Context.Users
-          .Include(x => x.AccessTokens)
           .Include(x => x.Organizations)
           .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
         if (user == null) {
@@ -160,27 +161,15 @@
           });
         }
         Mapper.Map(userInfo, user);
-
-        var token = user.AccessTokens.SingleOrDefault(x => x.Token == tokenInfo.Token);
-        if (token == null) {
-          // Map this ourselves here since this is the only place it's done.
-          token = Context.AccessTokens.Add(new AccessToken() {
-            Account = user,
-            Token = tokenInfo.Token,
-            ApplicationId = request.ApplicationId,
-            CreatedAt = tokenInfo.CreatedAt,
-          });
-        }
-        token.Scopes = string.Join(",", tokenInfo.Scopes);
-
-        // TODO: Update token rate limit.
-        //token.UpdateRateLimits(userResponse);
+        user.Token = tokenInfo.Token;
+        user.Scopes = string.Join(",", tokenInfo.Scopes);
+        user.RateLimit = userResponse.RateLimit.RateLimit;
+        user.RateLimitRemaining = userResponse.RateLimit.RateLimitRemaining;
+        user.RateLimitReset = userResponse.RateLimit.RateLimitReset;
 
         await Context.SaveChangesAsync();
 
-        // For now, always sync on hello
-        var qc = new ShipHubBusClient();
-        await qc.SyncAccount(token.Token);
+        await _QueueClient.SyncAccount(user.Token);
 
         return Ok(userInfo);
       }

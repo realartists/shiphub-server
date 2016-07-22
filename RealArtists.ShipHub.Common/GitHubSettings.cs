@@ -1,7 +1,9 @@
 ﻿namespace RealArtists.ShipHub.Common {
+  using System;
   using System.Collections.Generic;
   using System.Configuration;
   using System.Reflection;
+  using DataModel;
   using GitHub;
 
   public static class GitHubSettings {
@@ -24,12 +26,32 @@
       Credentials = creds;
     }
 
+    /// <summary>
+    /// Creates an anonymous GitHub client. Only useful to complete OAuth due to low rate limit.
+    /// </summary>
     public static GitHubClient CreateClient() {
       return new GitHubClient(ApplicationName, ApplicationVersion);
     }
 
-    public static GitHubClient CreateUserClient(string accessToken) {
-      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(accessToken));
+    public static GitHubClient CreateUserClient(User user) {
+      if (user == null) {
+        throw new ArgumentNullException(nameof(user));
+      }
+
+      GitHubRateLimit rateLimit = null;
+      if (user.RateLimitReset != EpochUtility.EpochOffset) {
+        rateLimit = new GitHubRateLimit() {
+          RateLimit = user.RateLimit,
+          RateLimitRemaining = rateLimit.RateLimitRemaining,
+          RateLimitReset = user.RateLimitReset,
+        };
+      }
+
+      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(user.Token), rateLimit);
+    }
+
+    public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
+      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(accessToken), rateLimit);
     }
 
     public static GitHubClient CreateApplicationClient(string applicationId) {

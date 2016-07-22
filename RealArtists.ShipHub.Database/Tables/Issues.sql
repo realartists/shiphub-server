@@ -14,14 +14,12 @@
   [ClosedAt]     DATETIMEOFFSET NULL,
   [ClosedById]   BIGINT         NULL,
   [Reactions]    NVARCHAR(MAX)  NULL,
-  [MetaDataId]   BIGINT         NULL,
   CONSTRAINT [PK_Issues] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
   CONSTRAINT [FK_Issues_MilestoneId_Milestones_Id] FOREIGN KEY ([MilestoneId]) REFERENCES [dbo].[Milestones] ([Id]),
   CONSTRAINT [FK_Issues_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_ClosedById_Accounts_Id] FOREIGN KEY ([ClosedById]) REFERENCES [dbo].[Accounts] ([Id]),
-  CONSTRAINT [FK_Issues_MetaDataId_GitHubMetaData_Id] FOREIGN KEY ([MetaDataId]) REFERENCES [dbo].[GitHubMetaData]([Id]),
 )
 GO
 
@@ -35,9 +33,4 @@ CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Issues_ClosedById] ON [dbo].[Issues]([ClosedById])
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_MetaDataId]
-  ON [dbo].[Issues]([MetaDataId])
-  WHERE ([MetaDataId] IS NOT NULL)
 GO

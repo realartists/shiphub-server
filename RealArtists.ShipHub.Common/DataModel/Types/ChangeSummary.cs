@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel.Types {
   using System.Collections.Generic;
+  using System.Linq;
 
   public interface IChangeSummary {
     IEnumerable<long> Organizations { get; }
@@ -14,6 +15,11 @@
     public IEnumerable<long> Repositories { get { return _repos; } }
     public bool Empty { get { return _orgs.Count == 0 && _repos.Count == 0; } }
 
+    public ChangeSummary() { }
+    public ChangeSummary(IChangeSummary initialValue) {
+      UnionWith(initialValue);
+    }
+
     public void Add(long? organizationId, long? repositoryId) {
       if (organizationId != null) {
         _orgs.Add(organizationId.Value);
@@ -27,6 +33,13 @@
     public void UnionWith(IChangeSummary other) {
       _orgs.UnionWith(other.Organizations);
       _repos.UnionWith(other.Repositories);
+    }
+
+    public static ChangeSummary UnionAll(IEnumerable<IChangeSummary> changes) {
+      return new ChangeSummary() {
+        _orgs = new HashSet<long>(changes.SelectMany(x => x.Organizations)),
+        _repos = new HashSet<long>(changes.SelectMany(x => x.Repositories)),
+      };
     }
   }
 }

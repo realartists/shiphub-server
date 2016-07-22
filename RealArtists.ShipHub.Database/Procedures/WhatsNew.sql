@@ -72,8 +72,8 @@ BEGIN
   DELETE @AllRepoLogs
 
   DECLARE @TotalLogs BIGINT, @RealLogs BIGINT
-  SELECT @TotalLogs = COUNT(1) FROM @RepoVersions
-  SELECT @RealLogs = COUNT(1) FROM @RepoLogs
+  SELECT @TotalLogs = COUNT(*) FROM @RepoVersions
+  SELECT @RealLogs = COUNT(*) FROM @RepoLogs
 
   IF @PageSize < 100
   BEGIN
