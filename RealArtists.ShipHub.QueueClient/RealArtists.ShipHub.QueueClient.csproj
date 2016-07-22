@@ -59,7 +59,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IShipHubBusClient.cs" />
     <Compile Include="Messages\AccessTokenMessage.cs" />
     <Compile Include="Messages\AccountMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />

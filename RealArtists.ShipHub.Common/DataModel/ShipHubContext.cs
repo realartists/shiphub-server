@@ -36,12 +36,12 @@
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<GitHubMetaData> GitHubMetaData { get; set; }
+    public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
-    public virtual DbSet<Hook> Hooks { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }

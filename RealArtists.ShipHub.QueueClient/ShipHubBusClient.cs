@@ -9,6 +9,11 @@
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
 
+  public interface IShipHubBusClient {
+    Task NotifyChanges(IChangeSummary changeSummary);
+    Task SyncAccount(string accessToken);
+  }
+
   public class ShipHubBusClient : IShipHubBusClient {
     static readonly string _connString;
     static readonly NamespaceManager _namespaceManager;

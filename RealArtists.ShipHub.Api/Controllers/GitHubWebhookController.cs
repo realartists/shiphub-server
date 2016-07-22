@@ -53,8 +53,8 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payload);
       var data = JsonConvert.DeserializeObject<JObject>(payload, GitHubClient.JsonSettings);
 
-      long? repositoryId = (data["repository"] as JObject)?["id"]?.ToObject<long?>();
-      long? organizationId = (data["organization"] as JObject)?["id"]?.ToObject<long?>();
+      var repositoryId = (long?)data.SelectToken("$.repository.id", false);
+      var organizationId = (long?)data.SelectToken("$.organization.id", false);
 
       if (repositoryId == null && organizationId == null) {
         return BadRequest("Payload must include repository and/or organization objects.");
@@ -104,6 +104,7 @@
         case "ping":
           break;
         default:
+          // TODO: Log these, since we won't have access to the hook debugger
           return StatusCode(HttpStatusCode.InternalServerError);
       }
 

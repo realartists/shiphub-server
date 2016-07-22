@@ -220,7 +220,7 @@
         var hook = context.Hooks.Add(new Common.DataModel.Hook() {
           Secret = Guid.NewGuid(),
           Active = true,
-          Events = "",
+          Events = "some events",
           CreatorAccountId = user.Id,
           RepositoryId = repo.Id,
         });
