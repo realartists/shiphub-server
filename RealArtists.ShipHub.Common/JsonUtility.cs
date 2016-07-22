@@ -25,6 +25,10 @@
     }
 
     public static string SerializeObject(this object value, Formatting? formatting = null) {
+      if (value == null) {
+        return null;
+      }
+
       if (formatting != null) {
         return JsonConvert.SerializeObject(value, formatting.Value, SaneDefaults);
       } else {
@@ -32,13 +36,13 @@
       }
     }
 
-    public static T DeserializeObject<T>(this string json) {
+    public static T DeserializeObject<T>(this string json)
+      where T : class {
+      if (string.IsNullOrWhiteSpace(json)) {
+        return null;
+      }
+
       return JsonConvert.DeserializeObject<T>(json, SaneDefaults);
     }
-
-    // Please don't need this.
-    //public static T JsonRoundTrip<T>(this object self) {
-    //  return JsonUtility.DeserializeObject<T>(JsonHelpers.SerializeObject(self));
-    //}
   }
 }
