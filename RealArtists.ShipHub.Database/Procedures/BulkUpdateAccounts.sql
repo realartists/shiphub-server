@@ -1,7 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateAccounts]
   @Date DATETIMEOFFSET,
   @Accounts AccountTableType READONLY,
-  @MetaData MetaDataTableType READONLY
+  @MetaData NVARCHAR(MAX) = NULL
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -19,32 +19,6 @@ BEGIN
     [OrganizationId] BIGINT NULL,
     [RepositoryId]   BIGINT NULL
   )
-
-  DECLARE @MetaDataMap TABLE (
-    [ItemId]     BIGINT NOT NULL PRIMARY KEY CLUSTERED,
-    [MetaDataId] BIGINT NOT NULL
-  )
-
-  MERGE INTO GitHubMetaData WITH (SERIALIZABLE) as [Target]
-  USING (
-    SELECT ItemId, Id, ETag, Expires, LastModified, LastRefresh, AccountId
-    FROM @MetaData
-  ) as [Source]
-  ON ([Target].Id = [Source].Id)
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (ETag, Expires, LastModified, LastRefresh, AccountId)
-    VALUES (ETag, Expires, LastModified, LastRefresh, AccountId)
-  -- Update
-  WHEN MATCHED AND [Target].LastRefresh < [Source].LastRefresh
-    THEN UPDATE SET
-      ETag = [Source].ETag,
-      Expires = [Source].Expires,
-      LastModified = [Source].LastModified,
-      LastRefresh = [Source].LastRefresh,
-      AccountId = [Source].AccountId
-  OUTPUT [Source].ItemId, INSERTED.Id as MetaDataId INTO @MetaDataMap (ItemId, MetaDataId)
-  OPTION (RECOMPILE);
 
   MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
   USING (
@@ -71,11 +45,16 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type])
   OPTION (RECOMPILE);
 
-  UPDATE Accounts WITH (SERIALIZABLE)
-    SET MetaDataId = m.MetaDataId
-  FROM Accounts as a
-    INNER JOIN @MetaDataMap as m ON (a.Id = m.ItemId)
-  WHERE a.MetaDataId IS NULL
+  -- MetaData only applies if there is a single account and a metadata entry
+  IF(@MetaData IS NOT NULL AND (SELECT COUNT(*) FROM @Accounts) = 1)
+  BEGIN
+    UPDATE Accounts SET
+      MetaDataJson = @MetaData
+    FROM Accounts as a
+      INNER JOIN @Accounts as a1 ON (a1.Id = a.Id)
+    WHERE MetaDataJson IS NULL
+      OR CAST(JSON_VALUE(MetaDataJson, '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET)
+  END
 
   -- New Organizations reference themselves
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])

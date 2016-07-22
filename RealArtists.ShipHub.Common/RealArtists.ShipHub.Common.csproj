@@ -73,7 +73,6 @@
     <Compile Include="DataModel\Hook.cs" />
     <Compile Include="DataModel\Comment.cs" />
     <Compile Include="DataModel\IssueEvent.cs" />
-    <Compile Include="DataModel\GitHubMetaData.cs" />
     <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\Label.cs" />
@@ -86,7 +85,7 @@
     <Compile Include="DataModel\Types\IssueEventTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
-    <Compile Include="DataModel\Types\MetaDataTableType.cs" />
+    <Compile Include="DataModel\Types\GitHubMetaData.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
     <Compile Include="DataModel\Types\ChangeSummary.cs" />

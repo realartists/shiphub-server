@@ -94,7 +94,6 @@
     <Build Include="Tables\AccountRepositories.sql" />
     <Build Include="Tables\IssueLabels.sql" />
     <Build Include="Tables\RepositoryLabels.sql" />
-    <Build Include="Tables\GitHubMetaData.sql" />
     <Build Include="Tables\RepositoryAccounts.sql" />
     <Build Include="Tables\Hooks.sql" />
     <Build Include="Procedures\SetRepositoryAssignableAccounts.sql" />
@@ -122,7 +121,6 @@
     <Build Include="Procedures\WhatsNew.sql" />
     <Build Include="User Defined Types\VersionTableType.sql" />
     <Build Include="Tables\OrganizationLog.sql" />
-    <Build Include="User Defined Types\MetaDataTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

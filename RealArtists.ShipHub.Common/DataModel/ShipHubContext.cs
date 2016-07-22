@@ -7,9 +7,9 @@
   using System.Data.SqlClient;
   using System.Linq;
   using System.Threading.Tasks;
+  using GitHub;
   using Legacy;
   using Types;
-  using gh = GitHub;
 
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
@@ -92,11 +92,6 @@
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
-      //mb.Entity<GitHubMetaData>()
-      //  .HasMany(e => e.Issues)
-      //  .WithOptional(e => e.MetaData)
-      //  .HasForeignKey(e => e.MetaDataId);
-
       mb.Entity<Issue>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.Issue)
@@ -153,14 +148,27 @@
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
-    public Task UpdateRateLimits(string accessToken, gh.GitHubRateLimit limit) {
+    public Task UpdateMetaLimit(string table, string column, long id, GitHubMetaData metaData, string accessToken, GitHubRateLimit limit) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        $"UPDATE [{table}] SET [{column}] = @MetaData WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET))"
+        + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
+        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() },
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
+        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
+        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
+        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
+    }
+
+    public Task UpdateRateLimits(string accessToken, GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
-        new SqlParameter("Token", accessToken),
-        new SqlParameter("RateLimit", limit.RateLimit),
-        new SqlParameter("RateLimitRemaining", limit.RateLimitRemaining),
-        new SqlParameter("RateLimitReset", limit.RateLimitReset));
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
+        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
+        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
+        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
@@ -180,7 +188,15 @@
       return result;
     }
 
-    public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, IEnumerable<MetaDataTableType> metaData = null) {
+    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetaData metaData) {
+      return BulkUpdateAccounts(date, new[] { account }, metaData);
+    }
+
+    public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
+      return BulkUpdateAccounts(date, accounts, null);
+    }
+
+    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetaData metaData) {
       var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
@@ -200,9 +216,8 @@
         x.Date = date;
         x.Accounts = accountsParam;
 
-        // Only send if there are values.
-        if (metaData != null && metaData.Any()) {
-          x.MetaData = CreateMetaDataTable("MetaData", metaData);
+        if (metaData != null) {
+          x.MetaData = metaData.SerializeObject();
         }
       });
     }
@@ -395,14 +410,15 @@
       return dsp;
     }
 
-    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
+    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetaData metaData) {
       await Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
           @RepositoryIds = @RepositoryIds;",
         new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
-        CreateItemListTable("RepositoryIds", repositoryIds));
+        CreateItemListTable("RepositoryIds", repositoryIds),
+        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() });
     }
 
     public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
@@ -453,29 +469,6 @@
           x.Name,
         },
         labels);
-    }
-
-    private static SqlParameter CreateMetaDataTable(string parameterName, IEnumerable<MetaDataTableType> metaData) {
-      return CreateTableParameter(
-        parameterName,
-        "[dbo].[MetaDataTableType]",
-        new[] {
-          Tuple.Create("ItemId", typeof(long)),
-          Tuple.Create("ETag", typeof(string)),
-          Tuple.Create("Expires", typeof(DateTimeOffset)),
-          Tuple.Create("LastModified", typeof(DateTimeOffset)),
-          Tuple.Create("LastRefresh", typeof(DateTimeOffset)),
-          Tuple.Create("AccountId", typeof(long)),
-        },
-        x => new object[] {
-          x.ItemId,
-          x.ETag,
-          x.Expires,
-          x.LastModified,
-          x.LastRefresh,
-          x.AccountId,
-        },
-        metaData);
     }
 
     private static SqlParameter CreateVersionTableType(string parameterName, IEnumerable<VersionTableType> versions) {

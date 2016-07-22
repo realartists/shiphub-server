@@ -5,8 +5,9 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
   using GitHub;
+  using Types;
 
-  public abstract class Account  {
+  public abstract class Account {
     public const string OrganizationType = "org";
     public const string UserType = "user";
 
@@ -19,9 +20,13 @@
 
     public DateTimeOffset Date { get; set; }
 
-    public long? MetaDataId { get; set; }
+    public string MetaDataJson {
+      get { return MetaData.SerializeObject(); }
+      set { MetaData = value.DeserializeObject<GitHubMetaData>(); }
+    }
 
-    public virtual GitHubMetaData MetaData { get; set; }
+    [NotMapped]
+    public GitHubMetaData MetaData { get; set; }
 
     // Most of these really only apply to users, but GitHub allows users to convert to orgs
     // so some of these may exist from before the conversion.

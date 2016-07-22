@@ -28,4 +28,25 @@
     <Property Name="ParentElementType" Value="SqlTable" />
     <Property Name="NewName" Value="Secret" />
   </Operation>
+  <Operation Name="Rename Refactor" Key="48143f7e-4da3-4ecd-9f95-419684854360" ChangeDateTime="07/20/2016 19:40:32">
+    <Property Name="ElementName" Value="[dbo].[Accounts].[MetaDataId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[Accounts]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="MetaData" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="0b689a02-123a-4691-a6d7-be0176cddb43" ChangeDateTime="07/20/2016 19:40:36">
+    <Property Name="ElementName" Value="[dbo].[Accounts].[RepositoryMetaDataId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[Accounts]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="RepositoryMetaData" />
+  </Operation>
+  <Operation Name="Rename Refactor" Key="8cf12530-3264-4b0a-9495-81b3d721b60d" ChangeDateTime="07/20/2016 19:40:49">
+    <Property Name="ElementName" Value="[dbo].[Accounts].[OrganizationMetaDataId]" />
+    <Property Name="ElementType" Value="SqlSimpleColumn" />
+    <Property Name="ParentElementName" Value="[dbo].[Accounts]" />
+    <Property Name="ParentElementType" Value="SqlTable" />
+    <Property Name="NewName" Value="OrganizationMetaData" />
+  </Operation>
 </Operations>
