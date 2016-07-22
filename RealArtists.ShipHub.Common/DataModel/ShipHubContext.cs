@@ -35,7 +35,6 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
-    public virtual DbSet<GitHubMetaData> GitHubMetaData { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
