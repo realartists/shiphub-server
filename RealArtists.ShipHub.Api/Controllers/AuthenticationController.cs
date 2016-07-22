@@ -180,7 +180,7 @@
 
         await Context.SaveChangesAsync();
 
-        await _QueueClient.SyncAccount(user.Id);
+        await _QueueClient.SyncAccount("TODO: TOKEN");
 
         return Ok(userInfo);
       }
