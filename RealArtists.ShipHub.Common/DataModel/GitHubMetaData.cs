@@ -1,12 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
-  using System.Collections.Generic;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
-  using System.Diagnostics.CodeAnalysis;
+  using GitHub;
 
   [Table("GitHubMetaData")]
-  public class GitHubMetaData {
+  public class GitHubMetaData : IGitHubRequestOptions, IGitHubCacheOptions {
     public long Id { get; set; }
 
     [StringLength(64)]
@@ -18,17 +17,21 @@
 
     public DateTimeOffset? LastRefresh { get; set; }
 
-    //public long? AccessTokenId { get; set; }
+    public long? AccountId { get; set; }
 
-    //public virtual AccessToken AccessToken { get; set; }
+    public virtual User Account { get; set; }
 
-    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    //public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+    // Implementing IGitHubRequestOptions lets us use this to easily cache GitHub responses
 
-    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    //public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
+    public IGitHubCredentials Credentials {
+      get {
+        if (AccountId != null && !string.IsNullOrWhiteSpace(Account.Token)) {
+          return GitHubCredentials.ForToken(Account.Token);
+        }
+        return null;
+      }
+    }
 
-    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    //public virtual ICollection<Milestone> Milestones { get; set; } = new HashSet<Milestone>();
+    public IGitHubCacheOptions CacheOptions { get { return this; } }
   }
 }

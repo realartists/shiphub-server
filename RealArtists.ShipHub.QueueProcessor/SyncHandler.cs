@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
+  using System;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
@@ -10,9 +11,18 @@
   using QueueClient;
   using QueueClient.Messages;
 
+  public static class SyncHandlerExtensions {
+    public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
+      if (summary != null && !summary.Empty) {
+        return topic.AddAsync(new ChangeMessage(summary));
+      }
+      return Task.CompletedTask;
+    }
+  }
+
   /// <summary>
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
-  /// 
+  /// TODO: Incremental sync when possible
   /// TODO: Don't submit empty updates to DB.
   /// </summary>
 

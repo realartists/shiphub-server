@@ -180,8 +180,8 @@
       return result;
     }
 
-    public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      var tableParam = CreateTableParameter(
+    public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, IEnumerable<MetaDataTableType> metaData = null) {
+      var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
         new[] {
@@ -198,7 +198,12 @@
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
         x.Date = date;
-        x.Accounts = tableParam;
+        x.Accounts = accountsParam;
+
+        // Only send if there are values.
+        if (metaData != null && metaData.Any()) {
+          x.MetaData = CreateMetaDataTable("MetaData", metaData);
+        }
       });
     }
 
@@ -448,6 +453,29 @@
           x.Name,
         },
         labels);
+    }
+
+    private static SqlParameter CreateMetaDataTable(string parameterName, IEnumerable<MetaDataTableType> metaData) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[MetaDataTableType]",
+        new[] {
+          Tuple.Create("ItemId", typeof(long)),
+          Tuple.Create("ETag", typeof(string)),
+          Tuple.Create("Expires", typeof(DateTimeOffset)),
+          Tuple.Create("LastModified", typeof(DateTimeOffset)),
+          Tuple.Create("LastRefresh", typeof(DateTimeOffset)),
+          Tuple.Create("AccountId", typeof(long)),
+        },
+        x => new object[] {
+          x.ItemId,
+          x.ETag,
+          x.Expires,
+          x.LastModified,
+          x.LastRefresh,
+          x.AccountId,
+        },
+        metaData);
     }
 
     private static SqlParameter CreateVersionTableType(string parameterName, IEnumerable<VersionTableType> versions) {

@@ -86,6 +86,7 @@
     <Compile Include="DataModel\Types\IssueEventTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
+    <Compile Include="DataModel\Types\MetaDataTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
     <Compile Include="DataModel\Types\ChangeSummary.cs" />

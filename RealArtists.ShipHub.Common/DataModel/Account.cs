@@ -19,6 +19,10 @@
 
     public DateTimeOffset Date { get; set; }
 
+    public long? MetaDataId { get; set; }
+
+    public virtual GitHubMetaData MetaData { get; set; }
+
     // Most of these really only apply to users, but GitHub allows users to convert to orgs
     // so some of these may exist from before the conversion.
 
