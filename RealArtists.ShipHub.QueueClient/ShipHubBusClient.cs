@@ -12,6 +12,7 @@
   public interface IShipHubBusClient {
     Task NotifyChanges(IChangeSummary changeSummary);
     Task SyncAccount(string accessToken);
+    Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber);
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
@@ -113,17 +114,17 @@
       await Task.WhenAll(creations);
     }
 
+    public Task NotifyChanges(IChangeSummary changeSummary) {
+      var topic = TopicClientForName(ShipHubTopicNames.Changes);
+      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
+    }
+
     public Task SyncAccount(string accessToken) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
       var message = new AccessTokenMessage() {
         AccessToken = accessToken,
       };
       return queue.SendAsync(WebJobInterop.CreateMessage(message));
-    }
-
-    public Task NotifyChanges(IChangeSummary changeSummary) {
-      var topic = TopicClientForName(ShipHubTopicNames.Changes);
-      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
     }
 
     public Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
