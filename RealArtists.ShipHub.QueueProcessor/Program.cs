@@ -62,16 +62,16 @@
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
 
-      Console.Write("Send Sync Message? [y/N]: ");
-      var key = Console.Read();
-      if (key == (int)'y') {
-        Console.WriteLine("Sending sync account message");
-        timer.Restart();
-        var qc = new ShipHubBusClient();
-        qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
-        timer.Stop();
-        Console.WriteLine($"Done in {timer.Elapsed}\n");
-      }
+      //Console.Write("Send Sync Message? [y/N]: ");
+      //var key = Console.Read();
+      //if (key == (int)'y') {
+      //  Console.WriteLine("Sending sync account message");
+      //  timer.Restart();
+      //  var qc = new ShipHubBusClient();
+      //  qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
+      //  timer.Stop();
+      //  Console.WriteLine($"Done in {timer.Elapsed}\n");
+      //}
 #endif
 
       // HACKS!
