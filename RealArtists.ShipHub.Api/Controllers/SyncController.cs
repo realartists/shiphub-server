@@ -1,11 +1,8 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
-  using System.Data.Entity;
-  using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Mime;
   using System.Text;
-  using System.Threading.Tasks;
   using System.Web;
   using System.Web.Http;
   using System.Web.WebSockets;
@@ -17,14 +14,10 @@
 
     [Route("")]
     [HttpGet]
-    public async Task<HttpResponseMessage> Sync() {
+    public HttpResponseMessage Sync() {
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {
-        var token = await Context.AccessTokens
-          .Where(x => x.Account.Id == ShipUser.UserId)
-          .Select(x => x.Token)
-          .FirstAsync();
-        var handler = new SyncConnection(ShipUser.UserId, token, _SyncManager);
+        var handler = new SyncConnection(ShipHubUser, _SyncManager);
         context.AcceptWebSocketRequest(handler.AcceptWebSocketRequest, new AspNetWebSocketOptions() { SubProtocol = "V1" });
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }
