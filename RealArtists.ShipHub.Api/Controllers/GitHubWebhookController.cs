@@ -126,7 +126,7 @@
       var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
       
       var labels = item.Labels.Select(x => new LabelTableType() {
-        Id = item.Id,
+        ItemId = item.Id,
         Color = x.Color,
         Name = x.Name
       });
