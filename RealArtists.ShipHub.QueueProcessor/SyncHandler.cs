@@ -81,7 +81,7 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
         changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-        await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id));
+        await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id), GitHubMetaData.FromResponse(repoResponse));
       }
 
       // Now that owners, repos, and links are saved, safe to sync the repos themselves.
