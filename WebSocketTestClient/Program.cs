@@ -12,7 +12,12 @@
 
   static class Program {
     static void Main(string[] args) {
-      DoAsync().Wait();
+      try {
+        DoAsync().Wait();
+      } catch (Exception e) {
+        Console.WriteLine(e.ToString());
+        Console.ReadKey();
+      }
     }
 
     static async Task DoAsync() {
