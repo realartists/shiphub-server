@@ -30,7 +30,7 @@
         sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10);
         //config.Tracing.Tracers.Clear();
         //config.Tracing.ConsoleLevel = TraceLevel.Error;
-        //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+        sbConfig.MessageOptions.MaxConcurrentCalls = 1;
       }
 
       // https://azure.microsoft.com/en-us/documentation/articles/service-bus-performance-improvements/ recommends
