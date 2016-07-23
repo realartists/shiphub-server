@@ -430,6 +430,10 @@
         UpdateInternalRateLimit(result.RateLimit);
       }
 
+      // Scopes
+      var scopes = response.ParseHeader<IEnumerable<string>>("X-OAuth-Scopes", x => (x == null) ? null : x.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries));
+      result.Scopes.UnionWith(scopes);
+
       // Pagination
       // Screw the RFC, minimally match what GitHub actually sends.
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
