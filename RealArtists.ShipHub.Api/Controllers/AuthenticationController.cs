@@ -91,23 +91,18 @@
 
       return await Hello(new HelloRequest() {
         AccessToken = appAuth.AccessToken,
-        ApplicationId = request.ApplicationId,
         ClientName = request.ClientName,
       });
     }
 
     public class HelloRequest {
       public string AccessToken { get; set; }
-      public string ApplicationId { get; set; }
       public string ClientName { get; set; }
     }
 
     [HttpPost]
     [Route("hello")]
     public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
-      if (string.IsNullOrWhiteSpace(request.ApplicationId)) {
-        return BadRequest($"{nameof(request.ApplicationId)} is required.");
-      }
       if (string.IsNullOrWhiteSpace(request.AccessToken)) {
         return BadRequest($"{nameof(request.AccessToken)} is required.");
       }
@@ -115,35 +110,21 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      if (!GitHubSettings.Credentials.ContainsKey(request.ApplicationId)) {
-        return Error($"Unknown applicationId: {request.ApplicationId}", HttpStatusCode.NotFound);
-      }
-
-      // Lookup Token
-      Common.GitHub.Models.Authorization tokenInfo = null;
-      using (var appClient = GitHubSettings.CreateApplicationClient(request.ApplicationId)) {
-        var checkTokenResponse = await appClient.CheckAccessToken(request.ApplicationId, request.AccessToken);
-        if (checkTokenResponse.IsError) {
-          return Error("Token validation failed.", HttpStatusCode.Unauthorized, checkTokenResponse.Error);
-        }
-        tokenInfo = checkTokenResponse.Result;
-
-        // Check scopes
-        var missingScopes = _requiredOauthScopes.Except(tokenInfo.Scopes).ToArray();
-        if (missingScopes.Any()) {
-          return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
-            Granted = tokenInfo.Scopes,
-            Missing = missingScopes,
-          });
-        }
-      }
-
-      using (var userClient = GitHubSettings.CreateUserClient(tokenInfo.Token)) {
+      using (var userClient = GitHubSettings.CreateUserClient(request.AccessToken)) {
         // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
         var userResponse = await userClient.User();
 
         if (userResponse.IsError) {
           Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
+        }
+
+        // Check scopes
+        var missingScopes = _requiredOauthScopes.Except(userResponse.Scopes).ToArray();
+        if (missingScopes.Any()) {
+          return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
+            Granted = userResponse.Scopes,
+            Missing = missingScopes,
+          });
         }
 
         var userInfo = userResponse.Result;
@@ -161,8 +142,8 @@
           });
         }
         Mapper.Map(userInfo, user);
-        user.Token = tokenInfo.Token;
-        user.Scopes = string.Join(",", tokenInfo.Scopes);
+        user.Token = userResponse.Credentials.Parameter;
+        user.Scopes = string.Join(",", userResponse.Scopes);
         user.RateLimit = userResponse.RateLimit.RateLimit;
         user.RateLimitRemaining = userResponse.RateLimit.RateLimitRemaining;
         user.RateLimitReset = userResponse.RateLimit.RateLimitReset;

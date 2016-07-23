@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub {
   using System;
+  using System.Collections.Generic;
   using System.Net;
 
   public class GitHubResponse {
@@ -7,6 +8,7 @@
     public IGitHubCredentials Credentials { get; set; }
     public HttpStatusCode Status { get; set; }
     public DateTimeOffset Date { get; set; }
+    public HashSet<string> Scopes { get; set; } = new HashSet<string>();
 
     public bool IsError { get; set; }
     public GitHubError Error { get; set; }

@@ -414,7 +414,8 @@
         TransactionalBehavior.DoNotEnsureTransaction,
         @"EXEC [dbo].[SetAccountLinkedRepositories]
           @AccountId = @AccountId,
-          @RepositoryIds = @RepositoryIds;",
+          @RepositoryIds = @RepositoryIds,
+          @MetaData = @MetaData;",
         new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
         CreateItemListTable("RepositoryIds", repositoryIds),
         new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() });

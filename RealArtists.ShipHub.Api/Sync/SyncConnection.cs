@@ -105,7 +105,12 @@
           sw.Flush();
         }
 
-        return SendAsync(new ArraySegment<byte>(ms.ToArray()), WebSocketMessageType.Binary, true);
+        try {
+          return SendAsync(new ArraySegment<byte>(ms.ToArray()), WebSocketMessageType.Binary, true);
+        } catch (ObjectDisposedException ode) {
+          // Connection is dead.
+          return OnClose();
+        }
       }
     }
 

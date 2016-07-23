@@ -1,11 +1,11 @@
 ﻿namespace RealArtists.ShipHub.QueueClient {
   using System;
   using System.Collections.Concurrent;
-  using System.Configuration;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel.Types;
   using Messages;
+  using Microsoft.Azure;
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
 
@@ -22,7 +22,7 @@
     static ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
 
     static ShipHubBusClient() {
-      _connString = ConfigurationManager.ConnectionStrings["AzureWebJobsServiceBus"].ConnectionString;
+      _connString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
       _namespaceManager = NamespaceManager.CreateFromConnectionString(_connString);
     }
 

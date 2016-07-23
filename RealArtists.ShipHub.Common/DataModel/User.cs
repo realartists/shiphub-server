@@ -8,7 +8,7 @@
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Organization> Organizations { get; set; } = new HashSet<Organization>();
 
-    public string RepoMetaJson {
+    public string RepoMetaDataJson {
       get { return RepositoryMetaData.SerializeObject(); }
       set { RepositoryMetaData = value.DeserializeObject<GitHubMetaData>(); }
     }

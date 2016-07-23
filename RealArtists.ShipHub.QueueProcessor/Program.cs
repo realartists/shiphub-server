@@ -1,10 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using System.Diagnostics;
-  using System.IO;
-  using System.Text;
-  using System.Threading;
-  using System.Threading.Tasks;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
@@ -12,9 +8,14 @@
 
   static class Program {
     static void Main() {
-      var config = new JobHostConfiguration();
-      var sbConfig = new ServiceBusConfiguration();
+      var config = new JobHostConfiguration() {
+        DashboardConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard"),
+        StorageConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsStorage"),
+      };
 
+      var sbConfig = new ServiceBusConfiguration() {
+        ConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus"),
+      };
       sbConfig.MessageOptions.MaxConcurrentCalls = 128;
 
       // Adjust this based on real performance data
@@ -27,10 +28,8 @@
       if (config.IsDevelopment) {
         config.UseDevelopmentSettings();
         config.DashboardConnectionString = null;
-        sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10);
-        //config.Tracing.Tracers.Clear();
-        //config.Tracing.ConsoleLevel = TraceLevel.Error;
-        //sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+        sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10); // Abandon locks quickly
+        sbConfig.MessageOptions.MaxConcurrentCalls = 1;
       }
 
       // https://azure.microsoft.com/en-us/documentation/articles/service-bus-performance-improvements/ recommends
@@ -72,7 +71,6 @@
       //  timer.Stop();
       //  Console.WriteLine($"Done in {timer.Elapsed}\n");
       //}
-#endif
 
       // HACKS!
 
@@ -87,6 +85,7 @@
       //});
 
       // END HACKS!
+#endif
 
       Console.WriteLine("Starting job host...\n\n");
       var host = new JobHost(config);

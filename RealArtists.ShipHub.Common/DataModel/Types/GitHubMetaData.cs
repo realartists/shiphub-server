@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel.Types {
   using System;
   using GitHub;
+  using Newtonsoft.Json;
 
   public class GitHubMetaData : IGitHubCacheOptions, IGitHubRequestOptions {
     public string AccessToken { get; set; }
@@ -10,8 +11,10 @@
     public DateTimeOffset? LastRefresh { get; set; }
 
     // Implementing IGitHubRequestOptions is a lazy hack for now.
+    [JsonIgnore]
     public IGitHubCredentials Credentials { get { return null; /* TODO: Actually support this */ } }
 
+    [JsonIgnore]
     public IGitHubCacheOptions CacheOptions { get { return this; } }
 
     // Helper
