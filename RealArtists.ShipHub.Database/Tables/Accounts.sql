@@ -7,10 +7,10 @@
   [RepoMetaDataJson]   NVARCHAR(MAX)  NULL,
   [OrgMetaDataJson]    NVARCHAR(MAX)  NULL,
   [Token]              NVARCHAR(64)   NULL,
-  [Scopes]             NVARCHAR(255)  NOT NULL,
-  [RateLimit]          INT            NOT NULL,
-  [RateLimitRemaining] INT            NOT NULL,
-  [RateLimitReset]     DATETIMEOFFSET NOT NULL,
+  [Scopes]             NVARCHAR(255)  NOT NULL DEFAULT '',
+  [RateLimit]          INT            NOT NULL DEFAULT 0,
+  [RateLimitRemaining] INT            NOT NULL DEFAULT 0,
+  [RateLimitReset]     DATETIMEOFFSET NOT NULL DEFAULT '1970-01-01T00:00:00Z',
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
 )
 GO
