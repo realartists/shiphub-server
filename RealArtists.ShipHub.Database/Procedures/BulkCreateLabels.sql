@@ -6,11 +6,9 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  MERGE INTO Labels WITH (SERIALIZABLE) as [Target]
-  USING (SELECT Color, Name FROM @Labels) as [Source]
-  ON ([Target].Color = [Source].Color AND [Target].Name = [Source].Name)
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Color, Name)
-    VALUES (Color, Name)
+  INSERT INTO Labels WITH (SERIALIZABLE) (Color, Name)
+  SELECT DISTINCT l.Color, l.Name
+  FROM @Labels as l
+  WHERE NOT EXISTS (SELECT 1 FROM Labels WHERE Color = l.Color AND Name = l.Name)
   OPTION (RECOMPILE);
 END
