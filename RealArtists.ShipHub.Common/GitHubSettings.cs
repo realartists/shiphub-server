@@ -53,14 +53,5 @@
     public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
       return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(accessToken), rateLimit);
     }
-
-    public static GitHubClient CreateApplicationClient(string applicationId) {
-      if (!Credentials.ContainsKey(applicationId)) {
-        return null;
-      }
-
-      var secret = Credentials[applicationId];
-      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForApplication(applicationId, secret));
-    }
   }
 }
