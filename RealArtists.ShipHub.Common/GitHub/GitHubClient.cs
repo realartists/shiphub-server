@@ -15,17 +15,6 @@
   using Newtonsoft.Json.Linq;
   using Newtonsoft.Json.Serialization;
 
-  public static class HeaderUtility {
-    public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
-      var header = response.Headers
-        .Where(x => x.Key.Equals(headerName, StringComparison.OrdinalIgnoreCase))
-        .SelectMany(x => x.Value)
-        .SingleOrDefault();
-
-      return selector(header);
-    }
-  }
-
   public class GitHubClient : IDisposable {
 #if DEBUG
     public const bool UseFiddler = true;
@@ -577,5 +566,15 @@
       Dispose(true);
     }
   }
-}
 
+  public static class HeaderUtility {
+    public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
+      var header = response.Headers
+        .Where(x => x.Key.Equals(headerName, StringComparison.OrdinalIgnoreCase))
+        .SelectMany(x => x.Value)
+        .SingleOrDefault();
+
+      return selector(header);
+    }
+  }
+}
