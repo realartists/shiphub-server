@@ -8,11 +8,13 @@
 
   static class Program {
     static void Main() {
+      Console.WriteLine("Part 1");
       var config = new JobHostConfiguration() {
         DashboardConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard", true),
         StorageConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsStorage", true),
       };
 
+      Console.WriteLine("Part 2");
       var sbConfig = new ServiceBusConfiguration() {
         ConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus", true),
       };
@@ -37,6 +39,7 @@
       var ratePerSecond = 1;
       sbConfig.PrefetchCount = sbConfig.MessageOptions.MaxConcurrentCalls * 20 * ratePerSecond;
 
+      Console.WriteLine("Part 3");
       config.UseServiceBus(sbConfig);
 
 #if DEBUG
@@ -87,6 +90,7 @@
       // END HACKS!
 #endif
 
+      Console.WriteLine("Part 4");
       Console.WriteLine("Starting job host...\n\n");
       var host = new JobHost(config);
 #if DEBUG
@@ -96,11 +100,12 @@
       Console.WriteLine("Stopping job host...");
       host.Stop();
 #else
-      Trace.WriteLine("OMG WTF BBQ");
+      Console.WriteLine("Part 5");
       try {
         host.RunAndBlock();
       } catch (Exception e) {
-        Trace.WriteLine(e.ToString());
+        Console.WriteLine("alsidfhioasgfuoasdbyufbcabweoucawbcu!!!!");
+        Console.WriteLine(e.ToString());
       }
 #endif
     }
