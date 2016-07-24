@@ -9,14 +9,14 @@
   static class Program {
     static void Main() {
       var config = new JobHostConfiguration() {
-        DashboardConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard"),
-        StorageConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsStorage"),
+        DashboardConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard", true),
+        StorageConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsStorage", true),
       };
 
       var sbConfig = new ServiceBusConfiguration() {
-        ConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus"),
+        ConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus", true),
       };
-      sbConfig.MessageOptions.MaxConcurrentCalls = 128;
+      sbConfig.MessageOptions.MaxConcurrentCalls = 1;
 
       // Adjust this based on real performance data
       //sbConfig.MessageOptions.AutoRenewTimeout = 
@@ -96,7 +96,12 @@
       Console.WriteLine("Stopping job host...");
       host.Stop();
 #else
-      host.RunAndBlock();
+      Trace.WriteLine("OMG WTF BBQ");
+      try {
+        host.RunAndBlock();
+      } catch (Exception e) {
+        Trace.WriteLine(e.ToString());
+      }
 #endif
     }
   }
