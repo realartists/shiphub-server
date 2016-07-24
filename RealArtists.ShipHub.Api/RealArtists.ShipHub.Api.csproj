@@ -209,10 +209,6 @@
       <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
       <Name>RealArtists.ShipHub.Common</Name>
     </ProjectReference>
-    <ProjectReference Include="..\RealArtists.ShipHub.Database\RealArtists.ShipHub.Database.sqlproj">
-      <Project>{10d8e4b1-08ec-4c3a-a018-ed7a398da39d}</Project>
-      <Name>RealArtists.ShipHub.Database</Name>
-    </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
       <Project>{B4688837-CA13-4503-B0D9-C255129ECB76}</Project>
       <Name>RealArtists.ShipHub.QueueClient</Name>
