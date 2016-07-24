@@ -231,7 +231,7 @@
     </VisualStudio>
   </ProjectExtensions>
   <Import Project="..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets" Condition="Exists('..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets')" />
-  <Import Project="$(SolutionDir)SecretStubs.targets"/>
+  <Import Project="$(SolutionDir)SecretStubs.targets" />
   <PropertyGroup>
     <BuildDependsOn>
       EnsureShipHubSecrets;
