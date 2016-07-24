@@ -1,6 +1,6 @@
 ﻿{
   "$schema": "http://schemastore.org/schemas/json/webjob-publish-settings.json",
-  "webJobName": "RealArtists.ShipHub.QueueProcessor",
+  "webJobName": "ShipHubQueueProcessor",
   "startTime": null,
   "endTime": null,
   "jobRecurrenceFrequency": null,
