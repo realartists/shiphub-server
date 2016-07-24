@@ -11,6 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Secret.AppSettings.config.example = Secret.AppSettings.config.example
 		Secret.ConnectionStrings.config = Secret.ConnectionStrings.config
 		Secret.ConnectionStrings.config.example = Secret.ConnectionStrings.config.example
+		SecretStubs.targets = SecretStubs.targets
 		sync_protocol.txt = sync_protocol.txt
 	EndProjectSection
 EndProject
