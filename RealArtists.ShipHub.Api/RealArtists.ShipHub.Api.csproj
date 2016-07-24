@@ -188,6 +188,7 @@
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SyncController.cs" />
     <Compile Include="Controllers\TestController.cs" />
+    <Compile Include="Diagnostics\ApplicationInsightsExceptionLogger.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="Filters\ShipHubAuthenticationAttribute.cs" />
     <Compile Include="Global.asax.cs">

@@ -3,7 +3,9 @@
   using System.Net.Http.Formatting;
   using System.Web;
   using System.Web.Http;
+  using System.Web.Http.ExceptionHandling;
   using Common;
+  using Diagnostics;
   using Filters;
   using Mindscape.Raygun4Net.WebApi;
 
@@ -19,25 +21,11 @@
       config.Formatters.Add(new JsonMediaTypeFormatter());
       config.Formatters.JsonFormatter.SerializerSettings = JsonUtility.SaneDefaults;
 
-      config.EnableCors();
-
-      //config.MapHttpAttributeRoutes(new CustomDirectRouteProvider());
       config.MapHttpAttributeRoutes();
 
-
       // Application Insights exception logging
-      //config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());
+      config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());
     }
-
-    //public class CustomDirectRouteProvider : DefaultDirectRouteProvider {
-    //  protected override IReadOnlyList<IDirectRouteFactory> GetActionRouteFactories(HttpActionDescriptor actionDescriptor) {
-    //    if (typeof(ShipApiController).IsAssignableFrom(actionDescriptor.ControllerDescriptor.ControllerType)) {
-    //      return actionDescriptor.GetCustomAttributes<IDirectRouteFactory>(inherit: true);
-    //    }
-
-    //    return actionDescriptor.GetCustomAttributes<IDirectRouteFactory>(inherit: false);
-    //  }
-    //}
 
     public static RaygunWebApiClient GenerateRaygunClient() {
       var client = new RaygunWebApiClient();
@@ -50,4 +38,3 @@
     }
   }
 }
-
