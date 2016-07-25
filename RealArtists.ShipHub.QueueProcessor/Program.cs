@@ -9,14 +9,22 @@
   static class Program {
     static void Main() {
       Console.WriteLine("Part 1");
+      var azureWebJobsDashboard = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard");
+      Console.WriteLine($"azureWebJobsDashboard: {azureWebJobsDashboard}");
+      var azureWebJobsStorage = CloudConfigurationManager.GetSetting("AzureWebJobsStorage");
+      Console.WriteLine($"azureWebJobsStorage: {azureWebJobsStorage}");
+
       var config = new JobHostConfiguration() {
-        DashboardConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard", true),
-        StorageConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsStorage", true),
+        DashboardConnectionString = azureWebJobsDashboard,
+        StorageConnectionString = azureWebJobsStorage,
       };
 
       Console.WriteLine("Part 2");
+      var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
+      Console.WriteLine($"azureWebJobsServiceBus: {azureWebJobsServiceBus}");
+
       var sbConfig = new ServiceBusConfiguration() {
-        ConnectionString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus", true),
+        ConnectionString = azureWebJobsServiceBus,
       };
       sbConfig.MessageOptions.MaxConcurrentCalls = 1;
 
@@ -101,12 +109,7 @@
       host.Stop();
 #else
       Console.WriteLine("Part 5");
-      try {
         host.RunAndBlock();
-      } catch (Exception e) {
-        Console.WriteLine("alsidfhioasgfuoasdbyufbcabweoucawbcu!!!!");
-        Console.WriteLine(e.ToString());
-      }
 #endif
     }
   }
