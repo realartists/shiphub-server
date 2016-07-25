@@ -374,8 +374,8 @@
         
         // TODO: Fix
         var valid = timeline.Where(x => x.Id != 0);
-        var comments = valid.Where(x => x.Event == "comment");
-        var notComments = valid.Where(x => x.Event != "comment");
+        var comments = valid.Where(x => x.Event == "commented");
+        var notComments = valid.Where(x => x.Event != "commented");
         
         // TODO: Update comments
         //changes.UnionWith(await context.BulkUpdateComments(
