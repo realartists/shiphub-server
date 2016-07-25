@@ -114,7 +114,18 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="..\App.config">
+      <Link>App.config</Link>
+    </None>
+    <None Include="..\Secret.AppSettings.config">
+      <Link>Secret.AppSettings.config</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Secret.ConnectionStrings.config">
+      <Link>Secret.ConnectionStrings.config</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="App.Release.config" />
     <None Include="packages.config" />
     <None Include="Properties\webjob-publish-settings.json" />
   </ItemGroup>
@@ -137,6 +148,26 @@
       $(BuildDependsOn)
     </BuildDependsOn>
   </PropertyGroup>
+  <!-- app.config transformation (HACK) -->
+  <UsingTask TaskName="TransformXml"
+             AssemblyFile="$(VSToolsPath)\WebApplications\Microsoft.Web.Publishing.Tasks.dll"
+             Condition="'$(VSToolsPath)' != ''" />
+  <Target Name="AfterCompile"
+          Condition="Exists('app.$(Configuration).config')">
+
+    <TransformXml Source="app.config"
+                  Destination="$(IntermediateOutputPath)$(TargetFileName).config"
+                  Transform="app.$(Configuration).config" />
+    <ItemGroup>
+      <AppConfigWithTargetPath Remove="app.config" />
+      <AppConfigWithTargetPath Include="$(IntermediateOutputPath)$(TargetFileName).config">
+        <TargetPath>$(TargetFileName).config</TargetPath>
+      </AppConfigWithTargetPath>
+      <AppConfigWithTargetPath Include="$(IntermediateOutputPath)$(TargetFileName).config">
+        <TargetPath>$(TargetName).vshost$(TargetExt).config</TargetPath>
+      </AppConfigWithTargetPath>
+    </ItemGroup>
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
