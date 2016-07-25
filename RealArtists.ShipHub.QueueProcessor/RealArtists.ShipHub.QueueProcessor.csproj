@@ -114,17 +114,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\App.config">
-      <Link>App.config</Link>
-    </None>
-    <None Include="..\Secret.AppSettings.config">
-      <Link>Secret.AppSettings.config</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\Secret.ConnectionStrings.config">
-      <Link>Secret.ConnectionStrings.config</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <None Include="App.config" />
     <None Include="packages.config" />
     <None Include="Properties\webjob-publish-settings.json" />
   </ItemGroup>
@@ -140,7 +130,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets" Condition="Exists('..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets')" />
-  <Import Project="$(SolutionDir)SecretStubs.targets"/>
+  <Import Project="$(SolutionDir)SecretStubs.targets" />
   <PropertyGroup>
     <BuildDependsOn>
       EnsureShipHubSecrets;
