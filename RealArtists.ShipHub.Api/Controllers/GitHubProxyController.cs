@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
@@ -15,14 +16,15 @@
 
     private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
 
-    [HttpGet]
-    [HttpPut]
-    [HttpHead]
-    [HttpPost]
     [HttpDelete]
+    [HttpGet]
+    [HttpHead]
     [HttpOptions]
+    [HttpPatch]
+    [HttpPost]
+    [HttpPut]
     [Route("{*path}")]
-    public Task<HttpResponseMessage> ProxyBlind(HttpRequestMessage request, CancellationToken cancellationToken, string path) {
+    public async Task<HttpResponseMessage> ProxyBlind(HttpRequestMessage request, CancellationToken cancellationToken, string path) {
       var builder = new UriBuilder(request.RequestUri);
       builder.Scheme = Uri.UriSchemeHttps;
       builder.Port = 443;
@@ -31,13 +33,17 @@
       request.RequestUri = builder.Uri;
 
       request.Headers.Host = request.RequestUri.Host;
+      request.Headers.Authorization = new AuthenticationHeaderValue("token", ShipHubUser.Token);
 
       // This is dumb
       if (_BareMethods.Contains(request.Method)) {
         request.Content = null;
       }
 
-      return _ProxyClient.SendAsync(request, cancellationToken);
+      var response = await _ProxyClient.SendAsync(request, cancellationToken);
+      response.Headers.Remove("Server");
+
+      return response;
     }
   }
 }
