@@ -80,7 +80,7 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
         changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-        await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id), GitHubMetaData.FromResponse(repoResponse));
+        changes.UnionWith(await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id), GitHubMetaData.FromResponse(repoResponse)));
       }
 
       // Now that owners, repos, and links are saved, safe to sync the repos themselves.
@@ -174,7 +174,7 @@
         syncRepoAssignees.AddAsync(message),
         syncRepoMilestones.AddAsync(message),
         syncRepoLabels.AddAsync(message),
-        syncRepoIssueEvents.AddAsync(message) // This only works now because we don't parse any event details.
+        syncRepoIssueEvents.AddAsync(message) // This is safe 
       );
     }
 
@@ -321,31 +321,31 @@
       }
     }
 
-    //public static async Task SyncRepositoryIssueEvents(
-    //  [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
-    //  [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-    //  var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-    //  ChangeSummary changes;
+    public static async Task SyncRepositoryIssueEvents(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] RepositoryMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
 
-    //  var eventsResponse = await ghc.Events(message.Repository.FullName);
-    //  var events = eventsResponse.Result;
+      var eventsResponse = await ghc.Events(message.Repository.FullName);
+      var events = eventsResponse.Result;
 
-    //  using (var context = new ShipHubContext()) {
-    //    // For now only grab accounts from the response.
-    //    // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
-    //    var accounts = events
-    //      .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
-    //      .Where(x => x != null)
-    //      .GroupBy(x => x.Login)
-    //      .Select(x => x.First());
-    //    changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-    //    changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
-    //  }
+      using (var context = new ShipHubContext()) {
+        // For now only grab accounts from the response.
+        // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+        var accounts = events
+          .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+          .Where(x => x != null)
+          .GroupBy(x => x.Login)
+          .Select(x => x.First());
+        changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+      }
 
-    //  if (!changes.Empty) {
-    //    await notifyChanges.AddAsync(new ChangeMessage(changes));
-    //  }
-    //}
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
+      }
+    }
 
     public static async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
@@ -371,7 +371,18 @@
           .GroupBy(x => x.Login)
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
+        
+        // TODO: Fix
+        var valid = timeline.Where(x => x.Id != 0);
+        var comments = valid.Where(x => x.Event == "comment");
+        var notComments = valid.Where(x => x.Event != "comment");
+        
+        // TODO: Update comments
+        //changes.UnionWith(await context.BulkUpdateComments(
+
+        // TODO: References and extra data
+
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(notComments);
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
