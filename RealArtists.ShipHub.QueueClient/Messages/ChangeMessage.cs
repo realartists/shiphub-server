@@ -9,9 +9,11 @@
       // Copy for safety from underlying modifications.
       Organizations = changes.Organizations.ToArray();
       Repositories = changes.Repositories.ToArray();
+      Users = changes.Users.ToArray();
     }
 
     public IEnumerable<long> Organizations { get; set; }
     public IEnumerable<long> Repositories { get; set; }
+    public IEnumerable<long> Users { get; set; }
   }
 }

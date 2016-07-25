@@ -41,8 +41,8 @@ BEGIN
   WHERE NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
   OPTION (RECOMPILE)
 
-  -- Return updated organizations and repositories
-  SELECT @OrganizationId as OrganizationId, NULL as RepositoryId
-  WHERE EXISTS(SELECT 1 FROM @Changes)
+  -- Return updated organizations and users
+  SELECT @OrganizationId as OrganizationId, NULL as RepositoryId, UserId
+  FROM @Changes
   OPTION (RECOMPILE)
 END

@@ -118,7 +118,7 @@
 
       using (var context = new ShipHubContext()) {
         changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
-        await context.SetUserOrganizations(message.Account.Id, orgs.Select(x => x.Id));
+        changes.UnionWith(await context.SetUserOrganizations(message.Account.Id, orgs.Select(x => x.Id)));
       }
 
       var memberSyncMessages = orgs.

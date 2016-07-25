@@ -33,8 +33,9 @@
 
     public bool ShouldSync(ChangeSummary changes) {
       // Check if this user is affected and if so, sync.
-      return changes.Organizations.Intersect(_versions.OrgVersions.Keys).Any()
-        || changes.Repositories.Intersect(_versions.RepoVersions.Keys).Any();
+      return changes.Organizations.Overlaps(_versions.OrgVersions.Keys)
+        || changes.Repositories.Overlaps(_versions.RepoVersions.Keys)
+        || changes.Users.Contains(_user.UserId);
     }
 
     public async Task Sync() {

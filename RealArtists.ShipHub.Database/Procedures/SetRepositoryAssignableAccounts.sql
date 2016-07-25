@@ -49,5 +49,5 @@ BEGIN
   END
 
   -- Return updated organizations and repositories
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId WHERE @Changes = 1
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId WHERE @Changes = 1
 END

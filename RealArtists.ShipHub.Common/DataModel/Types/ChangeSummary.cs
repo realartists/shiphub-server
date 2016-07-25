@@ -5,40 +5,50 @@
   public interface IChangeSummary {
     IEnumerable<long> Organizations { get; }
     IEnumerable<long> Repositories { get; }
+    IEnumerable<long> Users { get; }
   }
 
   public class ChangeSummary : IChangeSummary {
-    private HashSet<long> _orgs = new HashSet<long>();
-    private HashSet<long> _repos = new HashSet<long>();
+    public ISet<long> Organizations { get; private set; } = new HashSet<long>();
+    public ISet<long> Repositories { get; private set; } = new HashSet<long>();
+    public ISet<long> Users { get; private set; } = new HashSet<long>();
 
-    public IEnumerable<long> Organizations { get { return _orgs; } }
-    public IEnumerable<long> Repositories { get { return _repos; } }
-    public bool Empty { get { return _orgs.Count == 0 && _repos.Count == 0; } }
+    public bool Empty { get { return Organizations.Count == 0 && Repositories.Count == 0 && Users.Count == 0; } }
+
+    IEnumerable<long> IChangeSummary.Organizations { get { return Organizations; } }
+    IEnumerable<long> IChangeSummary.Repositories { get { return Repositories; } }
+    IEnumerable<long> IChangeSummary.Users { get { return Users; } }
 
     public ChangeSummary() { }
     public ChangeSummary(IChangeSummary initialValue) {
       UnionWith(initialValue);
     }
 
-    public void Add(long? organizationId, long? repositoryId) {
+    public void Add(long? organizationId, long? repositoryId, long? userId) {
       if (organizationId != null) {
-        _orgs.Add(organizationId.Value);
+        Organizations.Add(organizationId.Value);
       }
 
       if (repositoryId != null) {
-        _repos.Add(repositoryId.Value);
+        Repositories.Add(repositoryId.Value);
+      }
+
+      if (userId != null) {
+        Users.Add(userId.Value);
       }
     }
 
     public void UnionWith(IChangeSummary other) {
-      _orgs.UnionWith(other.Organizations);
-      _repos.UnionWith(other.Repositories);
+      Organizations.UnionWith(other.Organizations);
+      Repositories.UnionWith(other.Repositories);
+      Users.UnionWith(other.Users);
     }
 
     public static ChangeSummary UnionAll(IEnumerable<IChangeSummary> changes) {
       return new ChangeSummary() {
-        _orgs = new HashSet<long>(changes.SelectMany(x => x.Organizations)),
-        _repos = new HashSet<long>(changes.SelectMany(x => x.Repositories)),
+        Organizations = changes.SelectMany(x => x.Organizations).ToHashSet(),
+        Repositories = changes.SelectMany(x => x.Repositories).ToHashSet(),
+        Users = changes.SelectMany(x => x.Users).ToHashSet(),
       };
     }
   }

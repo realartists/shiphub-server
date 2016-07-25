@@ -76,5 +76,5 @@ BEGIN
   OPTION (RECOMPILE)
 
   -- Return updated organizations and repositories
-  SELECT DISTINCT OrganizationId, RepositoryId FROM @Updates OPTION (RECOMPILE)
+  SELECT DISTINCT OrganizationId, RepositoryId, NULL as UserId FROM @Updates OPTION (RECOMPILE)
 END

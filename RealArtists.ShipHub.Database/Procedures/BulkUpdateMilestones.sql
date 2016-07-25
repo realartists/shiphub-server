@@ -55,8 +55,8 @@ BEGIN
   WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
   OPTION (RECOMPILE)
 
-  -- Return updated organizations and repositories
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId
+  -- Return repository if updated
+  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS(SELECT 1 FROM @Changes)
   OPTION (RECOMPILE)
 END

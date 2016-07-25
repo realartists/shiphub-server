@@ -65,8 +65,8 @@ BEGIN
     WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
   OPTION (RECOMPILE)
 
-  -- Return updated organizations and repositories
-  SELECT NULL as OrganizationId, Id as RepositoryId
+  -- Return updated repositories
+  SELECT NULL as OrganizationId, Id as RepositoryId, NULL as UserId
   FROM @Changes
   OPTION (RECOMPILE)
 END

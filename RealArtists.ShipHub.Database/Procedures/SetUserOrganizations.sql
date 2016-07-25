@@ -7,6 +7,8 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  DECLARE @Changes BIT = 0
+
   MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
   USING (SELECT [Item] as [OrganizationId] FROM @OrganizationIds) as [Source]
   ON ([Target].[UserId] = @UserId  AND [Target].[OrganizationId] = [Source].[OrganizationId])
@@ -18,4 +20,12 @@ BEGIN
   WHEN NOT MATCHED BY SOURCE AND [Target].[UserId] = @UserId
     THEN DELETE
   OPTION (RECOMPILE);
+
+  IF(@@ROWCOUNT > 0) -- Not a NOP
+  BEGIN
+    SET @Changes = 1
+  END
+
+  -- Return updated user
+  SELECT NULL as OrganizationId, NULL as RepositoryId, @UserId as UserId WHERE @Changes = 1
 END

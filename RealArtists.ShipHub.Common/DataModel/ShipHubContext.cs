@@ -179,7 +179,7 @@
         using (var sdr = await dsp.ExecuteReaderAsync(CommandBehavior.SingleResult)) {
           dynamic ddr = sdr;
           while (sdr.Read()) {
-            result.Add(ddr.OrganizationId, ddr.RepositoryId);
+            result.Add(ddr.OrganizationId, ddr.RepositoryId, ddr.UserId);
           }
         }
       }
@@ -409,26 +409,23 @@
       return dsp;
     }
 
-    public async Task SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetaData metaData) {
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        @"EXEC [dbo].[SetAccountLinkedRepositories]
-          @AccountId = @AccountId,
-          @RepositoryIds = @RepositoryIds,
-          @MetaData = @MetaData;",
-        new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
-        CreateItemListTable("RepositoryIds", repositoryIds),
-        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() });
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetaData metaData) {
+      var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
+
+      return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
+        x.AccountId = accountId;
+        x.RepositoryIds = repoParam;
+        x.MetaData = metaData.SerializeObject();
+      });
     }
 
-    public async Task SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
-      await Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        @"EXEC [dbo].[SetUserOrganizations]
-          @UserId = @UserId,
-          @OrganizationIds = @OrganizationIds;",
-        new SqlParameter("UserId", SqlDbType.BigInt) { Value = userId },
-        CreateItemListTable("OrganizationIds", organizationIds));
+    public Task<ChangeSummary> SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
+      var orgTable = CreateItemListTable("OrganizationIds", organizationIds);
+
+      return ExecuteAndReadChanges("[dbo].[SetUserOrganizations]", x => {
+        x.UserId = userId;
+        x.OrganizationIds = orgTable;
+      });
     }
 
     public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
