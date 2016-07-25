@@ -101,7 +101,7 @@
     }
 
     [HttpPost]
-    [Route("hello")]
+    [Route("login")]
     public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
       if (string.IsNullOrWhiteSpace(request.AccessToken)) {
         return BadRequest($"{nameof(request.AccessToken)} is required.");
