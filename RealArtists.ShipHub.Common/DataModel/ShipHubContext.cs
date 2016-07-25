@@ -391,11 +391,11 @@
     }
 
     public Task<ChangeSummary> SetRepositoryLabels(long repositoryId, IEnumerable<LabelTableType> labels) {
-      var tableParam = CreateLabelTable("Labels", labels);
+      var labelParam = CreateLabelTable("Labels", labels);
 
       return ExecuteAndReadChanges("[dbo].[SetRepositoryLabels]", x => {
         x.RepositoryId = repositoryId;
-        x.Labels = tableParam;
+        x.Labels = labelParam;
       });
     }
 
