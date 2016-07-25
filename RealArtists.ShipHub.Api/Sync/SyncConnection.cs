@@ -23,8 +23,9 @@
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
     private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
 
+    // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
-      Observable.Interval(TimeSpan.FromMinutes(2))
+      Observable.Interval(TimeSpan.FromMinutes(10))
       .Publish()
       .RefCount();
 
