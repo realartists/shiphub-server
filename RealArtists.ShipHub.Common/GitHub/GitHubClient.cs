@@ -22,7 +22,7 @@
     public const bool UseFiddler = false;
 #endif
 
-    public const int RateLimitReserve = 1250; // Try to keep at least this many requests as rate limit buffer 
+    public const int RateLimitReserve = 2000; // Try to keep at least this many requests as rate limit buffer 
     public const int ConcurrencyLimit = 16;
     public const int MaxRetries = 2;
 
