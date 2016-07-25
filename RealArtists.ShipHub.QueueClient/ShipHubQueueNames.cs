@@ -18,15 +18,18 @@
     }
     // Actions
     const string SyncPrefix = "sync";
+    //const string UpdatePrefix = "update";
 
     // Resources
     const string Account = "-account";
     const string Comments = "-comments";
     const string Issues = "-issues";
+    const string IssueEvents = "-issueEvents";
     const string IssueTimeline = "-issueTimeline";
     const string Milestones = "-milestones";
     const string Organization = "-organization";
     const string Organizations = "-organizations";
+    //const string RateLimit = "-rateLimit";
     const string Repository = "-repository";
     const string Repositories = "-repositories";
     //const string Webhook = "-webhook";
@@ -44,6 +47,12 @@
     public const string SyncRepositoryLabels = SyncRepository + "-labels";
     public const string SyncRepositoryMilestones = SyncRepository + Milestones;
     public const string SyncRepositoryComments = SyncRepository + Comments;
+    public const string SyncRepositoryIssueEvents = SyncRepository + IssueEvents;
     public const string SyncRepositoryIssueTimeline = SyncRepository + IssueTimeline;
+
+    //public const string UpdateAccount = UpdatePrefix + Account;
+    //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
+    //public const string UpdateRepository = UpdatePrefix + Repository;
+    //public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
   }
 }

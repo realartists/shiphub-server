@@ -166,13 +166,15 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<RepositoryMessage> syncRepoIssueEvents) {
       // This is just a fanout point.
       // Plan to add conditional checks here to reduce polling frequency.
       await Task.WhenAll(
         syncRepoAssignees.AddAsync(message),
         syncRepoMilestones.AddAsync(message),
-        syncRepoLabels.AddAsync(message)
+        syncRepoLabels.AddAsync(message),
+        syncRepoIssueEvents.AddAsync(message) // This only works now because we don't parse any event details.
       );
     }
 
