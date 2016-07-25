@@ -8,25 +8,18 @@
 
   static class Program {
     static void Main() {
-      Console.WriteLine("Part 1");
       var azureWebJobsDashboard = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard");
-      Console.WriteLine($"azureWebJobsDashboard: {azureWebJobsDashboard}");
       var azureWebJobsStorage = CloudConfigurationManager.GetSetting("AzureWebJobsStorage");
-      Console.WriteLine($"azureWebJobsStorage: {azureWebJobsStorage}");
-
       var config = new JobHostConfiguration() {
         DashboardConnectionString = azureWebJobsDashboard,
         StorageConnectionString = azureWebJobsStorage,
       };
 
-      Console.WriteLine("Part 2");
       var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
-      Console.WriteLine($"azureWebJobsServiceBus: {azureWebJobsServiceBus}");
-
       var sbConfig = new ServiceBusConfiguration() {
         ConnectionString = azureWebJobsServiceBus,
       };
-      sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+      sbConfig.MessageOptions.MaxConcurrentCalls = 128;
 
       // Adjust this based on real performance data
       //sbConfig.MessageOptions.AutoRenewTimeout = 
@@ -47,7 +40,6 @@
       var ratePerSecond = 1;
       sbConfig.PrefetchCount = sbConfig.MessageOptions.MaxConcurrentCalls * 20 * ratePerSecond;
 
-      Console.WriteLine("Part 3");
       config.UseServiceBus(sbConfig);
 
 #if DEBUG
@@ -98,7 +90,6 @@
       // END HACKS!
 #endif
 
-      Console.WriteLine("Part 4");
       Console.WriteLine("Starting job host...\n\n");
       var host = new JobHost(config);
 #if DEBUG
@@ -108,7 +99,6 @@
       Console.WriteLine("Stopping job host...");
       host.Stop();
 #else
-      Console.WriteLine("Part 5");
         host.RunAndBlock();
 #endif
     }
