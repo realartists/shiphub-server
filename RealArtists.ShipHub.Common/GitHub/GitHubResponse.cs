@@ -4,6 +4,7 @@
   using System.Net;
 
   public class GitHubResponse {
+    public string AcceptHeaderOverride { get; set; }
     public Uri RequestUri { get; set; }
     public IGitHubCredentials Credentials { get; set; }
     public HttpStatusCode Status { get; set; }

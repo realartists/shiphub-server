@@ -367,6 +367,7 @@
       }
 
       var result = new GitHubResponse<T>() {
+        AcceptHeaderOverride = request.AcceptHeaderOverride,
         Credentials = credentials,
         Date = response.Headers.Date.Value,
         IsError = !response.IsSuccessStatusCode,
@@ -454,7 +455,10 @@
         var pages = firstPage.Pagination.Interpolate();
         batch = await Batch(pages.Select<Uri, Func<Task<GitHubResponse<IEnumerable<T>>>>>(
           page => () => MakeRequest<IEnumerable<T>>(
-            new GitHubRequest(HttpMethod.Get, "") { Uri = page },
+            new GitHubRequest(HttpMethod.Get, "") {
+              Uri = page,
+              AcceptHeaderOverride = firstPage.AcceptHeaderOverride,
+            },
             credentials)));
 
         foreach (var response in batch) {
@@ -471,6 +475,7 @@
           // Ignore cache options, since we're paging because they didn't match
           var nextReq = new GitHubRequest(HttpMethod.Get, "") {
             Uri = current.Pagination.Next,
+            AcceptHeaderOverride = firstPage.AcceptHeaderOverride,
           };
           current = await MakeRequest<IEnumerable<T>>(nextReq, credentials);
 
