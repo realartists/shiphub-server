@@ -36,16 +36,12 @@
 
     [StringLength(255)]
     [Required(AllowEmptyStrings = true)]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public string Scopes { get; set; } = "";
 
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int RateLimit { get; set; } = 0;
 
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int RateLimitRemaining { get; set; } = 0;
 
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
