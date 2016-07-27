@@ -266,8 +266,7 @@
       ChangeSummary changes;
 
       var issueResponse = await ghc.Issues(message.Repository.FullName);
-      var issues = issueResponse.Result
-        .Where(x => x.PullRequest == null); // Drop pull requests for now
+      var issues = issueResponse.Result;
 
       using (var context = new ShipHubContext()) {
         // TODO: Support multiple assignees.

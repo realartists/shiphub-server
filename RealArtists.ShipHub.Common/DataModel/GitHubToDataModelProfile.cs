@@ -22,11 +22,7 @@
         }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
       CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
-        .BeforeMap((from, to) => {
-          if (from.PullRequest != null) {
-            throw new InvalidOperationException("Pull requests are not supported.");
-          }
-        }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
+        .ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
       // TODO: cache these?
       var snakeCaseStrategy = new SnakeCaseNamingStrategy();
