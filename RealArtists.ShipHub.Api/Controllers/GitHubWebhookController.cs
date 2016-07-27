@@ -35,8 +35,8 @@
 
     [HttpPost]
     [AllowAnonymous]
-    [Route("webhook")]
-    public async Task<IHttpActionResult> HandleHook() {
+    [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
+    public async Task<IHttpActionResult> HandleHook(string type, long id) {
       if (Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) {
         return BadRequest("Not you.");
       }
@@ -53,35 +53,25 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payload);
       var data = JsonConvert.DeserializeObject<JObject>(payload, GitHubClient.JsonSettings);
 
-      var repositoryId = (long?)data.SelectToken("$.repository.id", false);
-      var organizationId = (long?)data.SelectToken("$.organization.id", false);
+      Hook hook = null;
 
-      if (repositoryId == null && organizationId == null) {
-        return BadRequest("Payload must include repository and/or organization objects.");
+      if (type.Equals("org")) {
+        hook = Context.Hooks.SingleOrDefault(x => x.OrganizationId == id);
+      } else if (type.Equals("repo")) {
+        hook = Context.Hooks.SingleOrDefault(x => x.RepositoryId == id);
+      } else {
+        throw new ArgumentException("Unexpected type: " + type);
       }
-
-      var hooks = Context.Hooks
-        .Where(x => (repositoryId != null && x.RepositoryId == repositoryId) || (organizationId != null && x.OrganizationId == organizationId))
-        .ToList();
-
-      Hook matchingHook = null;
-
-      foreach (var hook in hooks) {
-        Debug.Assert(repositoryId == hook.RepositoryId || organizationId == hook.OrganizationId);
-        var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()));
+      
+      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()))) {
         byte[] hash = hmac.ComputeHash(payloadBytes);
         // We're not worth launching a timing attack against.
-        if (hash.SequenceEqual(signature)) {
-          matchingHook = hook;
-          break;
+        if (!hash.SequenceEqual(signature)) {
+          return BadRequest("Invalid signature.");
         }
       }
-
-      if (matchingHook == null) {
-        return BadRequest("Invalid signature.");
-      }
-
-      matchingHook.LastSeen = DateTimeOffset.Now;
+      
+      hook.LastSeen = DateTimeOffset.Now;
       await Context.SaveChangesAsync();
       
       switch (eventName) {

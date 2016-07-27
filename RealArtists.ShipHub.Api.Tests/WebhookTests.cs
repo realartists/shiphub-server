@@ -58,7 +58,7 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string secret) {
+    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
       IChangeSummary changeSummary = null;
 
       var mockBusClient = new Mock<IShipHubBusClient>();
@@ -69,7 +69,7 @@
       var controller = new GitHubWebhookController(mockBusClient.Object);
       ConfigureController(controller, "issues", obj, secret);
 
-      IHttpActionResult result = await controller.HandleHook();
+      IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
       Assert.IsType<StatusCodeResult>(result);
       Assert.Equal(HttpStatusCode.Accepted, (result as StatusCodeResult).StatusCode);
 
@@ -175,7 +175,7 @@
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook();
+        var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
       }
@@ -204,7 +204,7 @@
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook();
+        var result = await controller.HandleHook("org", org.Id);
         Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
       }
@@ -236,54 +236,12 @@
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
-        var result = await controller.HandleHook();
+        var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsType<BadRequestErrorMessageResult>(result);
         Assert.Equal("Invalid signature.", ((BadRequestErrorMessageResult)result).Message);
       }
     }
-
-    [Fact]
-    [AutoRollback]
-    public async Task TestPingFailsIfRepoAndOrgObjectsAreNotValid() {
-      var tests = new List<dynamic> {
-        // Neither repository nor organization is present.
-        new {
-          hook_id = 1234,
-        },
-        // The repository object exists, but has no id.
-        new {
-          hook_id = 1234,
-          repository = new { },
-        },
-        // repository exists, but is not an object.
-        new {
-          hook_id = 1234,
-          repository = "not an object",
-        },
-        // The organization object exists, but has no id.
-        new {
-          hook_id = 1234,
-          organization = new { },
-        },
-        // organization exists, but is not an object.
-        new {
-          hook_id = 1234,
-          organization = "not an object",
-        },
-      };
-
-      foreach (var test in tests) {
-        var obj = JObject.FromObject(test, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
-        var controller = new GitHubWebhookController();
-        ConfigureController(controller, "ping", obj, "698DACE9-6267-4391-9B1C-C6F74DB43710");
-        var result = await controller.HandleHook();
-        Assert.IsType<BadRequestErrorMessageResult>(result);
-        Assert.Equal(
-          "Payload must include repository and/or organization objects.",
-          ((BadRequestErrorMessageResult)result).Message);
-      }
-    }
-
+    
     [Fact]
     [AutoRollback]
     public async Task TestWebhookCallUpdatesLastSeen() {
@@ -307,7 +265,7 @@
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook();
+        var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsType<StatusCodeResult>(result);
         Assert.Equal(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
 
@@ -346,7 +304,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), hook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -395,7 +353,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -441,7 +399,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -493,7 +451,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -542,13 +500,13 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();      
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
         Assert.Equal(testUser.Id, updatedIssue.Assignee.Id);
       }
     }
@@ -589,7 +547,7 @@
         Assignee = null,
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -641,7 +599,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -699,7 +657,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), testHook.Secret.ToString());
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -712,7 +670,7 @@
 
       // Then remove the Red label.
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
-      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), testHook.Secret.ToString());
+      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
       Assert.Equal(0, changeSummary.Organizations.Count());
       Assert.Equal(0, changeSummary.Repositories.Count());
