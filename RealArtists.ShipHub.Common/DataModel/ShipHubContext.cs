@@ -221,33 +221,24 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
-      var tableParam = CreateTableParameter(
-        "Comments",
-        "[dbo].[CommentTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("Reactions", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.IssueNumber,
-          x.UserId,
-          x.Body,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.Reactions,
-        },
-        comments);
+    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments, bool complete = false) {
+      var tableParam = CreateCommentTable("Comments", comments);
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
         x.RepositoryId = repositoryId;
         x.Comments = tableParam;
+        x.Complete = complete;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssueComments(string repositoryFullName, int issueNumber, IEnumerable<CommentTableType> comments, bool complete = false) {
+      var tableParam = CreateCommentTable("Comments", comments);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueComments]", x => {
+        x.RepositoryFullName = repositoryFullName;
+        x.IssueNumber = issueNumber;
+        x.Comments = tableParam;
+        x.Complete = complete;
       });
     }
 
@@ -447,6 +438,31 @@
         new[] { Tuple.Create("Item", typeof(T)) },
         x => new object[] { x },
         values);
+    }
+
+    private static SqlParameter CreateCommentTable(string parameterName, IEnumerable<CommentTableType> comments) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[CommentTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueNumber", typeof(int)),
+          Tuple.Create("UserId", typeof(long)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("Reactions", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.IssueNumber,
+          x.UserId,
+          x.Body,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.Reactions,
+        },
+        comments);
     }
 
     private static SqlParameter CreateLabelTable(string parameterName, IEnumerable<LabelTableType> labels) {

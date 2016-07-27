@@ -9,7 +9,7 @@
   using Microsoft.Azure.WebJobs;
   using QueueClient;
   using QueueClient.Messages;
-  using gm = GitHub.Models;
+  using gm = Common.GitHub.Models;
 
   public static class SyncHandlerExtensions {
     public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
@@ -313,7 +313,7 @@
         changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         var issueComments = comments.Where(x => x.IssueNumber != null);
-        changes.UnionWith(await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments)));
+        changes.UnionWith(await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
       }
 
       if (!changes.Empty) {
@@ -340,6 +340,34 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
         changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
+      }
+    }
+
+    public static async Task SyncRepositoryIssueComments(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueComments)] IssueMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
+
+      var commentsResponse = await ghc.Comments(message.RepositoryFullName, message.Number);
+      var comments = commentsResponse.Result;
+
+      using (var context = new ShipHubContext()) {
+        var users = comments
+          .Select(x => x.User)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+
+        changes.UnionWith(await context.BulkUpdateIssueComments(
+          message.RepositoryFullName,
+          message.Number,
+          SharedMapper.Map<IEnumerable<CommentTableType>>(comments),
+          complete: true));
       }
 
       if (!changes.Empty) {
