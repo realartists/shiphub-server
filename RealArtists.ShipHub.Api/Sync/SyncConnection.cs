@@ -43,6 +43,12 @@
       _syncManager = syncManager;
     }
 
+    // TODO: This should not be needed, but I'm seeing weird behavior without it. Look into this later?
+    public override Task OnError() {
+      Unsubscribe();
+      return Task.CompletedTask;
+    }
+
     public override Task OnClose() {
       Unsubscribe();
       return Task.CompletedTask;
@@ -114,7 +120,7 @@
 
         try {
           return SendAsync(new ArraySegment<byte>(ms.ToArray()), WebSocketMessageType.Binary, true);
-        } catch (ObjectDisposedException ode) {
+        } catch (ObjectDisposedException) {
           // Connection is dead.
           return OnClose();
         }
