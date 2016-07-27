@@ -136,7 +136,6 @@
 
     private Common.DataModel.Hook MakeTestRepoHook(Common.DataModel.ShipHubContext context, long creatorId, long repoId) {
       return context.Hooks.Add(new Common.DataModel.Hook() {
-        Id = 5001,
         Secret = Guid.NewGuid(),
         Active = true,
         Events = "event1,event2",
@@ -147,7 +146,6 @@
 
     private Common.DataModel.Hook MakeTestOrgHook(Common.DataModel.ShipHubContext context, long creatorId, long orgId) {
       return context.Hooks.Add(new Common.DataModel.Hook() {
-        Id = 5001,
         Secret = Guid.NewGuid(),
         Active = true,
         Events = "event1,event2",
