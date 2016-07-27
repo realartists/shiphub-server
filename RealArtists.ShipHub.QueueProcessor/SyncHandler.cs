@@ -9,6 +9,7 @@
   using Microsoft.Azure.WebJobs;
   using QueueClient;
   using QueueClient.Messages;
+  using gm = GitHub.Models;
 
   public static class SyncHandlerExtensions {
     public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
@@ -374,8 +375,8 @@
         
         // TODO: Fix
         var valid = timeline.Where(x => x.Id != 0);
-        var comments = valid.Where(x => x.Event == "commented");
-        var notComments = valid.Where(x => x.Event != "commented");
+        var comments = valid.Where(x => x.Event == gm.TimelineEventType.Commented);
+        var notComments = valid.Where(x => x.Event != gm.TimelineEventType.Commented));
         
         // TODO: Update comments
         //changes.UnionWith(await context.BulkUpdateComments(

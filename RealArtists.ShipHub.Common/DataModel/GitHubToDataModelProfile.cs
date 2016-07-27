@@ -2,6 +2,7 @@
   using System;
   using AutoMapper;
   using Newtonsoft.Json;
+  using Newtonsoft.Json.Serialization;
   using Types;
   using g = GitHub.Models;
 
@@ -27,10 +28,15 @@
           }
         }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
+      // TODO: cache these?
+      var snakeCaseStrategy = new SnakeCaseNamingStrategy();
+
       CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination)
+        .ForMember(x => x.Event, o => o.ResolveUsing(x => snakeCaseStrategy.GetPropertyName(x.Event.ToString(), false)))
         .ForMember(x => x.ActorId, o => o.ResolveUsing(x => x.Assigner?.Id ?? x.Actor.Id));
 
       CreateMap<g.TimelineEvent, IssueEventTableType>(MemberList.Destination)
+        .ForMember(x => x.Event, o => o.ResolveUsing(x => snakeCaseStrategy.GetPropertyName(x.Event.ToString(), false)))
         .ForMember(x => x.IssueId, o => o.Ignore());
 
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
