@@ -154,7 +154,6 @@
                     Data = new IssueEventEntry() {
                       Actor = ddr.ActorId,
                       Assignee = ddr.AssigneeId,
-                      CommitId = ddr.CommitId,
                       CreatedAt = ddr.CreatedAt,
                       Event = ddr.Event,
                       ExtensionData = ddr.ExtensionData,

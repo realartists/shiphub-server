@@ -3,7 +3,6 @@
   [RepositoryId]  BIGINT         NOT NULL,
   [IssueId]       BIGINT         NOT NULL,
   [ActorId]       BIGINT         NOT NULL,
-  [CommitId]      NVARCHAR(40)   NULL,
   [Event]         NVARCHAR(64)   NOT NULL,
   [CreatedAt]     DATETIMEOFFSET NOT NULL,
   [AssigneeId]    BIGINT         NULL,

@@ -259,7 +259,6 @@
           Tuple.Create("Id", typeof(long)),
           Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("ActorId", typeof(long)),
-          Tuple.Create("CommitId", typeof(string)),
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
@@ -269,7 +268,6 @@
           x.Id,
           x.IssueId,
           x.ActorId,
-          x.CommitId,
           x.Event,
           x.CreatedAt,
           x.AssigneeId,

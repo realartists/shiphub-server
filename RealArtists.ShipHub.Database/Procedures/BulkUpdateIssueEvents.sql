@@ -14,13 +14,13 @@ BEGIN
 
   MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT Id, IssueId, ActorId, CommitId, [Event], CreatedAt, AssigneeId, ExtensionData
+    SELECT Id, IssueId, ActorId, [Event], CreatedAt, AssigneeId, ExtensionData
     FROM @IssueEvents
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, RepositoryId, IssueId, ActorId, CommitId, [Event], CreatedAt, AssigneeId, ExtensionData)
-    VALUES (Id, @RepositoryId, IssueId, ActorId, CommitId, [Event], CreatedAt, AssigneeId, ExtensionData)
+    INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, AssigneeId, ExtensionData)
+    VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, AssigneeId, ExtensionData)
   OUTPUT INSERTED.Id INTO @Changes (IssueEventId)
   OPTION (RECOMPILE);
 

@@ -8,22 +8,28 @@
   public class TimelineEvent {
     private static readonly HashSet<string> _issueEventTypeNames = new HashSet<string>(Enum.GetNames(typeof(IssueEvent)));
 
-
     public long Id { get; set; }
-    public string Url { get; set; }
     public Account Actor { get; set; }
-    public string CommitId { get; set; }
     public TimelineEventType Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    //public Label Label { get; set; }
     public Account Assignee { get; set; }
-    //public Milestone Milestone { get; set; } // What GitHub sends is incomplete and nearly useless. No need to parse.
-    //public ReferenceSource Source { get; set; } // See below
-    //public TimelineRename Rename { get; set; }
+    //public Milestone Milestone { get; set; } // What GitHub sends is incomplete and nearly useless, often just the name. No need to parse.
 
-    // We want this to be saved in _extensionData, so don't actually deserialize it.
+    // We want these to be saved in _extensionData, so don't actually deserialize them.
+    [JsonIgnore]
+    public string CommitId { get { return _extensionData.Val("commit_id")?.ToObject<string>(); } }
+
+    [JsonIgnore]
+    public string CommitUrl { get { return _extensionData.Val("commit_url")?.ToObject<string>(); } }
+
+    [JsonIgnore]
+    public Label Label { get { return _extensionData.Val("label")?.ToObject<Label>(); } }
+
     [JsonIgnore]
     public ReferenceSource Source { get { return _extensionData.Val("source")?.ToObject<ReferenceSource>(); } }
+
+    [JsonIgnore]
+    public TimelineRename Rename { get { return _extensionData.Val("rename")?.ToObject<TimelineRename>(); } }
 
     // Because now they're mingled
     public bool IsIssueEvent { get { return _issueEventTypeNames.Contains(Event.ToString()); } }
