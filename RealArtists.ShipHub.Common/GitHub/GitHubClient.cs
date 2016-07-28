@@ -164,6 +164,16 @@
       }
     }
 
+    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{number}", opts?.CacheOptions);
+
+      // Reactions (application/vnd.github.squirrel-girl-preview+json)
+      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
+
+      return MakeRequest<Issue>(request, opts?.Credentials);
+    }
+
     public async Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues", opts?.CacheOptions);
       if (since != null) {
@@ -222,6 +232,11 @@
       }
     }
 
+    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string sha, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/commits/{sha}", opts?.CacheOptions);
+      return MakeRequest<Commit>(request, opts?.Credentials);
+    }
+
     public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/issues/events", opts?.CacheOptions);
       request.AddParameter("sort", "updated");
@@ -274,6 +289,11 @@
       }
 
       return result;
+    }
+
+    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNum, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/pulls/{pullRequestNum}", opts?.CacheOptions);
+      return MakeRequest<PullRequest>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, IGitHubRequestOptions opts = null) {
