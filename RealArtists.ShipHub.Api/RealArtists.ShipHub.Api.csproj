@@ -226,10 +226,10 @@
       <Link>Secret.ConnectionStrings.config</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <Content Include="ApplicationInsights.config">
+    <Content Include="..\ApplicationInsights.config">
+      <Link>ApplicationInsights.config</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <None Include="Properties\PublishProfiles\ra-shiphub-dev - Web Deploy.pubxml" />
     <Content Include="Service References\Application Insights\ConnectedService.json" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
