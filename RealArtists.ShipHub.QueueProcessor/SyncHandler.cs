@@ -377,9 +377,11 @@
 
     public static async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<IssueMessage> syncIssueComments,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
+      var tasks = new List<Task>();
 
       var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
       var timeline = timelineResponse.Result;
@@ -391,7 +393,8 @@
           .Where(x => x.Number == message.Number)
           .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
           .SingleAsync();
-        // For now only grab accounts from the response.
+
+        // Grab accounts from the response.
         // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
         var accounts = timeline
           .SelectMany(x => new[] { x.Actor, x.Assignee })
@@ -399,22 +402,63 @@
           .GroupBy(x => x.Login)
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        
-        // TODO: Fix
-        var valid = timeline.Where(x => x.Id != 0);
-        var comments = valid.Where(x => x.Event == gm.TimelineEventType.Commented);
-        var notComments = valid.Where(x => x.Event != gm.TimelineEventType.Commented));
-        
-        // TODO: Update comments
-        //changes.UnionWith(await context.BulkUpdateComments(
 
-        // TODO: References and extra data
-
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(notComments);
+        // Save the things that are IssueEvents
+        var timelineIssueEvents = timeline.Where(x => x.IsIssueEvent);
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timelineIssueEvents);
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
         changes.UnionWith(await context.BulkUpdateIssueEvents(issueDetails.RepositoryId, events));
+
+        // If we find comments, sync them
+        // TODO: Incrementally
+        if (timeline.Any(x => x.Event == gm.TimelineEventType.Commented)) {
+          tasks.Add(syncIssueComments.AddAsync(message));
+        }
+
+        // Cross references (from other issues)
+        var crossReferences = timeline.Where(x => x.Event == gm.TimelineEventType.CrossReferenced).ToArray();
+        var issueLookups = crossReferences.Select(x => {
+          var parts = x.Source.IssueUrl.Split('/');
+          var numParts = parts.Length;
+          var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+          var issueNum = int.Parse(parts[numParts - 1]);
+          return ghc.Issue(repoName, issueNum);
+        });
+
+        // TOOD: more parallel?
+        var issueResults = await Task.WhenAll(issueLookups);
+
+        var prLookups = issueResults
+          .Where(x => x.Result.PullRequest != null)
+          .Select(x => {
+            var parts = x.Result.PullRequest.Url.Split('/');
+            var numParts = parts.Length;
+            var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+            var pullNum = int.Parse(parts[numParts - 1]);
+            return ghc.PullRequest(repoName, pullNum);
+          });
+
+        var prResults = await Task.WhenAll(prLookups);
+
+        // Do things and stuff
+
+        // References
+        var references = timeline.Where(x => x.Event == gm.TimelineEventType.Referenced || x.Event == gm.TimelineEventType.Closed);
+        var refLookups = references
+          .Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl))
+          .Select(x => {
+            var parts = x.CommitUrl.Split('/');
+            var numParts = parts.Length;
+            var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+            var sha = parts[numParts - 1];
+            return ghc.Commit(repoName, sha);
+          });
+
+        var refResults = await Task.WhenAll(refLookups);
+
+        // Do things and stuff
       }
 
       if (!changes.Empty) {
