@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using Newtonsoft.Json;
 
-  public class SyncRequestBase {
+  public class SyncMessageBase {
     [JsonProperty("msg")]
     public virtual string MessageType { get; set; }
   }
