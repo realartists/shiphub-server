@@ -87,29 +87,6 @@
       return JObject.FromObject(obj, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
     }
 
-    private static Common.DataModel.User MakeTestUser(Common.DataModel.ShipHubContext context) {
-      var user = new Common.DataModel.User() {
-        Id = 3001,
-        Login = "aroon",
-        Date = DateTimeOffset.Now,
-      };
-      context.Accounts.Add(user);
-      return user;
-    }
-
-    private static Common.DataModel.Repository MakeTestRepo(Common.DataModel.ShipHubContext context, long accountId) {
-      var repo = new Common.DataModel.Repository() {
-        Id = 2001,
-        Name = "myrepo",
-        FullName = "aroon/myrepo",
-        AccountId = accountId,
-        Private = true,
-        Date = DateTimeOffset.Now,
-      };
-      context.Repositories.Add(repo);
-      return repo;
-    }
-
     private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
       return (Common.DataModel.Organization)context.Accounts.Add(new Common.DataModel.Organization() {
         Id = 6001,
@@ -158,8 +135,8 @@
     [AutoRollback]
     public async Task TestPingSucceedsIfSignatureMatchesRepoHook() {
       using (var context = new Common.DataModel.ShipHubContext()) {
-        var user = MakeTestUser(context);
-        var repo = MakeTestRepo(context, user.Id);
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestRepoHook(context, user.Id, repo.Id);
 
         await context.SaveChangesAsync();
@@ -183,9 +160,9 @@
     [AutoRollback]
     public async Task TestPingSucceedsIfSignatureMatchesOrgHook() {
       using (var context = new Common.DataModel.ShipHubContext()) {
-        var user = MakeTestUser(context);
+        var user = TestUtil.MakeTestUser(context);
         var org = MakeTestOrg(context);
-        var repo = MakeTestRepo(context, user.Id);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestOrgHook(context, user.Id, org.Id);
         org.Members.Add(user);
         await context.SaveChangesAsync();
@@ -212,8 +189,8 @@
     [AutoRollback]
     public async Task TestPingFailsWithInvalidSignature() {
       using (var context = new Common.DataModel.ShipHubContext()) {
-        var user = MakeTestUser(context);
-        var repo = MakeTestRepo(context, user.Id);
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
 
         var hook = context.Hooks.Add(new Common.DataModel.Hook() {
           Secret = Guid.NewGuid(),
@@ -244,8 +221,8 @@
     [AutoRollback]
     public async Task TestWebhookCallUpdatesLastSeen() {
       using (var context = new Common.DataModel.ShipHubContext()) {
-        var user = MakeTestUser(context);
-        var repo = MakeTestRepo(context, user.Id);
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestRepoHook(context, user.Id, repo.Id);
 
         await context.SaveChangesAsync();
@@ -280,8 +257,8 @@
       Common.DataModel.Hook hook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        user = MakeTestUser(context);
-        repo = MakeTestRepo(context, user.Id);
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
         await context.SaveChangesAsync();
       }
@@ -328,8 +305,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
@@ -371,8 +348,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
 
@@ -417,8 +394,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
@@ -470,8 +447,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
@@ -518,8 +495,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
 
@@ -565,8 +542,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
@@ -622,8 +599,8 @@
       Common.DataModel.Hook testHook;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
-        testUser = MakeTestUser(context);
-        testRepo = MakeTestRepo(context, testUser.Id);
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
         await context.SaveChangesAsync();
