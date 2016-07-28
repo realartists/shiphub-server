@@ -426,8 +426,10 @@
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
 
       if (response.IsSuccessStatusCode) {
-        // TODO: Handle accepted, no content, etc.
-        if (response.StatusCode != HttpStatusCode.NotModified) {
+        // TODO: Handle accepted, etc.
+        if (response.StatusCode == HttpStatusCode.NoContent && typeof(T) == typeof(bool)) {
+          result.Result = (T)(object)true;
+        } else if (response.StatusCode != HttpStatusCode.NotModified) {
           result.Result = await response.Content.ReadAsAsync<T>(_MediaTypeFormatters);
         }
       } else {
