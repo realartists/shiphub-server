@@ -61,9 +61,13 @@
   }
 
   public class ReferenceSource {
-    public long Id { get; set; }
     public Account Actor { get; set; }
-    public string Url { get; set; }
+
+    [JsonProperty("id")]
+    public long CommentId { get; set; }
+
+    [JsonProperty("url")]
+    public string IssueUrl { get; set; }
   }
 
   public enum TimelineEventType {
