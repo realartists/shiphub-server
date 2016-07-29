@@ -23,10 +23,11 @@
     static async Task DoAsync() {
       using (var ws = new ClientWebSocket()) {
         var token = ConfigurationManager.AppSettings["GitHubTestToken"];
+        var apiHost = ConfigurationManager.AppSettings["ApiHostname"];
 
         ws.Options.AddSubProtocol("V1");
         ws.Options.SetRequestHeader("Authorization", $"token {token}");
-        await ws.ConnectAsync(new Uri("wss://hub-nick.realartists.com/api/sync"), CancellationToken.None);
+        await ws.ConnectAsync(new Uri($"wss://{apiHost}/api/sync"), CancellationToken.None);
         if (ws.State != WebSocketState.Open) {
           Console.WriteLine("Unable to open socket.");
           return;

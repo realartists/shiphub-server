@@ -14,6 +14,8 @@
   using QueueClient;
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
+  using Microsoft.Azure;
+  using Common.GitHub;
 
   /// <summary>
   /// TODO: Incremental sync when possible
@@ -21,6 +23,80 @@
   /// </summary>
 
   public static class SyncHandler {
+
+    public static async Task AddOrUpdateRepoWebHooksWithClient(AddOrUpdateRepoWebHooksMessage message, IGitHubClient client) {
+      using (var context = new ShipHubContext()) {
+        var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
+        var events = new string[] {
+          "issues",
+          "issue_comment",
+          "member",
+          "public",
+          "pull_request",
+          "pull_request_review_comment",
+          "repository",
+          "team_add",
+        };
+
+        var repoHooks = (await client.RepoWebhooks(repo.FullName)).Result;
+        var webhookUrl = $"https://{CloudConfigurationManager.GetSetting("ApiHostname")}/webhook/repo/{repo.Id}";
+
+        var existingShipHooks = repoHooks
+          .Where(x => x.Name.Equals("web"))
+          .Where(x => x.Config.Url.Equals(webhookUrl))
+          .ToList();
+
+        if (existingShipHooks.Count == 0) {
+          var secret = Guid.NewGuid();
+
+          // Just stomp over existing hooks for now.  We'll fix this in the next
+          // pass and get smart about not installing hooks when they're already
+          // installed.
+          var existingHook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == repo.Id);
+          if (existingHook != null) {
+            context.Hooks.Remove(existingHook);
+          }
+
+          // GitHub will immediately send a ping when the webhook is created.
+          // To avoid any chance for a race, add the Hook to the DB first, then
+          // create on GitHub.
+          var hook = context.Hooks.Add(new Hook() {
+            Active = false,
+            Events = string.Join(",", events),
+            Secret = secret,
+            RepositoryId = repo.Id,
+          });
+          await context.SaveChangesAsync();
+
+          var addRepoHookResponse = await client.AddRepoWebhook(
+            repo.FullName,
+            new gm.Webhook() {
+              Name = "web",
+              Active = true,
+              Events = events,
+              Config = new gm.WebhookConfiguration() {
+                Url = webhookUrl,
+                ContentType = "json",
+                Secret = secret.ToString(),
+              },
+            });
+
+          if (!addRepoHookResponse.IsError) {
+            hook.GitHubId = addRepoHookResponse.Result.Id;
+            await context.SaveChangesAsync();
+          } else {
+            context.Hooks.Remove(hook);
+            await context.SaveChangesAsync();
+          }
+        }
+      }
+    }
+
+    public static async Task AddOrUpdateRepoWebHooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebHooks)] AddOrUpdateRepoWebHooksMessage message) {
+      await AddOrUpdateRepoWebHooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    }
+
     /// <summary>
     /// Precondition: None.
     /// Postcondition: User saved in DB.
@@ -58,6 +134,7 @@
     public static async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebHooks)] IAsyncCollector<AddOrUpdateRepoWebHooksMessage> addOrUpdateRepoWebHooks,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
@@ -88,7 +165,23 @@
         syncTasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
       }
 
-      await Task.WhenAll(syncTasks);
+      var addOrUpdateRepoWebHooksTasks = keepRepos
+        .Where(x => x.Permissions.Admin)
+        // Don't risk crapping over other people's repos yet.
+        .Where(x => new string[] {
+          "fpotter",
+          "realartists",
+          "realartists-test",
+          "kogir",
+          "james-howard",
+          "aroon", // used in tests only
+        }.Contains(x.Owner.Login))
+        .Select(x => addOrUpdateRepoWebHooks.AddAsync(new AddOrUpdateRepoWebHooksMessage {
+          RepositoryId = x.Id,
+          AccessToken = message.AccessToken
+        }));
+
+      await Task.WhenAll(syncTasks.Concat(addOrUpdateRepoWebHooksTasks));
     }
 
     ///

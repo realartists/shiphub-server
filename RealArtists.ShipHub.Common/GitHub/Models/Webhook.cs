@@ -9,6 +9,7 @@
   }
 
   public class Webhook {
+    public long Id { get; set; }
     public string Name { get; set; }
     public WebhookConfiguration Config { get; set; }
     public IEnumerable<string> Events { get; set; }

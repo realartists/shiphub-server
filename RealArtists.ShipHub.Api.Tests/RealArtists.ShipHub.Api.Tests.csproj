@@ -105,6 +105,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="AutoRollbackAttribute.cs" />
+    <Compile Include="SyncHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="WebhookTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -125,6 +126,10 @@
     <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
       <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
       <Name>RealArtists.ShipHub.QueueClient</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueProcessor\RealArtists.ShipHub.QueueProcessor.csproj">
+      <Project>{87ce7f09-bee2-411e-a2bb-bd9b135ca74c}</Project>
+      <Name>RealArtists.ShipHub.QueueProcessor</Name>
     </ProjectReference>
   </ItemGroup>
   <Choose>

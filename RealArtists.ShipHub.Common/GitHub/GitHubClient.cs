@@ -15,7 +15,13 @@
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Serialization;
 
-  public class GitHubClient {
+  public interface IGitHubClient {
+    [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Webhooks")]
+    Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null);
+  }
+
+  public class GitHubClient : IGitHubClient {
 #if DEBUG
     public const bool UseFiddler = true;
 #endif
@@ -314,6 +320,37 @@
           break;
       }
       return response;
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/hooks", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Webhook>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
+    public async Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        HttpMethod.Post,
+        $"/repos/{repoFullName}/hooks",
+        hook,
+        opts?.CacheOptions);
+
+      var result = await MakeRequest<Webhook>(request, opts?.Credentials);
+      return result;
+    }
+
+    public async Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        HttpMethod.Delete,
+        $"/repos/{repoFullName}/hooks/{hookId}",
+        null,
+        opts?.CacheOptions);
+
+      return await MakeRequest<bool>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubCredentials credentials = null, GitHubRedirect redirect = null) {
