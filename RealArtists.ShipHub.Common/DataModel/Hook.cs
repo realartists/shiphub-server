@@ -17,11 +17,9 @@
 
     public DateTimeOffset? LastSeen { get; set; }
 
-    public long CreatorAccountId { get; set; }
     public long? RepositoryId { get; set; }
     public long? OrganizationId { get; set; }
 
-    public virtual Account CreatorAccount { get; set; }
     public virtual Repository Repository { get; set; }
     public virtual Organization Organization { get; set; }
   }

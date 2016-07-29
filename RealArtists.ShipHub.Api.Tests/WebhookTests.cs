@@ -116,7 +116,6 @@
         Secret = Guid.NewGuid(),
         Active = true,
         Events = "event1,event2",
-        CreatorAccountId = creatorId,
         RepositoryId = repoId,
       });
     }
@@ -126,7 +125,6 @@
         Secret = Guid.NewGuid(),
         Active = true,
         Events = "event1,event2",
-        CreatorAccountId = creatorId,
         OrganizationId = orgId,
       });
     }
@@ -196,7 +194,6 @@
           Secret = Guid.NewGuid(),
           Active = true,
           Events = "some events",
-          CreatorAccountId = user.Id,
           RepositoryId = repo.Id,
         });
 
