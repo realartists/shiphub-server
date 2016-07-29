@@ -125,7 +125,6 @@
     <Compile Include="GitHub\Models\Authorization.cs" />
     <Compile Include="GitHub\Models\Comment.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
-    <Compile Include="GitHub\Models\WebhookEvent.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
     <Compile Include="GitHub\Models\Label.cs" />
     <Compile Include="GitHub\Models\Milestone.cs" />
