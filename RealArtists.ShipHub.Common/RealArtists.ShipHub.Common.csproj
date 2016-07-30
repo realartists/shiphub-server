@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>true</RunCodeAnalysis>
     <CodeAnalysisRuleSet>..\ShipHubAnalysis.ruleset</CodeAnalysisRuleSet>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,6 +34,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>false</RunCodeAnalysis>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AutoMapper, Version=5.0.2.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
@@ -106,6 +108,7 @@
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\TimelineEvent.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
+    <Compile Include="MurmurHash3.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />
     <Compile Include="GitHub\GitHubCredentials.cs" />
