@@ -40,7 +40,7 @@
 
     public string Reactions { get; set; }
 
-    //public long? MetaDataId { get; set; }
+    //public long? MetadataId { get; set; }
 
     public virtual Account Assignee { get; set; }
 
@@ -48,7 +48,7 @@
 
     public virtual Account User { get; set; }
 
-    //public virtual GitHubMetaData MetaData { get; set; }
+    //public virtual GitHubMetadata Metadata { get; set; }
 
     public virtual Milestone Milestone { get; set; }
 

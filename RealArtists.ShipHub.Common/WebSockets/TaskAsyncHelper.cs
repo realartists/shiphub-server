@@ -9,34 +9,21 @@ using System.Threading.Tasks;
 
 namespace RealArtists.ShipHub.Common.WebSockets {
   internal static class TaskAsyncHelper {
-    private static readonly Task _emptyTask = MakeTask<object>(null);
-    private static readonly Task<bool> _trueTask = MakeTask<bool>(true);
-    private static readonly Task<bool> _falseTask = MakeTask<bool>(false);
-
     private static Task<T> MakeTask<T>(T value) {
-      return FromResult<T>(value);
+      return FromResult(value);
     }
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     public static Task Empty {
-      get {
-        return _emptyTask;
-      }
-    }
+      get; } = MakeTask<object>(null);
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     public static Task<bool> True {
-      get {
-        return _trueTask;
-      }
-    }
+      get; } = MakeTask(true);
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     public static Task<bool> False {
-      get {
-        return _falseTask;
-      }
-    }
+      get; } = MakeTask(false);
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     public static Task OrEmpty(this Task task) {
@@ -54,7 +41,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       try {
         return Task.Factory.FromAsync(beginMethod, endMethod, state);
       } catch (Exception ex) {
-        return TaskAsyncHelper.FromError(ex);
+        return FromError(ex);
       }
     }
 
@@ -62,9 +49,9 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Exceptions are set in a tcs")]
     public static Task<T> FromAsync<T>(Func<AsyncCallback, object, IAsyncResult> beginMethod, Func<IAsyncResult, T> endMethod, object state) {
       try {
-        return Task.Factory.FromAsync<T>(beginMethod, endMethod, state);
+        return Task.Factory.FromAsync(beginMethod, endMethod, state);
       } catch (Exception ex) {
-        return TaskAsyncHelper.FromError<T>(ex);
+        return FromError<T>(ex);
       }
     }
 
@@ -73,25 +60,13 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       return Catch(task, ex => { }, traceSource);
     }
 
-    public static TTask Catch<TTask>(this TTask task, TraceSource traceSource, params IPerformanceCounter[] counters) where TTask : Task {
-      return Catch(task, _ => {
-        if (counters == null) {
-          return;
-        }
-        for (var i = 0; i < counters.Length; i++) {
-          counters[i].Increment();
-        }
-      },
-          traceSource);
-    }
-
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     public static TTask Catch<TTask>(this TTask task, Action<AggregateException, object> handler, object state, TraceSource traceSource = null) where TTask : Task {
       if (task != null && task.Status != TaskStatus.RanToCompletion) {
         if (task.Status == TaskStatus.Faulted) {
           ExecuteOnFaulted(handler, state, task.Exception, traceSource);
         } else {
-          AttachFaultedContinuation<TTask>(task, handler, state, traceSource);
+          AttachFaultedContinuation(task, handler, state, traceSource);
         }
       }
 
@@ -599,7 +574,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Exceptions are set in a tcs")]
     public static Task<TResult> FromMethod<TResult>(Func<TResult> func) {
       try {
-        return FromResult<TResult>(func());
+        return FromResult(func());
       } catch (Exception ex) {
         return FromError<TResult>(ex);
       }
@@ -649,7 +624,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Exceptions are set in a tcs")]
     public static Task<TResult> FromMethod<T1, TResult>(Func<T1, TResult> func, T1 arg) {
       try {
-        return FromResult<TResult>(func(arg));
+        return FromResult(func(arg));
       } catch (Exception ex) {
         return FromError<TResult>(ex);
       }
@@ -669,7 +644,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Exceptions are set in a tcs")]
     public static Task<TResult> FromMethod<T1, T2, TResult>(Func<T1, T2, TResult> func, T1 arg1, T2 arg2) {
       try {
-        return FromResult<TResult>(func(arg1, arg2));
+        return FromResult(func(arg1, arg2));
       } catch (Exception ex) {
         return FromError<TResult>(ex);
       }
@@ -679,7 +654,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Exceptions are set in a tcs")]
     public static Task<TResult> FromMethod<T1, T2, T3, TResult>(Func<T1, T2, T3, TResult> func, T1 arg1, T2 arg2, T3 arg3) {
       try {
-        return FromResult<TResult>(func(arg1, arg2, arg3));
+        return FromResult(func(arg1, arg2, arg3));
       } catch (Exception ex) {
         return FromError<TResult>(ex);
       }
@@ -700,7 +675,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     internal static Task<T> FromError<T>(Exception e) {
       var tcs = new TaskCompletionSource<T>();
-      tcs.SetUnwrappedException<T>(e);
+      tcs.SetUnwrappedException(e);
       return tcs.Task;
     }
 
@@ -997,7 +972,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     }
 
     private static class TaskCache<T> {
-      public static Task<T> Empty = MakeTask<T>(default(T));
+      public static Task<T> Empty = MakeTask(default(T));
     }
   }
 }

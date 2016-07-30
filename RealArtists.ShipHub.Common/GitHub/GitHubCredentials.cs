@@ -12,8 +12,8 @@
   public class GitHubCredentials : IGitHubCredentials {
     private AuthenticationHeaderValue _authHeader;
 
-    public GitHubCredentials(AuthenticationHeaderValue authHeader) {
-      _authHeader = authHeader;
+    public GitHubCredentials(AuthenticationHeaderValue authenticationHeader) {
+      _authHeader = authenticationHeader;
     }
 
     public string Scheme { get { return _authHeader.Scheme; } }

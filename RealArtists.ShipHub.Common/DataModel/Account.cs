@@ -4,7 +4,6 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
-  using GitHub;
   using Types;
 
   public abstract class Account {
@@ -20,38 +19,16 @@
 
     public DateTimeOffset Date { get; set; }
 
-    public string MetaDataJson {
-      get { return MetaData.SerializeObject(); }
-      set { MetaData = value.DeserializeObject<GitHubMetaData>(); }
+    public string MetadataJson {
+      get { return Metadata.SerializeObject(); }
+      set { Metadata = value.DeserializeObject<GitHubMetadata>(); }
     }
 
     [NotMapped]
-    public GitHubMetaData MetaData { get; set; }
-
-    // Most of these really only apply to users, but GitHub allows users to convert to orgs
-    // so some of these may exist from before the conversion.
-
-    [StringLength(64)]
-    public string Token { get; set; }
-
-    [StringLength(255)]
-    [Required(AllowEmptyStrings = true)]
-    public string Scopes { get; set; } = "";
-
-    public int RateLimit { get; set; } = 0;
-
-    public int RateLimitRemaining { get; set; } = 0;
-
-    public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
+    public GitHubMetadata Metadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
-
-    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    //public virtual ICollection<IssueEvent> Events { get; set; } = new HashSet<IssueEvent>();
-
-    //[SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    //public virtual ICollection<IssueEvent> AssigneeEvents { get; set; } = new HashSet<IssueEvent>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> AssignedIssues { get; set; } = new HashSet<Issue>();

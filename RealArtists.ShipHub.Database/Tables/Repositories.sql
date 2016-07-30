@@ -5,8 +5,8 @@
   [Name]                   NVARCHAR(255)  NOT NULL,
   [FullName]               NVARCHAR(510)  NOT NULL,
   [Date]                   DATETIMEOFFSET NOT NULL,
-  [AssignableMetaDataJson] NVARCHAR(MAX)  NULL,
-  [LabelMetaDataJson]      NVARCHAR(MAX)  NULL,
+  [AssignableMetadataJson] NVARCHAR(MAX)  NULL,
+  [LabelMetadataJson]      NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Repositories] PRIMARY KEY CLUSTERED ([Id] ASC),
   CONSTRAINT [FK_Repositories_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
 )

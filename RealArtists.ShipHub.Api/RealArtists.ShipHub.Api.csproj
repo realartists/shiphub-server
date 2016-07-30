@@ -39,6 +39,7 @@
       </Objects>
     </PublishDatabaseSettings>
     <PublishDatabases>false</PublishDatabases>
+    <CodeAnalysisRuleSet>..\ShipHubAnalysis.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -47,7 +48,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AutoMapper, Version=5.0.2.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
@@ -160,6 +161,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <CodeAnalysisDictionary Include="..\ShipHubDictionary.xml">
+      <Link>ShipHubDictionary.xml</Link>
+    </CodeAnalysisDictionary>
     <Content Include="Global.asax" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
@@ -180,6 +184,7 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Sync\Messages\HelloResponse.cs" />
     <Compile Include="Sync\Messages\ViewingRequest.cs" />
     <Compile Include="Sync\SyncConnection.cs" />

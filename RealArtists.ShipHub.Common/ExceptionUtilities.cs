@@ -3,8 +3,8 @@
   using System.Linq;
 
   public static class ExceptionUtilities {
-    public static Exception Simplify(this Exception e) {
-      var agg = e as AggregateException;
+    public static Exception Simplify(this Exception exception) {
+      var agg = exception as AggregateException;
 
       if (agg != null) {
         agg = agg.Flatten();
@@ -14,7 +14,7 @@
         }
       }
 
-      return e;
+      return exception;
     }
   }
 }

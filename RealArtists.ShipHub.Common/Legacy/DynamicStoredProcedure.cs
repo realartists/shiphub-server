@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Data;
   using System.Data.SqlClient;
+  using System.Diagnostics.CodeAnalysis;
   using System.Dynamic;
   using System.Threading;
   using System.Threading.Tasks;
@@ -15,7 +16,7 @@
     private SqlCommand _command;
     private DynamicDataReader _reader;
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Security", "CA2100:Review SQL queries for security vulnerabilities")]
+    [SuppressMessage("Microsoft.Security", "CA2100:Review SQL queries for security vulnerabilities")]
     public DynamicStoredProcedure(string procedureName, SqlConnectionFactory provider) {
       var connection = provider.Get();
       _command = connection.CreateCommand();
@@ -63,16 +64,16 @@
 
     public int? CloseAndReturn() {
       CloseConnection();
-      return _command.Parameters[DynamicStoredProcedure.ReturnParameterName].Value as int?;
+      return _command.Parameters[ReturnParameterName].Value as int?;
     }
 
     public override bool TryGetMember(GetMemberBinder binder, out object result) {
-      var name = binder.Name.ToLowerInvariant();
+      var name = binder.Name.ToUpperInvariant();
       return _properties.TryGetValue(name, out result);
     }
 
     public override bool TrySetMember(SetMemberBinder binder, object value) {
-      var name = binder.Name.ToLowerInvariant();
+      var name = binder.Name.ToUpperInvariant();
       _properties[name] = value;
       return true;
     }
@@ -95,7 +96,7 @@
 
       // Add return parameter.
       _command.Parameters
-          .Add(DynamicStoredProcedure.ReturnParameterName, SqlDbType.Int)
+          .Add(ReturnParameterName, SqlDbType.Int)
           .Direction = ParameterDirection.ReturnValue;
 
       // Add other parameters
@@ -139,25 +140,25 @@
         _command.Parameters.Add(key, SqlDbType.VarBinary).Value = value;
       else if (type == typeof(SqlParameter)) {
         _command.Parameters.Add((SqlParameter)value);
-      //} else if (type == typeof(SqlGeography)) {
-      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //  param.Value = value;
-      //  param.UdtTypeName = "Geography";
-      //} else if (type == typeof(SqlGeometry)) {
-      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //  param.Value = value;
-      //  param.UdtTypeName = "Geometry";
-      //} else if (type == typeof(SqlHierarchyId)) {
-      //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-      //  param.Value = value;
-      //  param.UdtTypeName = "HierarchyId";
+        //} else if (type == typeof(SqlGeography)) {
+        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+        //  param.Value = value;
+        //  param.UdtTypeName = "Geography";
+        //} else if (type == typeof(SqlGeometry)) {
+        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+        //  param.Value = value;
+        //  param.UdtTypeName = "Geometry";
+        //} else if (type == typeof(SqlHierarchyId)) {
+        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
+        //  param.Value = value;
+        //  param.UdtTypeName = "HierarchyId";
       } else
         throw new InvalidOperationException($"Parameters of type: {type.FullName} are not supported.");
     }
 
     private bool _disposed = false; // To detect redundant calls
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
+    [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     void Dispose(bool disposing) {
       if (!_disposed && disposing) {
         using (var conn = _command.Connection)

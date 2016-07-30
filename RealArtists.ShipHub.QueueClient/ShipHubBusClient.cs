@@ -16,15 +16,10 @@
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
-    static readonly string _connString;
-    static readonly NamespaceManager _namespaceManager;
+    static readonly string _connString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
+    static readonly NamespaceManager _namespaceManager = NamespaceManager.CreateFromConnectionString(_connString);
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
     static ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
-
-    static ShipHubBusClient() {
-      _connString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
-      _namespaceManager = NamespaceManager.CreateFromConnectionString(_connString);
-    }
 
     static T CacheLookup<T>(ConcurrentDictionary<string, T> cache, string key, Func<T> valueCreator)
       where T : class {
@@ -114,27 +109,37 @@
       await Task.WhenAll(creations);
     }
 
-    public Task NotifyChanges(IChangeSummary changeSummary) {
+    public async Task NotifyChanges(IChangeSummary changeSummary) {
       var topic = TopicClientForName(ShipHubTopicNames.Changes);
-      return topic.SendAsync(WebJobInterop.CreateMessage(new ChangeMessage(changeSummary)));
+      using (var bm = WebJobInterop.CreateMessage(new ChangeMessage(changeSummary))) {
+        await topic.SendAsync(bm);
+      }
     }
 
-    public Task SyncAccount(string accessToken) {
+    public async Task SyncAccount(string accessToken) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
+
       var message = new AccessTokenMessage() {
         AccessToken = accessToken,
       };
-      return queue.SendAsync(WebJobInterop.CreateMessage(message));
+
+      using (var bm = WebJobInterop.CreateMessage(message)) {
+        await queue.SendAsync(bm);
+      }
     }
 
-    public Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
+    public async Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
+
       var message = new IssueMessage() {
         AccessToken = accessToken,
         RepositoryFullName = repositoryFullName,
         Number = issueNumber,
       };
-      return queue.SendAsync(WebJobInterop.CreateMessage(message));
+
+      using (var bm = WebJobInterop.CreateMessage(message)) {
+        await queue.SendAsync(bm);
+      }
     }
   }
 }

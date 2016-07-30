@@ -2,6 +2,7 @@
   using System;
   using System.Collections;
   using System.Collections.Generic;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
@@ -12,72 +13,66 @@
   using Models;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
-  using Newtonsoft.Json.Linq;
   using Newtonsoft.Json.Serialization;
 
-  public class GitHubClient : IDisposable {
+  public class GitHubClient {
 #if DEBUG
     public const bool UseFiddler = true;
-#else
-    public const bool UseFiddler = false;
 #endif
 
     public const int RateLimitReserve = 2000; // Try to keep at least this many requests as rate limit buffer 
     public const int ConcurrencyLimit = 16;
     public const int MaxRetries = 2;
 
-    static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
-    static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
-    static readonly MediaTypeFormatter[] _MediaTypeFormatters;
+    public static JsonSerializerSettings JsonSettings { get; } = CreateGitHubSerializerSettings();
+    public static MediaTypeHeaderValue JsonMediaType { get; } = new MediaTypeHeaderValue("application/json");
+    public static JsonMediaTypeFormatter JsonMediaTypeFormatter { get; } = new JsonMediaTypeFormatter() { SerializerSettings = JsonSettings };
 
-    public static readonly JsonSerializerSettings JsonSettings;
-    public static readonly MediaTypeHeaderValue JsonMediaType = new MediaTypeHeaderValue("application/json");
-    public static readonly JsonMediaTypeFormatter JsonMediaTypeFormatter;
+    private static readonly Uri _ApiRoot = new Uri("https://api.github.com/");
+    private static readonly MediaTypeFormatter[] _MediaTypeFormatters = new[] { JsonMediaTypeFormatter };
+    private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
-    static GitHubClient() {
-      JsonSettings = new JsonSerializerSettings() {
+    private static JsonSerializerSettings CreateGitHubSerializerSettings() {
+      var settings = new JsonSerializerSettings() {
         ContractResolver = new DefaultContractResolver() {
           NamingStrategy = new SnakeCaseNamingStrategy(),
         },
         Formatting = Formatting.Indented,
         NullValueHandling = NullValueHandling.Include,
       };
-      JsonSettings.Converters.Add(new StringEnumConverter() {
+
+      settings.Converters.Add(new StringEnumConverter() {
         AllowIntegerValues = false,
         CamelCaseText = true,
       });
-      JsonMediaTypeFormatter = new JsonMediaTypeFormatter() {
-        SerializerSettings = JsonSettings,
-      };
-      _MediaTypeFormatters = new[] { JsonMediaTypeFormatter };
 
+      // This is a gross hack
+#if DEBUG
       if (UseFiddler) {
         ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
       }
+#endif
+
+      return settings;
     }
 
-    private HttpClient _httpClient;
-
-    public IGitHubCredentials DefaultCredentials { get; set; }
-    public GitHubRateLimit LatestRateLimit { get; private set; }
-
-    public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null, GitHubRateLimit rateLimit = null) {
-      DefaultCredentials = credentials;
-      LatestRateLimit = rateLimit;
-
-      // TODO: Only one handler for all clients?
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+    private static HttpClient CreateGitHubHttpClient() {
       var handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
         MaxRequestContentBufferSize = 4 * 1024 * 1024,
         UseCookies = false,
         UseDefaultCredentials = false,
+#if DEBUG
         UseProxy = UseFiddler,
         Proxy = UseFiddler ? new WebProxy("127.0.0.1", 8888) : null,
+#endif
       };
-      _httpClient = new HttpClient(handler, true);
 
-      var headers = _httpClient.DefaultRequestHeaders;
+      var httpClient = new HttpClient(handler, true);
+
+      var headers = httpClient.DefaultRequestHeaders;
       headers.AcceptEncoding.Clear();
       headers.AcceptEncoding.ParseAdd("gzip");
       headers.AcceptEncoding.ParseAdd("deflate");
@@ -88,45 +83,20 @@
       headers.AcceptCharset.Clear();
       headers.AcceptCharset.ParseAdd("utf-8");
 
-      headers.UserAgent.Clear();
-      headers.UserAgent.Add(new ProductInfoHeaderValue(productName, productVersion));
-
       headers.Add("Time-Zone", "Etc/UTC");
+
+      return httpClient;
     }
 
-    public async Task<GitHubResponse<CreatedAccessToken>> CreateAccessToken(string clientId, string clientSecret, string code, string state) {
-      var request = new GitHubRequest<object>(HttpMethod.Post, "", new {
-        ClientId = clientId,
-        ClientSecret = clientSecret,
-        Code = code,
-        State = state,
-      });
+    public IGitHubCredentials DefaultCredentials { get; set; }
+    public GitHubRateLimit LatestRateLimit { get; private set; }
 
-      var httpRequest = new HttpRequestMessage(request.Method, _OauthTokenRedemption) {
-        Content = request.CreateBodyContent(),
-      };
-      httpRequest.Headers.Accept.Clear();
-      httpRequest.Headers.Accept.ParseAdd("application/json");
+    private ProductInfoHeaderValue _userAgent;
 
-      var response = await _httpClient.SendAsync(httpRequest);
-
-      var result = new GitHubResponse<CreatedAccessToken>() {
-        Date = response.Headers.Date.Value,
-        Status = response.StatusCode,
-      };
-
-      if (response.IsSuccessStatusCode) {
-        var temp = await response.Content.ReadAsAsync<JToken>(_MediaTypeFormatters);
-        if (temp["error"] != null) {
-          result.Error = JsonRoundTrip<GitHubError>(temp);
-        } else {
-          result.Result = JsonRoundTrip<CreatedAccessToken>(temp);
-        }
-      } else {
-        result.Error = await response.Content.ReadAsAsync<GitHubError>(_MediaTypeFormatters);
-      }
-
-      return result;
+    public GitHubClient(string productName, string productVersion, IGitHubCredentials credentials = null, GitHubRateLimit rateLimit = null) {
+      _userAgent = new ProductInfoHeaderValue(productName, productVersion);
+      DefaultCredentials = credentials;
+      LatestRateLimit = rateLimit;
     }
 
     public Task<GitHubResponse<Models.Authorization>> CheckAccessToken(string clientId, string accessToken) {
@@ -232,8 +202,8 @@
       }
     }
 
-    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string sha, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/commits/{sha}", opts?.CacheOptions);
+    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/commits/{hash}", opts?.CacheOptions);
       return MakeRequest<Commit>(request, opts?.Credentials);
     }
 
@@ -291,8 +261,8 @@
       return result;
     }
 
-    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNum, IGitHubRequestOptions opts = null) {
-      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/pulls/{pullRequestNum}", opts?.CacheOptions);
+    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/pulls/{pullRequestNumber}", opts?.CacheOptions);
       return MakeRequest<PullRequest>(request, opts?.Credentials);
     }
 
@@ -355,6 +325,10 @@
         Content = request.CreateBodyContent(),
       };
 
+      // User agent
+      httpRequest.Headers.UserAgent.Clear();
+      httpRequest.Headers.UserAgent.Add(_userAgent);
+
       // Conditional headers
       httpRequest.Headers.IfModifiedSince = request.LastModified;
       if (!string.IsNullOrWhiteSpace(request.ETag)) {
@@ -369,7 +343,7 @@
       credentials = credentials ?? DefaultCredentials;
       credentials?.Apply(httpRequest.Headers);
 
-      var response = await _httpClient.SendAsync(httpRequest);
+      var response = await _HttpClient.SendAsync(httpRequest);
 
       // Handle redirects
       switch (response.StatusCode) {
@@ -528,10 +502,10 @@
       return final;
     }
 
-    public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batch) {
+    public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batchTasks) {
       var tasks = new List<Task<T>>();
       using (var limit = new SemaphoreSlim(ConcurrencyLimit, ConcurrencyLimit)) {
-        foreach (var item in batch) {
+        foreach (var item in batchTasks) {
           await limit.WaitAsync();
 
           tasks.Add(Task.Run(async delegate {
@@ -551,34 +525,6 @@
 
         return results;
       }
-    }
-
-    private static string SerializeObject(object value) {
-      return JsonConvert.SerializeObject(value, JsonSettings);
-    }
-
-    private static T DeserializeObject<T>(string json) {
-      return JsonConvert.DeserializeObject<T>(json, JsonSettings);
-    }
-
-    private static T JsonRoundTrip<T>(object self) {
-      return DeserializeObject<T>(SerializeObject(self));
-    }
-
-    private bool disposedValue = false;
-
-    protected virtual void Dispose(bool disposing) {
-      if (!disposedValue) {
-        if (disposing) {
-          _httpClient.Dispose();
-          _httpClient = null;
-        }
-
-        disposedValue = true;
-      }
-    }
-    public void Dispose() {
-      Dispose(true);
     }
   }
 

@@ -1,7 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[SetAccountLinkedRepositories]
   @AccountId BIGINT,
   @RepositoryIds ItemListTableType READONLY,
-  @MetaData NVARCHAR(MAX)
+  @Metadata NVARCHAR(MAX)
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -31,9 +31,9 @@ BEGIN
   END
 
   UPDATE Accounts SET
-    RepoMetaDataJson = @MetaData
+    RepoMetadataJson = @Metadata
   WHERE Id = @AccountId
-    AND (RepoMetaDataJson IS NULL OR CAST(JSON_VALUE(RepoMetaDataJson, '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET))
+    AND (RepoMetadataJson IS NULL OR CAST(JSON_VALUE(RepoMetadataJson, '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.LastRefresh') as DATETIMEOFFSET))
 
   -- Return updated user
   SELECT NULL as OrganizationId, NULL as RepositoryId, @AccountId as UserId WHERE @Changes = 1

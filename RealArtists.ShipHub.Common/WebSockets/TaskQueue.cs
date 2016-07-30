@@ -12,7 +12,6 @@ namespace RealArtists.ShipHub.Common.WebSockets {
   internal sealed class TaskQueue {
     private readonly object _lockObj = new object();
     private Task _lastQueuedTask;
-    private volatile bool _drained;
     private readonly int? _maxSize;
     private long _size;
 
@@ -34,12 +33,18 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is shared code.")]
     public IPerformanceCounter QueueSizeCounter { get; set; }
 
+#pragma warning disable UseAutoPropertyFadedToken // Use auto property
+#pragma warning disable UseAutoProperty // Use auto property
+    private volatile bool _drained;
+
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is shared code")]
     public bool IsDrained {
       get {
         return _drained;
       }
     }
+#pragma warning restore UseAutoProperty // Use auto property
+#pragma warning restore UseAutoPropertyFadedToken // Use auto property
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is shared code")]
     public Task Enqueue(Func<object, Task> taskFunc, object state) {

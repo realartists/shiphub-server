@@ -15,13 +15,12 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     // 4KB default fragment size (we expect most messages to be very short)
     private const int _receiveLoopBufferSize = 4 * 1024;
-    private readonly int? _maxIncomingMessageSize;
 
     // Queue for sending messages
     private readonly TaskQueue _sendQueue = new TaskQueue();
 
     protected WebSocketHandler(int? maxIncomingMessageSize) {
-      _maxIncomingMessageSize = maxIncomingMessageSize;
+      MaxIncomingMessageSize = maxIncomingMessageSize;
     }
 
     public virtual Task OnOpen() { return TaskAsyncHelper.Empty; }
@@ -101,10 +100,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     }
 
     public int? MaxIncomingMessageSize {
-      get {
-        return _maxIncomingMessageSize;
-      }
-    }
+      get; }
 
     public WebSocket WebSocket { get; set; }
 

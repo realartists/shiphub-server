@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub {
   using System;
 
-  public class EpochUtility {
+  public static class EpochUtility {
     public static readonly DateTime Epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
     public static readonly DateTimeOffset EpochOffset = new DateTimeOffset(Epoch);
 

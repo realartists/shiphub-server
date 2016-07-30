@@ -4,8 +4,8 @@
   using Newtonsoft.Json.Serialization;
 
   public static class JsonUtility {
-    public static readonly JsonSerializerSettings SaneDefaults = CreateSaneDefaultSettings();
-    public static readonly JsonSerializer SaneSerializer = JsonSerializer.Create(SaneDefaults);
+    public static JsonSerializerSettings SaneDefaults { get; } = CreateSaneDefaultSettings();
+    public static JsonSerializer SaneSerializer { get; } = JsonSerializer.Create(SaneDefaults);
 
     public static JsonSerializerSettings CreateSaneDefaultSettings() {
       var settings = new JsonSerializerSettings() {

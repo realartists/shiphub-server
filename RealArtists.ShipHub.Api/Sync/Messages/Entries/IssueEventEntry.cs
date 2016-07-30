@@ -15,18 +15,18 @@
     public long? Assignee { get; set; }
 
     [JsonExtensionData]
-    public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();
+    public IDictionary<string, JToken> ExtensionDataDictionary { get; private set; } = new Dictionary<string, JToken>();
 
     [JsonIgnore]
     public string ExtensionData {
       get {
-        return _extensionData.SerializeObject(Formatting.None);
+        return ExtensionDataDictionary.SerializeObject(Formatting.None);
       }
       set {
         if (value != null) {
-          _extensionData = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);
+          ExtensionDataDictionary = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);
         } else {
-          _extensionData.Clear();
+          ExtensionDataDictionary.Clear();
         }
       }
     }

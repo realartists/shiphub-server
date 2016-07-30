@@ -3,7 +3,7 @@
   using GitHub;
   using Newtonsoft.Json;
 
-  public class GitHubMetaData : IGitHubCacheOptions, IGitHubRequestOptions {
+  public class GitHubMetadata : IGitHubCacheOptions, IGitHubRequestOptions {
     public string AccessToken { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? Expires { get; set; }
@@ -18,9 +18,9 @@
     public IGitHubCacheOptions CacheOptions { get { return this; } }
 
     // Helper
-    public static GitHubMetaData FromResponse(GitHubResponse response) {
+    public static GitHubMetadata FromResponse(GitHubResponse response) {
       var cacheData = response.CacheData;
-      return new GitHubMetaData() {
+      return new GitHubMetadata() {
         AccessToken = cacheData.AccessToken,
         ETag = cacheData.ETag,
         Expires = cacheData.Expires,

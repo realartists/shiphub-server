@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Diagnostics.CodeAnalysis;
   using System.Net;
   using System.Net.Http;
   using System.Net.Mime;
@@ -27,6 +28,7 @@
       throw new NotImplementedException("This method deliberately not implemented.");
     }
 
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     [HttpGet]
     [Route("time")]
     public HttpResponseMessage Time() {

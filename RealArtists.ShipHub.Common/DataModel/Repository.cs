@@ -23,15 +23,15 @@
 
     public DateTimeOffset Date { get; set; }
 
-    //public long? AssignableMetaDataId { get; set; }
+    //public long? AssignableMetadataId { get; set; }
 
-    //public long? LabelMetaDataId { get; set; }
+    //public long? LabelMetadataId { get; set; }
 
     public virtual Account Account { get; set; }
 
-    //public virtual GitHubMetaData AssignableMetaData { get; set; }
+    //public virtual GitHubMetadata AssignableMetadata { get; set; }
 
-    //public virtual GitHubMetaData LabelMetaData { get; set; }
+    //public virtual GitHubMetadata LabelMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();

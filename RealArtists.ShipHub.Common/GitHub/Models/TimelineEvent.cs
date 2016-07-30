@@ -15,41 +15,41 @@
     public Account Assignee { get; set; }
     //public Milestone Milestone { get; set; } // What GitHub sends is incomplete and nearly useless, often just the name. No need to parse.
 
-    // We want these to be saved in _extensionData, so don't actually deserialize them.
-    [JsonIgnore]
-    public string CommitId { get { return _extensionData.Val("commit_id")?.ToObject<string>(); } }
-
-    [JsonIgnore]
-    public string CommitUrl { get { return _extensionData.Val("commit_url")?.ToObject<string>(); } }
-
-    [JsonIgnore]
-    public Label Label { get { return _extensionData.Val("label")?.ToObject<Label>(); } }
-
-    [JsonIgnore]
-    public ReferenceSource Source { get { return _extensionData.Val("source")?.ToObject<ReferenceSource>(); } }
-
-    [JsonIgnore]
-    public TimelineRename Rename { get { return _extensionData.Val("rename")?.ToObject<TimelineRename>(); } }
-
     // Because now they're mingled
     public bool IsIssueEvent { get { return _issueEventTypeNames.Contains(Event.ToString()); } }
+
+    // We want these to be saved in _extensionData, so don't actually deserialize them.
+    [JsonIgnore]
+    public string CommitId { get { return ExtensionDataDictionary.Val("commit_id")?.ToObject<string>(); } }
+
+    [JsonIgnore]
+    public string CommitUrl { get { return ExtensionDataDictionary.Val("commit_url")?.ToObject<string>(); } }
+
+    [JsonIgnore]
+    public Label Label { get { return ExtensionDataDictionary.Val("label")?.ToObject<Label>(); } }
+
+    [JsonIgnore]
+    public ReferenceSource Source { get { return ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(); } }
+
+    [JsonIgnore]
+    public TimelineRename Rename { get { return ExtensionDataDictionary.Val("rename")?.ToObject<TimelineRename>(); } }
 
     /// <summary>
     /// Just in case (for future compatibility)
     /// </summary>
     [JsonExtensionData]
-    public IDictionary<string, JToken> _extensionData = new Dictionary<string, JToken>();
+    public IDictionary<string, JToken> ExtensionDataDictionary { get; private set; } = new Dictionary<string, JToken>();
 
     [JsonIgnore]
     public string ExtensionData {
       get {
-        return _extensionData.SerializeObject(Formatting.None);
+        return ExtensionDataDictionary.SerializeObject(Formatting.None);
       }
       set {
         if (value != null) {
-          _extensionData = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);
+          ExtensionDataDictionary = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);
         } else {
-          _extensionData.Clear();
+          ExtensionDataDictionary.Clear();
         }
       }
     }

@@ -7,12 +7,17 @@
   using Filters;
 
   public abstract class ShipHubController : ApiController {
-    private ShipHubContext _Context = new ShipHubContext();
+#pragma warning disable UseAutoPropertyFadedToken // Use auto property
+#pragma warning disable UseAutoProperty // Use auto property
+    private ShipHubContext _context = new ShipHubContext();
 
-    protected ShipHubContext Context { get { return _Context; } }
+    protected ShipHubContext Context { get { return _context; } }
+#pragma warning restore UseAutoProperty // Use auto property
+#pragma warning restore UseAutoPropertyFadedToken // Use auto property
+
     protected ShipHubPrincipal ShipHubUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
 
-    public IMapper Mapper { get; private set; } = AutoMapperConfig.Mapper;
+    public IMapper Mapper { get; } = AutoMapperConfig.Mapper;
 
     public IHttpActionResult Error(
                          string message,
@@ -37,9 +42,9 @@
 
     protected override void Dispose(bool disposing) {
       if (disposing) {
-        if (_Context != null) {
-          _Context.Dispose();
-          _Context = null;
+        if (_context != null) {
+          _context.Dispose();
+          _context = null;
         }
       }
       base.Dispose(disposing);
