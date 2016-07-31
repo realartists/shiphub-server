@@ -7,6 +7,7 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Microsoft.Azure.WebJobs;
+  using Newtonsoft.Json.Linq;
   using QueueClient;
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
@@ -379,12 +380,28 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<IssueMessage> syncIssueComments,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      ///////////////////////////////////////////
+      /* NOTE!
+       * We can't sync the timeline incrementally, because the client wants commit and
+       * reference data inlined. This means we always have to download all the
+       * timeline events in case an old one now has updated data. Other options are to
+       * just be wrong, or to simply reference the user by id and mark them referenced
+       * by the repo.
+       */
+      //////////////////////////////////////////
+
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
       var tasks = new List<Task>();
 
       var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
       var timeline = timelineResponse.Result;
+
+      // If we find comments, sync them
+      // TODO: Incrementally
+      if (timeline.Any(x => x.Event == "commented")) {
+        tasks.Add(syncIssueComments.AddAsync(message));
+      }
 
       using (var context = new ShipHubContext()) {
         // TODO: I don't like this
@@ -394,71 +411,134 @@
           .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
           .SingleAsync();
 
-        // Grab accounts from the response.
-        // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
-        var accounts = timeline
-          .SelectMany(x => new[] { x.Actor, x.Assignee })
+        // For adding to the DB later
+        var accounts = new List<gm.Account>();
+        foreach (var tl in timeline) {
+          accounts.Add(tl.Actor);
+          accounts.Add(tl.Assignee);
+          accounts.Add(tl.Source?.Actor);
+        }
+
+        // Find all events with associated commits, and embed them.
+        var withCommits = timeline.Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl)).ToArray();
+        var commits = withCommits.Select(x => x.CommitUrl).Distinct();
+
+        if (commits.Any()) {
+          var commitLookups = commits
+            .Select(x => {
+              var parts = x.Split('/');
+              var numParts = parts.Length;
+              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+              var sha = parts[numParts - 1];
+              return new {
+                Id = x,
+                Task = ghc.Commit(repoName, sha),
+              };
+            })
+            .ToDictionary(x => x.Id, x => x.Task);
+
+          // TODO: Lookup Repo Name->ID mapping
+
+          await Task.WhenAll(commitLookups.Values);
+
+          foreach (var item in withCommits) {
+            var lookup = commitLookups[item.CommitUrl];
+            var commit = lookup.Result.Result;
+            accounts.Add(commit.Author);
+            accounts.Add(commit.Committer);
+            item.ExtensionDataDictionary["ship_commit_message"] = commit.CommitDetails.Message;
+            item.ExtensionDataDictionary["ship_commit_author"] = new JObject(commit.Author);
+            item.ExtensionDataDictionary["ship_commit_committer"] = new JObject(commit.Committer);
+          }
+        }
+
+        var withSources = timeline.Where(x => x.Source != null).ToArray();
+        var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
+
+        if (sources.Any()) {
+          var sourceLookups = sources
+            .Select(x => {
+              var parts = x.Split('/');
+              var numParts = parts.Length;
+              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+              var issueNum = int.Parse(parts[numParts - 1]);
+              return new {
+                Id = x,
+                Task = ghc.Issue(repoName, issueNum),
+              };
+            })
+            .ToDictionary(x => x.Id, x => x.Task);
+
+          await Task.WhenAll(sourceLookups.Values);
+
+          var prLookups = sourceLookups.Values
+            .Where(x => x.Result.Result.PullRequest != null)
+            .Select(x => {
+              var parts = x.Result.Result.PullRequest.Url.Split('/');
+              var numParts = parts.Length;
+              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+              var prNum = int.Parse(parts[numParts - 1]);
+              return new {
+                Id = "",
+                Task = ghc.PullRequest(repoName, prNum),
+              };
+            })
+            .ToDictionary(x => x.Id, x => x.Task);
+
+          await Task.WhenAll(prLookups.Values);
+
+          foreach (var item in withSources) {
+            var issue = sourceLookups[item.Source.IssueUrl].Result.Result;
+            accounts.Add(item.Source.Actor);
+            accounts.Add(issue.Assignee);
+            accounts.AddRange(issue.Assignees); // Do we need both assignee and assignees? I think yes.
+            accounts.Add(issue.ClosedBy);
+            accounts.Add(issue.User);
+
+            item.ExtensionDataDictionary["ship_issue_state"] = issue.State;
+            item.ExtensionDataDictionary["ship_issue_title"] = issue.Title;
+
+            if (issue.PullRequest != null) {
+              var pr = prLookups[issue.PullRequest.Url].Result.Result;
+              item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
+            }
+          }
+        }
+
+        // Update accounts
+        var uniqueAccounts = accounts
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
 
-        // Save the things that are IssueEvents
-        var timelineIssueEvents = timeline.Where(x => x.IsIssueEvent);
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timelineIssueEvents);
+        // Assign missing identifiers
+        var missingIds = timeline.Where(x => x.Id == 0);
+        foreach (var item in missingIds) {
+          if (item.Id == 0) {
+            // Oh GitHub, how I hate thee. Why can't you provide ids?
+            // We're regularly seeing GitHub ids as large as 31 bits.
+            // We can only store four things this way because we only have two bits :(
+            switch (item.Event) {
+              case "cross-referenced":
+                // high bits 11
+                // TODO: Mask these?
+                item.Id = ((long)3) << 62 | item.Source.CommentId << 31 | issueDetails.IssueId;
+                break;
+              default:
+                // TODO: Logging
+                break;
+            }
+          }
+        }
+
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
+
+        // Set issueId
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
         changes.UnionWith(await context.BulkUpdateIssueEvents(issueDetails.RepositoryId, events));
-
-        // If we find comments, sync them
-        // TODO: Incrementally
-        if (timeline.Any(x => x.Event == gm.TimelineEventType.Commented)) {
-          tasks.Add(syncIssueComments.AddAsync(message));
-        }
-
-        // Cross references (from other issues)
-        var crossReferences = timeline.Where(x => x.Event == gm.TimelineEventType.CrossReferenced).ToArray();
-        var issueLookups = crossReferences.Select(x => {
-          var parts = x.Source.IssueUrl.Split('/');
-          var numParts = parts.Length;
-          var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-          var issueNum = int.Parse(parts[numParts - 1]);
-          return ghc.Issue(repoName, issueNum);
-        });
-
-        // TOOD: more parallel?
-        var issueResults = await Task.WhenAll(issueLookups);
-
-        var prLookups = issueResults
-          .Where(x => x.Result.PullRequest != null)
-          .Select(x => {
-            var parts = x.Result.PullRequest.Url.Split('/');
-            var numParts = parts.Length;
-            var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-            var pullNum = int.Parse(parts[numParts - 1]);
-            return ghc.PullRequest(repoName, pullNum);
-          });
-
-        var prResults = await Task.WhenAll(prLookups);
-
-        // Do things and stuff
-
-        // References
-        var references = timeline.Where(x => x.Event == gm.TimelineEventType.Referenced || x.Event == gm.TimelineEventType.Closed);
-        var refLookups = references
-          .Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl))
-          .Select(x => {
-            var parts = x.CommitUrl.Split('/');
-            var numParts = parts.Length;
-            var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-            var sha = parts[numParts - 1];
-            return ghc.Commit(repoName, sha);
-          });
-
-        var refResults = await Task.WhenAll(refLookups);
-
-        // Do things and stuff
       }
 
       if (!changes.Empty) {
