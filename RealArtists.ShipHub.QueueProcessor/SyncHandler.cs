@@ -332,6 +332,12 @@
       var events = eventsResponse.Result;
 
       using (var context = new ShipHubContext()) {
+        // TODO: Gross
+        var userId = await context.Users
+          .Where(x => x.Token == message.AccessToken)
+          .Select(x => x.Id)
+          .SingleAsync();
+
         // For now only grab accounts from the response.
         // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
         var accounts = events
@@ -339,8 +345,10 @@
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        changes = await context.BulkUpdateAccounts(eventsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
-        changes.UnionWith(await context.BulkUpdateIssueEvents(message.Repository.Id, SharedMapper.Map<IEnumerable<IssueEventTableType>>(events)));
+        var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
+        changes = await context.BulkUpdateAccounts(eventsResponse.Date, accountsParam);
+        var eventsParam = SharedMapper.Map<IEnumerable<IssueEventTableType>>(events);
+        changes.UnionWith(await context.BulkUpdateIssueEvents(userId, message.Repository.Id, eventsParam, accountsParam.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {
@@ -404,6 +412,12 @@
       }
 
       using (var context = new ShipHubContext()) {
+        // TODO: Gross
+        var userId = await context.Users
+          .Where(x => x.Token == message.AccessToken)
+          .Select(x => x.Id)
+          .SingleAsync();
+
         // TODO: I don't like this
         var issueDetails = await context.Issues
           .Where(x => x.Repository.FullName == message.RepositoryFullName)
@@ -510,7 +524,8 @@
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        changes = await context.BulkUpdateAccounts(timelineResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+        var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
+        changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
 
         // Assign missing identifiers
         var missingIds = timeline.Where(x => x.Id == 0);
@@ -532,13 +547,14 @@
           }
         }
 
+        // This conversion handles the restriction field and hash.
         var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
 
         // Set issueId
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
-        changes.UnionWith(await context.BulkUpdateIssueEvents(issueDetails.RepositoryId, events));
+        changes.UnionWith(await context.BulkUpdateIssueEvents(userId, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {

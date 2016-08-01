@@ -231,8 +231,13 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateIssueEvents(long repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
-      var tableParam = CreateTableParameter(
+    public Task<ChangeSummary> BulkUpdateIssueEvents(
+      long userId,
+      long repositoryId,
+      IEnumerable<IssueEventTableType> issueEvents,
+      IEnumerable<long> referencedAccounts) {
+
+      var eventsParam = CreateTableParameter(
         "IssueEvents",
         "[dbo].[IssueEventTableType]",
         new[] {
@@ -242,6 +247,8 @@
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
+          Tuple.Create("Hash", typeof(Guid)),
+          Tuple.Create("Restricted", typeof(bool)),
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
@@ -251,13 +258,19 @@
           x.Event,
           x.CreatedAt,
           x.AssigneeId,
+          x.Hash,
+          x.Restricted,
           x.ExtensionData,
         },
         issueEvents);
 
+      var accountsParam = CreateItemListTable("ReferencedAccounts", referencedAccounts);
+
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueEvents]", x => {
+        x.UserId = userId;
         x.RepositoryId = repositoryId;
-        x.IssueEvents = tableParam;
+        x.IssueEvents = eventsParam;
+        x.ReferencedAccounts = accountsParam;
       });
     }
 

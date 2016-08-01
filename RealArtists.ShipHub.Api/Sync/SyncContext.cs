@@ -148,20 +148,37 @@
                 // Events
                 reader.NextResult();
                 while (reader.Read()) {
-                  entries.Add(new SyncLogEntry() {
+                  string eventType = ddr.Event;
+
+                  var data = new IssueEventEntry() {
+                    Actor = ddr.ActorId,
+                    Assignee = ddr.AssigneeId,
+                    CreatedAt = ddr.CreatedAt,
+                    Event = eventType,
+                    ExtensionData = ddr.ExtensionData,
+                    Identifier = ddr.Id,
+                    Issue = ddr.IssueId,
+                    Repository = ddr.RepositoryId,
+                  };
+
+                  var eventEntry = new SyncLogEntry() {
                     Action = SyncLogAction.Set,
                     Entity = SyncEntityType.Event,
-                    Data = new IssueEventEntry() {
-                      Actor = ddr.ActorId,
-                      Assignee = ddr.AssigneeId,
-                      CreatedAt = ddr.CreatedAt,
-                      Event = ddr.Event,
-                      ExtensionData = ddr.ExtensionData,
-                      Identifier = ddr.Id,
-                      Issue = ddr.IssueId,
-                      Repository = ddr.RepositoryId,
-                    },
-                  });
+                    Data = data,
+                  };
+
+                  if (ddr.Restricted) {
+                    // closed event is special
+                    if (eventType == "closed") {
+                      // strip all extra info
+                      // See https://realartists.slack.com/archives/general/p1470075341001004
+                      data.ExtensionDataDictionary.Clear();
+                    } else {
+                      continue;
+                    }
+                  }
+
+                  entries.Add(eventEntry);
                 }
 
                 // Milestones

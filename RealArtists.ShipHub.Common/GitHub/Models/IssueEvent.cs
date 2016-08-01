@@ -4,17 +4,28 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
 
+  /// <summary>
+  /// IssueEvents and TimelineEvents and close enough that I want to share some logic.
+  /// </summary>
   public class IssueEvent {
     public long Id { get; set; }
     public Account Actor { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public Account Assignee { get; set; }
-    public Account Assigner { get; set; } // This replaces Actor for assigned events
-    //public Milestone Milestone { get; set; } // What GitHub sends is incomplete and nearly useless, often just the name. No need to parse.
-    public Issue Issue { get; set; }  // Only present when requesting repository events.
 
+    // What GitHub sends is incomplete and nearly useless, often just the name. No need to parse.
+    //public Milestone Milestone { get; set; } 
+
+    // Only for IssueEvents, should replace Actor when set.
+    public Account Assigner { get { return Actor; } set { Actor = value; } }
+
+    // Only present when requesting repository events.
+    public Issue Issue { get; set; }
+
+    ///////////////////////////////////
     // We want these to be saved in _extensionData, so don't actually deserialize them.
+    ///////////////////////////////////
     [JsonIgnore]
     public string CommitId { get { return ExtensionDataDictionary.Val("commit_id")?.ToObject<string>(); } }
 
@@ -27,9 +38,12 @@
     [JsonIgnore]
     public IssueRename Rename { get { return ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>(); } }
 
-    /// <summary>
-    /// Just in case (for future compatibility)
-    /// </summary>
+    [JsonIgnore]
+    public ReferenceSource Source { get { return ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(); } }
+
+    ///////////////////////////////////
+    // Json bag
+    ///////////////////////////////////
     [JsonExtensionData]
     public IDictionary<string, JToken> ExtensionDataDictionary { get; private set; } = new Dictionary<string, JToken>();
 
@@ -51,5 +65,15 @@
   public class IssueRename {
     public string From { get; set; }
     public string To { get; set; }
+  }
+
+  public class ReferenceSource {
+    public Account Actor { get; set; }
+
+    [JsonProperty("id")]
+    public long CommentId { get; set; }
+
+    [JsonProperty("url")]
+    public string IssueUrl { get; set; }
   }
 }

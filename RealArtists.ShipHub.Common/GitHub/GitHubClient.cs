@@ -119,14 +119,14 @@
       }
     }
 
-    public async Task<GitHubResponse<IEnumerable<TimelineEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+    public async Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}/timeline", opts?.CacheOptions);
 
       // Timeline support (application/vnd.github.mockingbird-preview+json)
       // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
       request.AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json";
 
-      var result = await MakeRequest<IEnumerable<TimelineEvent>>(request, opts?.Credentials);
+      var result = await MakeRequest<IEnumerable<IssueEvent>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {

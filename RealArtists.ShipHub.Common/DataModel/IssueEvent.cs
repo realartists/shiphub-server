@@ -21,6 +21,13 @@
 
     public long? AssigneeId { get; set; }
 
+    public Guid? Hash { get; set; }
+
+    public bool Restricted { get; set; }
+
+    [Required]
+    public string ExtensionData { get; set; }
+
     public virtual Repository Repository { get; set; }
 
     public virtual Issue Issue { get; set; }
@@ -28,8 +35,5 @@
     public virtual Account Actor { get; set; }
 
     public virtual Account Assignee { get; set; }
-
-    [Required]
-    public string ExtensionData { get; set; }
   }
 }

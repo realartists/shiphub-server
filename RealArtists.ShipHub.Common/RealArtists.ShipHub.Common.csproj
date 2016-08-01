@@ -105,8 +105,8 @@
     <Compile Include="GitHub\GitHubRateLimit.cs" />
     <Compile Include="GitHub\GitHubReactions.cs" />
     <Compile Include="GitHub\Models\Commit.cs" />
+    <Compile Include="GitHub\Models\IssueEvent.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
-    <Compile Include="GitHub\Models\TimelineEvent.cs" />
     <Compile Include="GitHub\Models\Reactions.cs" />
     <Compile Include="MurmurHash3.cs" />
     <Compile Include="JsonUtility.cs" />
@@ -125,7 +125,6 @@
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
     <Compile Include="GitHub\Models\WebhookEvent.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
-    <Compile Include="GitHub\Models\IssueEvent.cs" />
     <Compile Include="GitHub\Models\Label.cs" />
     <Compile Include="GitHub\Models\Milestone.cs" />
     <Compile Include="GitHub\Models\Repository.cs" />

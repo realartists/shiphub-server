@@ -108,10 +108,11 @@ BEGIN
     OPTION (RECOMPILE)
 
     -- Events
-    SELECT [e].[Id], [e].[RepositoryId], [e].[IssueId], [e].[ActorId], [e].[CommitId], [e].[Event],
-           [e].[CreatedAt], [e].[AssigneeId], [e].[ExtensionData]
+    SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.AssigneeId, e.ExtensionData,
+           CAST(CASE WHEN a.UserId IS NULL THEN e.Restricted ELSE 0 END as BIT) as Restricted
     FROM IssueEvents as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'event')
+      LEFT OUTER JOIN IssueEventAccess as a ON (e.Restricted = 1 AND a.IssueEventId = e.Id AND a.UserId = @UserId)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
