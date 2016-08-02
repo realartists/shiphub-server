@@ -527,9 +527,11 @@
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
 
-        // Assign missing identifiers
-        var missingIds = timeline.Where(x => x.Id == 0);
-        foreach (var item in missingIds) {
+        var notComments = timeline.Where(x => x.Event != "commented");
+
+        // Cleanup the data
+        foreach (var item in notComments) {
+          // missing event ids
           if (item.Id == 0) {
             // Oh GitHub, how I hate thee. Why can't you provide ids?
             // We're regularly seeing GitHub ids as large as 31 bits.
@@ -545,10 +547,22 @@
                 break;
             }
           }
+
+          // missing actors
+          if (item.Actor == null) {
+            switch (item.Event) {
+              case "cross-referenced":
+                item.Actor = item.Source.Actor;
+                break;
+              default:
+                // TODO: Logging
+                break;
+            }
+          }
         }
 
         // This conversion handles the restriction field and hash.
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(timeline);
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(notComments);
 
         // Set issueId
         foreach (var item in events) {
