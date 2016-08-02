@@ -21,7 +21,7 @@
 
   public class SyncConnection : WebSocketHandler {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
-    private static readonly Guid _purgeId = new Guid("1789F841-6DC1-4719-9A56-A05908D0E5E2");
+    private static readonly Guid _purgeId = new Guid("1789F841-6DC1-4719-9A56-A05908D0E5E3");
     private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
 
     // TODO: Fix for production.
