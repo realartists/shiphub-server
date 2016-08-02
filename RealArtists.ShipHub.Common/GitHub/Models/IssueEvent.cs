@@ -12,7 +12,6 @@
     public Account Actor { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public Account Assignee { get; set; }
 
     // What GitHub sends is incomplete and nearly useless, often just the name. No need to parse.
     //public Milestone Milestone { get; set; } 
@@ -26,6 +25,9 @@
     ///////////////////////////////////
     // We want these to be saved in _extensionData, so don't actually deserialize them.
     ///////////////////////////////////
+    [JsonIgnore]
+    public Account Assignee { get { return ExtensionDataDictionary.Val("assignee")?.ToObject<Account>(); } }
+
     [JsonIgnore]
     public string CommitId { get { return ExtensionDataDictionary.Val("commit_id")?.ToObject<string>(); } }
 
