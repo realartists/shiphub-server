@@ -4,6 +4,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
+  using GitHub;
   using Types;
 
   public abstract class Account {
@@ -26,6 +27,19 @@
 
     [NotMapped]
     public GitHubMetadata Metadata { get; set; }
+
+    [StringLength(64)]
+    public string Token { get; set; }
+
+    [StringLength(255)]
+    [Required(AllowEmptyStrings = true)]
+    public string Scopes { get; set; } = "";
+
+    public int RateLimit { get; set; } = 0;
+
+    public int RateLimitRemaining { get; set; } = 0;
+
+    public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();

@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System;
+  using System.Diagnostics.CodeAnalysis;
   using System.Reflection;
   using DataModel;
   using GitHub;
@@ -8,6 +9,7 @@
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
+    [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Only a valid operation for users.")]
     public static GitHubClient CreateUserClient(User user) {
       if (user == null) {
         throw new ArgumentNullException(nameof(user));
