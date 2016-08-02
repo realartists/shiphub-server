@@ -2,7 +2,7 @@
   [Id]            BIGINT           NOT NULL,
   [RepositoryId]  BIGINT           NOT NULL,
   [IssueId]       BIGINT           NOT NULL,
-  [ActorId]       BIGINT           NOT NULL,
+  [ActorId]       BIGINT           NULL,
   [Event]         NVARCHAR(64)     NOT NULL,
   [CreatedAt]     DATETIMEOFFSET   NOT NULL,
   [Hash]          UNIQUEIDENTIFIER NULL,
@@ -22,5 +22,7 @@ GO
 CREATE NONCLUSTERED INDEX [IX_IssueEvents_IssueId] ON [dbo].[IssueEvents]([IssueId])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_IssueEvents_ActorId] ON [dbo].[IssueEvents]([ActorId])
+CREATE NONCLUSTERED INDEX [IX_IssueEvents_ActorId]
+  ON [dbo].[IssueEvents]([ActorId])
+  WHERE ([ActorId] IS NOT NULL)
 GO

@@ -9,7 +9,7 @@
     public long Identifier { get; set; }
     public long Repository { get; set; }
     public long Issue { get; set; }
-    public long Actor { get; set; }
+    public long? Actor { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
