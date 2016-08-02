@@ -21,7 +21,7 @@
 
     // Arguably should allow duplicate keys, but no. Don't do that.
     // Should it be case sensitive? Meh.
-    public Dictionary<string, string> Parameters { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>();
 
     public Uri Uri {
       get {

@@ -12,7 +12,7 @@
       OrgVersions = orgVersions ?? new Dictionary<long, long>();
     }
 
-    public IDictionary<long, long> RepoVersions { get; set; }
-    public IDictionary<long, long> OrgVersions { get; set; }
+    public IDictionary<long, long> RepoVersions { get; }
+    public IDictionary<long, long> OrgVersions { get; }
   }
 }

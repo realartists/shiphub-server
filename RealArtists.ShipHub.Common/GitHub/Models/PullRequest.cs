@@ -1,8 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
   public class PullRequest {
-    public string Url { get; set; }
-    public string HtmlUrl { get; set; }
-    public string DiffUrl { get; set; }
-    public string PatchUrl { get; set; }
+    // There is so much more than this, but for now, this is all we need.
+    public bool Merged { get; set; }
   }
 }

@@ -21,17 +21,9 @@
         }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
       CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
-        .BeforeMap((from, to) => {
-          if (from.PullRequest != null) {
-            throw new InvalidOperationException("Pull requests are not supported.");
-          }
-        }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
+        .ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
-      CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination)
-        .ForMember(x => x.ActorId, o => o.ResolveUsing(x => x.Assigner?.Id ?? x.Actor.Id));
-
-      CreateMap<g.TimelineEvent, IssueEventTableType>(MemberList.Destination)
-        .ForMember(x => x.IssueId, o => o.Ignore());
+      CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination);
 
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
 

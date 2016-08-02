@@ -6,7 +6,7 @@
   using Common;
 
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true, AllowMultiple = true)]
-  public class DeaggregateExceptionFilterAttribute : ExceptionFilterAttribute {
+  public sealed class DeaggregateExceptionFilterAttribute : ExceptionFilterAttribute {
     public override void OnException(HttpActionExecutedContext actionExecutedContext) {
       actionExecutedContext.Exception = actionExecutedContext.Exception.Simplify();
       base.OnException(actionExecutedContext);

@@ -24,6 +24,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <RunCodeAnalysis>true</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>..\ShipHubAnalysis.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -33,7 +34,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="AutoMapper, Version=5.0.2.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
@@ -77,7 +78,7 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.ServiceBus, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\WindowsAzure.ServiceBus.3.3.1\lib\net45-full\Microsoft.ServiceBus.dll</HintPath>
+      <HintPath>..\packages\WindowsAzure.ServiceBus.3.3.2\lib\net45-full\Microsoft.ServiceBus.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.WindowsAzure.Configuration, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -139,6 +140,11 @@
       <Name>RealArtists.ShipHub.Common</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\ShipHubDictionary.xml">
+      <Link>ShipHubDictionary.xml</Link>
+    </CodeAnalysisDictionary>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets" Condition="Exists('..\packages\Microsoft.Web.WebJobs.Publish.1.0.12\tools\webjobs.targets')" />
   <Import Project="$(SolutionDir)SecretStubs.targets" />
@@ -149,17 +155,11 @@
     </BuildDependsOn>
   </PropertyGroup>
   <!-- app.config transformation (HACK) -->
-  <UsingTask TaskName="TransformXml"
-             AssemblyFile="$(VSToolsPath)\WebApplications\Microsoft.Web.Publishing.Tasks.dll"
-             Condition="'$(VSToolsPath)' != ''" />
-  <Target Name="AfterCompile"
-          Condition="Exists('app.$(Configuration).config')">
-
-    <TransformXml Source="app.config"
-                  Destination="$(IntermediateOutputPath)$(TargetFileName).config"
-                  Transform="app.$(Configuration).config" />
+  <UsingTask TaskName="TransformXml" AssemblyFile="$(VSToolsPath)\WebApplications\Microsoft.Web.Publishing.Tasks.dll" Condition="'$(VSToolsPath)' != ''" />
+  <Target Name="AfterCompile" Condition="Exists('app.$(Configuration).config')">
+    <TransformXml Source="$(SolutionDir)App.config" Destination="$(IntermediateOutputPath)$(TargetFileName).config" Transform="app.$(Configuration).config" />
     <ItemGroup>
-      <AppConfigWithTargetPath Remove="app.config" />
+      <AppConfigWithTargetPath Remove="App.config" />
       <AppConfigWithTargetPath Include="$(IntermediateOutputPath)$(TargetFileName).config">
         <TargetPath>$(TargetFileName).config</TargetPath>
       </AppConfigWithTargetPath>

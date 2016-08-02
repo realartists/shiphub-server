@@ -6,7 +6,7 @@
   public static class ShipHubTopicNames {
     public const string DeadLetterSuffix = "/$DeadLetterQueue";
 
-    public static readonly IEnumerable<string> AllTopics;
+    public static IEnumerable<string> AllTopics { get; private set; }
 
     static ShipHubTopicNames() {
       AllTopics = typeof(ShipHubTopicNames)

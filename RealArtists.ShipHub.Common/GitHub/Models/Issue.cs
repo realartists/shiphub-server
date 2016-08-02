@@ -19,7 +19,14 @@
     public Account ClosedBy { get; set; }
 
     public Reactions Reactions { get; set; }
-    public PullRequest PullRequest { get; set; }
+    public PullRequestDetails PullRequest { get; set; }
     public IEnumerable<Account> Assignees { get; set; }
+  }
+
+  public class PullRequestDetails {
+    public string Url { get; set; }
+    public string HtmlUrl { get; set; }
+    public string DiffUrl { get; set; }
+    public string PatchUrl { get; set; }
   }
 }

@@ -11,10 +11,6 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       return new PreserveCultureAwaiter(task, useSyncContext: true);
     }
 
-    internal static PreserveCultureAwaiter PreserveCultureNotContext(this Task task) {
-      return new PreserveCultureAwaiter(task, useSyncContext: false);
-    }
-
     internal static PreserveCultureAwaiter<T> PreserveCulture<T>(this Task<T> task) {
       return new PreserveCultureAwaiter<T>(task, useSyncContext: true);
     }

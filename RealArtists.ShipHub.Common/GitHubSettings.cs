@@ -1,38 +1,15 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System;
-  using System.Collections.Generic;
-  using System.Configuration;
+  using System.Diagnostics.CodeAnalysis;
   using System.Reflection;
   using DataModel;
   using GitHub;
 
   public static class GitHubSettings {
-    public const string GitHubSettingsKey = "GitHubCredentials";
-    public static readonly string ApplicationName;
-    public static readonly string ApplicationVersion;
-    public static readonly IReadOnlyDictionary<string, string> Credentials;
+    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
+    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-    static GitHubSettings() {
-      var name = Assembly.GetExecutingAssembly().GetName();
-      ApplicationName = name.Name;
-      ApplicationVersion = name.Version.ToString();
-
-      var creds = new Dictionary<string, string>();
-      var credSetting = ConfigurationManager.AppSettings[GitHubSettingsKey] ?? "";
-      foreach (var app in credSetting.Split(';')) {
-        var parts = app.Split(':');
-        creds.Add(parts[0], parts[1]);
-      }
-      Credentials = creds;
-    }
-
-    /// <summary>
-    /// Creates an anonymous GitHub client. Only useful to complete OAuth due to low rate limit.
-    /// </summary>
-    public static GitHubClient CreateClient() {
-      return new GitHubClient(ApplicationName, ApplicationVersion);
-    }
-
+    [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Only a valid operation for users.")]
     public static GitHubClient CreateUserClient(User user) {
       if (user == null) {
         throw new ArgumentNullException(nameof(user));

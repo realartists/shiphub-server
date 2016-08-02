@@ -6,7 +6,7 @@
   public static class ShipHubQueueNames {
     public const string DeadLetterSuffix = "/$DeadLetterQueue";
 
-    public static readonly IEnumerable<string> AllQueues;
+    public static IEnumerable<string> AllQueues { get; private set; }
 
     static ShipHubQueueNames() {
       AllQueues = typeof(ShipHubQueueNames)
@@ -16,43 +16,22 @@
          .Where(x => x != DeadLetterSuffix)
          .ToArray();
     }
-    // Actions
-    const string SyncPrefix = "sync";
-    //const string UpdatePrefix = "update";
 
-    // Resources
-    const string Account = "-account";
-    const string Comments = "-comments";
-    const string Issues = "-issues";
-    const string IssueEvents = "-issueEvents";
-    const string IssueTimeline = "-issueTimeline";
-    const string Milestones = "-milestones";
-    const string Organization = "-organization";
-    const string Organizations = "-organizations";
-    //const string RateLimit = "-rateLimit";
-    const string Repository = "-repository";
-    const string Repositories = "-repositories";
-    //const string Webhook = "-webhook";
+    // Queue Names
+    public const string SyncAccount = "sync-account";
+    public const string SyncAccountRepositories = SyncAccount + "-repositories";
+    public const string SyncAccountOrganizations = SyncAccount + "-organizations";
 
-    // Queues [Action + Resource]
-    public const string SyncAccount = SyncPrefix + Account;
-    public const string SyncAccountRepositories = SyncAccount + Repositories;
-    public const string SyncAccountOrganizations = SyncAccount + Organizations;
+    public const string SyncOrganizationMembers = "sync-organization-members";
 
-    public const string SyncOrganizationMembers = SyncPrefix + Organization + "-members";
-
-    public const string SyncRepository = SyncPrefix + Repository;
+    public const string SyncRepository = "sync-repository";
     public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
-    public const string SyncRepositoryIssues = SyncRepository + Issues;
+    public const string SyncRepositoryComments = SyncRepository + "-comments";
+    public const string SyncRepositoryIssueComments = SyncRepository + "-issue-comments";
+    public const string SyncRepositoryIssueEvents = SyncRepository + "-issue-events";
+    public const string SyncRepositoryIssueTimeline = SyncRepository + "-issue-timeline";
+    public const string SyncRepositoryIssues = SyncRepository + "-issues";
     public const string SyncRepositoryLabels = SyncRepository + "-labels";
-    public const string SyncRepositoryMilestones = SyncRepository + Milestones;
-    public const string SyncRepositoryComments = SyncRepository + Comments;
-    public const string SyncRepositoryIssueEvents = SyncRepository + IssueEvents;
-    public const string SyncRepositoryIssueTimeline = SyncRepository + IssueTimeline;
-
-    //public const string UpdateAccount = UpdatePrefix + Account;
-    //public const string UpdateAccountRepositories = UpdateAccount + "-repositories";
-    //public const string UpdateRepository = UpdatePrefix + Repository;
-    //public const string UpdateRepositoryAssignable = UpdateRepository + "-assignable";
+    public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
   }
 }

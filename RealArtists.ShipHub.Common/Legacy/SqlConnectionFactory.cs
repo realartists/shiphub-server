@@ -4,8 +4,8 @@
   public class SqlConnectionFactory {
     private string _connString;
 
-    public SqlConnectionFactory(string connString) {
-      _connString = connString;
+    public SqlConnectionFactory(string connectionString) {
+      _connString = connectionString;
     }
 
     public SqlConnection Get() {

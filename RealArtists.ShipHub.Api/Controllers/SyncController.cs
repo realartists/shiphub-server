@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System.Diagnostics.CodeAnalysis;
   using System.Net;
   using System.Net.Http;
   using System.Net.Mime;
@@ -14,6 +15,7 @@
 
     [Route("")]
     [HttpGet]
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public HttpResponseMessage Sync() {
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {

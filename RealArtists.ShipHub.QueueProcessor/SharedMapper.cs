@@ -27,15 +27,15 @@
     }
 
     public static TDestination Map<TSource, TDestination>(TSource source, Action<IMappingOperationOptions<TSource, TDestination>> opts) {
-      return Mapper.Map<TSource, TDestination>(source, opts);
+      return Mapper.Map(source, opts);
     }
 
     public static TDestination Map<TSource, TDestination>(TSource source, TDestination destination) {
-      return Mapper.Map<TSource, TDestination>(source, destination);
+      return Mapper.Map(source, destination);
     }
 
     public static TDestination Map<TSource, TDestination>(TSource source, TDestination destination, Action<IMappingOperationOptions<TSource, TDestination>> opts) {
-      return Mapper.Map<TSource, TDestination>(source, destination, opts);
+      return Mapper.Map(source, destination, opts);
     }
 
     public static object Map(object source, Type sourceType, Type destinationType) {

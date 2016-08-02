@@ -38,9 +38,9 @@ BEGIN
   )
 
   DECLARE @RepoVersions TABLE (
-    [RowNumber]    BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
-    [RepositoryId] BIGINT       NOT NULL,
-    [RowVersion]   BIGINT       NOT NULL
+    [RowNumber]    BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [RepositoryId] BIGINT NOT NULL,
+    [RowVersion]   BIGINT NOT NULL
   )
 
   -- Select relevant logs
@@ -54,7 +54,7 @@ BEGIN
 
   -- Split out versions
   INSERT INTO @RepoVersions
-  SELECT [RowNumber], RepositoryId, [RowVersion]
+  SELECT RowNumber, RepositoryId, [RowVersion]
   FROM @AllRepoLogs
 
   -- Split out and dedup references
@@ -93,31 +93,32 @@ BEGIN
     SELECT 1 as [Type]
 
     -- Accounts
-    SELECT [e].[Id], [e].[Type], [e].[Login]
+    SELECT e.Id, e.[Type], e.[Login]
     FROM Accounts as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'account')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Comments
-    SELECT [e].[Id], [e].[IssueId], [e].[RepositoryId], [e].[UserId], [e].[Body], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[Reactions], [l].[Delete]
+    SELECT e.Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt,
+           e.UpdatedAt, e.Reactions, l.[Delete]
     FROM Comments as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'comment')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Events
-    SELECT [e].[Id], [e].[RepositoryId], [e].[IssueId], [e].[ActorId], [e].[CommitId], [e].[Event],
-           [e].[CreatedAt], [e].[AssigneeId], [e].[ExtensionData]
+    SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.ExtensionData,
+           CAST(CASE WHEN a.UserId IS NULL THEN e.Restricted ELSE 0 END as BIT) as Restricted
     FROM IssueEvents as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'event')
+      LEFT OUTER JOIN IssueEventAccess as a ON (e.Restricted = 1 AND a.IssueEventId = e.Id AND a.UserId = @UserId)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
     -- Milestones
-    SELECT [e].[Id], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title], [e].[Description],
-           [e].[CreatedAt], [e].[UpdatedAt], [e].[ClosedAt], [e].[DueOn], [l].[Delete]
+    SELECT e.Id, e.RepositoryId, e.Number, e.[State], e.Title, e.[Description],
+           e.CreatedAt, e.UpdatedAt, e.ClosedAt, e.DueOn, l.[Delete]
     FROM Milestones as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'milestone')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
@@ -133,9 +134,9 @@ BEGIN
     OPTION (RECOMPILE)
 
     -- Issues
-    SELECT [e].[Id], [e].[UserId], [e].[RepositoryId], [e].[Number], [e].[State], [e].[Title],
-           [e].[Body], [e].[AssigneeId], [e].[MilestoneId], [e].[Locked], [e].[CreatedAt],
-           [e].[UpdatedAt], [e].[ClosedAt], [e].[ClosedById], [e].[Reactions]
+    SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
+           e.Body, e.AssigneeId, e.MilestoneId, e.Locked, e.CreatedAt,
+           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.Reactions
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
@@ -159,7 +160,7 @@ BEGIN
     OPTION (RECOMPILE)
 
     -- Repositories
-    SELECT [e].[Id], [e].[AccountId], [e].[Private], [e].[Name], [e].[FullName]
+    SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName
     FROM Repositories as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

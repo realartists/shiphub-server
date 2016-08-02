@@ -91,16 +91,17 @@
 #endif
 
       Console.WriteLine("Starting job host...\n\n");
-      var host = new JobHost(config);
+      using (var host = new JobHost(config)) {
 #if DEBUG
-      host.Start();
-      Console.WriteLine("Press Any Key to Exit.");
-      Console.ReadKey();
-      Console.WriteLine("Stopping job host...");
-      host.Stop();
+        host.Start();
+        Console.WriteLine("Press Any Key to Exit.");
+        Console.ReadKey();
+        Console.WriteLine("Stopping job host...");
+        host.Stop();
 #else
         host.RunAndBlock();
 #endif
+      }
     }
   }
 }

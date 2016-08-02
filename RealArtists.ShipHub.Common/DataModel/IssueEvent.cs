@@ -13,32 +13,23 @@
 
     public long ActorId { get; set; }
 
-    [StringLength(40)]
-    public string CommitId { get; set; }
-
     [Required]
     [StringLength(64)]
     public string Event { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 
-    public long? AssigneeId { get; set; }
+    public Guid? Hash { get; set; }
 
-    //public long? AssignerId { get; set; }
+    public bool Restricted { get; set; }
 
-    public long? MilestoneId { get; set; }
+    [Required]
+    public string ExtensionData { get; set; }
 
     public virtual Repository Repository { get; set; }
 
     public virtual Issue Issue { get; set; }
 
     public virtual Account Actor { get; set; }
-
-    public virtual Account Assignee { get; set; }
-
-    public virtual Milestone Milestone { get; set; }
-
-    [Required]
-    public string ExtensionData { get; set; }
   }
 }

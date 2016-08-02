@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
   using System.Diagnostics;
+  using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.IO.Compression;
   using System.Linq;
@@ -11,7 +12,6 @@
   using System.Text;
   using System.Threading;
   using System.Threading.Tasks;
-  using System.Web.WebSockets;
   using Common;
   using Common.WebSockets;
   using Filters;
@@ -43,12 +43,18 @@
       _syncManager = syncManager;
     }
 
+    // TODO: This should not be needed, but I'm seeing weird behavior without it. Look into this later?
+    public override Task OnError() {
+      Unsubscribe();
+      return Task.CompletedTask;
+    }
+
     public override Task OnClose() {
       Unsubscribe();
       return Task.CompletedTask;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
+    [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public override Task OnMessage(byte[] message) {
       var gzip = message[0] == 1;
       string json = "";
@@ -78,9 +84,9 @@
           await SendJsonAsync(new HelloResponse() { PurgeIdentifier = _purgeId });
 
           // now start sync
-            _syncContext = new SyncContext(_user, this, new SyncVersions(
-            hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
-            hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version)));
+          _syncContext = new SyncContext(_user, this, new SyncVersions(
+          hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
+          hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version)));
           Subscribe(); // Also performs the initial sync
           return;
         case "viewing":
@@ -97,24 +103,24 @@
       }
     }
 
-    public Task AcceptWebSocketRequest(AspNetWebSocketContext context) {
+    public Task AcceptWebSocketRequest(WebSocketContext context) {
       return ProcessWebSocketRequestAsync(context.WebSocket, CancellationToken.None);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
-    public Task SendJsonAsync(object o) {
+    [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
+    public Task SendJsonAsync(object message) {
       using (var ms = new MemoryStream()) {
         ms.WriteByte(1);
 
         using (var df = new GZipStream(ms, CompressionLevel.Optimal))
         using (var sw = new StreamWriter(df, Encoding.UTF8)) {
-          JsonUtility.SaneSerializer.Serialize(sw, o);
+          JsonUtility.SaneSerializer.Serialize(sw, message);
           sw.Flush();
         }
 
         try {
           return SendAsync(new ArraySegment<byte>(ms.ToArray()), WebSocketMessageType.Binary, true);
-        } catch (ObjectDisposedException ode) {
+        } catch (ObjectDisposedException) {
           // Connection is dead.
           return OnClose();
         }

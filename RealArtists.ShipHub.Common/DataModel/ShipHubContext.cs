@@ -5,6 +5,7 @@
   using System.Data.Common;
   using System.Data.Entity;
   using System.Data.SqlClient;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Threading.Tasks;
   using GitHub;
@@ -48,112 +49,100 @@
     public SqlConnectionFactory ConnectionFactory { get; private set; }
 
     public override int SaveChanges() {
-      throw new NotImplementedException("Please use SaveChangesAsync instead.");
+      throw new NotImplementedException("Please use asynchronous methods instead.");
     }
 
-    protected override void OnModelCreating(DbModelBuilder mb) {
-      mb.Entity<Account>()
+    protected override void OnModelCreating(DbModelBuilder modelBuilder) {
+      modelBuilder.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
 
-      mb.Entity<Account>()
+      modelBuilder.Entity<Account>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.User)
         .WillCascadeOnDelete(false);
 
-      //mb.Entity<Account>()
-      //  .HasMany(e => e.Events)
-      //  .WithRequired(e => e.Actor)
-      //  .HasForeignKey(e => e.ActorId)
-      //  .WillCascadeOnDelete(false);
-
-      //mb.Entity<Account>()
-      //  .HasMany(e => e.AssigneeEvents)
-      //  .WithRequired(e => e.Assignee)
-      //  .HasForeignKey(e => e.AssigneeId)
-      //  .WillCascadeOnDelete(false);
-
-      mb.Entity<Account>()
+      modelBuilder.Entity<Account>()
         .HasMany(e => e.AssignedIssues)
         .WithOptional(e => e.Assignee);
 
-      mb.Entity<Account>()
+      modelBuilder.Entity<Account>()
         .HasMany(e => e.ClosedIssues)
         .WithOptional(e => e.ClosedBy);
 
-      mb.Entity<Account>()
+      modelBuilder.Entity<Account>()
         .HasMany(e => e.Issues)
         .WithRequired(e => e.User)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Account>()
+      modelBuilder.Entity<Account>()
         .HasMany(e => e.OwnedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Issue>()
+      modelBuilder.Entity<Issue>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.Issue)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Issue>()
+      modelBuilder.Entity<Issue>()
         .HasMany(e => e.Labels)
         .WithMany(e => e.Issues)
         .Map(m => m.ToTable("IssueLabels").MapLeftKey("IssueId").MapRightKey("LabelId"));
 
-      mb.Entity<Label>()
+      modelBuilder.Entity<Label>()
         .HasMany(e => e.Repositories)
         .WithMany(e => e.Labels)
         .Map(m => m.ToTable("RepositoryLabels").MapLeftKey("LabelId").MapRightKey("RepositoryId"));
 
-      mb.Entity<Repository>()
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.LinkedAccounts)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Repository>()
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.Comments)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Repository>()
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.Events)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Repository>()
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.Issues)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<Repository>()
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.Milestones)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<User>()
+      modelBuilder.Entity<User>()
         .HasMany(e => e.AssignableRepositories)
         .WithMany(e => e.AssignableAccounts)
         .Map(m => m.ToTable("RepositoryAccounts").MapLeftKey("AccountId").MapRightKey("RepositoryId"));
 
-      mb.Entity<User>()
+      modelBuilder.Entity<User>()
         .HasMany(e => e.LinkedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
-      mb.Entity<User>()
+      modelBuilder.Entity<User>()
         .HasMany(e => e.Organizations)
         .WithMany(e => e.Members)
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
-    public Task UpdateMetaLimit(string table, string column, long id, GitHubMetaData metaData, string accessToken, GitHubRateLimit limit) {
+    public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        $"UPDATE [{table}] SET [{column}] = @MetaData WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@MetaData, '$.LastRefresh') as DATETIMEOFFSET))"
+        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.LastRefresh') as DATETIMEOFFSET))"
         + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
         new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
-        new SqlParameter("MetaData", SqlDbType.NVarChar) { Value = metaData.SerializeObject() },
+        new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() },
         new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
         new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
         new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
@@ -187,15 +176,15 @@
       return result;
     }
 
-    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetaData metaData) {
-      return BulkUpdateAccounts(date, new[] { account }, metaData);
+    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetadata metadata) {
+      return BulkUpdateAccounts(date, new[] { account }, metadata);
     }
 
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
       return BulkUpdateAccounts(date, accounts, null);
     }
 
-    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetaData metaData) {
+    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetadata metadata) {
       var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
@@ -215,71 +204,71 @@
         x.Date = date;
         x.Accounts = accountsParam;
 
-        if (metaData != null) {
-          x.MetaData = metaData.SerializeObject();
+        if (metadata != null) {
+          x.Metadata = metadata.SerializeObject();
         }
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
-      var tableParam = CreateTableParameter(
-        "Comments",
-        "[dbo].[CommentTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("Reactions", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.IssueNumber,
-          x.UserId,
-          x.Body,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.Reactions,
-        },
-        comments);
+    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments, bool complete = false) {
+      var tableParam = CreateCommentTable("Comments", comments);
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
         x.RepositoryId = repositoryId;
         x.Comments = tableParam;
+        x.Complete = complete;
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateIssueEvents(long repositoryId, IEnumerable<IssueEventTableType> issueEvents) {
-      var tableParam = CreateTableParameter(
+    public Task<ChangeSummary> BulkUpdateIssueComments(string repositoryFullName, int issueNumber, IEnumerable<CommentTableType> comments, bool complete = false) {
+      var tableParam = CreateCommentTable("Comments", comments);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueComments]", x => {
+        x.RepositoryFullName = repositoryFullName;
+        x.IssueNumber = issueNumber;
+        x.Comments = tableParam;
+        x.Complete = complete;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssueEvents(
+      long userId,
+      long repositoryId,
+      IEnumerable<IssueEventTableType> issueEvents,
+      IEnumerable<long> referencedAccounts) {
+
+      var eventsParam = CreateTableParameter(
         "IssueEvents",
         "[dbo].[IssueEventTableType]",
         new[] {
           Tuple.Create("Id", typeof(long)),
           Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("ActorId", typeof(long)),
-          Tuple.Create("CommitId", typeof(string)),
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
+          Tuple.Create("Hash", typeof(Guid)),
+          Tuple.Create("Restricted", typeof(bool)),
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
           x.Id,
           x.IssueId,
           x.ActorId,
-          x.CommitId,
           x.Event,
           x.CreatedAt,
-          x.AssigneeId,
+          x.Hash,
+          x.Restricted,
           x.ExtensionData,
         },
         issueEvents);
 
+      var accountsParam = CreateItemListTable("ReferencedAccounts", referencedAccounts);
+
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueEvents]", x => {
+        x.UserId = userId;
         x.RepositoryId = repositoryId;
-        x.IssueEvents = tableParam;
+        x.IssueEvents = eventsParam;
+        x.ReferencedAccounts = accountsParam;
       });
     }
 
@@ -399,23 +388,35 @@
       });
     }
 
+    [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Whats")]
     public DynamicStoredProcedure PrepareWhatsNew(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
-      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
-      dsp.UserId = userId;
-      dsp.PageSize = pageSize;
-      dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
-      dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
-      return dsp;
+      DynamicStoredProcedure result = null;
+
+      try {
+        dynamic dsp = result = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
+        dsp.UserId = userId;
+        dsp.PageSize = pageSize;
+        dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
+        dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
+      } catch {
+        if (result != null) {
+          result.Dispose();
+          result = null;
+        }
+        throw;
+      }
+
+      return result;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetaData metaData) {
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetadata metadata) {
       var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
 
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
         x.RepositoryIds = repoParam;
-        x.MetaData = metaData.SerializeObject();
+        x.Metadata = metadata.SerializeObject();
       });
     }
 
@@ -449,6 +450,31 @@
         new[] { Tuple.Create("Item", typeof(T)) },
         x => new object[] { x },
         values);
+    }
+
+    private static SqlParameter CreateCommentTable(string parameterName, IEnumerable<CommentTableType> comments) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[CommentTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueNumber", typeof(int)),
+          Tuple.Create("UserId", typeof(long)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("Reactions", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.IssueNumber,
+          x.UserId,
+          x.Body,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.Reactions,
+        },
+        comments);
     }
 
     private static SqlParameter CreateLabelTable(string parameterName, IEnumerable<LabelTableType> labels) {
@@ -490,20 +516,28 @@
 
       DataTable table = null;
 
-      if (rows != null) {
-        table = new DataTable();
+      try {
+        if (rows != null) {
+          table = new DataTable();
 
-        table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
+          table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
 
-        foreach (var row in rows) {
-          table.Rows.Add(rowValues(row));
+          foreach (var row in rows) {
+            table.Rows.Add(rowValues(row));
+          }
         }
-      }
 
-      return new SqlParameter(parameterName, SqlDbType.Structured) {
-        TypeName = typeName,
-        Value = table
-      };
+        return new SqlParameter(parameterName, SqlDbType.Structured) {
+          TypeName = typeName,
+          Value = table
+        };
+      } catch {
+        if (table != null) {
+          table.Dispose();
+          table = null;
+        }
+        throw;
+      }
     }
   }
 }

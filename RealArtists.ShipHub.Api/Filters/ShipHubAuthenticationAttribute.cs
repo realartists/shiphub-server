@@ -14,8 +14,8 @@
   using Common.DataModel;
 
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true)]
-  public class ShipHubAuthenticationAttribute : FilterAttribute, IAuthenticationFilter {
-    public const string AuthScheme = "token";
+  public sealed class ShipHubAuthenticationAttribute : FilterAttribute, IAuthenticationFilter {
+    public const string AuthenticationScheme = "token";
     public const string AlternateHeader = "Authorisation";
     public const string QueryStringKey = "auth";
 
@@ -32,7 +32,7 @@
     }
 
     public Task ChallengeAsync(HttpAuthenticationChallengeContext context, CancellationToken cancellationToken) {
-      context.Result = new ShipHubChallengeWrapperResult(AuthScheme, context.Result);
+      context.Result = new ShipHubChallengeWrapperResult(AuthenticationScheme, context.Result);
       return Task.CompletedTask;
     }
 
@@ -54,7 +54,7 @@
       // Prefer Authorization header, fall back to Cookie, then QueryString.
       // Normal Header
       var authorization = request.Headers.Authorization;
-      if (authorization?.Scheme == AuthScheme) {
+      if (authorization?.Scheme == AuthenticationScheme) {
         return authorization.Parameter;
       }
 
@@ -64,7 +64,7 @@
       if (request.Headers.Contains(AlternateHeader)) {
         authorisationHeader = request.Headers.GetValues(AlternateHeader)?.FirstOrDefault();
         if (AuthenticationHeaderValue.TryParse(authorisationHeader, out authorisation)
-          && authorisation?.Scheme == AuthScheme) {
+          && authorisation?.Scheme == AuthenticationScheme) {
           return authorisation.Parameter;
         }
       }

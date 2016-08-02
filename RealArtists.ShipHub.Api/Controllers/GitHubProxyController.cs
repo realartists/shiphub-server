@@ -9,6 +9,8 @@
 
   [RoutePrefix("github")]
   public class GitHubProxyController : ShipHubController {
+    // Using one HttpClient for all requests should be safe according to the documentation.
+    // See https://msdn.microsoft.com/en-us/library/system.net.http.httpclient(v=vs.110).aspx?f=255&mspperror=-2147217396#Anchor_5
     private static readonly HttpClient _ProxyClient = new HttpClient() {
       MaxResponseContentBufferSize = 1024 * 1024 * 5, // 5MB is pretty generous
       Timeout = TimeSpan.FromSeconds(10), // so is 10 seconds
