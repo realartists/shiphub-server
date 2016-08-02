@@ -468,8 +468,8 @@
             accounts.Add(commit.Author);
             accounts.Add(commit.Committer);
             item.ExtensionDataDictionary["ship_commit_message"] = commit.CommitDetails.Message;
-            item.ExtensionDataDictionary["ship_commit_author"] = new JObject(commit.Author);
-            item.ExtensionDataDictionary["ship_commit_committer"] = new JObject(commit.Committer);
+            item.ExtensionDataDictionary["ship_commit_author"] = JObject.FromObject(commit.Author);
+            item.ExtensionDataDictionary["ship_commit_committer"] = JObject.FromObject(commit.Committer);
           }
         }
 
