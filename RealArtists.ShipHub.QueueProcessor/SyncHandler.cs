@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Diagnostics;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
@@ -544,6 +545,7 @@
                 break;
               default:
                 // TODO: Logging
+                Debugger.Break();
                 break;
             }
           }
@@ -556,6 +558,7 @@
                 break;
               default:
                 // TODO: Logging
+                Debugger.Break();
                 break;
             }
           }
