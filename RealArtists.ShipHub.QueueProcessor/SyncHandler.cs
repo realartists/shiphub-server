@@ -15,15 +15,6 @@
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
 
-  public static class SyncHandlerExtensions {
-    public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
-      if (summary != null && !summary.Empty) {
-        return topic.AddAsync(new ChangeMessage(summary));
-      }
-      return Task.CompletedTask;
-    }
-  }
-
   /// <summary>
   /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
   /// TODO: Incremental sync when possible
@@ -406,6 +397,10 @@
       ChangeSummary changes;
       var tasks = new List<Task>();
 
+      // TODO: Just trigger a full repo issue sync once incremental is implemented
+      var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
+      var issue = issueResponse.Result;
+
       var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
       var timeline = timelineResponse.Result;
 
@@ -434,6 +429,13 @@
 
         // For adding to the DB later
         var accounts = new List<gm.Account>();
+        accounts.Add(issue.Assignee);
+        accounts.Add(issue.ClosedBy);
+        accounts.Add(issue.User);
+        if (issue.Assignees.Any()) {
+          accounts.AddRange(issue.Assignees);
+        }
+
         foreach (var tl in filteredEvents) {
           accounts.Add(tl.Actor);
           accounts.Add(tl.Assignee);
@@ -509,18 +511,20 @@
           await Task.WhenAll(prLookups.Values);
 
           foreach (var item in withSources) {
-            var issue = sourceLookups[item.Source.IssueUrl].Result.Result;
+            var refIssue = sourceLookups[item.Source.IssueUrl].Result.Result;
             accounts.Add(item.Source.Actor);
-            accounts.Add(issue.Assignee);
-            accounts.AddRange(issue.Assignees); // Do we need both assignee and assignees? I think yes.
-            accounts.Add(issue.ClosedBy);
-            accounts.Add(issue.User);
+            accounts.Add(refIssue.Assignee);
+            if (refIssue.Assignees.Any()) {
+              accounts.AddRange(refIssue.Assignees); // Do we need both assignee and assignees? I think yes.
+            }
+            accounts.Add(refIssue.ClosedBy);
+            accounts.Add(refIssue.User);
 
-            item.ExtensionDataDictionary["ship_issue_state"] = issue.State;
-            item.ExtensionDataDictionary["ship_issue_title"] = issue.Title;
+            item.ExtensionDataDictionary["ship_issue_state"] = refIssue.State;
+            item.ExtensionDataDictionary["ship_issue_title"] = refIssue.Title;
 
-            if (issue.PullRequest != null) {
-              var pr = prLookups[issue.PullRequest.Url].Result.Result;
+            if (refIssue.PullRequest != null) {
+              var pr = prLookups[refIssue.PullRequest.Url].Result.Result;
               item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
             }
           }
@@ -533,6 +537,16 @@
           .Select(x => x.First());
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
+
+        // Update issue
+        changes.UnionWith(await context.BulkUpdateIssues(
+          issueDetails.RepositoryId,
+          new[] { SharedMapper.Map<IssueTableType>(issue) },
+          issue.Labels.Select(x => new LabelTableType() {
+            ItemId = issue.Id,
+            Color = x.Color,
+            Name = x.Name,
+          })));
 
         // Cleanup the data
         foreach (var item in filteredEvents) {
@@ -588,8 +602,19 @@
       }
 
       if (!changes.Empty) {
-        await notifyChanges.AddAsync(new ChangeMessage(changes));
+        tasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
       }
+
+      await Task.WhenAll(tasks);
+    }
+  }
+
+  public static class SyncHandlerExtensions {
+    public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
+      if (summary != null && !summary.Empty) {
+        return topic.AddAsync(new ChangeMessage(summary));
+      }
+      return Task.CompletedTask;
     }
   }
 }
