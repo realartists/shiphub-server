@@ -168,15 +168,13 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<RepositoryMessage> syncRepoAssignees,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<RepositoryMessage> syncRepoMilestones,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<RepositoryMessage> syncRepoIssueEvents) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<RepositoryMessage> syncRepoLabels) {
       // This is just a fanout point.
       // Plan to add conditional checks here to reduce polling frequency.
       await Task.WhenAll(
         syncRepoAssignees.AddAsync(message),
         syncRepoMilestones.AddAsync(message),
-        syncRepoLabels.AddAsync(message),
-        syncRepoIssueEvents.AddAsync(message) // This is safe 
+        syncRepoLabels.AddAsync(message)
       );
     }
 
@@ -262,6 +260,7 @@
     public static async Task SyncRepositoryIssues(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] RepositoryMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<RepositoryMessage> syncRepoComments,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<RepositoryMessage> syncRepoIssueEvents,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
@@ -294,7 +293,8 @@
 
       await Task.WhenAll(
         changes.Empty ? Task.CompletedTask : notifyChanges.AddAsync(new ChangeMessage(changes)),
-        syncRepoComments.AddAsync(message));
+        syncRepoComments.AddAsync(message),
+        syncRepoIssueEvents.AddAsync(message));
     }
 
     public static async Task SyncRepositoryComments(
