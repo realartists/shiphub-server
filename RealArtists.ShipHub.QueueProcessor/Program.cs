@@ -1,12 +1,16 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using System.Diagnostics;
+  using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
   using QueueClient;
 
   static class Program {
+    public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
+    public const string RaygunApiKey = "RAYGUN_APIKEY";
+
     static void Main() {
       var azureWebJobsDashboard = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard");
       var azureWebJobsStorage = CloudConfigurationManager.GetSetting("AzureWebJobsStorage");
@@ -14,6 +18,19 @@
         DashboardConnectionString = azureWebJobsDashboard,
         StorageConnectionString = azureWebJobsStorage,
       };
+
+      // Application Insights
+      var instrumentationKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
+      if (!string.IsNullOrWhiteSpace(instrumentationKey)) {
+        TelemetryConfiguration.Active.InstrumentationKey = instrumentationKey;
+        config.Tracing.Tracers.Add(new ApplicationInsightsTraceWriter());
+      }
+
+      // Raygun
+      var apiKey = CloudConfigurationManager.GetSetting(RaygunApiKey);
+      if (!string.IsNullOrWhiteSpace(apiKey)) {
+        config.Tracing.Tracers.Add(new RaygunTraceWriter(apiKey));
+      }
 
       var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
       var sbConfig = new ServiceBusConfiguration() {
