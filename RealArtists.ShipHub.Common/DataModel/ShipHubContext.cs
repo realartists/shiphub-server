@@ -246,7 +246,6 @@
           Tuple.Create("ActorId", typeof(long)),
           Tuple.Create("Event", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("AssigneeId", typeof(long)), // Nullable types handled by DataTable
           Tuple.Create("Hash", typeof(Guid)),
           Tuple.Create("Restricted", typeof(bool)),
           Tuple.Create("ExtensionData", typeof(string)),
@@ -257,7 +256,6 @@
           x.ActorId,
           x.Event,
           x.CreatedAt,
-          x.AssigneeId,
           x.Hash,
           x.Restricted,
           x.ExtensionData,

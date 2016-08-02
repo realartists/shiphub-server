@@ -4,7 +4,6 @@
   [ActorId]       BIGINT           NOT NULL,
   [Event]         NVARCHAR(64)     NOT NULL,
   [CreatedAt]     DATETIMEOFFSET   NOT NULL,
-  [AssigneeId]    BIGINT           NULL,
   [Hash]          UNIQUEIDENTIFIER NULL,
   [Restricted]    BIT              NOT NULL,
   [ExtensionData] NVARCHAR(MAX)    NOT NULL

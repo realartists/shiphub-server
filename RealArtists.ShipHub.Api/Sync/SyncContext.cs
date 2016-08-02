@@ -152,7 +152,6 @@
 
                   var data = new IssueEventEntry() {
                     Actor = ddr.ActorId,
-                    Assignee = ddr.AssigneeId,
                     CreatedAt = ddr.CreatedAt,
                     Event = eventType,
                     ExtensionData = ddr.ExtensionData,

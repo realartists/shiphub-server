@@ -20,19 +20,18 @@ BEGIN
 
   MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT Id, IssueId, ActorId, [Event], CreatedAt, AssigneeId, [Hash], Restricted, ExtensionData
+    SELECT Id, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
     FROM @IssueEvents
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, AssigneeId, [Hash], Restricted, ExtensionData)
-    VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, AssigneeId, [Hash], Restricted, ExtensionData)
+    INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData)
+    VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData)
   WHEN MATCHED AND [Source].[Hash] != [Target].[Hash] THEN
     UPDATE  SET
       ActorId = [Source].ActorId,
       [Event] = [Source].[Event],
       CreatedAt = [Source].CreatedAt,
-      AssigneeId = [Source].AssigneeId,
       [Hash] = [Source].[Hash],
       Restricted = [Source].Restricted,
       ExtensionData = [Source].ExtensionData

@@ -10,7 +10,6 @@
     public long ActorId { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public long? AssigneeId { get; set; }
     public string ExtensionData { get; set; }
 
     public Guid? Hash {

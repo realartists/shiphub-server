@@ -12,7 +12,6 @@
     public long Actor { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public long? Assignee { get; set; }
 
     [JsonExtensionData]
     public IDictionary<string, JToken> ExtensionDataDictionary { get; private set; } = new Dictionary<string, JToken>();

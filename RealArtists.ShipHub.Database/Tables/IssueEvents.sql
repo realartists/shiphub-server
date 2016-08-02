@@ -5,7 +5,6 @@
   [ActorId]       BIGINT           NOT NULL,
   [Event]         NVARCHAR(64)     NOT NULL,
   [CreatedAt]     DATETIMEOFFSET   NOT NULL,
-  [AssigneeId]    BIGINT           NULL,
   [Hash]          UNIQUEIDENTIFIER NULL,
   [Restricted]    BIT              NOT NULL,
   [ExtensionData] NVARCHAR(MAX)    NOT NULL,
@@ -14,7 +13,6 @@
   CONSTRAINT [FK_IssueEvents_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues] ([Id]),
   CONSTRAINT [FK_IssueEvents_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
   CONSTRAINT [FK_IssueEvents_ActorId_Accounts_Id] FOREIGN KEY ([ActorId]) REFERENCES [dbo].[Accounts] ([Id]),
-  CONSTRAINT [FK_IssueEvents_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),
 )
 GO
 
@@ -25,7 +23,4 @@ CREATE NONCLUSTERED INDEX [IX_IssueEvents_IssueId] ON [dbo].[IssueEvents]([Issue
 GO
 
 CREATE NONCLUSTERED INDEX [IX_IssueEvents_ActorId] ON [dbo].[IssueEvents]([ActorId])
-GO
-
-CREATE NONCLUSTERED INDEX [IX_IssueEvents_AssigneeId] ON [dbo].[IssueEvents]([AssigneeId])
 GO
