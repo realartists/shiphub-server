@@ -4,8 +4,9 @@
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
-      GlobalConfiguration.Configure(WebApiConfig.Register);
+      ApplicationInsightsConfig.Register();
       AutoMapperConfig.Register();
+      GlobalConfiguration.Configure(WebApiConfig.Register);
     }
   }
 }
