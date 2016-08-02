@@ -1,8 +1,10 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
+  using System;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics;
   using System.Linq;
+  using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
@@ -385,6 +387,7 @@
       }
     }
 
+    private static HashSet<string> _FilterEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
     public static async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<IssueMessage> syncIssueComments,
@@ -412,6 +415,9 @@
         tasks.Add(syncIssueComments.AddAsync(message));
       }
 
+      // Now just filter
+      var filteredEvents = timeline.Where(x => !_FilterEvents.Contains(x.Event)).ToArray();
+
       using (var context = new ShipHubContext()) {
         // TODO: Gross
         var userId = await context.Users
@@ -428,14 +434,14 @@
 
         // For adding to the DB later
         var accounts = new List<gm.Account>();
-        foreach (var tl in timeline) {
+        foreach (var tl in filteredEvents) {
           accounts.Add(tl.Actor);
           accounts.Add(tl.Assignee);
           accounts.Add(tl.Source?.Actor);
         }
 
         // Find all events with associated commits, and embed them.
-        var withCommits = timeline.Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl)).ToArray();
+        var withCommits = filteredEvents.Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl)).ToArray();
         var commits = withCommits.Select(x => x.CommitUrl).Distinct();
 
         if (commits.Any()) {
@@ -467,7 +473,7 @@
           }
         }
 
-        var withSources = timeline.Where(x => x.Source != null).ToArray();
+        var withSources = filteredEvents.Where(x => x.Source != null).ToArray();
         var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
 
         if (sources.Any()) {
@@ -528,44 +534,51 @@
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
 
-        var notComments = timeline.Where(x => x.Event != "commented");
-
         // Cleanup the data
-        foreach (var item in notComments) {
-          // missing event ids
-          if (item.Id == 0) {
-            // Oh GitHub, how I hate thee. Why can't you provide ids?
-            // We're regularly seeing GitHub ids as large as 31 bits.
-            // We can only store four things this way because we only have two bits :(
-            switch (item.Event) {
-              case "cross-referenced":
-                // high bits 11
-                // TODO: Mask these?
-                item.Id = ((long)3) << 62 | item.Source.CommentId << 31 | issueDetails.IssueId;
-                break;
-              default:
-                // TODO: Logging
-                Debugger.Break();
-                break;
-            }
+        foreach (var item in filteredEvents) {
+          // Oh GitHub, how I hate thee. Why can't you provide ids?
+          // We're regularly seeing GitHub ids as large as 31 bits.
+          // We can only store four things this way because we only have two free bits :(
+          // TODO: HACK! THIS IS BRITTLE AND WILL BREAK!
+          var ones31 = 0x7FFFFFFFL;
+          var issuePart = (issueDetails.IssueId & ones31);
+          if (issuePart != issueDetails.IssueId) {
+            throw new NotSupportedException($"IssueId {issueDetails.IssueId} exceeds 31 bits!");
+          }
+          switch (item.Event) {
+            case "cross-referenced":
+              // high bits 11
+              var commentPart = (item.Source.CommentId & ones31);
+              if (commentPart != item.Source.CommentId) {
+                throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 31 bits!");
+              }
+              item.Id = ((long)3) << 62 | commentPart << 31 | issuePart;
+              item.Actor = item.Source.Actor;
+              break;
+            case "committed":
+              // high bits 10
+              var sha = item.ExtensionDataDictionary["sha"].ToObject<string>();
+              var shaBytes = SoapHexBinary.Parse(sha).Value;
+              var shaPart = BitConverter.ToInt64(shaBytes, 0) & ones31;
+              item.Id = ((long)2) << 62 | shaPart << 31 | issuePart;
+              item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
+              break;
+            default:
+              break;
           }
 
-          // missing actors
-          if (item.Actor == null) {
-            switch (item.Event) {
-              case "cross-referenced":
-                item.Actor = item.Source.Actor;
-                break;
-              default:
-                // TODO: Logging
-                Debugger.Break();
-                break;
-            }
+#if DEBUG
+          // Sanity check whilst debugging
+          if (item.Id == 0
+            || item.CreatedAt == DateTimeOffset.MinValue) {
+            // Ruh roh
+            Debugger.Break();
           }
+#endif
         }
 
         // This conversion handles the restriction field and hash.
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(notComments);
+        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
 
         // Set issueId
         foreach (var item in events) {
