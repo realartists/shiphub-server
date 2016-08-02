@@ -524,7 +524,7 @@
           .Where(x => x != null)
           .GroupBy(x => x.Login)
           .Select(x => x.First());
-        var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
+        var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
 
         // Assign missing identifiers
