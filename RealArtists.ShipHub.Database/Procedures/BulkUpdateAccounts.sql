@@ -73,6 +73,7 @@ BEGIN
   WHERE [Type] = 'account'
     AND [Delete] = 0
     AND ItemId IN (SELECT Id FROM @Changes)
+    AND ItemId != 10137 -- Ghost user (present in most repos. Do not ever mark as updated.)
   OPTION (RECOMPILE)
 
   -- Return updated organizations and repositories
