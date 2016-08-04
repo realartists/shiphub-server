@@ -101,7 +101,7 @@ BEGIN
 
     -- Comments
     SELECT e.Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt,
-           e.UpdatedAt, e.Reactions, l.[Delete]
+           e.UpdatedAt, l.[Delete]
     FROM Comments as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'comment')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
@@ -136,7 +136,7 @@ BEGIN
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.AssigneeId, e.MilestoneId, e.Locked, e.CreatedAt,
-           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
+           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

@@ -15,14 +15,14 @@ BEGIN
 
   MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions]
+    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest]
     FROM @Issues
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
-    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
+    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
+    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
   -- Update (this bumps for label only changes too)
   WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
     UPDATE SET
@@ -36,8 +36,7 @@ BEGIN
       [UpdatedAt] = [Source].[UpdatedAt],
       [ClosedAt] = [Source].[ClosedAt],
       [ClosedById] = [Source].[ClosedById],
-      [PullRequest] = [Source].[PullRequest],
-      [Reactions] = [Source].[Reactions]
+      [PullRequest] = [Source].[PullRequest]
   OUTPUT INSERTED.Id INTO @Changes (IssueId)
   OPTION (RECOMPILE);
 

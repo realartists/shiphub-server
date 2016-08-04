@@ -4,6 +4,5 @@
   [UserId]       BIGINT         NOT NULL,
   [Body]         NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
-  [UpdatedAt]    DATETIMEOFFSET NOT NULL,
-  [Reactions]    NVARCHAR(MAX)  NULL
+  [UpdatedAt]    DATETIMEOFFSET NOT NULL
 )

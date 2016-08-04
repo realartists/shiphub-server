@@ -14,7 +14,6 @@
   [ClosedAt]     DATETIMEOFFSET NULL,
   [ClosedById]   BIGINT         NULL,
   [PullRequest]  BIT            NOT NULL,
-  [Reactions]    NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Issues] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),

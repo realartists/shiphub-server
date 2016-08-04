@@ -18,11 +18,10 @@
           if (from.IssueNumber == null) {
             throw new InvalidOperationException("Only issue comments are supported.");
           }
-        }).ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
+        });
 
-      CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
-        .ForMember(x => x.PullRequest, o => o.ResolveUsing(x => x.PullRequest != null))
-        .ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
+      CreateMap<g.Issue, IssueTableType>(MemberList.Destination);
+        .ForMember(x => x.PullRequest, o => o.ResolveUsing(x => x.PullRequest != null));
 
       CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination);
 
