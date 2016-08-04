@@ -16,8 +16,6 @@
   [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, Inherited = true)]
   public sealed class ShipHubAuthenticationAttribute : FilterAttribute, IAuthenticationFilter {
     public const string AuthenticationScheme = "token";
-    public const string AlternateHeader = "Authorisation";
-    public const string QueryStringKey = "auth";
 
     public async Task AuthenticateAsync(HttpAuthenticationContext context, CancellationToken cancellationToken) {
       var token = ExtractToken(context.Request);
@@ -57,30 +55,6 @@
       if (authorization?.Scheme == AuthenticationScheme) {
         return authorization.Parameter;
       }
-
-      // HTTP/2 IIS 10 Workarond
-      string authorisationHeader = null;
-      AuthenticationHeaderValue authorisation = null;
-      if (request.Headers.Contains(AlternateHeader)) {
-        authorisationHeader = request.Headers.GetValues(AlternateHeader)?.FirstOrDefault();
-        if (AuthenticationHeaderValue.TryParse(authorisationHeader, out authorisation)
-          && authorisation?.Scheme == AuthenticationScheme) {
-          return authorisation.Parameter;
-        }
-      }
-
-      // Cookie (not currently needed)
-      //var cookieValue = request.Headers.GetCookies(AuthScheme).SingleOrDefault()?[AuthScheme]?.Value;
-      //if (!string.IsNullOrWhiteSpace(cookieValue)) {
-      //  return cookieValue;
-      //}
-
-      // Query String (not currently used)
-      //var args = request.GetQueryNameValuePairs()
-      //  .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
-      //if (args.ContainsKey(QueryStringKey)) {
-      //  return args[QueryStringKey];
-      //}
 
       return null;
     }
