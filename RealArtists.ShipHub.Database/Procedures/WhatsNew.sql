@@ -136,7 +136,7 @@ BEGIN
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.AssigneeId, e.MilestoneId, e.Locked, e.CreatedAt,
-           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.Reactions
+           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

@@ -17,6 +17,7 @@
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? ClosedAt { get; set; }
     public long? ClosedBy { get; set; }
+    public bool PullRequest { get; set; }
     public Reactions Reactions { get; set; }
 
     public IEnumerable<Label> Labels { get; set; }

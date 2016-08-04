@@ -235,6 +235,7 @@
                       State = ddr.State,
                       Title = ddr.Title,
                       UpdatedAt = ddr.UpdatedAt,
+                      PullRequest = ddr.PullRequest,
                       User = ddr.UserId,
                     },
                   });
