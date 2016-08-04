@@ -121,6 +121,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Test.cs" />
     <Compile Include="Tracing\ApplicationInsightsTraceWriter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Tracing\RaygunTraceWriter.cs" />
