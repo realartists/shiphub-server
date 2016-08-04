@@ -123,6 +123,8 @@
     <Build Include="Tables\OrganizationLog.sql" />
     <Build Include="Procedures\BulkUpdateIssueComments.sql" />
     <Build Include="Tables\IssueEventAccess.sql" />
+    <Build Include="Tables\Reactions.sql" />
+    <Build Include="User Defined Types\ReactionTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
