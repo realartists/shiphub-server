@@ -107,7 +107,8 @@
     <Compile Include="GitHub\Models\Commit.cs" />
     <Compile Include="GitHub\Models\IssueEvent.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
-    <Compile Include="GitHub\Models\Reactions.cs" />
+    <Compile Include="GitHub\Models\Reaction.cs" />
+    <Compile Include="GitHub\Models\ReactionSummary.cs" />
     <Compile Include="MurmurHash3.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />

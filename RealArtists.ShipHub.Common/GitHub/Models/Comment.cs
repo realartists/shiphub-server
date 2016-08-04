@@ -9,7 +9,7 @@
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Account User { get; set; }
-    public Reactions Reactions { get; set; }
+    public ReactionSummary Reactions { get; set; }
 
     // Undocumented. Of course.
     private string _issueUrl;
