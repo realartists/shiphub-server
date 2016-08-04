@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
   using AutoMapper;
-  using Newtonsoft.Json;
   using Types;
   using g = GitHub.Models;
 
@@ -20,7 +19,7 @@
           }
         });
 
-      CreateMap<g.Issue, IssueTableType>(MemberList.Destination);
+      CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
         .ForMember(x => x.PullRequest, o => o.ResolveUsing(x => x.PullRequest != null));
 
       CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination);
