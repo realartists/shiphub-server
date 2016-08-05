@@ -126,13 +126,16 @@
                   });
                 }
 
-                // Comments
+                // Comments (can be deleted)
                 reader.NextResult();
                 while (reader.Read()) {
-                  entries.Add(new SyncLogEntry() {
+                  var entry = new SyncLogEntry() {
                     Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                     Entity = SyncEntityType.Comment,
-                    Data = new CommentEntry() {
+                  };
+
+                  if (entry.Action == SyncLogAction.Set) {
+                    entry.Data = new CommentEntry() {
                       Body = ddr.Body,
                       CreatedAt = ddr.CreatedAt,
                       Identifier = ddr.Id,
@@ -140,8 +143,12 @@
                       Repository = ddr.RepositoryId,
                       UpdatedAt = ddr.UpdatedAt,
                       User = ddr.UserId,
-                    },
-                  });
+                    };
+                  } else {
+                    entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                  }
+
+                  entries.Add(entry);
                 }
 
                 // Events
@@ -179,13 +186,16 @@
                   entries.Add(eventEntry);
                 }
 
-                // Milestones
+                // Milestones (can be deleted)
                 reader.NextResult();
                 while (reader.Read()) {
-                  entries.Add(new SyncLogEntry() {
+                  var entry = new SyncLogEntry() {
                     Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                     Entity = SyncEntityType.Milestone,
-                    Data = new MilestoneEntry() {
+                  };
+
+                  if (entry.Action == SyncLogAction.Set) {
+                    entry.Data = new MilestoneEntry() {
                       ClosedAt = ddr.ClosedAt,
                       CreatedAt = ddr.CreatedAt,
                       Description = ddr.Description,
@@ -196,8 +206,36 @@
                       State = ddr.State,
                       Title = ddr.Title,
                       UpdatedAt = ddr.UpdatedAt,
-                    },
-                  });
+                    };
+                  } else {
+                    entry.Data = new MilestoneEntry() { Identifier = ddr.Id };
+                  }
+
+                  entries.Add(entry);
+                }
+
+                // Reactions (can be deleted)
+                reader.NextResult();
+                while (reader.Read()) {
+                  var entry = new SyncLogEntry() {
+                    Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                    Entity = SyncEntityType.Reaction,
+                  };
+
+                  if (entry.Action == SyncLogAction.Set) {
+                    entry.Data = new ReactionEntry() {
+                      Comment = ddr.CommentId,
+                      Content = ddr.Content,
+                      CreatedAt = ddr.CreatedAt,
+                      Identifier = ddr.Id,
+                      Issue = ddr.IssueId,
+                      User = ddr.UserId,
+                    };
+                  } else {
+                    entry.Data = new ReactionEntry() { Identifier = ddr.Id };
+                  }
+
+                  entries.Add(entry);
                 }
 
                 // Issue Labels

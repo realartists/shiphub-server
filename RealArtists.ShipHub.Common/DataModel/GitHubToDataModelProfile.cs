@@ -28,6 +28,8 @@
 
       CreateMap<g.Repository, RepositoryTableType>(MemberList.Destination)
         .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
+
+      CreateMap<g.Reaction, ReactionTableType>(MemberList.Destination);
     }
   }
 }

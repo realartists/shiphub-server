@@ -125,6 +125,7 @@
     <Build Include="Tables\IssueEventAccess.sql" />
     <Build Include="Tables\Reactions.sql" />
     <Build Include="User Defined Types\ReactionTableType.sql" />
+    <Build Include="Procedures\BulkUpdateReactions.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

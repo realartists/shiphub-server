@@ -90,6 +90,7 @@
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\GitHubMetaData.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
+    <Compile Include="DataModel\Types\ReactionTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
     <Compile Include="DataModel\Types\ChangeSummary.cs" />
     <Compile Include="DataModel\Types\VersionTableType.cs" />
