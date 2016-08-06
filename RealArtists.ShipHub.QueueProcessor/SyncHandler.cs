@@ -16,7 +16,6 @@
   using gm = Common.GitHub.Models;
 
   /// <summary>
-  /// TODO: ENSURE PARTITIONING AND MESSAGE IDS ARE SET CORRECTLY.
   /// TODO: Incremental sync when possible
   /// TODO: Don't submit empty updates to DB.
   /// </summary>
@@ -352,6 +351,7 @@
 
     public static async Task SyncRepositoryIssueComments(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueComments)] IssueMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueCommentReactions)] IAsyncCollector<IssueCommentMessage> syncReactions,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
@@ -373,6 +373,91 @@
           complete: true));
       }
 
+      var tasks = comments.Select(x => syncReactions.AddAsync(new IssueCommentMessage() {
+        AccessToken = message.AccessToken,
+        CommentId = x.Id,
+      })).ToList();
+
+      if (!changes.Empty) {
+        tasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
+      }
+
+      await Task.WhenAll(tasks);
+    }
+
+    public static async Task SyncRepositoryIssueReactions(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueReactions)] IssueMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
+
+      using (var context = new ShipHubContext()) {
+        // TODO: Optimize queue messages to remove/reduce these lookups
+        var details = await context.Issues
+          .Where(x => x.Number == message.Number && x.Repository.FullName == message.RepositoryFullName)
+          .Select(x => new {
+            IssueId = x.Id,
+            IssueNumber = x.Number,
+            RepositoryId = x.RepositoryId,
+            RepoFullName = x.Repository.FullName,
+          })
+          .SingleAsync();
+
+        var reactionsResponse = await ghc.IssueReactions(details.RepoFullName, details.IssueNumber);
+        var reactions = reactionsResponse.Result;
+
+        var users = reactions
+          .Select(x => x.User)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+
+        changes.UnionWith(await context.BulkUpdateReactions(
+          details.RepositoryId,
+          details.IssueId,
+          null,
+          SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+      }
+
+      if (!changes.Empty) {
+        await notifyChanges.AddAsync(new ChangeMessage(changes));
+      }
+    }
+
+    public static async Task SyncRepositoryIssueCommentReactions(
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueCommentReactions)] IssueCommentMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
+      ChangeSummary changes;
+
+      using (var context = new ShipHubContext()) {
+        // TODO: Optimize queue messages to remove/reduce these lookups
+        var details = await context.Comments
+          .Where(x => x.Id == message.CommentId)
+          .Select(x => new {
+            CommentId = x.Id,
+            IssueId = x.IssueId,
+            RepositoryId = x.RepositoryId,
+            RepoFullName = x.Repository.FullName,
+          })
+          .SingleAsync();
+
+        var reactionsResponse = await ghc.IssueCommentReactions(details.RepoFullName, details.CommentId);
+        var reactions = reactionsResponse.Result;
+
+        var users = reactions
+          .Select(x => x.User)
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+
+        changes.UnionWith(await context.BulkUpdateReactions(
+          details.RepositoryId,
+          details.IssueId,
+          details.CommentId,
+          SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+      }
+
       if (!changes.Empty) {
         await notifyChanges.AddAsync(new ChangeMessage(changes));
       }
@@ -382,6 +467,7 @@
     public static async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<IssueMessage> syncIssueComments,
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueReactions)] IAsyncCollector<IssueMessage> syncRepoIssueReactions,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       ///////////////////////////////////////////
       /* NOTE!
@@ -397,6 +483,9 @@
       ChangeSummary changes;
       var tasks = new List<Task>();
 
+      // May as well kick of the reactions sync now.
+      tasks.Add(syncRepoIssueReactions.AddAsync(message));
+
       // TODO: Just trigger a full repo issue sync once incremental is implemented
       var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
       var issue = issueResponse.Result;
@@ -408,6 +497,7 @@
       // TODO: Incrementally
       if (timeline.Any(x => x.Event == "commented")) {
         tasks.Add(syncIssueComments.AddAsync(message));
+        // Can't sync comment reactions yet in case they don't exist
       }
 
       // Now just filter

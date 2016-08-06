@@ -353,6 +353,32 @@
       });
     }
 
+    public Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
+      var reactionsParam = CreateTableParameter(
+        "Reactions",
+        "[dbo].[ReactionTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("UserId", typeof(long)),
+          Tuple.Create("Content", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+        },
+        x => new object[] {
+          x.Id,
+          x.UserId,
+          x.Content,
+          x.CreatedAt,
+        },
+        reactions);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueId = issueId;
+        x.CommentId = commentId;
+        x.Reactions = reactionsParam;
+      });
+    }
+
     public Task<ChangeSummary> BulkUpdateRepositories(DateTimeOffset date, IEnumerable<RepositoryTableType> repositories) {
       var tableParam = CreateTableParameter(
         "Repositories",
