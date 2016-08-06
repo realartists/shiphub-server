@@ -158,6 +158,9 @@
     public async Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}/reactions", opts?.CacheOptions);
 
+      // Reactions are in beta
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
+
       var result = await MakeRequest<IEnumerable<Reaction>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
@@ -168,6 +171,9 @@
 
     public async Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}/reactions", opts?.CacheOptions);
+
+      // Reactions are in beta
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
 
       var result = await MakeRequest<IEnumerable<Reaction>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
