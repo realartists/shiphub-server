@@ -100,11 +100,12 @@ BEGIN
     OPTION (RECOMPILE)
 
     -- Comments
-    SELECT e.Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt,
-           e.UpdatedAt, e.Reactions, l.[Delete]
-    FROM Comments as e
-      INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'comment')
+    SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt,
+           e.UpdatedAt, l.[Delete]
+    FROM @RepoLogs as l
+      LEFT OUTER JOIN Comments as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.[Type] = 'comment'
     OPTION (RECOMPILE)
 
     -- Events
@@ -117,11 +118,20 @@ BEGIN
     OPTION (RECOMPILE)
 
     -- Milestones
-    SELECT e.Id, e.RepositoryId, e.Number, e.[State], e.Title, e.[Description],
+    SELECT l.ItemId as Id, e.RepositoryId, e.Number, e.[State], e.Title, e.[Description],
            e.CreatedAt, e.UpdatedAt, e.ClosedAt, e.DueOn, l.[Delete]
-    FROM Milestones as e
-      INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'milestone')
+    FROM @RepoLogs as l
+      LEFT OUTER JOIN Milestones as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.[Type] = 'milestone'
+    OPTION (RECOMPILE)
+
+    -- Reactions
+    SELECT l.ItemId as Id, e.UserId, e.IssueId, e.CommentId, e.Content, e.CreatedAt, l.[Delete]
+    FROM @RepoLogs as l
+      LEFT OUTER JOIN Reactions as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.[Type] = 'reaction'
     OPTION (RECOMPILE)
 
     -- Begin Issues ---------------------------------------------
@@ -136,7 +146,7 @@ BEGIN
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.AssigneeId, e.MilestoneId, e.Locked, e.CreatedAt,
-           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
+           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

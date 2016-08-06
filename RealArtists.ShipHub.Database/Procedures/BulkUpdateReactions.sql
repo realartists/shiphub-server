@@ -1,12 +1,16 @@
-﻿CREATE PROCEDURE [dbo].[BulkUpdateComments]
+﻿CREATE PROCEDURE [dbo].[BulkUpdateReactions]
   @RepositoryId BIGINT,
-  @Comments CommentTableType READONLY,
-  @Complete BIT = 0
+  @IssueId BIGINT,
+  @CommentId BIGINT = NULL,
+  @Reactions ReactionTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
   SET NOCOUNT ON
+
+  -- Reactions are always submitted as the full list for the given item.
+  -- This lets us track deletions
 
   -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
@@ -15,41 +19,37 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Reactions WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT c.Id, i.Id as [IssueId], c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
-    FROM @Comments as c
-      INNER JOIN [Issues] as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.[IssueNumber])
+    SELECT Id, UserId, Content, CreatedAt
+    FROM @Reactions
   ) as [Source]
-  ON ([Target].[Id] = [Source].[Id])
+  ON ([Target].Id = [Source].Id)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [IssueId], [RepositoryId], [UserId], [Body], [CreatedAt], [UpdatedAt])
-    VALUES ([Id], [IssueId], @RepositoryId, [UserId], [Body], [CreatedAt], [UpdatedAt])
+    INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
+    VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
   -- Delete
-  WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
-  -- Update
-  WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
-    UPDATE SET
-      [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
-      [Body] = [Source].[Body],
-      [UpdatedAt] = [Source].[UpdatedAt]
+  WHEN NOT MATCHED BY SOURCE
+    AND (IssueId = @IssueId AND ((CommentId IS NULL AND @CommentId IS NULL) OR (CommentId = @CommentId)))
+    THEN DELETE
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), INSERTED.UserId, $action INTO @Changes (Id, UserId, [Action])
   OPTION (RECOMPILE);
 
-  -- Deleted or edited comments
+  -- Deleted or edited reactions
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
     [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
-  FROM @Changes as c
-    INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  FROM RepositoryLog as rl
+    INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
+  WHERE RepositoryId = @RepositoryId AND [Type] = 'reaction'
   OPTION (RECOMPILE)
 
-  -- New comments
+  -- New reactions
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'comment', c.Id, 0
+  SELECT @RepositoryId, 'reaction', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'reaction')
   OPTION (RECOMPILE)
 
   -- Add new account references to log

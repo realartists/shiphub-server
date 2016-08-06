@@ -90,6 +90,7 @@
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\GitHubMetaData.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
+    <Compile Include="DataModel\Types\ReactionTableType.cs" />
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
     <Compile Include="DataModel\Types\ChangeSummary.cs" />
     <Compile Include="DataModel\Types\VersionTableType.cs" />
@@ -107,7 +108,8 @@
     <Compile Include="GitHub\Models\Commit.cs" />
     <Compile Include="GitHub\Models\IssueEvent.cs" />
     <Compile Include="GitHub\Models\PullRequest.cs" />
-    <Compile Include="GitHub\Models\Reactions.cs" />
+    <Compile Include="GitHub\Models\Reaction.cs" />
+    <Compile Include="GitHub\Models\ReactionSummary.cs" />
     <Compile Include="MurmurHash3.cs" />
     <Compile Include="JsonUtility.cs" />
     <Compile Include="GitHub\GitHubClient.cs" />

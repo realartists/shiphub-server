@@ -291,7 +291,6 @@
           Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
           Tuple.Create("ClosedById", typeof(long)),
           Tuple.Create("PullRequest", typeof(bool)),
-          Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
           x.Id,
@@ -308,7 +307,6 @@
           x.ClosedAt,
           x.ClosedById,
           x.PullRequest,
-          x.Reactions,
         },
         issues);
 
@@ -352,6 +350,32 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
         x.RepositoryId = repositoryId;
         x.Milestones = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
+      var reactionsParam = CreateTableParameter(
+        "Reactions",
+        "[dbo].[ReactionTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("UserId", typeof(long)),
+          Tuple.Create("Content", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+        },
+        x => new object[] {
+          x.Id,
+          x.UserId,
+          x.Content,
+          x.CreatedAt,
+        },
+        reactions);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueId = issueId;
+        x.CommentId = commentId;
+        x.Reactions = reactionsParam;
       });
     }
 
@@ -465,7 +489,6 @@
           Tuple.Create("Body", typeof(string)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
           Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
           x.Id,
@@ -474,7 +497,6 @@
           x.Body,
           x.CreatedAt,
           x.UpdatedAt,
-          x.Reactions,
         },
         comments);
     }

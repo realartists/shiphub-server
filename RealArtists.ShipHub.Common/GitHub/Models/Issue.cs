@@ -18,7 +18,7 @@
     public DateTimeOffset UpdatedAt { get; set; }
     public Account ClosedBy { get; set; }
 
-    public Reactions Reactions { get; set; }
+    public ReactionSummary Reactions { get; set; }
     public PullRequestDetails PullRequest { get; set; }
     public IEnumerable<Account> Assignees { get; set; }
   }

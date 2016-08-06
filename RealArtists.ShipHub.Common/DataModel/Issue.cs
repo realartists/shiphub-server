@@ -38,8 +38,6 @@
 
     public long? ClosedById { get; set; }
 
-    public string Reactions { get; set; }
-
     //public long? MetadataId { get; set; }
 
     public virtual Account Assignee { get; set; }

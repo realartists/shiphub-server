@@ -20,8 +20,6 @@
 
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public string Reactions { get; set; }
-
     public virtual Account User { get; set; }
 
     public virtual Issue Issue { get; set; }

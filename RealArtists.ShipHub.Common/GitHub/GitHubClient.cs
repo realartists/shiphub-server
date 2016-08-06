@@ -136,11 +136,6 @@
 
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{number}", opts?.CacheOptions);
-
-      // Reactions (application/vnd.github.squirrel-girl-preview+json)
-      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
-      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
-
       return MakeRequest<Issue>(request, opts?.Credentials);
     }
 
@@ -152,11 +147,35 @@
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
 
-      // Reactions (application/vnd.github.squirrel-girl-preview+json)
-      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
+      var result = await MakeRequest<IEnumerable<Issue>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/{issueNumber}/reactions", opts?.CacheOptions);
+
+      // Reactions are in beta
       request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
 
-      var result = await MakeRequest<IEnumerable<Issue>>(request, opts?.Credentials);
+      var result = await MakeRequest<IEnumerable<Reaction>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
+    public async Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"repos/{repoFullName}/issues/comments/{commentId}/reactions", opts?.CacheOptions);
+
+      // Reactions are in beta
+      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
+
+      var result = await MakeRequest<IEnumerable<Reaction>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
@@ -169,10 +188,6 @@
       if (since != null) {
         request.AddParameter("since", since);
       }
-
-      // Reactions (application/vnd.github.squirrel-girl-preview+json)
-      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
-      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
 
       var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {
@@ -189,10 +204,6 @@
       }
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
-
-      // Reactions (application/vnd.github.squirrel-girl-preview+json)
-      // https://developer.github.com/changes/2016-05-12-reactions-api-preview/
-      request.AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json";
 
       var result = await MakeRequest<IEnumerable<Comment>>(request, opts?.Credentials);
       if (result.IsError || result.Pagination == null) {

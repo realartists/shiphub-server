@@ -1,7 +1,7 @@
-﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
+﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
   using Newtonsoft.Json;
 
-  public class Reactions {
+  public class ReactionSummary {
     public int TotalCount { get; set; }
     public int Laugh { get; set; }
     public int Confused { get; set; }

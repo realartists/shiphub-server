@@ -28,14 +28,14 @@ BEGIN
 
   MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT c.Id, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt, c.Reactions
+    SELECT c.Id, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
     FROM @Comments as c
   ) as [Source]
   ON ([Target].Id = [Source].Id)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt, Reactions)
-    VALUES (Id, @IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt, Reactions)
+    INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
+    VALUES (Id, @IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND (
     @Complete = 1
@@ -46,8 +46,7 @@ BEGIN
     UPDATE SET
       [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
       [Body] = [Source].[Body],
-      [UpdatedAt] = [Source].[UpdatedAt],
-      [Reactions] = [Source].[Reactions]
+      [UpdatedAt] = [Source].[UpdatedAt]
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), INSERTED.UserId, $action INTO @Changes (Id, UserId, [Action])
   OPTION (RECOMPILE);
 
