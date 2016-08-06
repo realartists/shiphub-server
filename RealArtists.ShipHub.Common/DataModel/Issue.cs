@@ -38,6 +38,8 @@
 
     public long? ClosedById { get; set; }
 
+    public bool PullRequest { get; set; }
+
     //public long? MetadataId { get; set; }
 
     public virtual Account Assignee { get; set; }
