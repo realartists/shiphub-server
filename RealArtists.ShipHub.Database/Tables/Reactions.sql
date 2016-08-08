@@ -1,10 +1,11 @@
 ﻿CREATE TABLE [dbo].[Reactions]  (
   [Id]           BIGINT         NOT NULL,
   [UserId]       BIGINT         NOT NULL,
-  [IssueId]      BIGINT         NOT NULL,
+  [IssueId]      BIGINT         NULL,
   [CommentId]    BIGINT         NULL,
   [Content]      NVARCHAR(15)   NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
+  CONSTRAINT [CK_Reactions_IssueOrCommentExclusive] CHECK ((IssueId IS NOT NULL OR CommentId IS NOT NULL) AND NOT (IssueId IS NOT NULL AND CommentId IS NOT NULL)),
   CONSTRAINT [PK_Reactions] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Reactions_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Reactions_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues] ([Id]),

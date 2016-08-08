@@ -1,6 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateReactions]
   @RepositoryId BIGINT,
-  @IssueId BIGINT,
+  @IssueId BIGINT = NULL,
   @CommentId BIGINT = NULL,
   @Reactions ReactionTableType READONLY
 AS
@@ -30,8 +30,7 @@ BEGIN
     INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
     VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
   -- Delete
-  WHEN NOT MATCHED BY SOURCE
-    AND (IssueId = @IssueId AND ((CommentId IS NULL AND @CommentId IS NULL) OR (CommentId = @CommentId)))
+  WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
     THEN DELETE
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), INSERTED.UserId, $action INTO @Changes (Id, UserId, [Action])
   OPTION (RECOMPILE);

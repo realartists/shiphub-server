@@ -353,7 +353,15 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
+    public Task<ChangeSummary> BulkUpdateIssueReactions(long repositoryId, long issueId, IEnumerable<ReactionTableType> reactions) {
+      return BulkUpdateReactions(repositoryId, issueId, null, reactions);
+    }
+
+    public Task<ChangeSummary> BulkUpdateCommentReactions(long repositoryId, long commentId, IEnumerable<ReactionTableType> reactions) {
+      return BulkUpdateReactions(repositoryId, null, commentId, reactions);
+    }
+
+    private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
       var reactionsParam = CreateTableParameter(
         "Reactions",
         "[dbo].[ReactionTableType]",

@@ -505,10 +505,9 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
-        changes.UnionWith(await context.BulkUpdateReactions(
+        changes.UnionWith(await context.BulkUpdateIssueReactions(
           details.RepositoryId,
           details.IssueId,
-          null,
           SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
       }
 
@@ -544,9 +543,8 @@
           .Select(x => x.First());
         changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
-        changes.UnionWith(await context.BulkUpdateReactions(
+        changes.UnionWith(await context.BulkUpdateCommentReactions(
           details.RepositoryId,
-          details.IssueId,
           details.CommentId,
           SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
       }
