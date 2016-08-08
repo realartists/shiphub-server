@@ -678,12 +678,13 @@
           var prLookups = sourceLookups.Values
             .Where(x => x.Result.Result.PullRequest != null)
             .Select(x => {
-              var parts = x.Result.Result.PullRequest.Url.Split('/');
+              var url = x.Result.Result.PullRequest.Url;
+              var parts = url.Split('/');
               var numParts = parts.Length;
               var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
               var prNum = int.Parse(parts[numParts - 1]);
               return new {
-                Id = "",
+                Id = url,
                 Task = ghc.PullRequest(repoName, prNum),
               };
             })
