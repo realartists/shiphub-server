@@ -39,7 +39,12 @@
         };
 
         var repoHooks = (await client.RepoWebhooks(repo.FullName)).Result;
-        var webhookUrl = $"https://{CloudConfigurationManager.GetSetting("ApiHostname")}/webhook/repo/{repo.Id}";
+
+        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
+        if (apiHostname == null) {
+         throw new ApplicationException("ApiHostname not specified in configuration.");
+        }
+        var webhookUrl = $"https://{apiHostname}/webhook/repo/{repo.Id}";
 
         var existingShipHooks = repoHooks
           .Where(x => x.Name.Equals("web"))
