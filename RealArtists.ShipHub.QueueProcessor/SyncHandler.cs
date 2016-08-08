@@ -706,6 +706,8 @@
             item.ExtensionDataDictionary["ship_issue_title"] = refIssue.Title;
 
             if (refIssue.PullRequest != null) {
+              item.ExtensionDataDictionary["ship_is_pull_request"] = true;
+
               var pr = prLookups[refIssue.PullRequest.Url].Result.Result;
               item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
             }
