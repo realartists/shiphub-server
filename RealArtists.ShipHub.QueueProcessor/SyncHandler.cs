@@ -782,7 +782,7 @@
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
-        changes.UnionWith(await context.BulkUpdateIssueEvents(userId, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
+        changes.UnionWith(await context.BulkUpdateTimelineEvents(userId, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {

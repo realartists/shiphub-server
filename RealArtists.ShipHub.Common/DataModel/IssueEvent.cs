@@ -23,6 +23,8 @@
 
     public bool Restricted { get; set; }
 
+    public bool Timeline { get; set; }
+
     [Required]
     public string ExtensionData { get; set; }
 

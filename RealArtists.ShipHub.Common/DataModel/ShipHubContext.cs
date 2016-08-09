@@ -236,6 +236,23 @@
       long repositoryId,
       IEnumerable<IssueEventTableType> issueEvents,
       IEnumerable<long> referencedAccounts) {
+      return BulkUpdateEvents(userId, repositoryId, false, issueEvents, referencedAccounts);
+    }
+
+      public Task<ChangeSummary> BulkUpdateTimelineEvents(
+      long userId,
+      long repositoryId,
+      IEnumerable<IssueEventTableType> issueEvents,
+      IEnumerable<long> referencedAccounts) {
+      return BulkUpdateEvents(userId, repositoryId, true, issueEvents, referencedAccounts);
+    }
+
+    private Task<ChangeSummary> BulkUpdateEvents(
+      long userId,
+      long repositoryId,
+      bool fromTimeline,
+      IEnumerable<IssueEventTableType> issueEvents,
+      IEnumerable<long> referencedAccounts) {
 
       var eventsParam = CreateTableParameter(
         "IssueEvents",
@@ -267,6 +284,7 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueEvents]", x => {
         x.UserId = userId;
         x.RepositoryId = repositoryId;
+        x.Timeline = fromTimeline;
         x.IssueEvents = eventsParam;
         x.ReferencedAccounts = accountsParam;
       });

@@ -1,6 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssueEvents]
   @UserId BIGINT,
   @RepositoryId BIGINT,
+  @Timeline BIT,
   @IssueEvents IssueEventTableType READONLY,
   @ReferencedAccounts ItemListTableType READONLY
 AS
@@ -25,15 +26,20 @@ BEGIN
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData)
-    VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData)
-  WHEN MATCHED AND [Source].[Hash] != [Target].[Hash] THEN
+    INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, Timeline, ExtensionData)
+    VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, @Timeline, ExtensionData)
+  WHEN MATCHED AND (
+      [Source].[Hash] != [Target].[Hash] -- different
+      AND ([Target].Timeline = 0 OR @Timeline = 1) -- prefer timeline over bulk issues
+      AND ([Target].Restricted = 0 OR [Source].Restricted = 1) -- prefer more detailed events
+  ) THEN
     UPDATE  SET
       ActorId = [Source].ActorId,
       [Event] = [Source].[Event],
       CreatedAt = [Source].CreatedAt,
       [Hash] = [Source].[Hash],
       Restricted = [Source].Restricted,
+      Timeline = @Timeline,
       ExtensionData = [Source].ExtensionData
   OUTPUT INSERTED.Id INTO @Changes (IssueEventId)
   OPTION (RECOMPILE);

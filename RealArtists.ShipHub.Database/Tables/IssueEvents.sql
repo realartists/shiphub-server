@@ -7,6 +7,7 @@
   [CreatedAt]     DATETIMEOFFSET   NOT NULL,
   [Hash]          UNIQUEIDENTIFIER NULL,
   [Restricted]    BIT              NOT NULL,
+  [Timeline]      BIT              NOT NULL,
   [ExtensionData] NVARCHAR(MAX)    NOT NULL,
   CONSTRAINT [CK_IssueEvents_Id] CHECK ([Id] != 0),
   CONSTRAINT [PK_IssueEvents] PRIMARY KEY CLUSTERED ([Id]),
