@@ -18,6 +18,7 @@
         DashboardConnectionString = azureWebJobsDashboard,
         StorageConnectionString = azureWebJobsStorage,
       };
+      config.Queues.MaxDequeueCount = 2; // Only try twice
 
       // Application Insights
       var instrumentationKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
@@ -50,6 +51,7 @@
         config.DashboardConnectionString = null;
         sbConfig.MessageOptions.AutoRenewTimeout = TimeSpan.FromSeconds(10); // Abandon locks quickly
         sbConfig.MessageOptions.MaxConcurrentCalls = 1;
+        config.Queues.MaxDequeueCount = 1;
       }
 
       // https://azure.microsoft.com/en-us/documentation/articles/service-bus-performance-improvements/ recommends
