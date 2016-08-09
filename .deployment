@@ -1,3 +1,2 @@
 [config]
 project = RealArtists.ShipHub.Api/RealArtists.ShipHub.Api.csproj
-SCM_TRACE_LEVEL=4
