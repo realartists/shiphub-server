@@ -87,7 +87,7 @@ BEGIN
   -- Contains duplicates
   SELECT @RealLogs as TotalLogs
 
-  WHILE @WindowBegin < @TotalLogs
+  WHILE @WindowBegin <= @TotalLogs -- When there's a single log entry to sync, @WindowBegin = @TotalLogs
   BEGIN
     -- Mark as repo logs
     SELECT 1 as [Type]
