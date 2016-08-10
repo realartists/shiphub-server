@@ -1,5 +1,4 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
-  using System;
   using System.Collections.Generic;
 
   public class RepositoryEntry : SyncEntity {
@@ -9,7 +8,7 @@
     public string Name { get; set; }
     public string FullName { get; set; }
 
-    public IEnumerable<long> Assignees { get; set; } = Array.Empty<long>();
-    public IEnumerable<Label> Labels { get; set; } = Array.Empty<Label>();
+    public IEnumerable<long> Assignees { get; set; }
+    public IEnumerable<Label> Labels { get; set; }
   }
 }

@@ -19,6 +19,6 @@
     public long? ClosedBy { get; set; }
     public bool PullRequest { get; set; }
 
-    public IEnumerable<Label> Labels { get; set; } = Array.Empty<Label>();
+    public IEnumerable<Label> Labels { get; set; }
   }
 }
