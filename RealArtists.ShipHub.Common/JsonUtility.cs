@@ -14,7 +14,7 @@
         DateParseHandling = DateParseHandling.DateTimeOffset,
         DateTimeZoneHandling = DateTimeZoneHandling.Utc,
         Formatting = Formatting.Indented,
-        NullValueHandling = NullValueHandling.Ignore,
+        NullValueHandling = NullValueHandling.Include,
       };
 
       settings.Converters.Add(new StringEnumConverter() {
