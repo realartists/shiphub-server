@@ -4,7 +4,7 @@
   public class HelloResponse : SyncMessageBase {
     public override string MessageType { get; set; } = "hello";
     public Guid PurgeIdentifier { get; set; }
-    public UpgradeDetails Upgrade { get; set; }
+    public UpgradeDetails Upgrade { get; set; } = new UpgradeDetails() { Required = false };
   }
 
   public class UpgradeDetails {
