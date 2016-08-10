@@ -41,7 +41,7 @@
             installWebHook = webhook;
           });
 
-        await SyncHandler.AddOrUpdateRepoWebHooksWithClient(new AddOrUpdateRepoWebHooksMessage() {
+        await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
         }, mock.Object);

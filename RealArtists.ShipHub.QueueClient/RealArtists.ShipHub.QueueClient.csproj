@@ -64,7 +64,7 @@
     <Compile Include="Messages\AccountMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
     <Compile Include="Messages\IssueCommentMessage.cs" />
-    <Compile Include="Messages\AddOrUpdateRepoWebHooksMessage.cs" />
+    <Compile Include="Messages\AddOrUpdateRepoWebhooksMessage.cs" />
     <Compile Include="Messages\IssueMessage.cs" />
     <Compile Include="Messages\RepositoryMessage.cs" />
     <Compile Include="ShipHubBusClient.cs" />

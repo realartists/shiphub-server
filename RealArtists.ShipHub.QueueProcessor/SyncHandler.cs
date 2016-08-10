@@ -24,7 +24,7 @@
 
   public static class SyncHandler {
 
-    public static async Task AddOrUpdateRepoWebHooksWithClient(AddOrUpdateRepoWebHooksMessage message, IGitHubClient client) {
+    public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
         var events = new string[] {
@@ -97,9 +97,9 @@
       }
     }
 
-    public static async Task AddOrUpdateRepoWebHooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebHooks)] AddOrUpdateRepoWebHooksMessage message) {
-      await AddOrUpdateRepoWebHooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    public static async Task AddOrUpdateRepoWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
+      await AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
     }
 
     /// <summary>
@@ -139,7 +139,7 @@
     public static async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebHooks)] IAsyncCollector<AddOrUpdateRepoWebHooksMessage> addOrUpdateRepoWebHooks,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<AddOrUpdateRepoWebhooksMessage> addOrUpdateRepoWebhooks,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
@@ -170,7 +170,7 @@
         syncTasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
       }
 
-      var addOrUpdateRepoWebHooksTasks = keepRepos
+      var addOrUpdateRepoWebhooksTasks = keepRepos
         .Where(x => x.Permissions.Admin)
         // Don't risk crapping over other people's repos yet.
         .Where(x => new string[] {
@@ -181,12 +181,12 @@
           "james-howard",
           "aroon", // used in tests only
         }.Contains(x.Owner.Login))
-        .Select(x => addOrUpdateRepoWebHooks.AddAsync(new AddOrUpdateRepoWebHooksMessage {
+        .Select(x => addOrUpdateRepoWebhooks.AddAsync(new AddOrUpdateRepoWebhooksMessage {
           RepositoryId = x.Id,
           AccessToken = message.AccessToken
         }));
 
-      await Task.WhenAll(syncTasks.Concat(addOrUpdateRepoWebHooksTasks));
+      await Task.WhenAll(syncTasks.Concat(addOrUpdateRepoWebhooksTasks));
     }
 
     ///
