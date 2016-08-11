@@ -279,6 +279,26 @@
       return result;
     }
 
+    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user/memberships/orgs", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<OrganizationMembership>>(request, opts?.Credentials);
+
+      if (result.IsError) {
+        return result;
+      }
+
+      if (result.Pagination != null) {
+        result = await EnumerateParallel(result, opts?.Credentials);
+      }
+
+      // Seriously GitHub?
+      foreach (var membership in result.Result) {
+        membership.Organization.Type = GitHubAccountType.Organization;
+      }
+
+      return result;
+    }
+
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/pulls/{pullRequestNumber}", opts?.CacheOptions);
       return MakeRequest<PullRequest>(request, opts?.Credentials);

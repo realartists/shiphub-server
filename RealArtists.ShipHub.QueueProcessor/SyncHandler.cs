@@ -246,16 +246,16 @@
         if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
           logger.WriteLine("Polling: Organiztion membership.");
           var ghc = GitHubSettings.CreateUserClient(user);
-          var orgResponse = await ghc.Organizations(user.OrganizationMetadata);
+          var orgResponse = await ghc.OrganizationMemberships(user.OrganizationMetadata);
 
           if (orgResponse.Status != HttpStatusCode.NotModified) {
             logger.WriteLine("Github: Changed. Saving changes.");
             var orgs = orgResponse.Result;
 
-            changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
-            changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Id)));
+            changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
+            changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Organization.Id)));
 
-            tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Id, x.Login, message.AccessToken))));
+            tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.AccessToken))));
           } else {
             logger.WriteLine("Github: Not modified.");
           }
