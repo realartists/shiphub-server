@@ -28,7 +28,7 @@
     public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
-        var events = new string[] {
+        var requiredEvents = new string[] {
           "issues",
           //"issue_comment",
           //"member",
@@ -38,38 +38,34 @@
           //"repository",
           //"team_add",
         };
-
-        var repoHooks = (await client.RepoWebhooks(repo.FullName)).Result;
-
         var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
         if (apiHostname == null) {
           throw new ApplicationException("ApiHostname not specified in configuration.");
         }
-        var webhookUrl = $"https://{apiHostname}/webhook/repo/{repo.Id}";
+        
+        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.RepositoryId);
 
-        var existingShipHooks = repoHooks
-          .Where(x => x.Name.Equals("web"))
-          .Where(x => x.Config.Url.Equals(webhookUrl))
-          .ToList();
+        if (hook == null) {
+          var existingHooks = (await client.RepoWebhooks(repo.FullName)).Result
+            .Where(x => x.Name.Equals("web"))
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
 
-        if (existingShipHooks.Count == 0) {
-          var secret = Guid.NewGuid();
-
-          // Just stomp over existing hooks for now.  We'll fix this in the next
-          // pass and get smart about not installing hooks when they're already
-          // installed.
-          var existingHook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == repo.Id);
-          if (existingHook != null) {
-            context.Hooks.Remove(existingHook);
+          // Delete any existing hooks that already point back to us - don't
+          // want to risk adding multiple Ship hooks.
+          foreach (var existingHook in existingHooks) {
+            var deleteResponse = await client.DeleteWebhook(repo.FullName, existingHook.Id);
+            if (deleteResponse.IsError || !deleteResponse.Result) {
+              Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for repo '{repo.FullName}'");
+            }
           }
 
           // GitHub will immediately send a ping when the webhook is created.
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
-          var hook = context.Hooks.Add(new Hook() {
+          hook = context.Hooks.Add(new Hook() {
             Active = false,
-            Events = string.Join(",", events),
-            Secret = secret,
+            Events = string.Join(",", requiredEvents),
+            Secret = Guid.NewGuid(),
             RepositoryId = repo.Id,
           });
           await context.SaveChangesAsync();
@@ -79,11 +75,11 @@
             new gm.Webhook() {
               Name = "web",
               Active = true,
-              Events = events,
+              Events = requiredEvents,
               Config = new gm.WebhookConfiguration() {
-                Url = webhookUrl,
+                Url = $"https://{apiHostname}/webhook/repo/{repo.Id}",
                 ContentType = "json",
-                Secret = secret.ToString(),
+                Secret = hook.Secret.ToString(),
               },
             });
 
@@ -91,7 +87,17 @@
             hook.GitHubId = addRepoHookResponse.Result.Id;
             await context.SaveChangesAsync();
           } else {
+            Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookResponse.Error}");
             context.Hooks.Remove(hook);
+            await context.SaveChangesAsync();
+          }
+        } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
+          var editResponse = await client.EditWebhookEvents(repo.FullName, hook.GitHubId, requiredEvents);
+
+          if (editResponse.IsError) {
+            Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
+          } else {            
+            hook.Events = string.Join(",", editResponse.Result.Events);
             await context.SaveChangesAsync();
           }
         }

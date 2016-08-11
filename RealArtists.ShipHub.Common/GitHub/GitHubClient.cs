@@ -18,6 +18,8 @@
   public interface IGitHubClient {
     Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> EditWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null);
   }
 
   public class GitHubClient : IGitHubClient {
@@ -342,14 +344,26 @@
       return result;
     }
 
-    public async Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         HttpMethod.Delete,
         $"/repos/{repoFullName}/hooks/{hookId}",
         null,
         opts?.CacheOptions);
 
-      return await MakeRequest<bool>(request, opts?.Credentials);
+      return MakeRequest<bool>(request, opts?.Credentials);
+    }
+
+    public Task<GitHubResponse<Webhook>> EditWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"), 
+        $"/repos/{repoFullName}/hooks/{hookId}",
+        new {
+          Events = events,
+        },
+        opts?.CacheOptions);
+
+      return MakeRequest<Webhook>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubCredentials credentials = null, GitHubRedirect redirect = null) {
