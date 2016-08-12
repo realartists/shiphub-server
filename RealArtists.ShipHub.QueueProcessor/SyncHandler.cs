@@ -104,6 +104,85 @@
       }
     }
 
+    public static async Task AddOrUpdateOrgWebhooksWithClient(
+      AddOrUpdateOrgWebhooksMessage message,
+      IGitHubClient client) {
+      using (var context = new ShipHubContext()) {
+        var org = await context.Organizations.SingleAsync(x => x.Id == message.OrganizationId);
+        var requiredEvents = new string[] {
+          "repository",
+        };
+        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
+        if (apiHostname == null) {
+          throw new ApplicationException("ApiHostname not specified in configuration.");
+        }
+
+        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.OrganizationId);
+
+        if (hook == null) {
+          var existingHooks = (await client.OrgWebhooks(org.Login)).Result
+            .Where(x => x.Name.Equals("web"))
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
+
+          // Delete any existing hooks that already point back to us - don't
+          // want to risk adding multiple Ship hooks.
+          foreach (var existingHook in existingHooks) {
+            var deleteResponse = await client.DeleteOrgWebhook(org.Login, existingHook.Id);
+            if (deleteResponse.IsError || !deleteResponse.Result) {
+              Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for org '{org.Login}'");
+            }
+          }
+
+          //// GitHub will immediately send a ping when the webhook is created.
+          // To avoid any chance for a race, add the Hook to the DB first, then
+          // create on GitHub.
+          hook = context.Hooks.Add(new Hook() {
+            Active = false,
+            Events = string.Join(",", requiredEvents),
+            Secret = Guid.NewGuid(),
+            OrganizationId = org.Id,
+          });
+          await context.SaveChangesAsync();
+
+          var addResponse = await client.AddOrgWebhook(
+            org.Login,
+            new gm.Webhook() {
+              Name = "web",
+              Active = true,
+              Events = requiredEvents,
+              Config = new gm.WebhookConfiguration() {
+                Url = $"https://{apiHostname}/webhook/org/{org.Id}",
+                ContentType = "json",
+                Secret = hook.Secret.ToString(),
+              },
+            });
+
+          if (!addResponse.IsError) {
+            hook.GitHubId = addResponse.Result.Id;
+            await context.SaveChangesAsync();
+          } else {
+            Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addResponse.Error}");
+            context.Hooks.Remove(hook);
+            await context.SaveChangesAsync();
+          }
+        } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
+          var editResponse = await client.EditOrgWebhookEvents(org.Login, hook.GitHubId, requiredEvents);
+
+          if (editResponse.IsError) {
+            Trace.TraceWarning($"Failed to edit hook for org '{org.Login}': {editResponse.Error}");
+          } else {
+            hook.Events = string.Join(",", editResponse.Result.Events);
+            await context.SaveChangesAsync();
+          }
+        }
+      }
+    }
+
+    public static async Task AddOrUpdateOrgWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message) {
+      await AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    }
+
     public static async Task SyncAccount(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] AccessTokenMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<AccountMessage> syncAccountRepos,
@@ -235,6 +314,7 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<AddOrUpdateOrgWebhooksMessage> addOrUpdateOrgWebhooks,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
@@ -256,6 +336,18 @@
             changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Organization.Id)));
 
             tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.AccessToken))));
+
+            tasks.AddRange(orgs
+              .Where(x => x.Role.Equals("admin"))
+              // Don't risk crapping over other people's orgs yet.
+              .Where(x => new string[] {
+                            "realartists",
+                            "realartists-test",
+              }.Contains(x.Organization.Login))
+              .Select(x => addOrUpdateOrgWebhooks.AddAsync(new AddOrUpdateOrgWebhooksMessage() {
+                AccessToken = message.AccessToken,
+                OrganizationId = x.Organization.Id,
+              })));
           } else {
             logger.WriteLine("Github: Not modified.");
           }

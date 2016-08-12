@@ -256,6 +256,218 @@
         Assert.Equal(hook.Secret.ToString(), installWebHook.Config.Secret);
       }
     }
+
+    [Fact]
+    [AutoRollback]
+    public async Task WillAddHookWhenNoneExistsForOrg() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user);
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+            Result = new List<Webhook>(),
+          });
+
+        Webhook installWebHook = null;
+
+        mock
+          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>(), null))
+          .ReturnsAsync(new GitHubResponse<Webhook>() {
+            Result = new Webhook() {
+              Id = 9999,
+            }
+          })
+          .Callback((string login, Webhook webhook, IGitHubCacheOptions opts) => {
+            installWebHook = webhook;
+          });
+
+        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+          OrganizationId = org.Id,
+          AccessToken = user.Token,
+        }, mock.Object);
+        var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
+
+        var expectedEvents = new string[] {
+          "repository",
+        };
+
+        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
+        Assert.Equal(org.Id, hook.OrganizationId);
+        Assert.Equal(9999, hook.GitHubId);
+        Assert.Null(hook.RepositoryId);
+        Assert.Null(hook.LastSeen);
+        Assert.NotNull(hook.Secret);
+        
+        Assert.Equal("web", installWebHook.Name);
+        Assert.Equal(true, installWebHook.Active);
+        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
+        Assert.Equal("json", installWebHook.Config.ContentType);
+        Assert.Equal(0, installWebHook.Config.InsecureSsl);
+        Assert.Equal(hook.Secret.ToString(), installWebHook.Config.Secret);
+      }
+    }
+
+    /// <summary>
+    /// To guard against webhooks accumulating on the GitHub side, we'll
+    /// always remove any existing webhooks that point back to our host before
+    /// we add a new one.
+    /// </summary>
+    /// <returns></returns>
+    [Fact]
+    [AutoRollback]
+    public async Task WillRemoveExistingHooksBeforeAddingOneForOrg() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user);
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+            Result = new List<Webhook>() {
+                  new Webhook() {
+                    Id = 8001,
+                    Active = true,
+                    Config = new WebhookConfiguration() {
+                      ContentType = "json",
+                      InsecureSsl = 0,
+                      Secret = "*******",
+                      Url = $"https://{ApiHostname}/webhook/org/1",
+                    },
+                    Events = new string[] {
+                    },
+                    Name = "web",
+                  },
+                  new Webhook() {
+                    Id = 8002,
+                    Active = true,
+                    Config = new WebhookConfiguration() {
+                      ContentType = "json",
+                      InsecureSsl = 0,
+                      Secret = "*******",
+                      Url = $"https://{ApiHostname}/webhook/repo/2",
+                    },
+                    Events = new string[] {
+                    },
+                    Name = "web",
+                  },
+            },
+          });
+
+        var deletedHookIds = new List<long>();
+
+        mock
+          .Setup(x => x.DeleteOrgWebhook(org.Login, It.IsAny<long>(), null))
+          .ReturnsAsync(new GitHubResponse<bool>() {
+            Result = true,
+          })
+          .Callback((string fullName, long hookId, IGitHubCacheOptions opts) => {
+            deletedHookIds.Add(hookId);
+          });
+
+        mock
+          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>(), null))
+          .ReturnsAsync(new GitHubResponse<Webhook>() {
+            Result = new Webhook() {
+              Id = 9999,
+            }
+          });
+
+        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+          OrganizationId = org.Id,
+          AccessToken = user.Token,
+        }, mock.Object);
+        var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
+
+        Assert.Equal(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
+        Assert.NotNull(hook);
+      }
+    }
+
+    [Fact]
+    [AutoRollback]
+    public async Task WillEditHookWhenEventListIsNotCompleteForOrg() {
+      var expectedEvents = new string[] {
+          "repository",
+        };
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user);
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Active = true,
+          Events = "event1,event2",
+          GitHubId = 8001,
+          OrganizationId = org.Id,
+          Secret = Guid.NewGuid(),
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+            Result = new List<Webhook>() {
+              new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = 0,
+                  Secret = "*******",
+                  Url = $"https://{ApiHostname}/webhook/repo/1234",
+                },
+                Events = new string[] {
+                  "event1",
+                  "event2",
+                },
+                Name = "web",
+              },
+            },
+          });
+
+        mock
+          .Setup(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, It.IsAny<string[]>(), null))
+          .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheOptions opts) => {
+            var result = new GitHubResponse<Webhook>() {
+              Result = new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = 0,
+                  Secret = "*******",
+                  Url = $"https://{ApiHostname}/webhook/org/1234",
+                },
+                Events = eventList,
+                Name = "web",
+              }
+            };
+            return Task.FromResult(result);
+          });
+
+        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+          OrganizationId = org.Id,
+          AccessToken = user.Token,
+        }, mock.Object);
+
+        context.Entry(hook).Reload();
+
+        Assert.Equal(expectedEvents, hook.Events.Split(','));
+      }
+    }
   }
 }
 
