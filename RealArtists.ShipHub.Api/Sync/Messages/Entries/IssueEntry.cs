@@ -10,7 +10,6 @@
     public string State { get; set; }
     public string Title { get; set; }
     public string Body { get; set; }
-    public long? Assignee { get; set; }
     public long? Milestone { get; set; }
     public bool Locked { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -19,6 +18,7 @@
     public long? ClosedBy { get; set; }
     public bool PullRequest { get; set; }
 
+    public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<Label> Labels { get; set; }
   }
 }

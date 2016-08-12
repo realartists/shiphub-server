@@ -360,9 +360,8 @@
       var issues = issueResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        // TODO: Support multiple assignees.
         var accounts = issues
-          .SelectMany(x => new[] { x.User, x.Assignee, x.ClosedBy })
+          .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
           .Where(x => x != null)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
@@ -375,11 +374,12 @@
           .Select(x => x.First());
         changes.UnionWith(await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
-        // TODO: Support multiple assignees.
         changes.UnionWith(await context.BulkUpdateIssues(
           message.Repository.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
-          issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name }))));
+          issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
+          issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
+        ));
       }
 
       await Task.WhenAll(
@@ -615,7 +615,6 @@
 
         // For adding to the DB later
         var accounts = new List<gm.Account>();
-        accounts.Add(issue.Assignee);
         accounts.Add(issue.ClosedBy);
         accounts.Add(issue.User);
         if (issue.Assignees.Any()) {
@@ -700,7 +699,6 @@
           foreach (var item in withSources) {
             var refIssue = sourceLookups[item.Source.IssueUrl].Result.Result;
             accounts.Add(item.Source.Actor);
-            accounts.Add(refIssue.Assignee);
             if (refIssue.Assignees.Any()) {
               accounts.AddRange(refIssue.Assignees); // Do we need both assignee and assignees? I think yes.
             }
@@ -731,10 +729,14 @@
         changes.UnionWith(await context.BulkUpdateIssues(
           issueDetails.RepositoryId,
           new[] { SharedMapper.Map<IssueTableType>(issue) },
-          issue.Labels.Select(x => new LabelTableType() {
+          issue.Labels?.Select(x => new LabelTableType() {
             ItemId = issue.Id,
             Color = x.Color,
             Name = x.Name,
+          }),
+          issue.Assignees?.Select(x => new MappingTableType() {
+            Item1 = issue.Id,
+            Item2 = x.Id,
           })));
 
         // Cleanup the data

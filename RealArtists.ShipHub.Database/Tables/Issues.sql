@@ -6,7 +6,6 @@
   [State]        NVARCHAR(6)    NOT NULL,
   [Title]        NVARCHAR(MAX)  NOT NULL,
   [Body]         NVARCHAR(MAX)  NULL,
-  [AssigneeId]   BIGINT         NULL,
   [MilestoneId]  BIGINT         NULL,
   [Locked]       BIT            NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,
@@ -18,7 +17,6 @@
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
   CONSTRAINT [FK_Issues_MilestoneId_Milestones_Id] FOREIGN KEY ([MilestoneId]) REFERENCES [dbo].[Milestones] ([Id]),
-  CONSTRAINT [FK_Issues_AssigneeId_Accounts_Id] FOREIGN KEY ([AssigneeId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_ClosedById_Accounts_Id] FOREIGN KEY ([ClosedById]) REFERENCES [dbo].[Accounts] ([Id]),
 )
 GO

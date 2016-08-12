@@ -250,6 +250,15 @@
                     });
                 }
 
+                // Issue Assignees
+                var issueAssignees = new Dictionary<long, List<long>>();
+                reader.NextResult();
+                while (reader.Read()) {
+                  issueAssignees
+                    .Valn((long)ddr.IssueId)
+                    .Add((long)ddr.UserId);
+                }
+
                 // Issues
                 reader.NextResult();
                 while (reader.Read()) {
@@ -257,7 +266,7 @@
                     Action = SyncLogAction.Set,
                     Entity = SyncEntityType.Issue,
                     Data = new IssueEntry() {
-                      Assignee = ddr.AssigneeId,
+                      Assignees = issueAssignees.Val((long)ddr.Id, () => new List<long>()),
                       Body = ddr.Body,
                       ClosedAt = ddr.ClosedAt,
                       ClosedBy = ddr.ClosedById,

@@ -7,7 +7,6 @@
     public string State { get; set; }
     public string Title { get; set; }
     public string Body { get; set; }
-    public long? AssigneeId { get; set; }
     public long UserId { get; set; }
     public long? MilestoneId { get; set; }
     public bool Locked { get; set; }

@@ -48,9 +48,6 @@
     public virtual ICollection<Issue> AssignedIssues { get; set; } = new HashSet<Issue>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Issue> ClosedIssues { get; set; } = new HashSet<Issue>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
 
     // This applies to users and orgs

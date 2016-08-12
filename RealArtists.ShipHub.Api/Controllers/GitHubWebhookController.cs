@@ -114,13 +114,18 @@
       var mapper = config.CreateMapper();
       var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
       
-      var labels = item.Labels.Select(x => new LabelTableType() {
+      var labels = item.Labels?.Select(x => new LabelTableType() {
         ItemId = item.Id,
         Color = x.Color,
         Name = x.Name
       });
 
-      ChangeSummary changeSummary = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels);
+      var assigneeMappings = item.Assignees?.Select(x => new MappingTableType() {
+        Item1 = item.Id,
+        Item2 = x.Id,
+      });
+
+      ChangeSummary changeSummary = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
 
       await _busClient.NotifyChanges(changeSummary);
     }

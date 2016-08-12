@@ -1,7 +1,8 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssues]
   @RepositoryId BIGINT,
   @Issues IssueTableType READONLY,
-  @Labels LabelTableType READONLY
+  @Labels LabelTableType READONLY,
+  @Assignees MappingTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -10,19 +11,23 @@ BEGIN
 
   -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
+    [IssueId] BIGINT NOT NULL
+  )
+
+  DECLARE @UniqueChanges TABLE (
     [IssueId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
   MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest]
+    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest]
     FROM @Issues
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
-    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [AssigneeId], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
+    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
+    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
   -- Update (this bumps for label only changes too)
   WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
     UPDATE SET
@@ -30,7 +35,6 @@ BEGIN
       [State] = [Source].[State],
       [Title] = [Source].[Title],
       [Body] = [Source].[Body],
-      [AssigneeId] = [Source].[AssigneeId],
       [MilestoneId] = [Source].[MilestoneId],
       [Locked] = [Source].[Locked],
       [UpdatedAt] = [Source].[UpdatedAt],
@@ -43,7 +47,8 @@ BEGIN
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
   MERGE INTO IssueLabels WITH (SERIALIZABLE) as [Target]
-  USING (SELECT L1.Id as LabelId, L2.ItemId as IssueId
+  USING (
+    SELECT L1.Id as LabelId, L2.ItemId as IssueId
     FROM Labels as L1
       INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
   ) as [Source]
@@ -58,18 +63,38 @@ BEGIN
     THEN DELETE
   OPTION (RECOMPILE);
 
+  -- Assignees
+  MERGE INTO IssueAssignees WITH(SERIALIZABLE) as [Target]
+  USING (
+    SELECT Item1 as IssueId, Item2 as UserId FROM @Assignees
+  ) as [Source]
+  ON ([Target].IssueId = [Source].IssueId AND [Target].UserId = [Source].UserId)
+  -- Add
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT (IssueId, UserId)
+    VALUES (IssueId, UserId)
+  -- Delete
+  WHEN NOT MATCHED BY SOURCE
+    AND [Target].IssueId IN (SELECT DISTINCT(Id) FROM @Issues)
+    THEN DELETE
+  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId)
+  OPTION (RECOMPILE);
+
+  INSERT INTO @UniqueChanges (IssueId)
+  SELECT DISTINCT(IssueId) FROM @Changes
+
   -- Update existing issues
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (rl.ItemId = c.IssueId)
+    INNER JOIN @UniqueChanges as c ON (rl.ItemId = c.IssueId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
   OPTION (RECOMPILE)
 
   -- New issues
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'issue', c.IssueId, 0
-  FROM @Changes as c
+  FROM @UniqueChanges as c
   WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
   OPTION (RECOMPILE)
 
@@ -79,8 +104,10 @@ BEGIN
   USING (
     SELECT Distinct(UPUserId) as UserId
     FROM Issues as c
-        INNER JOIN @Changes as ch ON (c.Id = ch.IssueId)
-      UNPIVOT (UPUserId FOR [Role] IN (UserId, AssigneeId, ClosedById)) as [Ignored]
+        INNER JOIN @UniqueChanges as ch ON (c.Id = ch.IssueId)
+      UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById)) as [Ignored]
+    UNION
+    SELECT Item2 FROM @Assignees
   ) as [Source]
   ON ([Target].RepositoryId = @RepositoryId
     AND [Target].[Type] = 'account'
@@ -93,6 +120,6 @@ BEGIN
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  WHERE EXISTS(SELECT 1 FROM @Changes)
+  WHERE EXISTS(SELECT 1 FROM @UniqueChanges)
   OPTION (RECOMPILE)
 END

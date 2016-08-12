@@ -5,7 +5,6 @@
   [State]        NVARCHAR(6)    NOT NULL,
   [Title]        NVARCHAR(MAX)  NOT NULL,
   [Body]         NVARCHAR(MAX)  NULL,
-  [AssigneeId]   BIGINT         NULL,
   [MilestoneId]  BIGINT         NULL,
   [Locked]       BIT            NOT NULL,
   [CreatedAt]    DATETIMEOFFSET NOT NULL,

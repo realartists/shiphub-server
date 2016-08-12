@@ -126,6 +126,8 @@
     <Build Include="Tables\Reactions.sql" />
     <Build Include="User Defined Types\ReactionTableType.sql" />
     <Build Include="Procedures\BulkUpdateReactions.sql" />
+    <Build Include="User Defined Types\MappingTableType.sql" />
+    <Build Include="Tables\IssueAssignees.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

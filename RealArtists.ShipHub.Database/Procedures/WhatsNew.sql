@@ -143,10 +143,17 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     OPTION (RECOMPILE)
 
+    -- Issue Assignees
+    SELECT IssueId, UserId
+    FROM IssueAssignees
+      INNER JOIN @RepoLogs as l ON (IssueId = l.ItemId AND l.[Type] = 'issue')
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+    OPTION (RECOMPILE)
+
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
-           e.Body, e.AssigneeId, e.MilestoneId, e.Locked, e.CreatedAt,
-           e.UpdatedAt, e.ClosedAt, e.ClosedById, e.PullRequest
+           e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,
+           e.ClosedAt, e.ClosedById, e.PullRequest
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

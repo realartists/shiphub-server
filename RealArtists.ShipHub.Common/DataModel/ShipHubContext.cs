@@ -63,14 +63,6 @@
         .WillCascadeOnDelete(false);
 
       modelBuilder.Entity<Account>()
-        .HasMany(e => e.AssignedIssues)
-        .WithOptional(e => e.Assignee);
-
-      modelBuilder.Entity<Account>()
-        .HasMany(e => e.ClosedIssues)
-        .WithOptional(e => e.ClosedBy);
-
-      modelBuilder.Entity<Account>()
         .HasMany(e => e.Issues)
         .WithRequired(e => e.User)
         .WillCascadeOnDelete(false);
@@ -79,6 +71,11 @@
         .HasMany(e => e.OwnedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Issue>()
+        .HasMany(e => e.Assignees)
+        .WithMany(e => e.AssignedIssues)
+        .Map(m => m.ToTable("IssueAssignees").MapLeftKey("IssueId").MapRightKey("UserId"));
 
       modelBuilder.Entity<Issue>()
         .HasMany(e => e.Comments)
@@ -290,7 +287,11 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateIssues(long repositoryId, IEnumerable<IssueTableType> issues, IEnumerable<LabelTableType> labels) {
+    public Task<ChangeSummary> BulkUpdateIssues(
+      long repositoryId,
+      IEnumerable<IssueTableType> issues,
+      IEnumerable<LabelTableType> labels,
+      IEnumerable<MappingTableType> assignees) {
       var issueParam = CreateTableParameter(
         "Issues",
         "[dbo].[IssueTableType]",
@@ -301,7 +302,6 @@
           Tuple.Create("State", typeof(string)),
           Tuple.Create("Title", typeof(string)),
           Tuple.Create("Body", typeof(string)),
-          Tuple.Create("AssigneeId", typeof(long)),
           Tuple.Create("MilestoneId", typeof(long)),
           Tuple.Create("Locked", typeof(bool)),
           Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
@@ -317,7 +317,6 @@
           x.State,
           x.Title,
           x.Body,
-          x.AssigneeId,
           x.MilestoneId,
           x.Locked,
           x.CreatedAt,
@@ -328,12 +327,17 @@
         },
         issues);
 
-      var labelParam = CreateLabelTable("Labels", labels);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssues]", x => {
         x.RepositoryId = repositoryId;
         x.Issues = issueParam;
-        x.Labels = labelParam;
+
+        if (labels != null) {
+          x.Labels = CreateLabelTable("Labels", labels);
+        }
+
+        if (assignees != null) {
+          x.Assignees = CreateMappingTable("Assignees", assignees);
+        }
       });
     }
 
@@ -542,6 +546,21 @@
           x.Name,
         },
         labels);
+    }
+
+    private static SqlParameter CreateMappingTable(string parameterName, IEnumerable<MappingTableType> mappings) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[MappingTableType]",
+        new[] {
+          Tuple.Create("Item1", typeof(long)),
+          Tuple.Create("Item2", typeof(long)),
+        },
+        x => new object[] {
+          x.Item1,
+          x.Item2,
+        },
+        mappings);
     }
 
     private static SqlParameter CreateVersionTableType(string parameterName, IEnumerable<VersionTableType> versions) {

@@ -31,7 +31,7 @@
       byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
       return "sha1=" + new SoapHexBinary(hash).ToString();
     }
-    
+
     private static IMapper AutoMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
@@ -52,7 +52,7 @@
       request.Headers.Add(GitHubWebhookController.DeliveryIdHeaderName, Guid.NewGuid().ToString());
       request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
       var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Webhook", "webhook"));
-      
+
       controller.ControllerContext = new HttpControllerContext(config, routeData, request);
       controller.Request = request;
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
@@ -90,7 +90,7 @@
     private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
       return (Common.DataModel.Organization)context.Accounts.Add(new Common.DataModel.Organization() {
         Id = 6001,
-        Login = "myorg",        
+        Login = "myorg",
         Date = DateTimeOffset.Now,
       });
     }
@@ -213,7 +213,7 @@
         Assert.Equal("Invalid signature.", ((BadRequestErrorMessageResult)result).Message);
       }
     }
-    
+
     [Fact]
     [AutoRollback]
     public async Task TestWebhookCallUpdatesLastSeen() {
@@ -259,7 +259,7 @@
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
         await context.SaveChangesAsync();
       }
-      
+
       var issue = new Issue() {
         Id = 1001,
         Title = "Some Title",
@@ -333,7 +333,7 @@
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
         Assert.Equal("closed", updatedIssue.State);
-      };    
+      };
     }
 
     [Fact]
@@ -379,7 +379,7 @@
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
         Assert.Equal("open", updatedIssue.State);
-      }        
+      }
     }
 
     [Fact]
@@ -465,10 +465,12 @@
           Login = testUser.Login,
           Type = GitHubAccountType.User,
         },
-        Assignee = new Account() {
-          Id = testUser.Id,
-          Login = testUser.Login,
-          Type = GitHubAccountType.User,
+        Assignees = new[] {
+          new Account() {
+            Id = testUser.Id,
+            Login = testUser.Login,
+            Type = GitHubAccountType.User,
+          }
         },
       };
 
@@ -479,7 +481,7 @@
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
-        Assert.Equal(testUser.Id, updatedIssue.Assignee.Id);
+        Assert.Equal(testUser.Id, updatedIssue.Assignees.First().Id);
       }
     }
 
@@ -497,7 +499,7 @@
         testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
         testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
 
-        testIssue.Assignee = testUser;
+        testIssue.Assignees = new[] { testUser };
 
         await context.SaveChangesAsync();
       }
@@ -516,7 +518,7 @@
           Login = testUser.Login,
           Type = GitHubAccountType.User,
         },
-        Assignee = null,
+        Assignees = new Account[0],
       };
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
@@ -526,7 +528,7 @@
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
-        Assert.Null(updatedIssue.Assignee);
+        Assert.Empty(updatedIssue.Assignees);
       }
     }
 

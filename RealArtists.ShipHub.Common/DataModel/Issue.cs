@@ -24,8 +24,6 @@
 
     public string Body { get; set; }
 
-    public long? AssigneeId { get; set; }
-
     public long? MilestoneId { get; set; }
 
     public bool Locked { get; set; }
@@ -40,19 +38,16 @@
 
     public bool PullRequest { get; set; }
 
-    //public long? MetadataId { get; set; }
-
-    public virtual Account Assignee { get; set; }
-
     public virtual Account ClosedBy { get; set; }
 
     public virtual Account User { get; set; }
 
-    //public virtual GitHubMetadata Metadata { get; set; }
-
     public virtual Milestone Milestone { get; set; }
 
     public virtual Repository Repository { get; set; }
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Account> Assignees { get; set; } = new HashSet<Account>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
