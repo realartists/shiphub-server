@@ -20,8 +20,8 @@
     Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<Webhook>> AddOrgWebhook(string orgName, Webhook hook, IGitHubRequestOptions opts = null);
-    Task<GitHubResponse<Webhook>> EditWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null);
-    Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> EditRepoWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<bool>> DeleteRepoWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<Webhook>> EditOrgWebhookEvents(string orgName, long hookId, string[] events, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<bool>> DeleteOrgWebhook(string orgName, long hookId, IGitHubRequestOptions opts = null);
   }
@@ -389,7 +389,7 @@
       return result;
     }
 
-    public Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<bool>> DeleteRepoWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         HttpMethod.Delete,
         $"/repos/{repoFullName}/hooks/{hookId}",
@@ -410,7 +410,7 @@
       return await MakeRequest<bool>(request, opts?.Credentials);
     }
 
-    public Task<GitHubResponse<Webhook>> EditWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Webhook>> EditRepoWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         new HttpMethod("PATCH"), 
         $"/repos/{repoFullName}/hooks/{hookId}",

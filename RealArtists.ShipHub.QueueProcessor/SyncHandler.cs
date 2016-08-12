@@ -53,7 +53,7 @@
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
-            var deleteResponse = await client.DeleteWebhook(repo.FullName, existingHook.Id);
+            var deleteResponse = await client.DeleteRepoWebhook(repo.FullName, existingHook.Id);
             if (deleteResponse.IsError || !deleteResponse.Result) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for repo '{repo.FullName}'");
             }
@@ -92,7 +92,7 @@
             await context.SaveChangesAsync();
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditWebhookEvents(repo.FullName, hook.GitHubId, requiredEvents);
+          var editResponse = await client.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, requiredEvents);
 
           if (editResponse.IsError) {
             Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");

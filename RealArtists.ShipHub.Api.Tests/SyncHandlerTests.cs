@@ -74,7 +74,7 @@
           });
 
         mock
-          .Setup(x => x.EditWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>(), null))
+          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>(), null))
           .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheOptions opts) => {
             var result = new GitHubResponse<Webhook>() {
               Result = new Webhook() {
@@ -165,7 +165,7 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteWebhook(repo.FullName, It.IsAny<long>(), null))
+          .Setup(x => x.DeleteRepoWebhook(repo.FullName, It.IsAny<long>(), null))
           .ReturnsAsync(new GitHubResponse<bool>() {
             Result = true,
           })
