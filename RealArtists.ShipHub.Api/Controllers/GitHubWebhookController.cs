@@ -135,8 +135,10 @@
 
       var issueChanges = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
       summary.UnionWith(issueChanges);
-      
-      await _busClient.NotifyChanges(summary);
+
+      if (!summary.Empty) {
+        await _busClient.NotifyChanges(summary);
+      }
     }
   }
 }

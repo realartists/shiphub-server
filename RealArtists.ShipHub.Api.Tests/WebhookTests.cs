@@ -646,8 +646,8 @@
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
       changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
-      Assert.Equal(0, changeSummary.Organizations.Count());
-      Assert.Equal(0, changeSummary.Repositories.Count());
+      // Expect null if there are no changes to notify about.
+      Assert.Null(changeSummary);
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
