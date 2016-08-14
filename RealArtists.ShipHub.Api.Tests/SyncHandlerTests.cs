@@ -5,13 +5,15 @@
   using System.Threading.Tasks;
   using Microsoft.Azure;
   using Moq;
+  using NUnit.Framework;
   using RealArtists.ShipHub.Common.DataModel;
   using RealArtists.ShipHub.Common.GitHub;
   using RealArtists.ShipHub.Common.GitHub.Models;
   using RealArtists.ShipHub.QueueClient.Messages;
   using RealArtists.ShipHub.QueueProcessor;
-  using Xunit;
 
+  [TestFixture]
+  [AutoRollback]
   public class SyncHandlerTests {
 
     static string ApiHostname {
@@ -22,8 +24,7 @@
       }
     }
 
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillEditHookWhenEventListIsNotCompleteForRepo() {
       var expectedEvents = new string[] {
           "issues",
@@ -109,7 +110,7 @@
 
         context.Entry(hook).Reload();
 
-        Assert.Equal(expectedEvents, hook.Events.Split(','));
+        Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
     }
 
@@ -119,8 +120,7 @@
     /// we add a new one.
     /// </summary>
     /// <returns></returns>
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillRemoveExistingHooksBeforeAddingOneForRepo() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -187,13 +187,12 @@
         }, mock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
-        Assert.Equal(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
+        Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
         Assert.NotNull(hook);
       }
     }
 
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillAddHookWhenNoneExistsForRepo() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -240,25 +239,24 @@
           "team_add",
         };
 
-        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
-        Assert.Equal(repo.Id, hook.RepositoryId);
-        Assert.Equal(9999, hook.GitHubId);
+        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
+        Assert.AreEqual(repo.Id, hook.RepositoryId);
+        Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.OrganizationId);
         Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
 
-        Assert.Equal(repo.FullName, installRepoName);
-        Assert.Equal("web", installWebHook.Name);
-        Assert.Equal(true, installWebHook.Active);
-        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
-        Assert.Equal("json", installWebHook.Config.ContentType);
-        Assert.Equal(0, installWebHook.Config.InsecureSsl);
-        Assert.Equal(hook.Secret.ToString(), installWebHook.Config.Secret);
+        Assert.AreEqual(repo.FullName, installRepoName);
+        Assert.AreEqual("web", installWebHook.Name);
+        Assert.AreEqual(true, installWebHook.Active);
+        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
+        Assert.AreEqual("json", installWebHook.Config.ContentType);
+        Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
+        Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
       }
     }
 
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillAddHookWhenNoneExistsForOrg() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -297,19 +295,19 @@
           "repository",
         };
 
-        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
-        Assert.Equal(org.Id, hook.OrganizationId);
-        Assert.Equal(9999, hook.GitHubId);
+        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
+        Assert.AreEqual(org.Id, hook.OrganizationId);
+        Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.RepositoryId);
         Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
         
-        Assert.Equal("web", installWebHook.Name);
-        Assert.Equal(true, installWebHook.Active);
-        Assert.Equal(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
-        Assert.Equal("json", installWebHook.Config.ContentType);
-        Assert.Equal(0, installWebHook.Config.InsecureSsl);
-        Assert.Equal(hook.Secret.ToString(), installWebHook.Config.Secret);
+        Assert.AreEqual("web", installWebHook.Name);
+        Assert.AreEqual(true, installWebHook.Active);
+        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
+        Assert.AreEqual("json", installWebHook.Config.ContentType);
+        Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
+        Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
       }
     }
 
@@ -319,8 +317,7 @@
     /// we add a new one.
     /// </summary>
     /// <returns></returns>
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillRemoveExistingHooksBeforeAddingOneForOrg() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -388,13 +385,12 @@
         }, mock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
-        Assert.Equal(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
+        Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
         Assert.NotNull(hook);
       }
     }
 
-    [Fact]
-    [AutoRollback]
+    [Test]
     public async Task WillEditHookWhenEventListIsNotCompleteForOrg() {
       var expectedEvents = new string[] {
           "repository",
@@ -465,7 +461,7 @@
 
         context.Entry(hook).Reload();
 
-        Assert.Equal(expectedEvents, hook.Events.Split(','));
+        Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
     }
   }
