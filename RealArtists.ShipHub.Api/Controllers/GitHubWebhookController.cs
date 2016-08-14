@@ -8,7 +8,6 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using AutoMapper;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
@@ -101,10 +100,6 @@
 
     private async Task HandleIssueUpdate(JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
-      var config = new MapperConfiguration(cfg => {
-        cfg.AddProfile<GitHubToDataModelProfile>();
-      });
-      var mapper = config.CreateMapper();
 
       var issue = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
       long repositoryId = data["repository"]["id"].Value<long>();
@@ -112,7 +107,7 @@
       var summary = new ChangeSummary();
 
       if (issue.Milestone != null) {
-        var milestone = mapper.Map<MilestoneTableType>(issue.Milestone);
+        var milestone = Mapper.Map<MilestoneTableType>(issue.Milestone);
         var milestoneSummary = await Context.BulkUpdateMilestones(
           repositoryId,
           new MilestoneTableType[] { milestone });
@@ -126,7 +121,7 @@
       }
 
       if (referencedAccounts.Count > 0) {
-        var accountsMapped = mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
+        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
           // Dedeup for the case where the creator is also an assignee.
           .GroupBy(x => x.Id)
           .Select(x => x.First());
@@ -134,7 +129,7 @@
       }
 
       var issues = new List<Common.GitHub.Models.Issue> { issue };
-      var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
+      var issuesMapped = Mapper.Map<IEnumerable<IssueTableType>>(issues);
 
       var labels = issue.Labels?.Select(x => new LabelTableType() {
         ItemId = issue.Id,
