@@ -118,7 +118,12 @@
           new MilestoneTableType[] { milestone });
         summary.UnionWith(milestoneSummary);
       }
-      
+
+      if (issue.Assignees != null) {
+        var assignees = mapper.Map<IEnumerable<AccountTableType>>(issue.Assignees);
+        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, assignees));
+      }
+
       var issues = new List<Common.GitHub.Models.Issue> { issue };
       var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
 
