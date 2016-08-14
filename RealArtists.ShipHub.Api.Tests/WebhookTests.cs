@@ -775,5 +775,45 @@
         Assert.Equal("nobody2", nobody2.Login);
       }
     }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueHookCreatesCreatorIfNeeded() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 1,
+        Labels = new List<Label>(),
+        User = new Account() {
+          Id = 12001,
+          Login = "nobody",
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var nobody1 = context.Accounts.Single(x => x.Id == 12001);
+        Assert.Equal("nobody", nobody1.Login);
+      }
+    }
   }
 }

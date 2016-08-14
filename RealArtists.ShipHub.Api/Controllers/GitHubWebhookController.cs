@@ -119,9 +119,18 @@
         summary.UnionWith(milestoneSummary);
       }
 
+      var referencedAccounts = new List<Common.GitHub.Models.Account>();
+      referencedAccounts.Add(issue.User);
       if (issue.Assignees != null) {
-        var assignees = mapper.Map<IEnumerable<AccountTableType>>(issue.Assignees);
-        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, assignees));
+        referencedAccounts.AddRange(issue.Assignees);
+      }
+
+      if (referencedAccounts.Count > 0) {
+        var accountsMapped = mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
+          // Dedeup for the case where the creator is also an assignee.
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
       }
 
       var issues = new List<Common.GitHub.Models.Issue> { issue };
