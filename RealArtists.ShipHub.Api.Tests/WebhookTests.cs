@@ -657,5 +657,69 @@
         Assert.Equal("0000ff", labels[0].Color);
       };
     }
+
+    [Fact]
+    [AutoRollback]
+    public async Task TestIssueHookCreatesMilestoneIfNeeded() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 1,
+        Labels = new List<Label>(),
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },        
+        Milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "",
+          Title = "some milestone",
+          Description = "more info about some milestone",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/2/2016"),
+          DueOn = DateTimeOffset.Parse("2/1/2016"),
+          ClosedAt = DateTimeOffset.Parse("3/1/2016"),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          }
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+
+      Assert.Equal(0, changeSummary.Organizations.Count());
+      Assert.Equal(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var milestone = context.Milestones.First(x => x.Id == 5001);
+        Assert.Equal("some milestone", milestone.Title);
+        Assert.Equal("more info about some milestone", milestone.Description);
+        Assert.Equal(1234, milestone.Number);
+        Assert.Equal(DateTimeOffset.Parse("1/1/2016"), milestone.CreatedAt);
+        Assert.Equal(DateTimeOffset.Parse("1/2/2016"), milestone.UpdatedAt);
+        Assert.Equal(DateTimeOffset.Parse("2/1/2016"), milestone.DueOn);
+        Assert.Equal(DateTimeOffset.Parse("3/1/2016"), milestone.ClosedAt);
+      }
+    }
+
   }
 }

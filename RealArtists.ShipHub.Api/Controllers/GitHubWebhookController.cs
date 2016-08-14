@@ -101,32 +101,42 @@
 
     private async Task HandleIssueUpdate(JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
-
-      var item = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
-      long repositoryId = data["repository"]["id"].Value<long>();
-
-      var issues = new List<Common.GitHub.Models.Issue> { item };
-
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<GitHubToDataModelProfile>();
       });
       var mapper = config.CreateMapper();
-      var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
+
+      var issue = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
+      long repositoryId = data["repository"]["id"].Value<long>();
+
+      var summary = new ChangeSummary();
+
+      if (issue.Milestone != null) {
+        var milestone = mapper.Map<MilestoneTableType>(issue.Milestone);
+        var milestoneSummary = await Context.BulkUpdateMilestones(
+          repositoryId,
+          new MilestoneTableType[] { milestone });
+        summary.UnionWith(milestoneSummary);
+      }
       
-      var labels = item.Labels?.Select(x => new LabelTableType() {
-        ItemId = item.Id,
+      var issues = new List<Common.GitHub.Models.Issue> { issue };
+      var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
+
+      var labels = issue.Labels?.Select(x => new LabelTableType() {
+        ItemId = issue.Id,
         Color = x.Color,
         Name = x.Name
       });
 
-      var assigneeMappings = item.Assignees?.Select(x => new MappingTableType() {
-        Item1 = item.Id,
+      var assigneeMappings = issue.Assignees?.Select(x => new MappingTableType() {
+        Item1 = issue.Id,
         Item2 = x.Id,
       });
 
-      ChangeSummary changeSummary = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
-
-      await _busClient.NotifyChanges(changeSummary);
+      var issueChanges = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
+      summary.UnionWith(issueChanges);
+      
+      await _busClient.NotifyChanges(summary);
     }
   }
 }
