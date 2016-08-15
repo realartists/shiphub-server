@@ -802,5 +802,69 @@
         Assert.AreEqual("nobody", nobody1.Login);
       }
     }
+
+    [Test]
+    public async Task TestRepoCreatedTriggersSyncAccountRepositories() {
+      Common.DataModel.User user1;
+      Common.DataModel.User user2;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Organization org;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user1 = TestUtil.MakeTestUser(context);
+        user2 = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+          Id = 3002,
+          Login = "alok",
+          Date = DateTimeOffset.Now,
+          Token = Guid.NewGuid().ToString(),
+        });
+        org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user1);
+        org.Members.Add(user2);
+        hook = MakeTestOrgHook(context, user1.Id, org.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var obj = JObject.FromObject(new {
+        action = "created",
+        repository = new Repository() {
+          Id = 555,
+          Owner = new Account() {
+            Id = org.Id,
+            Login = "loopt",
+            Type = GitHubAccountType.Organization,
+          },
+          Name = "mix",
+          FullName = "loopt/mix",
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+
+      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+
+      var mockBusClient = new Mock<IShipHubBusClient>();
+      mockBusClient
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Returns(Task.CompletedTask)
+        .Callback((long accountId, string login, string accessToken) => {
+          syncAccountRepositoryCalls.Add(
+            new Tuple<long, string, string>(accountId, login, accessToken));
+        });
+
+      var controller = new GitHubWebhookController(mockBusClient.Object);
+      ConfigureController(controller, "repository", obj, hook.Secret.ToString());
+      var result = await controller.HandleHook("org", org.Id);
+      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
+      Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+
+      Assert.AreEqual(
+        new List<Tuple<long, string, string>> {
+          Tuple.Create(user1.Id, user1.Login, user1.Token),
+          Tuple.Create(user2.Id, user2.Login, user2.Token),
+        },
+        syncAccountRepositoryCalls);
+    }
   }
 }

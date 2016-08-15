@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
@@ -91,11 +92,32 @@
           break;
         case "ping":
           break;
+        case "repository":
+          if (data["action"].ToString().Equals("created")) {
+            await HandleRepositoryCreated(data);
+          }
+          break;
         default:
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
       return StatusCode(HttpStatusCode.Accepted);
+    }
+
+    private async Task HandleRepositoryCreated(JObject data) {
+      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+      var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
+
+      if (repository.Owner.Type != Common.GitHub.Models.GitHubAccountType.Organization) {
+        throw new InvalidOperationException("Should only receive repo created events for repo's owned by organizations.");
+      }
+      
+      var org = await Context.Organizations.SingleAsync(x => x.Id == repository.Owner.Id);
+      var syncTasks = org.Members
+        .Where(x => x.Token != null)
+        .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+
+      await Task.WhenAll(syncTasks);
     }
 
     private async Task HandleIssueUpdate(JObject data) {
