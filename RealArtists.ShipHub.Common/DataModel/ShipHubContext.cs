@@ -173,15 +173,11 @@
       return result;
     }
 
-    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetadata metadata) {
-      return BulkUpdateAccounts(date, new[] { account }, metadata);
+    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account) {
+      return BulkUpdateAccounts(date, new[] { account });
     }
 
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      return BulkUpdateAccounts(date, accounts, null);
-    }
-
-    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetadata metadata) {
       var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
@@ -200,10 +196,6 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
         x.Date = date;
         x.Accounts = accountsParam;
-
-        if (metadata != null) {
-          x.Metadata = metadata.SerializeObject();
-        }
       });
     }
 
@@ -466,13 +458,12 @@
       return result;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetadata metadata) {
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
 
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
         x.RepositoryIds = repoParam;
-        x.Metadata = metadata.SerializeObject();
       });
     }
 
