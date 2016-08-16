@@ -47,7 +47,7 @@ BEGIN
       [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
       [Body] = [Source].[Body],
       [UpdatedAt] = [Source].[UpdatedAt]
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), INSERTED.UserId, $action INTO @Changes (Id, UserId, [Action])
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action])
   OPTION (RECOMPILE);
 
   -- Deleted or edited comments
