@@ -628,7 +628,7 @@
           .Select(x => x.Id)
           .SingleAsync();
 
-        // TODO: I don't like this
+        // HACK: This is broken. Will fail when the issue is not yet saved to the DB.
         var issueDetails = await context.Issues
           .Where(x => x.Repository.FullName == message.RepositoryFullName)
           .Where(x => x.Number == message.Number)
@@ -672,8 +672,15 @@
           await Task.WhenAll(commitLookups.Values);
 
           foreach (var item in withCommits) {
-            var lookup = commitLookups[item.CommitUrl];
-            var commit = lookup.Result.Result;
+            var lookup = commitLookups[item.CommitUrl].Result;
+
+            // best effort - requests will fail when the user doesn't have source access.
+            // see Nick's account and references from the github-beta repo
+            if (lookup.IsError) {
+              continue;
+            }
+
+            var commit = lookup.Result;
             accounts.Add(commit.Author);
             accounts.Add(commit.Committer);
             item.ExtensionDataDictionary["ship_commit_message"] = commit.CommitDetails.Message;
