@@ -30,13 +30,13 @@
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
         var events = new string[] {
           "issues",
-          "issue_comment",
-          "member",
-          "public",
-          "pull_request",
-          "pull_request_review_comment",
-          "repository",
-          "team_add",
+          //"issue_comment",
+          //"member",
+          //"public",
+          //"pull_request",
+          //"pull_request_review_comment",
+          //"repository",
+          //"team_add",
         };
 
         var repoHooks = (await client.RepoWebhooks(repo.FullName)).Result;
