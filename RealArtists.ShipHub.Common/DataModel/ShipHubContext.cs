@@ -236,7 +236,7 @@
       return BulkUpdateEvents(userId, repositoryId, false, issueEvents, referencedAccounts);
     }
 
-      public Task<ChangeSummary> BulkUpdateTimelineEvents(
+    public Task<ChangeSummary> BulkUpdateTimelineEvents(
       long userId,
       long repositoryId,
       IEnumerable<IssueEventTableType> issueEvents,

@@ -1,9 +1,11 @@
 ﻿namespace RealArtists.ShipHub.QueueClient.Messages {
-  public interface IAccessTokenMessage {
-    string AccessToken { get; }
-  }
+  public class AccessTokenMessage {
+    public AccessTokenMessage() { }
 
-  public class AccessTokenMessage : IAccessTokenMessage {
+    public AccessTokenMessage(string accessToken) {
+      AccessToken = accessToken;
+    }
+
     public string AccessToken { get; set; }
   }
 }

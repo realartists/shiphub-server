@@ -1,12 +1,16 @@
 ﻿namespace RealArtists.ShipHub.QueueClient.Messages {
-  using Common.GitHub.Models;
 
-  public interface IRepositoryMessage {
-    Repository Repository { get; }
-  }
+  public class RepositoryMessage {
+    public RepositoryMessage() { }
 
-  public class RepositoryMessage : IAccessTokenMessage {
-    public Repository Repository { get; set; }
+    public RepositoryMessage(long id, string fullName, string accessToken) {
+      Id = id;
+      FullName = fullName;
+      AccessToken = accessToken;
+    }
+
+    public long Id { get; set; }
+    public string FullName { get; set; }
     public string AccessToken { get; set; }
   }
 }
