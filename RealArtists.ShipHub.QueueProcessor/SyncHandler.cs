@@ -611,22 +611,12 @@
       ChangeSummary changes;
       var tasks = new List<Task>();
 
-      // May as well kick of the reactions sync now.
-      tasks.Add(syncRepoIssueReactions.AddAsync(message));
-
       // TODO: Just trigger a full repo issue sync once incremental is implemented
       var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
       var issue = issueResponse.Result;
 
       var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
       var timeline = timelineResponse.Result;
-
-      // If we find comments, sync them
-      // TODO: Incrementally
-      if (timeline.Any(x => x.Event == "commented")) {
-        tasks.Add(syncIssueComments.AddAsync(message));
-        // Can't sync comment reactions yet in case they don't exist
-      }
 
       // Now just filter
       var filteredEvents = timeline.Where(x => !_FilterEvents.Contains(x.Event)).ToArray();
@@ -770,6 +760,16 @@
             Item1 = issue.Id,
             Item2 = x.Id,
           })));
+
+        // Now safe to sync reactions
+        tasks.Add(syncRepoIssueReactions.AddAsync(message));
+
+        // If we find comments, sync them
+        // TODO: Incrementally
+        if (timeline.Any(x => x.Event == "commented")) {
+          tasks.Add(syncIssueComments.AddAsync(message));
+          // Can't sync comment reactions yet in case they don't exist
+        }
 
         // Cleanup the data
         foreach (var item in filteredEvents) {
