@@ -93,8 +93,7 @@
         case "ping":
           break;
         default:
-          // TODO: Log these, since we won't have access to the hook debugger
-          return StatusCode(HttpStatusCode.InternalServerError);
+          throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
       return StatusCode(HttpStatusCode.Accepted);
