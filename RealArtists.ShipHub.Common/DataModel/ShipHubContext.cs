@@ -133,10 +133,18 @@
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
+    public Task UpdateMetaLimit(string table, long id, GitHubResponse response) {
+      return UpdateMetaLimit(table, "MetadataJson", id, response);
+    }
+
+    public Task UpdateMetaLimit(string table, string column, long id, GitHubResponse response) {
+      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.Credentials.Parameter, response.RateLimit);
+    }
+
     public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.LastRefresh') as DATETIMEOFFSET))"
+        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))"
         + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
         new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() },
@@ -173,15 +181,11 @@
       return result;
     }
 
-    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account, GitHubMetadata metadata) {
-      return BulkUpdateAccounts(date, new[] { account }, metadata);
+    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account) {
+      return BulkUpdateAccounts(date, new[] { account });
     }
 
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      return BulkUpdateAccounts(date, accounts, null);
-    }
-
-    private Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts, GitHubMetadata metadata) {
       var accountsParam = CreateTableParameter(
         "Accounts",
         "[dbo].[AccountTableType]",
@@ -200,10 +204,6 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
         x.Date = date;
         x.Accounts = accountsParam;
-
-        if (metadata != null) {
-          x.Metadata = metadata.SerializeObject();
-        }
       });
     }
 
@@ -236,7 +236,7 @@
       return BulkUpdateEvents(userId, repositoryId, false, issueEvents, referencedAccounts);
     }
 
-      public Task<ChangeSummary> BulkUpdateTimelineEvents(
+    public Task<ChangeSummary> BulkUpdateTimelineEvents(
       long userId,
       long repositoryId,
       IEnumerable<IssueEventTableType> issueEvents,
@@ -466,13 +466,12 @@
       return result;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds, GitHubMetadata metadata) {
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
       var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
 
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
         x.RepositoryIds = repoParam;
-        x.Metadata = metadata.SerializeObject();
       });
     }
 

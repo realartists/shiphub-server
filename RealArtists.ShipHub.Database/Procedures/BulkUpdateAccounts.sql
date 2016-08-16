@@ -1,7 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateAccounts]
   @Date DATETIMEOFFSET,
-  @Accounts AccountTableType READONLY,
-  @Metadata NVARCHAR(MAX) = NULL
+  @Accounts AccountTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -44,17 +43,6 @@ BEGIN
       [Date] = @Date
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type])
   OPTION (RECOMPILE);
-
-  -- Metadata only applies if there is a single account and a metadata entry
-  IF(@Metadata IS NOT NULL AND (SELECT COUNT(*) FROM @Accounts) = 1)
-  BEGIN
-    UPDATE Accounts SET
-      MetadataJson = @Metadata
-    FROM Accounts as a
-      INNER JOIN @Accounts as a1 ON (a1.Id = a.Id)
-    WHERE MetadataJson IS NULL
-      OR CAST(JSON_VALUE(MetadataJson, '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.LastRefresh') as DATETIMEOFFSET)
-  END
 
   -- New Organizations reference themselves
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])

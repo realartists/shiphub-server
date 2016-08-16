@@ -1,12 +1,15 @@
 ﻿namespace RealArtists.ShipHub.QueueClient.Messages {
-  using Common.GitHub.Models;
+  public class AccountMessage {
+    public AccountMessage() { }
 
-  public interface IAccountMessage {
-    Account Account { get; }
-  }
+    public AccountMessage(long id, string login, string accessToken) {
+      Id = id;
+      Login = login;
+      AccessToken = accessToken;
+    }
 
-  public class AccountMessage : IAccessTokenMessage {
-    public Account Account { get; set; }
+    public long Id { get; set; }
+    public string Login { get; set; }
     public string AccessToken { get; set; }
   }
 }

@@ -119,9 +119,7 @@
     public async Task SyncAccount(string accessToken) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
 
-      var message = new AccessTokenMessage() {
-        AccessToken = accessToken,
-      };
+      var message = new AccessTokenMessage(accessToken);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);
@@ -131,11 +129,7 @@
     public async Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
 
-      var message = new IssueMessage() {
-        AccessToken = accessToken,
-        RepositoryFullName = repositoryFullName,
-        Number = issueNumber,
-      };
+      var message = new IssueMessage(repositoryFullName, issueNumber, accessToken);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);

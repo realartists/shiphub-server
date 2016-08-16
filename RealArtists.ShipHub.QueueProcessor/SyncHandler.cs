@@ -3,26 +3,27 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics;
+  using System.IO;
   using System.Linq;
+  using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using Common.GitHub;
+  using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Newtonsoft.Json.Linq;
   using QueueClient;
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
-  using Microsoft.Azure;
-  using Common.GitHub;
-
-  /// <summary>
-  /// TODO: Incremental sync when possible
-  /// TODO: Don't submit empty updates to DB.
-  /// </summary>
 
   public static class SyncHandler {
+    public static async Task AddOrUpdateRepoWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
+      await AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    }
 
     public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
       using (var context = new ShipHubContext()) {
@@ -42,7 +43,7 @@
 
         var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
         if (apiHostname == null) {
-         throw new ApplicationException("ApiHostname not specified in configuration.");
+          throw new ApplicationException("ApiHostname not specified in configuration.");
         }
         var webhookUrl = $"https://{apiHostname}/webhook/repo/{repo.Id}";
 
@@ -97,152 +98,186 @@
       }
     }
 
-    public static async Task AddOrUpdateRepoWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
-      await AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
-    }
-
-    /// <summary>
-    /// Precondition: None.
-    /// Postcondition: User saved in DB.
-    /// </summary>
     public static async Task SyncAccount(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] AccessTokenMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<AccountMessage> syncAccountRepos,
       [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<AccountMessage> syncAccountOrgs,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-      ChangeSummary changes;
-
-      var userResponse = await ghc.User();
-      var user = userResponse.Result;
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger) {
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateAccounts(userResponse.Date, new[] { SharedMapper.Map<AccountTableType>(user) });
+        var tasks = new List<Task>();
+        ChangeSummary changes = null;
+
+        var user = await context.Users.SingleAsync(x => x.Token == message.AccessToken);
+
+        logger.WriteLine($"User details for {user.Login} cached until {user.Metadata?.Expires:o}");
+        if (user.Metadata == null || user.Metadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine($"Polling: User");
+          var ghc = GitHubSettings.CreateUserClient(user);
+          var userResponse = await ghc.User(user.Metadata);
+
+          if (userResponse.Status != HttpStatusCode.NotModified) {
+            logger.WriteLine("GitHub: Changed. Saving changes.");
+            changes = await context.UpdateAccount(
+              userResponse.Date,
+              SharedMapper.Map<AccountTableType>(userResponse.Result));
+          } else {
+            logger.WriteLine($"GitHub: Not modified.");
+          }
+
+          tasks.Add(context.UpdateMetaLimit("Accounts", user.Id, userResponse));
+          tasks.Add(notifyChanges.Send(changes));
+        } else {
+          logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
+        }
+
+        // Now that the user is saved in the DB, safe to sync all repos and user's orgs
+        // These checks here cost nothing even though they're done inside the child tasks too.
+        var am = new AccountMessage(user.Id, user.Login, message.AccessToken);
+
+        logger.WriteLine($"Repositories cached until {user.RepositoryMetadata?.Expires:o}");
+        if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine("Updating account repositories.");
+          tasks.Add(syncAccountRepos.AddAsync(am));
+        } else {
+          logger.WriteLine($"Skipping account repository update.");
+        }
+
+        logger.WriteLine($"Organizations cached until {user.OrganizationMetadata?.Expires:o}");
+        if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine("Updating account organizations.");
+          tasks.Add(syncAccountOrgs.AddAsync(am));
+        } else {
+          logger.WriteLine($"Skipping account organizations update.");
+        }
+
+        await Task.WhenAll(tasks);
       }
-
-      // Now that the user is saved in the DB, safe to sync all repos and user's orgs
-      var am = new AccountMessage() {
-        AccessToken = message.AccessToken,
-        Account = user,
-      };
-
-      await Task.WhenAll(
-        changes.Empty ? Task.CompletedTask : notifyChanges.AddAsync(new ChangeMessage(changes)),
-        syncAccountRepos.AddAsync(am),
-        syncAccountOrgs.AddAsync(am));
     }
 
-    /// <summary>
-    /// Precondition: User saved in DB.
-    /// Postcondition: User's repos, their owners, and user's repo-links saved in DB.
-    /// </summary>
     public static async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<AddOrUpdateRepoWebhooksMessage> addOrUpdateRepoWebhooks,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-      ChangeSummary changes;
-
-      var repoResponse = await ghc.Repositories();
-      var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
-      var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.IsAssignable(x.FullName, message.Account.Login));
-      await Task.WhenAll(assignableRepos.Values.ToArray());
-      var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
-
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger) {
       using (var context = new ShipHubContext()) {
-        var owners = keepRepos
-          .Select(x => x.Owner)
-          .GroupBy(x => x.Login)
-          .Select(x => x.First());
-        changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
-        changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-        changes.UnionWith(await context.SetAccountLinkedRepositories(message.Account.Id, keepRepos.Select(x => x.Id), GitHubMetadata.FromResponse(repoResponse)));
+        var tasks = new List<Task>();
+        ChangeSummary changes = null;
+
+        var user = await context.Users.SingleAsync(x => x.Token == message.AccessToken);
+
+        logger.WriteLine($"Account repositories for {user.Login} cached until {user.RepositoryMetadata?.Expires:o}");
+        if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine("Polling: Account repositories.");
+          var ghc = GitHubSettings.CreateUserClient(user);
+          var repoResponse = await ghc.Repositories(user.RepositoryMetadata);
+
+          if (repoResponse.Status != HttpStatusCode.NotModified) {
+            logger.WriteLine("Github: Changed. Saving changes.");
+            var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
+            var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.IsAssignable(x.FullName, user.Login));
+            await Task.WhenAll(assignableRepos.Values);
+            var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
+
+            var owners = keepRepos
+              .Select(x => x.Owner)
+              .GroupBy(x => x.Login)
+              .Select(x => x.First());
+            changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
+            changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
+            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => x.Id)));
+
+            tasks.Add(notifyChanges.Send(changes));
+
+            // Now that owners, repos, and links are saved, safe to sync the repos themselves.
+            tasks.AddRange(keepRepos.Select(x => syncRepo.AddAsync(new RepositoryMessage(x.Id, x.FullName, user.Token))));
+
+            // TODO: Do we want this here? May not trigger as often as Fred intended.
+            tasks.AddRange(keepRepos
+              .Where(x => x.Permissions.Admin)
+              // Don't risk crapping over other people's repos yet.
+              .Where(x => new string[] {
+                "fpotter",
+                "realartists",
+                "realartists-test",
+                "kogir",
+                "james-howard",
+                "aroon", // used in tests only
+              }.Contains(x.Owner.Login))
+              .Select(x => addOrUpdateRepoWebhooks.AddAsync(new AddOrUpdateRepoWebhooksMessage {
+                RepositoryId = x.Id,
+                AccessToken = message.AccessToken
+              }))
+            );
+          } else {
+            logger.WriteLine("Github: Not modified.");
+          }
+
+          tasks.Add(context.UpdateMetaLimit("Accounts", "RepoMetadataJson", user.Id, repoResponse));
+        } else {
+          logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
+        }
+
+        await Task.WhenAll(tasks);
       }
-
-      // Now that owners, repos, and links are saved, safe to sync the repos themselves.
-      var syncTasks = keepRepos.Select(x => syncRepo.AddAsync(new RepositoryMessage() {
-        AccessToken = message.AccessToken,
-        Repository = x,
-      })).ToList();
-
-      if (!changes.Empty) {
-        syncTasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
-      }
-
-      var addOrUpdateRepoWebhooksTasks = keepRepos
-        .Where(x => x.Permissions.Admin)
-        // Don't risk crapping over other people's repos yet.
-        .Where(x => new string[] {
-          "fpotter",
-          "realartists",
-          "realartists-test",
-          "kogir",
-          "james-howard",
-          "aroon", // used in tests only
-        }.Contains(x.Owner.Login))
-        .Select(x => addOrUpdateRepoWebhooks.AddAsync(new AddOrUpdateRepoWebhooksMessage {
-          RepositoryId = x.Id,
-          AccessToken = message.AccessToken
-        }));
-
-      await Task.WhenAll(syncTasks.Concat(addOrUpdateRepoWebhooksTasks));
     }
 
-    ///
     /// NOTE WELL: We sync only sync orgs for which the user is a member. If they can see a repo in an org
     /// but aren't a member, too bad for them. The permissions are too painful otherwise.
-    ///
-
-    /// <summary>
-    /// Syncs the list of organizations of which the account is a member.
-    /// Precondition: User exists
-    /// Postcondition: User's organizations exist
-    /// </summary>
     public static async Task SyncAccountOrganizations(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-      ChangeSummary changes;
-
-      var orgResponse = await ghc.Organizations();
-      var orgs = orgResponse.Result;
-
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger) {
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
-        changes.UnionWith(await context.SetUserOrganizations(message.Account.Id, orgs.Select(x => x.Id)));
+        var tasks = new List<Task>();
+        ChangeSummary changes = null;
+
+        var user = await context.Users.SingleAsync(x => x.Id == message.Id);
+
+        logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
+        if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine("Polling: Organiztion membership.");
+          var ghc = GitHubSettings.CreateUserClient(user);
+          var orgResponse = await ghc.Organizations(user.OrganizationMetadata);
+
+          if (orgResponse.Status != HttpStatusCode.NotModified) {
+            logger.WriteLine("Github: Changed. Saving changes.");
+            var orgs = orgResponse.Result;
+
+            changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs));
+            changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Id)));
+
+            tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Id, x.Login, message.AccessToken))));
+          } else {
+            logger.WriteLine("Github: Not modified.");
+          }
+
+          // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
+
+          tasks.Add(context.UpdateMetaLimit("Accounts", "OrgMetadataJson", user.Id, orgResponse));
+        } else {
+          logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
+        }
+
+        tasks.Add(notifyChanges.Send(changes));
+        await Task.WhenAll(tasks);
       }
-
-      var memberSyncMessages = orgs.
-        Select(x => syncOrgMembers.AddAsync(new AccountMessage() {
-          AccessToken = message.AccessToken,
-          Account = x,
-        })).ToList();
-
-      if (!changes.Empty) {
-        memberSyncMessages.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
-      }
-
-      await Task.WhenAll(memberSyncMessages);
     }
 
-    /// <summary>
-    /// Precondition: Organizations exist.
-    /// Postcondition: Org members exist and Org membership is up to date.
-    /// </summary>
     public static async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] AccountMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var memberResponse = await ghc.OrganizationMembers(message.Account.Login);
+      var memberResponse = await ghc.OrganizationMembers(message.Login);
       var members = memberResponse.Result;
 
       using (var context = new ShipHubContext()) {
         changes = await context.BulkUpdateAccounts(memberResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(members));
-        changes.UnionWith(await context.SetOrganizationUsers(message.Account.Id, members.Select(x => x.Id)));
+        changes.UnionWith(await context.SetOrganizationUsers(message.Id, members.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {
@@ -279,12 +314,12 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var assigneeResponse = await ghc.Assignable(message.Repository.FullName);
+      var assigneeResponse = await ghc.Assignable(message.FullName);
       var assignees = assigneeResponse.Result;
 
       using (var context = new ShipHubContext()) {
         changes = await context.BulkUpdateAccounts(assigneeResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(assignees));
-        changes.UnionWith(await context.SetRepositoryAssignableAccounts(message.Repository.Id, assignees.Select(x => x.Id)));
+        changes.UnionWith(await context.SetRepositoryAssignableAccounts(message.Id, assignees.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {
@@ -303,11 +338,11 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var milestoneResponse = await ghc.Milestones(message.Repository.FullName);
+      var milestoneResponse = await ghc.Milestones(message.FullName);
       var milestones = milestoneResponse.Result;
 
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+        changes = await context.BulkUpdateMilestones(message.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
       }
 
       await Task.WhenAll(
@@ -325,14 +360,14 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var labelResponse = await ghc.Labels(message.Repository.FullName);
+      var labelResponse = await ghc.Labels(message.FullName);
       var labels = labelResponse.Result;
 
       using (var context = new ShipHubContext()) {
         changes = await context.SetRepositoryLabels(
-          message.Repository.Id,
+          message.Id,
           labels.Select(x => new LabelTableType() {
-            ItemId = message.Repository.Id,
+            ItemId = message.Id,
             Color = x.Color,
             Name = x.Name
           })
@@ -356,7 +391,7 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var issueResponse = await ghc.Issues(message.Repository.FullName);
+      var issueResponse = await ghc.Issues(message.FullName);
       var issues = issueResponse.Result;
 
       using (var context = new ShipHubContext()) {
@@ -372,10 +407,10 @@
           .Where(x => x != null)
           .GroupBy(x => x.Id)
           .Select(x => x.First());
-        changes.UnionWith(await context.BulkUpdateMilestones(message.Repository.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
+        changes.UnionWith(await context.BulkUpdateMilestones(message.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
         changes.UnionWith(await context.BulkUpdateIssues(
-          message.Repository.Id,
+          message.Id,
           SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
           issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
           issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
@@ -394,7 +429,7 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var commentsResponse = await ghc.Comments(message.Repository.FullName);
+      var commentsResponse = await ghc.Comments(message.FullName);
       var comments = commentsResponse.Result;
 
       using (var context = new ShipHubContext()) {
@@ -405,7 +440,7 @@
         changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         var issueComments = comments.Where(x => x.IssueNumber != null);
-        changes.UnionWith(await context.BulkUpdateComments(message.Repository.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
+        changes.UnionWith(await context.BulkUpdateComments(message.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
       }
 
       if (!changes.Empty) {
@@ -419,7 +454,7 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var eventsResponse = await ghc.Events(message.Repository.FullName);
+      var eventsResponse = await ghc.Events(message.FullName);
       var events = eventsResponse.Result;
 
       using (var context = new ShipHubContext()) {
@@ -439,7 +474,7 @@
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
         changes = await context.BulkUpdateAccounts(eventsResponse.Date, accountsParam);
         var eventsParam = SharedMapper.Map<IEnumerable<IssueEventTableType>>(events);
-        changes.UnionWith(await context.BulkUpdateIssueEvents(userId, message.Repository.Id, eventsParam, accountsParam.Select(x => x.Id)));
+        changes.UnionWith(await context.BulkUpdateIssueEvents(userId, message.Id, eventsParam, accountsParam.Select(x => x.Id)));
       }
 
       if (!changes.Empty) {
@@ -471,10 +506,7 @@
           complete: true));
       }
 
-      var tasks = comments.Select(x => syncReactions.AddAsync(new IssueCommentMessage() {
-        AccessToken = message.AccessToken,
-        CommentId = x.Id,
-      })).ToList();
+      var tasks = comments.Select(x => syncReactions.AddAsync(new IssueCommentMessage(x.Id, message.AccessToken))).ToList();
 
       if (!changes.Empty) {
         tasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));

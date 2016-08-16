@@ -9,13 +9,6 @@
   using Common.DataModel;
   using QueueClient;
 
-  public class CodeRequest {
-    public string ApplicationId { get; set; }
-    public string Code { get; set; }
-    public string State { get; set; }
-    public string ClientName { get; set; }
-  }
-
   public class HelloRequest {
     public string AccessToken { get; set; }
     public string ClientName { get; set; }
@@ -30,6 +23,8 @@
       "user:email",
       "repo",
       "read:org",
+      "admin:repo_hook",
+      "admin:org_hook",
     }.AsReadOnly();
 
     [HttpPost]
@@ -80,6 +75,7 @@
       user.RateLimitRemaining = userResponse.RateLimit.RateLimitRemaining;
       user.RateLimitReset = userResponse.RateLimit.RateLimitReset;
 
+      // Be sure to save the account *before* syncing it!
       await Context.SaveChangesAsync();
 
       await _QueueClient.SyncAccount(user.Token);
