@@ -17,15 +17,15 @@ BEGIN
 
   MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
   USING (
-    SELECT c.Id, i.Id as [IssueId], c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
+    SELECT c.Id, i.Id as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
     FROM @Comments as c
       INNER JOIN [Issues] as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.[IssueNumber])
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [IssueId], [RepositoryId], [UserId], [Body], [CreatedAt], [UpdatedAt])
-    VALUES ([Id], [IssueId], @RepositoryId, [UserId], [Body], [CreatedAt], [UpdatedAt])
+    INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
+    VALUES (Id, IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
   -- Update
@@ -49,7 +49,7 @@ BEGIN
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'comment', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
   OPTION (RECOMPILE)
 
   -- Add new account references to log
@@ -66,6 +66,6 @@ BEGIN
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  WHERE EXISTS(SELECT 1 FROM @Changes)
+  WHERE EXISTS (SELECT * FROM @Changes)
   OPTION (RECOMPILE)
 END

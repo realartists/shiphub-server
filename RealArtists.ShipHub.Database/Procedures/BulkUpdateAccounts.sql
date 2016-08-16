@@ -50,7 +50,7 @@ BEGIN
   SELECT c.Id, c.Id, 0
   FROM @Changes as c
   WHERE c.[Type] = 'org'
-    AND NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)
+    AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)
   OPTION (RECOMPILE)
 
   -- Other actions manage adding user references to repos.

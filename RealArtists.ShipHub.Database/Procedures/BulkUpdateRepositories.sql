@@ -50,7 +50,7 @@ BEGIN
   SELECT Id, 'repository', Id, 0
     FROM @Changes as c
   WHERE NOT EXISTS (
-    SELECT 1
+    SELECT *
     FROM RepositoryLog
     WHERE RepositoryId = c.Id AND [Type] = 'repository' AND ItemId = c.Id)
   OPTION (RECOMPILE)
@@ -60,7 +60,7 @@ BEGIN
   SELECT Id, 'account', AccountId, 0
     FROM @Changes as c
   WHERE NOT EXISTS (
-    SELECT 1
+    SELECT *
     FROM RepositoryLog
     WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
   OPTION (RECOMPILE)

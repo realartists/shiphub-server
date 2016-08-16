@@ -9,6 +9,6 @@ BEGIN
   INSERT INTO Labels WITH (SERIALIZABLE) (Color, Name)
   SELECT DISTINCT l.Color, l.Name
   FROM @Labels as l
-  WHERE NOT EXISTS (SELECT 1 FROM Labels WHERE Color = l.Color AND Name = l.Name)
+  WHERE NOT EXISTS (SELECT * FROM Labels WHERE Color = l.Color AND Name = l.Name)
   OPTION (RECOMPILE);
 END

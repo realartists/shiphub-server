@@ -52,11 +52,11 @@ BEGIN
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'milestone', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
+  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
   OPTION (RECOMPILE)
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  WHERE EXISTS(SELECT 1 FROM @Changes)
+  WHERE EXISTS (SELECT * FROM @Changes)
   OPTION (RECOMPILE)
 END

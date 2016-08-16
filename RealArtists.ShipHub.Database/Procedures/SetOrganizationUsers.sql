@@ -38,7 +38,7 @@ BEGIN
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
   SELECT @OrganizationId, c.UserId, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT 1 FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
+  WHERE NOT EXISTS (SELECT * FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
   OPTION (RECOMPILE)
 
   -- Return updated organizations and users

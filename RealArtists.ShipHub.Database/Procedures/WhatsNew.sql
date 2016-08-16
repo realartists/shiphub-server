@@ -12,12 +12,12 @@ BEGIN
   -- Inform the client of any repos and orgs they can no longer access
   SELECT ItemId as RepositoryId
   FROM @RepositoryVersions as rv
-  WHERE NOT EXISTS(SELECT 1 FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId)
+  WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId)
   OPTION (RECOMPILE)
 
   SELECT ItemId as OrganizationId
   FROM @OrganizationVersions as ov
-  WHERE NOT EXISTS(SELECT 1 FROM AccountOrganizations WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
+  WHERE NOT EXISTS (SELECT * FROM AccountOrganizations WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
   OPTION (RECOMPILE)
 
   -- Start sync!
@@ -227,7 +227,7 @@ BEGIN
   -- Membership for updated orgs
   SELECT ao.OrganizationId, ao.UserId
   FROM AccountOrganizations as ao
-  WHERE EXISTS (SELECT 1 FROM @OrgLogs as l WHERE l.OrganizationId = ao.OrganizationId)
+  WHERE EXISTS (SELECT * FROM @OrgLogs as l WHERE l.OrganizationId = ao.OrganizationId)
 
   -- Org Versions
   SELECT OrganizationId, MAX([RowVersion]) as [RowVersion]

@@ -95,7 +95,7 @@ BEGIN
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'issue', c.IssueId, 0
   FROM @UniqueChanges as c
-  WHERE NOT EXISTS (SELECT 1 FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
+  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
   OPTION (RECOMPILE)
 
   -- Add new account references to log
@@ -120,6 +120,6 @@ BEGIN
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  WHERE EXISTS(SELECT 1 FROM @UniqueChanges)
+  WHERE EXISTS (SELECT * FROM @UniqueChanges)
   OPTION (RECOMPILE)
 END
