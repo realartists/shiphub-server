@@ -133,10 +133,18 @@
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
+    public Task UpdateMetaLimit(string table, long id, GitHubResponse response) {
+      return UpdateMetaLimit(table, "MetadataJson", id, response);
+    }
+
+    public Task UpdateMetaLimit(string table, string column, long id, GitHubResponse response) {
+      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.Credentials.Parameter, response.RateLimit);
+    }
+
     public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.LastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.LastRefresh') as DATETIMEOFFSET))"
+        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))"
         + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
         new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() },
