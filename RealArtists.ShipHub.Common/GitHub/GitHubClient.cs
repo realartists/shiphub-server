@@ -333,15 +333,14 @@
       }
     }
 
-    public async Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         HttpMethod.Post,
         $"/repos/{repoFullName}/hooks",
         hook,
         opts?.CacheOptions);
 
-      var result = await MakeRequest<Webhook>(request, opts?.Credentials);
-      return result;
+      return MakeRequest<Webhook>(request, opts?.Credentials);
     }
 
     public Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
