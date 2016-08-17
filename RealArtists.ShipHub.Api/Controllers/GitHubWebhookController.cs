@@ -141,10 +141,13 @@
       if (issue.Assignees != null) {
         referencedAccounts.AddRange(issue.Assignees);
       }
+      if (issue.ClosedBy != null) {
+        referencedAccounts.Add(issue.ClosedBy);
+      }
 
       if (referencedAccounts.Count > 0) {
         var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
-          // Dedeup for the case where the creator is also an assignee.
+          // Dedup the list
           .GroupBy(x => x.Id)
           .Select(x => x.First());
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));

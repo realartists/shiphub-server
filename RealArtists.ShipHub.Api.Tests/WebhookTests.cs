@@ -804,6 +804,50 @@
     }
 
     [Test]
+    public async Task TestIssueHookCreatesClosedByIfNeeded() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.Now,
+        UpdatedAt = DateTimeOffset.Now,
+        State = "open",
+        Number = 1,
+        Labels = new List<Label>(),
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+        ClosedBy = new Account() {
+          Id = 13001,
+          Login = "closedByNobody",
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var nobody1 = context.Accounts.Single(x => x.Id == 13001);
+        Assert.AreEqual("closedByNobody", nobody1.Login);
+      }
+    }
+
+    [Test]
     public async Task TestRepoCreatedTriggersSyncAccountRepositories() {
       Common.DataModel.User user1;
       Common.DataModel.User user2;
