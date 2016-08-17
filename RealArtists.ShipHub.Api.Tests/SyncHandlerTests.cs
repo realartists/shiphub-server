@@ -230,13 +230,13 @@
 
         var expectedEvents = new string[] {
           "issues",
-          "issue_comment",
-          "member",
-          "public",
-          "pull_request",
-          "pull_request_review_comment",
-          "repository",
-          "team_add",
+          //"issue_comment",
+          //"member",
+          //"public",
+          //"pull_request",
+          //"pull_request_review_comment",
+          //"repository",
+          //"team_add",
         };
 
         Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
