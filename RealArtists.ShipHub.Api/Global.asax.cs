@@ -5,7 +5,6 @@
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
       ApplicationInsightsConfig.Register();
-      AutoMapperConfig.Register();
       GlobalConfiguration.Configure(WebApiConfig.Register);
     }
   }

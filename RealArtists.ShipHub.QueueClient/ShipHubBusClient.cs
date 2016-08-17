@@ -12,6 +12,7 @@
   public interface IShipHubBusClient {
     Task NotifyChanges(IChangeSummary changeSummary);
     Task SyncAccount(string accessToken);
+    Task SyncAccountRepositories(long accountId, string login, string accessToken);
     Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber);
   }
 
@@ -121,6 +122,15 @@
 
       var message = new AccessTokenMessage(accessToken);
 
+      using (var bm = WebJobInterop.CreateMessage(message)) {
+        await queue.SendAsync(bm);
+      }
+    }
+
+    public async Task SyncAccountRepositories(long accountId, string login, string accessToken) {
+      var message = new AccountMessage(accountId, login, accessToken);
+
+      var queue = QueueClientForName(ShipHubQueueNames.SyncAccountRepositories);
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);
       }

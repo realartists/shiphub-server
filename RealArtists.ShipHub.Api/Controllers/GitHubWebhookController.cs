@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
@@ -8,7 +9,6 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using AutoMapper;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
@@ -92,6 +92,11 @@
           break;
         case "ping":
           break;
+        case "repository":
+          if (data["action"].ToString().Equals("created")) {
+            await HandleRepositoryCreated(data);
+          }
+          break;
         default:
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
@@ -99,34 +104,75 @@
       return StatusCode(HttpStatusCode.Accepted);
     }
 
+    private async Task HandleRepositoryCreated(JObject data) {
+      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+      var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
+
+      if (repository.Owner.Type != Common.GitHub.Models.GitHubAccountType.Organization) {
+        throw new InvalidOperationException("Should only receive repo created events for repo's owned by organizations.");
+      }
+      
+      var org = await Context.Organizations.SingleAsync(x => x.Id == repository.Owner.Id);
+      var syncTasks = org.Members
+        .Where(x => x.Token != null)
+        .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+
+      await Task.WhenAll(syncTasks);
+    }
+
     private async Task HandleIssueUpdate(JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
 
-      var item = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
+      var issue = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
       long repositoryId = data["repository"]["id"].Value<long>();
 
-      var issues = new List<Common.GitHub.Models.Issue> { item };
+      var summary = new ChangeSummary();
 
-      var config = new MapperConfiguration(cfg => {
-        cfg.AddProfile<GitHubToDataModelProfile>();
-      });
-      var mapper = config.CreateMapper();
-      var issuesMapped = mapper.Map<IEnumerable<IssueTableType>>(issues);
-      
-      var labels = item.Labels?.Select(x => new LabelTableType() {
-        ItemId = item.Id,
+      if (issue.Milestone != null) {
+        var milestone = Mapper.Map<MilestoneTableType>(issue.Milestone);
+        var milestoneSummary = await Context.BulkUpdateMilestones(
+          repositoryId,
+          new MilestoneTableType[] { milestone });
+        summary.UnionWith(milestoneSummary);
+      }
+
+      var referencedAccounts = new List<Common.GitHub.Models.Account>();
+      referencedAccounts.Add(issue.User);
+      if (issue.Assignees != null) {
+        referencedAccounts.AddRange(issue.Assignees);
+      }
+      if (issue.ClosedBy != null) {
+        referencedAccounts.Add(issue.ClosedBy);
+      }
+
+      if (referencedAccounts.Count > 0) {
+        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
+          // Dedup the list
+          .GroupBy(x => x.Id)
+          .Select(x => x.First());
+        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
+      }
+
+      var issues = new List<Common.GitHub.Models.Issue> { issue };
+      var issuesMapped = Mapper.Map<IEnumerable<IssueTableType>>(issues);
+
+      var labels = issue.Labels?.Select(x => new LabelTableType() {
+        ItemId = issue.Id,
         Color = x.Color,
         Name = x.Name
       });
 
-      var assigneeMappings = item.Assignees?.Select(x => new MappingTableType() {
-        Item1 = item.Id,
+      var assigneeMappings = issue.Assignees?.Select(x => new MappingTableType() {
+        Item1 = issue.Id,
         Item2 = x.Id,
       });
 
-      ChangeSummary changeSummary = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
+      var issueChanges = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
+      summary.UnionWith(issueChanges);
 
-      await _busClient.NotifyChanges(changeSummary);
+      if (!summary.Empty) {
+        await _busClient.NotifyChanges(summary);
+      }
     }
   }
 }

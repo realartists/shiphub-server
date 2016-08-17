@@ -17,7 +17,13 @@
 
   public interface IGitHubClient {
     Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubRequestOptions opts = null);
     Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> AddOrgWebhook(string orgName, Webhook hook, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> EditRepoWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<bool>> DeleteRepoWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<Webhook>> EditOrgWebhookEvents(string orgName, long hookId, string[] events, IGitHubRequestOptions opts = null);
+    Task<GitHubResponse<bool>> DeleteOrgWebhook(string orgName, long hookId, IGitHubRequestOptions opts = null);
   }
 
   public class GitHubClient : IGitHubClient {
@@ -277,6 +283,26 @@
       return result;
     }
 
+    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, "user/memberships/orgs", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<OrganizationMembership>>(request, opts?.Credentials);
+
+      if (result.IsError) {
+        return result;
+      }
+
+      if (result.Pagination != null) {
+        result = await EnumerateParallel(result, opts?.Credentials);
+      }
+
+      // Seriously GitHub?
+      foreach (var membership in result.Result) {
+        membership.Organization.Type = GitHubAccountType.Organization;
+      }
+
+      return result;
+    }
+
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/pulls/{pullRequestNumber}", opts?.CacheOptions);
       return MakeRequest<PullRequest>(request, opts?.Credentials);
@@ -321,6 +347,16 @@
       return response;
     }
 
+    public async Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest(HttpMethod.Get, $"/orgs/{name}/hooks", opts?.CacheOptions);
+      var result = await MakeRequest<IEnumerable<Webhook>>(request, opts?.Credentials);
+      if (result.IsError || result.Pagination == null) {
+        return result;
+      } else {
+        return await EnumerateParallel(result, opts?.Credentials);
+      }
+    }
+
     public async Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest(HttpMethod.Get, $"/repos/{repoFullName}/hooks", opts?.CacheOptions);
       var result = await MakeRequest<IEnumerable<Webhook>>(request, opts?.Credentials);
@@ -331,10 +367,21 @@
       }
     }
 
-    public async Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         HttpMethod.Post,
         $"/repos/{repoFullName}/hooks",
+        hook,
+        opts?.CacheOptions);
+
+      return MakeRequest<Webhook>(request, opts?.Credentials);
+    }
+
+    public async Task<GitHubResponse<Webhook>> AddOrgWebhook(string orgName, Webhook hook,
+      IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        HttpMethod.Post,
+        $"/orgs/{orgName}/hooks",
         hook,
         opts?.CacheOptions);
 
@@ -342,14 +389,49 @@
       return result;
     }
 
-    public async Task<GitHubResponse<bool>> DeleteWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
+    public Task<GitHubResponse<bool>> DeleteRepoWebhook(string repoFullName, long hookId, IGitHubRequestOptions opts = null) {
       var request = new GitHubRequest<object>(
         HttpMethod.Delete,
         $"/repos/{repoFullName}/hooks/{hookId}",
         null,
         opts?.CacheOptions);
 
+      return MakeRequest<bool>(request, opts?.Credentials);
+    }
+
+    public async Task<GitHubResponse<bool>> DeleteOrgWebhook(string orgName, long hookId,
+      IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+         HttpMethod.Delete,
+         $"/orgs/{orgName}/hooks/{hookId}",
+         null,
+         opts?.CacheOptions);
+
       return await MakeRequest<bool>(request, opts?.Credentials);
+    }
+
+    public Task<GitHubResponse<Webhook>> EditRepoWebhookEvents(string repoFullName, long hookId, string[] events, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"), 
+        $"/repos/{repoFullName}/hooks/{hookId}",
+        new {
+          Events = events,
+        },
+        opts?.CacheOptions);
+
+      return MakeRequest<Webhook>(request, opts?.Credentials);
+    }
+
+    public async Task<GitHubResponse<Webhook>> EditOrgWebhookEvents(string orgName, long hookId, string[] events, IGitHubRequestOptions opts = null) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"),
+        $"/orgs/{orgName}/hooks/{hookId}",
+        new {
+          Events = events,
+        },
+        opts?.CacheOptions);
+
+      return await MakeRequest<Webhook>(request, opts?.Credentials);
     }
 
     public async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, IGitHubCredentials credentials = null, GitHubRedirect redirect = null) {
