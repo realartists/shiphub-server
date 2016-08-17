@@ -21,9 +21,9 @@
   using gm = Common.GitHub.Models;
 
   public static class SyncHandler {
-    public static async Task AddOrUpdateRepoWebhooks(
+    public static Task AddOrUpdateRepoWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
-      await AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
     }
 
     public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
