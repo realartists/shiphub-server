@@ -93,8 +93,14 @@
         case "ping":
           break;
         case "repository":
-          if (data["action"].ToString().Equals("created")) {
-            await HandleRepositoryCreated(data);
+          string action = data["action"].ToString();
+          if (
+            // Created events can only come from the org-level hook.
+            action.Equals("created") ||
+            // We'll get deletion events from both the repo and org, but
+            // we'll ignore the org one.
+            type.Equals("repo") && (action.Equals("deleted"))) {
+            await HandleRepositoryCreatedOrDeleted(data);
           }
           break;
         default:
@@ -104,7 +110,7 @@
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleRepositoryCreated(JObject data) {
+    private async Task HandleRepositoryCreatedOrDeleted(JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
       var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
 

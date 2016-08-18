@@ -910,5 +910,99 @@
         },
         syncAccountRepositoryCalls);
     }
+
+
+    [Test]
+    public async Task TestRepoDeletionTriggersSyncAccountRepositories() {
+      Common.DataModel.User user1;
+      Common.DataModel.User user2;
+      Common.DataModel.Hook orgHook;
+      Common.DataModel.Hook repoHook;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Organization org;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user1 = TestUtil.MakeTestUser(context);
+        user2 = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+          Id = 3002,
+          Login = "alok",
+          Date = DateTimeOffset.Now,
+          Token = Guid.NewGuid().ToString(),
+        });
+
+        org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user1);
+        org.Members.Add(user2);
+
+        repo = context.Repositories.Add(new Common.DataModel.Repository() {
+          Id = 2001,
+          Name = "mix",
+          FullName = $"{org.Login}/mix",
+          AccountId = org.Id,
+          Private = true,
+          Date = DateTimeOffset.Now,
+        });
+
+        // In the case of repo deletions, we'll receive a webhook event
+        // on both the org and repo hook.  So, let's have both in our test.
+        orgHook = MakeTestOrgHook(context, user1.Id, org.Id);
+        repoHook = MakeTestRepoHook(context, user1.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+      }
+
+      var obj = JObject.FromObject(new {
+        action = "deleted",
+        repository = new Repository() {
+          Id = 555,
+          Owner = new Account() {
+            Id = org.Id,
+            Login = org.Login,
+            Type = GitHubAccountType.Organization,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+
+      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+
+      var mockBusClient = new Mock<IShipHubBusClient>();
+      mockBusClient
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Returns(Task.CompletedTask)
+        .Callback((long accountId, string login, string accessToken) => {
+          syncAccountRepositoryCalls.Add(
+            new Tuple<long, string, string>(accountId, login, accessToken));
+        });
+
+      // We register for the "repository" event on both the org and repo levels.
+      // When a deletion happens, we'll get a webhook call for both the repo and
+      // org, but we want to ignore the org one.
+      var tests = new Tuple<string, long, Common.DataModel.Hook>[] {
+        Tuple.Create("repo", repo.Id, repoHook),
+        Tuple.Create("org", org.Id, orgHook),
+      };
+
+      foreach (var test in tests) {
+        var controller = new GitHubWebhookController(mockBusClient.Object);
+        ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
+        var result = await controller.HandleHook(test.Item1, test.Item2);
+        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
+        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      }
+
+      Assert.AreEqual(2, syncAccountRepositoryCalls.Count,
+        "should have only 1 call for each user in the org");
+      Assert.AreEqual(
+        new List<Tuple<long, string, string>> {
+          Tuple.Create(user1.Id, user1.Login, user1.Token),
+          Tuple.Create(user2.Id, user2.Login, user2.Token),
+        },
+        syncAccountRepositoryCalls);
+    }
   }
 }
