@@ -37,7 +37,21 @@
     private static IMapper AutoMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
+
+        cfg.CreateMap<Common.DataModel.Milestone, Common.GitHub.Models.Milestone>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Issue, Common.GitHub.Models.Issue>(MemberList.Destination)
+          .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
+            if (src.PullRequest) {
+              return new Common.GitHub.Models.PullRequestDetails() {
+                Url = $"https://api.github.com/repos/{src.Repository.FullName}/pulls/{src.Number}",
+              };
+            } else {
+              return null;
+            }
+          }));
+        cfg.CreateMap<Common.DataModel.Account, Common.GitHub.Models.Account>(MemberList.Destination);
       });
+
       var mapper = config.CreateMapper();
       return mapper;
     }
@@ -1011,28 +1025,14 @@
 
     private static JObject IssueCommentPayload(
       string action,
-      Common.DataModel.Issue issue,
+      Issue issue,
       Common.DataModel.Account user,
       Common.DataModel.Repository repo,
       Comment comment
       ) {
       return JObject.FromObject(new {
         action = action,
-        issue = new Issue() {
-          Id = issue.Id,
-          Title = issue.Title,
-          Body = issue.Body,
-          CreatedAt = issue.CreatedAt,
-          UpdatedAt = issue.UpdatedAt,
-          State = issue.State,
-          Number = issue.Number,
-          Labels = new List<Label>(),
-          User = new Account() {
-            Id = user.Id,
-            Login = user.Login,
-            Type = GitHubAccountType.User,
-          },
-        },
+        issue = issue,
         comment = comment,
         repository = new Repository() {
           Id = repo.Id,
@@ -1065,7 +1065,11 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload("created", issue, user, repo,
+        var obj = IssueCommentPayload(
+          "created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
           new Comment() {
             Id = 9001,
             Body = "some comment body",
@@ -1112,7 +1116,10 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload("created", issue, user, repo,
+        var obj = IssueCommentPayload("created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
           new Comment() {
             Id = 9001,
             Body = "edited body",
@@ -1151,7 +1158,11 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload("created", issue, user, repo,
+        var obj = IssueCommentPayload(
+          "created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
           new Comment() {
             Id = 9001,
             Body = "comment body",
@@ -1212,7 +1223,11 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload("deleted", issue, user, repo,
+        var obj = IssueCommentPayload(
+          "deleted",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
           new Comment() {
             Id = 9001,
             Body = "comment body",
