@@ -129,6 +129,9 @@
       var issueComment = data["comment"].ToObject<Common.GitHub.Models.Comment>(serializer);
       var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
 
+      // Ensure the issue that owns this comment exists locally efore we add the comment.
+      await HandleIssueUpdate(data);
+
       var changes = new ChangeSummary();
 
       using (var context = new ShipHubContext()) {

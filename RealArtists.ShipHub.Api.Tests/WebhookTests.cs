@@ -1252,5 +1252,58 @@
         Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
       }
     }
+
+    [Test]
+    public async Task IssueCommentWillCreateIssueIfNeeded() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload(
+          "created",
+          new Issue() {
+            Id = 1001,
+            Title = "Some Title",
+            Body = "Some Body",
+            CreatedAt = DateTimeOffset.Now,
+            UpdatedAt = DateTimeOffset.Now,
+            State = "open",
+            Number = 1234,
+            Labels = new List<Label>(),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+          },
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/1234",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var issue = context.Issues.SingleOrDefault(x => x.Number == 1234);
+        Assert.NotNull(issue, "should have created issue referenced by comment.");
+
+        Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
   }
 }
