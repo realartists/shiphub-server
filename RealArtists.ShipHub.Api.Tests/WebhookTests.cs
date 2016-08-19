@@ -929,9 +929,8 @@
         syncAccountRepositoryCalls);
     }
 
-
     [Test]
-    public async Task TestRepoDeletionTriggersSyncAccountRepositories() {
+    public async Task TestOrgRepoDeletionTriggersSyncAccountRepositories() {
       Common.DataModel.User user1;
       Common.DataModel.User user2;
       Common.DataModel.Hook orgHook;
@@ -1021,6 +1020,61 @@
           Tuple.Create(user2.Id, user2.Login, user2.Token),
         },
         syncAccountRepositoryCalls);
+    }
+
+    [Test]
+    public async Task TestNonOrgRepoDeletionTriggersSyncAccountRepositories() {
+      Common.DataModel.User user;
+      Common.DataModel.Hook repoHook;
+      Common.DataModel.Repository repo;
+      
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        repoHook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var obj = JObject.FromObject(new {
+        action = "deleted",
+        repository = new Repository() {
+          Id = 555,
+          Owner = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+
+      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+
+      var mockBusClient = new Mock<IShipHubBusClient>();
+      mockBusClient
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Returns(Task.CompletedTask)
+        .Callback((long accountId, string login, string accessToken) => {
+          syncAccountRepositoryCalls.Add(
+            new Tuple<long, string, string>(accountId, login, accessToken));
+        });
+
+      var controller = new GitHubWebhookController(mockBusClient.Object);
+      ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
+      var result = await controller.HandleHook("repo", repo.Id);
+      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
+      Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+
+      Assert.AreEqual(
+        new List<Tuple<long, string, string>> {
+          Tuple.Create(user.Id, user.Login, user.Token),
+        },
+        syncAccountRepositoryCalls,
+        "should only trigger sync for repo owner");
     }
 
     private static JObject IssueCommentPayload(

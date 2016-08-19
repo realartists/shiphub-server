@@ -151,16 +151,20 @@
     }
 
     private async Task HandleRepository(WebhookPayload payload) {
-      if (payload.Repository.Owner.Type != GitHubAccountType.Organization) {
-        throw new InvalidOperationException("Should only receive repo created events for repo's owned by organizations.");
+      if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
+        var org = await Context.Organizations.SingleAsync(x => x.Id == payload.Repository.Owner.Id);
+        var syncTasks = org.Members
+          .Where(x => x.Token != null)
+          .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+        await Task.WhenAll(syncTasks);
+      } else {
+        // TODO: This should also trigger a sync for contributors of a repo, but at
+        // least this is more correct than what we have now.
+        var owner = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
+        if (owner.Token != null) {
+          await _busClient.SyncAccountRepositories(owner.Id, owner.Login, owner.Token);
+        }
       }
-      
-      var org = await Context.Organizations.SingleAsync(x => x.Id == payload.Repository.Owner.Id);
-      var syncTasks = org.Members
-        .Where(x => x.Token != null)
-        .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
-
-      await Task.WhenAll(syncTasks);
     }
 
     private async Task HandleIssues(WebhookPayload payload) {
