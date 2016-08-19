@@ -1177,5 +1177,65 @@
         Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
       }
     }
+
+    [Test]
+    public async Task IssueCommentDeleted() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        var comment1 = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9001,
+          Body = "comment body #1",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+        var comment2 = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9002,
+          Body = "comment body #2",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload("deleted", issue, user, repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        Assert.AreEqual(
+          new long[] { 9002 }, 
+          context.Comments
+            .Where(x => x.IssueId == issue.Id)
+            .Select(x => x.Id).ToArray(),
+          "only one comment should have been deleted");
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
   }
 }

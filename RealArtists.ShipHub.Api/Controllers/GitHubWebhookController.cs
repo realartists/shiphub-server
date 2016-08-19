@@ -108,10 +108,11 @@
             var actions = new string[] {
               "created",
               "edited",
+              "deleted",
             };
 
             if (actions.Contains(data["action"].ToString())) {
-              await HandleIssueComment(data);
+              await HandleIssueComment(data["action"].ToString(), data);
             }
             break;
           }
@@ -122,8 +123,9 @@
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleIssueComment(JObject data) {
+    private async Task HandleIssueComment(string action, JObject data) {
       var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+      var issue = data["issue"].ToObject<Common.GitHub.Models.Comment>(serializer);
       var issueComment = data["comment"].ToObject<Common.GitHub.Models.Comment>(serializer);
       var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
 
@@ -134,9 +136,21 @@
           DateTimeOffset.Now,
           Mapper.Map<IEnumerable<AccountTableType>>(new[] { issueComment.User })));
 
-        changes.UnionWith(await context.BulkUpdateComments(
-          repository.Id,
-          Mapper.Map<IEnumerable<CommentTableType>>(new[] { issueComment })));
+        if (action.Equals("deleted")) {
+          var commentsExcludingDeletion = Context.Comments
+            .Where(x => x.IssueId == issue.Id && x.Id != issueComment.Id);
+          var commentsExcludingDeletionMapped = Mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
+          changes.UnionWith(await context.BulkUpdateIssueComments(
+            repository.FullName,
+            (int)issueComment.IssueNumber,
+            commentsExcludingDeletionMapped,
+            complete: true));
+        } else {
+          changes.UnionWith(await context.BulkUpdateIssueComments(
+            repository.FullName,
+            (int)issueComment.IssueNumber,
+            Mapper.Map<IEnumerable<CommentTableType>>(new[] { issueComment })));
+        }
       }
 
       if (!changes.Empty) {
