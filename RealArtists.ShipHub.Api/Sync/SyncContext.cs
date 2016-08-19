@@ -179,6 +179,8 @@
                       // See https://realartists.slack.com/archives/general/p1470075341001004
                       data.ExtensionDataDictionary.Clear();
                     } else {
+                      // Account for missing logs in progress reports
+                      --totalLogs;
                       continue;
                     }
                   }
@@ -332,14 +334,12 @@
                 }
 
                 // Send page
-                if (entries.Any()) {
-                  sentLogs += entries.Count();
-                  tasks.Add(_connection.SendJsonAsync(new SyncResponse() {
-                    Logs = entries,
-                    Remaining = totalLogs - sentLogs,
-                    Versions = VersionDetails,
-                  }));
-                }
+                sentLogs += entries.Count();
+                tasks.Add(_connection.SendJsonAsync(new SyncResponse() {
+                  Logs = entries,
+                  Remaining = totalLogs - sentLogs,
+                  Versions = VersionDetails,
+                }));
                 break;
               case 2:
                 var orgAccounts = new Dictionary<long, OrganizationEntry>();
