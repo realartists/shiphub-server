@@ -74,8 +74,8 @@
       await Context.SaveChangesAsync();
       
       switch (eventName) {
-        case "issues":
-          var actions = new string[] {
+        case "issues": {
+            var actions = new string[] {
             "opened",
             "closed",
             "reopened",
@@ -86,10 +86,11 @@
             "unassigned",
           };
 
-          if (actions.Contains(data["action"].ToString())) {
-            await HandleIssueUpdate(data);
+            if (actions.Contains(data["action"].ToString())) {
+              await HandleIssueUpdate(data);
+            }
+            break;
           }
-          break;
         case "ping":
           break;
         case "repository":
@@ -103,11 +104,44 @@
             await HandleRepositoryCreatedOrDeleted(data);
           }
           break;
+        case "issue_comment": {
+            var actions = new string[] {
+              "created",
+              "edited",
+            };
+
+            if (actions.Contains(data["action"].ToString())) {
+              await HandleIssueComment(data);
+            }
+            break;
+          }
         default:
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
       return StatusCode(HttpStatusCode.Accepted);
+    }
+
+    private async Task HandleIssueComment(JObject data) {
+      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+      var issueComment = data["comment"].ToObject<Common.GitHub.Models.Comment>(serializer);
+      var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
+
+      var changes = new ChangeSummary();
+
+      using (var context = new ShipHubContext()) {
+        changes.UnionWith(await context.BulkUpdateAccounts(
+          DateTimeOffset.Now,
+          Mapper.Map<IEnumerable<AccountTableType>>(new[] { issueComment.User })));
+
+        changes.UnionWith(await context.BulkUpdateComments(
+          repository.Id,
+          Mapper.Map<IEnumerable<CommentTableType>>(new[] { issueComment })));
+      }
+
+      if (!changes.Empty) {
+        await _busClient.NotifyChanges(changes);
+      }
     }
 
     private async Task HandleRepositoryCreatedOrDeleted(JObject data) {

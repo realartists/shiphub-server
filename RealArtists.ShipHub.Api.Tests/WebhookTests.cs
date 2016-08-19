@@ -60,7 +60,11 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
+    private static Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
+      return ChangeSummaryFromHook("issues", obj, repoOrOrg, repoOrOrgId, secret);
+    }
+
+    private static async Task<IChangeSummary> ChangeSummaryFromHook(string eventName, JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
       IChangeSummary changeSummary = null;
 
       var mockBusClient = new Mock<IShipHubBusClient>();
@@ -69,7 +73,7 @@
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
-      ConfigureController(controller, "issues", obj, secret);
+      ConfigureController(controller, eventName, obj, secret);
 
       IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1003,6 +1007,175 @@
           Tuple.Create(user2.Id, user2.Login, user2.Token),
         },
         syncAccountRepositoryCalls);
+    }
+
+    private static JObject IssueCommentPayload(
+      string action,
+      Common.DataModel.Issue issue,
+      Common.DataModel.Account user,
+      Common.DataModel.Repository repo,
+      Comment comment
+      ) {
+      return JObject.FromObject(new {
+        action = action,
+        issue = new Issue() {
+          Id = issue.Id,
+          Title = issue.Title,
+          Body = issue.Body,
+          CreatedAt = issue.CreatedAt,
+          UpdatedAt = issue.UpdatedAt,
+          State = issue.State,
+          Number = issue.Number,
+          Labels = new List<Label>(),
+          User = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        comment = comment,
+        repository = new Repository() {
+          Id = repo.Id,
+          Owner = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.Organization,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+    }
+
+    [Test]
+    public async Task IssueCommentCreated() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload("created", issue, user, repo,
+          new Comment() {
+            Id = 9001,
+            Body = "some comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var comment = context.Comments.SingleOrDefault(x => x.IssueId == issue.Id);
+        Assert.NotNull(comment, "should have created comment");
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentEdited() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        var comment = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9001,
+          Body = "original body",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload("created", issue, user, repo,
+          new Comment() {
+            Id = 9001,
+            Body = "edited body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        context.Entry(comment).Reload();
+
+        Assert.AreEqual("edited body", comment.Body);
+        Assert.AreEqual(DateTimeOffset.Parse("2/1/2016"), comment.UpdatedAt);
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentWillCreateCommentAuthorIfNeeded() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload("created", issue, user, repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = 555,
+              Login = "alok",
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var comment = context.Comments.SingleOrDefault(x => x.Id == 9001);
+        Assert.NotNull(comment, "should have created comment");
+        Assert.AreEqual("comment body", comment.Body);
+
+        var commentAuthor = context.Accounts.SingleOrDefault(x => x.Id == 555);
+        Assert.NotNull(comment, "should have created comment");
+        Assert.AreEqual("alok", commentAuthor.Login);
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
     }
   }
 }
