@@ -75,24 +75,28 @@
       await Context.SaveChangesAsync();
       
       switch (eventName) {
-        case "issues": {
-            var actions = new string[] {
-            "opened",
-            "closed",
-            "reopened",
-            "edited",
-            "labeled",
-            "unlabeled",
-            "assigned",
-            "unassigned",
-          };
-
-            if (actions.Contains(payload.Action)) {
-              await HandleIssueUpdate(payload);
-            }
-            break;
+        case "issues":
+          switch (payload.Action) {
+            case "opened":
+            case "closed":
+            case "reopened":
+            case "edited":
+            case "labeled":
+            case "unlabeled":
+            case "assigned":
+            case "unassigned":
+              await HandleIssues(payload);
+              break;
           }
-        case "ping":
+          break;
+        case "issue_comment":
+          switch (payload.Action) {
+            case "created":
+            case "edited":
+            case "deleted":
+              await HandleIssueComment(payload);
+              break;
+          }
           break;
         case "repository":
           if (
@@ -100,22 +104,12 @@
             payload.Action.Equals("created") ||
             // We'll get deletion events from both the repo and org, but
             // we'll ignore the org one.
-            type.Equals("repo") && (payload.Action.Equals("deleted"))) {
-            await HandleRepositoryCreatedOrDeleted(payload);
+            (type.Equals("repo") && payload.Action.Equals("deleted"))) {
+            await HandleRepository(payload);
           }
           break;
-        case "issue_comment": {
-            var actions = new string[] {
-              "created",
-              "edited",
-              "deleted",
-            };
-
-            if (actions.Contains(payload.Action)) {
-              await HandleIssueComment(payload);
-            }
-            break;
-          }
+        case "ping":
+          break;
         default:
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
@@ -125,7 +119,7 @@
 
     private async Task HandleIssueComment(WebhookPayload payload) {
       // Ensure the issue that owns this comment exists locally efore we add the comment.
-      await HandleIssueUpdate(payload);
+      await HandleIssues(payload);
 
       var changes = new ChangeSummary();
 
@@ -156,7 +150,7 @@
       }
     }
 
-    private async Task HandleRepositoryCreatedOrDeleted(WebhookPayload payload) {
+    private async Task HandleRepository(WebhookPayload payload) {
       if (payload.Repository.Owner.Type != GitHubAccountType.Organization) {
         throw new InvalidOperationException("Should only receive repo created events for repo's owned by organizations.");
       }
@@ -169,7 +163,7 @@
       await Task.WhenAll(syncTasks);
     }
 
-    private async Task HandleIssueUpdate(WebhookPayload payload) {
+    private async Task HandleIssues(WebhookPayload payload) {
       var summary = new ChangeSummary();
 
       if (payload.Issue.Milestone != null) {
