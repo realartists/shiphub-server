@@ -126,7 +126,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -141,7 +141,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.ExtensionDataDictionary["url"]);
       }
     }
 
@@ -162,7 +162,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -176,7 +176,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -190,7 +190,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -204,7 +204,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -220,7 +220,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -237,7 +237,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -247,7 +247,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => Tuple.Create(x.Name, x.Color));
       }
     }
 
@@ -259,7 +259,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -272,7 +272,7 @@
       }
 
       if (result.Pagination != null) {
-        result = await EnumerateParallel(result, opts?.Credentials);
+        result = await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
 
       // Seriously GitHub?
@@ -292,7 +292,7 @@
       }
 
       if (result.Pagination != null) {
-        result = await EnumerateParallel(result, opts?.Credentials);
+        result = await EnumerateParallel(result, opts?.Credentials, x => x.Organization.Id);
       }
 
       // Seriously GitHub?
@@ -315,7 +315,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -325,7 +325,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -353,7 +353,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -363,7 +363,7 @@
       if (result.IsError || result.Pagination == null) {
         return result;
       } else {
-        return await EnumerateParallel(result, opts?.Credentials);
+        return await EnumerateParallel(result, opts?.Credentials, x => x.Id);
       }
     }
 
@@ -568,7 +568,7 @@
       }
     }
 
-    private async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials) {
+    private async Task<GitHubResponse<IEnumerable<T>>> EnumerateParallel<T, TKey>(GitHubResponse<IEnumerable<T>> firstPage, IGitHubCredentials credentials, Func<T, TKey> keySelector) {
       var results = new List<T>(firstPage.Result);
       IEnumerable<GitHubResponse<IEnumerable<T>>> batch;
 
@@ -613,6 +613,12 @@
         // Just use the last request.
         batch = new[] { current };
       }
+
+      // Deduplicate
+      results = results
+        .GroupBy(keySelector)
+        .Select(x => x.First())
+        .ToList();
 
       // Keep cache and other headers from first page.
       var final = firstPage;
