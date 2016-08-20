@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[WhatsNew]
-  @UserId BIGINT,
+  @Token NVARCHAR(64),
   @PageSize BIGINT = 1000,
   @RepositoryVersions VersionTableType READONLY,
   @OrganizationVersions VersionTableType READONLY
@@ -8,6 +8,13 @@ BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
   -- interfering with SELECT statements.
   SET NOCOUNT ON
+
+  DECLARE @UserId BIGINT
+  SELECT @UserId = Id FROM Accounts WHERE Token = @Token
+
+  -- If this is null the app knows the token is invalid.
+  SELECT @UserId as UserId
+  IF (@UserId IS NULL) RETURN
 
   -- Inform the client of any repos and orgs they can no longer access
   SELECT ItemId as RepositoryId

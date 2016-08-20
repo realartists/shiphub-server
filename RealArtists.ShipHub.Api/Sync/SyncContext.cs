@@ -44,7 +44,7 @@
 
       using (var context = new ShipHubContext()) {
         var dsp = context.PrepareWhatsNew(
-          _user.UserId,
+          _user.Token,
           pageSize,
           _versions.RepoVersions.Select(x => new VersionTableType() {
             ItemId = x.Key,
@@ -61,7 +61,15 @@
         using (var reader = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = reader;
 
+          // Check if token still valid.
+          var userId = (long?)ddr.UserId;
+          if (userId == null || userId != _user.UserId) {
+            await _connection.CloseAsync();
+            return;
+          }
+
           // Removed Repos
+          reader.NextResult();
           while (reader.Read()) {
             long repoId = ddr.RepositoryId;
             entries.Add(new SyncLogEntry() {

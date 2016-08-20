@@ -445,13 +445,13 @@
     }
 
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Whats")]
-    public DynamicStoredProcedure PrepareWhatsNew(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+    public DynamicStoredProcedure PrepareWhatsNew(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
       DynamicStoredProcedure result = null;
 
       try {
         dynamic dsp = result = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
-        dsp.UserId = userId;
+        dsp.Token = accessToken;
         dsp.PageSize = pageSize;
         dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
         dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
