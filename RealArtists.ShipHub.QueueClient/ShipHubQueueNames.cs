@@ -35,7 +35,8 @@
     public const string SyncRepositoryIssues = SyncRepository + "-issues";
     public const string SyncRepositoryLabels = SyncRepository + "-labels";
     public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
-    public const string AddOrUpdateRepoWebhooks = "add-or-update-repo-hooks";
-    public const string AddOrUpdateOrgWebhooks = "add-or-update-org-hooks";
+
+    public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
+    public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";
   }
 }
