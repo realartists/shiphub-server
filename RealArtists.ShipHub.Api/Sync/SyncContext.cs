@@ -62,7 +62,11 @@
           dynamic ddr = reader;
 
           // Check if token still valid.
-          var userId = (long?)ddr.UserId;
+          long? userId = null;
+          if (reader.Read()) {
+            userId = (long?)ddr.UserId;
+          }
+
           if (userId == null || userId != _user.UserId) {
             await _connection.CloseAsync();
             return;
