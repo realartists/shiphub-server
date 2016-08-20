@@ -128,6 +128,7 @@
     <Build Include="Procedures\BulkUpdateReactions.sql" />
     <Build Include="User Defined Types\MappingTableType.sql" />
     <Build Include="Tables\IssueAssignees.sql" />
+    <Build Include="Tables\MetadataCache.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
