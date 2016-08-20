@@ -40,6 +40,7 @@
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
+    public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
 
