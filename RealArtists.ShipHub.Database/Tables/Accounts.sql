@@ -12,6 +12,7 @@
   [RateLimitRemaining] INT            NOT NULL DEFAULT 0,
   [RateLimitReset]     DATETIMEOFFSET NOT NULL DEFAULT '1970-01-01T00:00:00Z',
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
+  CONSTRAINT [CK_Accounts_OrgVsUser] CHECK ([Type] = 'user' OR (RepoMetadataJson IS NULL AND Token IS NULL))
 )
 GO
 
