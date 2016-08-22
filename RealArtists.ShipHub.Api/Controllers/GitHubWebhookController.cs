@@ -73,6 +73,8 @@
       
       hook.LastSeen = DateTimeOffset.Now;
       await Context.SaveChangesAsync();
+
+      var changeSummary = new ChangeSummary();
       
       switch (eventName) {
         case "issues":
@@ -85,7 +87,7 @@
             case "unlabeled":
             case "assigned":
             case "unassigned":
-              await HandleIssues(payload);
+              await HandleIssues(payload, changeSummary);
               break;
           }
           break;
@@ -94,7 +96,7 @@
             case "created":
             case "edited":
             case "deleted":
-              await HandleIssueComment(payload);
+              await HandleIssueComment(payload, changeSummary);
               break;
           }
           break;
@@ -114,17 +116,19 @@
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
+      if (!changeSummary.Empty) {
+        await _busClient.NotifyChanges(changeSummary);
+      }
+
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleIssueComment(WebhookPayload payload) {
+    private async Task HandleIssueComment(WebhookPayload payload, ChangeSummary changeSummary) {
       // Ensure the issue that owns this comment exists locally efore we add the comment.
-      await HandleIssues(payload);
-
-      var changes = new ChangeSummary();
+      await HandleIssues(payload, changeSummary);
 
       using (var context = new ShipHubContext()) {
-        changes.UnionWith(await context.BulkUpdateAccounts(
+        changeSummary.UnionWith(await context.BulkUpdateAccounts(
           DateTimeOffset.Now,
           Mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
@@ -132,21 +136,17 @@
           var commentsExcludingDeletion = Context.Comments
             .Where(x => x.IssueId == payload.Issue.Id && x.Id != payload.Comment.Id);
           var commentsExcludingDeletionMapped = Mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
-          changes.UnionWith(await context.BulkUpdateIssueComments(
+          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
             payload.Repository.FullName,
             (int)payload.Comment.IssueNumber,
             commentsExcludingDeletionMapped,
             complete: true));
         } else {
-          changes.UnionWith(await context.BulkUpdateIssueComments(
+          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
             payload.Repository.FullName,
             (int)payload.Comment.IssueNumber,
             Mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
         }
-      }
-
-      if (!changes.Empty) {
-        await _busClient.NotifyChanges(changes);
       }
     }
 
@@ -167,9 +167,7 @@
       }
     }
 
-    private async Task HandleIssues(WebhookPayload payload) {
-      var summary = new ChangeSummary();
-
+    private async Task HandleIssues(WebhookPayload payload, ChangeSummary summary) {
       if (payload.Issue.Milestone != null) {
         var milestone = Mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
         var milestoneSummary = await Context.BulkUpdateMilestones(
@@ -211,10 +209,6 @@
 
       var issueChanges = await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings);
       summary.UnionWith(issueChanges);
-
-      if (!summary.Empty) {
-        await _busClient.NotifyChanges(summary);
-      }
     }
   }
 }
