@@ -268,8 +268,7 @@
 
             var owners = keepRepos
               .Select(x => x.Owner)
-              .GroupBy(x => x.Login)
-              .Select(x => x.First());
+              .Distinct(x => x.Login);
             changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
             changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
             changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => x.Id)));
@@ -497,15 +496,13 @@
         var accounts = issues
           .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
           .Where(x => x != null)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes = await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
 
         var milestones = issues
           .Select(x => x.Milestone)
           .Where(x => x != null)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes.UnionWith(await context.BulkUpdateMilestones(message.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
         changes.UnionWith(await context.BulkUpdateIssues(
@@ -534,8 +531,7 @@
       using (var context = new ShipHubContext()) {
         var users = comments
           .Select(x => x.User)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         var issueComments = comments.Where(x => x.IssueNumber != null);
@@ -568,8 +564,7 @@
         var accounts = events
           .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
           .Where(x => x != null)
-          .GroupBy(x => x.Login)
-          .Select(x => x.First());
+          .Distinct(x => x.Login);
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
         changes = await context.BulkUpdateAccounts(eventsResponse.Date, accountsParam);
         var eventsParam = SharedMapper.Map<IEnumerable<IssueEventTableType>>(events);
@@ -594,8 +589,7 @@
       using (var context = new ShipHubContext()) {
         var users = comments
           .Select(x => x.User)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes = await context.BulkUpdateAccounts(commentsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         changes.UnionWith(await context.BulkUpdateIssueComments(
@@ -637,8 +631,7 @@
 
         var users = reactions
           .Select(x => x.User)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         changes.UnionWith(await context.BulkUpdateIssueReactions(
@@ -675,8 +668,7 @@
 
         var users = reactions
           .Select(x => x.User)
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+          .Distinct(x => x.Id);
         changes = await context.BulkUpdateAccounts(reactionsResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
 
         changes.UnionWith(await context.BulkUpdateCommentReactions(
@@ -848,8 +840,7 @@
         // Update accounts
         var uniqueAccounts = accounts
           .Where(x => x != null)
-          .GroupBy(x => x.Login)
-          .Select(x => x.First());
+          .Distinct(x => x.Login);
         var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
         changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
 

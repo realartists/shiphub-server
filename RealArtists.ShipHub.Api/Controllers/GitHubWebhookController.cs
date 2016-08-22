@@ -186,10 +186,8 @@
       }
 
       if (referencedAccounts.Count > 0) {
-        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
-          // Dedup the list
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+
+        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
       }
 
