@@ -32,7 +32,7 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
     THEN DELETE
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), INSERTED.UserId, $action INTO @Changes (Id, UserId, [Action])
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action])
   OPTION (RECOMPILE);
 
   -- Deleted or edited reactions
