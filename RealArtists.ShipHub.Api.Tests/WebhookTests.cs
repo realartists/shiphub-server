@@ -37,7 +37,21 @@
     private static IMapper AutoMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
+
+        cfg.CreateMap<Common.DataModel.Milestone, Common.GitHub.Models.Milestone>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Issue, Common.GitHub.Models.Issue>(MemberList.Destination)
+          .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
+            if (src.PullRequest) {
+              return new Common.GitHub.Models.PullRequestDetails() {
+                Url = $"https://api.github.com/repos/{src.Repository.FullName}/pulls/{src.Number}",
+              };
+            } else {
+              return null;
+            }
+          }));
+        cfg.CreateMap<Common.DataModel.Account, Common.GitHub.Models.Account>(MemberList.Destination);
       });
+
       var mapper = config.CreateMapper();
       return mapper;
     }
@@ -60,7 +74,11 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static async Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
+    private static Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
+      return ChangeSummaryFromHook("issues", obj, repoOrOrg, repoOrOrgId, secret);
+    }
+
+    private static async Task<IChangeSummary> ChangeSummaryFromHook(string eventName, JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
       IChangeSummary changeSummary = null;
 
       var mockBusClient = new Mock<IShipHubBusClient>();
@@ -69,7 +87,7 @@
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
-      ConfigureController(controller, "issues", obj, secret);
+      ConfigureController(controller, eventName, obj, secret);
 
       IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -909,6 +927,437 @@
           Tuple.Create(user2.Id, user2.Login, user2.Token),
         },
         syncAccountRepositoryCalls);
+    }
+
+    [Test]
+    public async Task TestOrgRepoDeletionTriggersSyncAccountRepositories() {
+      Common.DataModel.User user1;
+      Common.DataModel.User user2;
+      Common.DataModel.Hook orgHook;
+      Common.DataModel.Hook repoHook;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Organization org;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user1 = TestUtil.MakeTestUser(context);
+        user2 = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
+          Id = 3002,
+          Login = "alok",
+          Date = DateTimeOffset.Now,
+          Token = Guid.NewGuid().ToString(),
+        });
+
+        org = TestUtil.MakeTestOrg(context);
+        org.Members.Add(user1);
+        org.Members.Add(user2);
+
+        repo = context.Repositories.Add(new Common.DataModel.Repository() {
+          Id = 2001,
+          Name = "mix",
+          FullName = $"{org.Login}/mix",
+          AccountId = org.Id,
+          Private = true,
+          Date = DateTimeOffset.Now,
+        });
+
+        // In the case of repo deletions, we'll receive a webhook event
+        // on both the org and repo hook.  So, let's have both in our test.
+        orgHook = MakeTestOrgHook(context, user1.Id, org.Id);
+        repoHook = MakeTestRepoHook(context, user1.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+      }
+
+      var obj = JObject.FromObject(new {
+        action = "deleted",
+        repository = new Repository() {
+          Id = 555,
+          Owner = new Account() {
+            Id = org.Id,
+            Login = org.Login,
+            Type = GitHubAccountType.Organization,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+
+      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+
+      var mockBusClient = new Mock<IShipHubBusClient>();
+      mockBusClient
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Returns(Task.CompletedTask)
+        .Callback((long accountId, string login, string accessToken) => {
+          syncAccountRepositoryCalls.Add(
+            new Tuple<long, string, string>(accountId, login, accessToken));
+        });
+
+      // We register for the "repository" event on both the org and repo levels.
+      // When a deletion happens, we'll get a webhook call for both the repo and
+      // org, but we want to ignore the org one.
+      var tests = new Tuple<string, long, Common.DataModel.Hook>[] {
+        Tuple.Create("repo", repo.Id, repoHook),
+        Tuple.Create("org", org.Id, orgHook),
+      };
+
+      foreach (var test in tests) {
+        var controller = new GitHubWebhookController(mockBusClient.Object);
+        ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
+        var result = await controller.HandleHook(test.Item1, test.Item2);
+        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
+        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      }
+
+      Assert.AreEqual(2, syncAccountRepositoryCalls.Count,
+        "should have only 1 call for each user in the org");
+      Assert.AreEqual(
+        new List<Tuple<long, string, string>> {
+          Tuple.Create(user1.Id, user1.Login, user1.Token),
+          Tuple.Create(user2.Id, user2.Login, user2.Token),
+        },
+        syncAccountRepositoryCalls);
+    }
+
+    [Test]
+    public async Task TestNonOrgRepoDeletionTriggersSyncAccountRepositories() {
+      Common.DataModel.User user;
+      Common.DataModel.Hook repoHook;
+      Common.DataModel.Repository repo;
+      
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        repoHook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var obj = JObject.FromObject(new {
+        action = "deleted",
+        repository = new Repository() {
+          Id = 555,
+          Owner = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+
+      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+
+      var mockBusClient = new Mock<IShipHubBusClient>();
+      mockBusClient
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Returns(Task.CompletedTask)
+        .Callback((long accountId, string login, string accessToken) => {
+          syncAccountRepositoryCalls.Add(
+            new Tuple<long, string, string>(accountId, login, accessToken));
+        });
+
+      var controller = new GitHubWebhookController(mockBusClient.Object);
+      ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
+      var result = await controller.HandleHook("repo", repo.Id);
+      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
+      Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+
+      Assert.AreEqual(
+        new List<Tuple<long, string, string>> {
+          Tuple.Create(user.Id, user.Login, user.Token),
+        },
+        syncAccountRepositoryCalls,
+        "should only trigger sync for repo owner");
+    }
+
+    private static JObject IssueCommentPayload(
+      string action,
+      Issue issue,
+      Common.DataModel.Account user,
+      Common.DataModel.Repository repo,
+      Comment comment
+      ) {
+      return JObject.FromObject(new {
+        action = action,
+        issue = issue,
+        comment = comment,
+        repository = new Repository() {
+          Id = repo.Id,
+          Owner = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.Organization,
+          },
+          Name = repo.Name,
+          FullName = repo.FullName,
+          Private = true,
+          HasIssues = true,
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+        },
+      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+    }
+
+    [Test]
+    public async Task IssueCommentCreated() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload(
+          "created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "some comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var comment = context.Comments.SingleOrDefault(x => x.IssueId == issue.Id);
+        Assert.NotNull(comment, "should have created comment");
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentEdited() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        var comment = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9001,
+          Body = "original body",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload("created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "edited body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        context.Entry(comment).Reload();
+
+        Assert.AreEqual("edited body", comment.Body);
+        Assert.AreEqual(DateTimeOffset.Parse("2/1/2016"), comment.UpdatedAt);
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentWillCreateCommentAuthorIfNeeded() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload(
+          "created",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = 555,
+              Login = "alok",
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var comment = context.Comments.SingleOrDefault(x => x.Id == 9001);
+        Assert.NotNull(comment, "should have created comment");
+        Assert.AreEqual("comment body", comment.Body);
+
+        var commentAuthor = context.Accounts.SingleOrDefault(x => x.Id == 555);
+        Assert.NotNull(comment, "should have created comment");
+        Assert.AreEqual("alok", commentAuthor.Login);
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentDeleted() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+        Common.DataModel.Issue issue;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+
+        var comment1 = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9001,
+          Body = "comment body #1",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+        var comment2 = context.Comments.Add(new Common.DataModel.Comment() {
+          Id = 9002,
+          Body = "comment body #2",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UserId = user.Id,
+          IssueId = issue.Id,
+          RepositoryId = repo.Id,
+        });
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload(
+          "deleted",
+          AutoMapper().Map<Issue>(issue),
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        Assert.AreEqual(
+          new long[] { 9002 }, 
+          context.Comments
+            .Where(x => x.IssueId == issue.Id)
+            .Select(x => x.Id).ToArray(),
+          "only one comment should have been deleted");
+
+        Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task IssueCommentWillCreateIssueIfNeeded() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        Common.DataModel.User user;
+        Common.DataModel.Hook hook;
+        Common.DataModel.Repository repo;
+
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = IssueCommentPayload(
+          "created",
+          new Issue() {
+            Id = 1001,
+            Title = "Some Title",
+            Body = "Some Body",
+            CreatedAt = DateTimeOffset.Now,
+            UpdatedAt = DateTimeOffset.Now,
+            State = "open",
+            Number = 1234,
+            Labels = new List<Label>(),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+          },
+          user,
+          repo,
+          new Comment() {
+            Id = 9001,
+            Body = "comment body",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("2/1/2016"),
+            User = new Account() {
+              Id = user.Id,
+              Login = user.Login,
+              Type = GitHubAccountType.User,
+            },
+            IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/1234",
+          });
+        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+
+        var issue = context.Issues.SingleOrDefault(x => x.Number == 1234);
+        Assert.NotNull(issue, "should have created issue referenced by comment.");
+
+        Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
     }
   }
 }

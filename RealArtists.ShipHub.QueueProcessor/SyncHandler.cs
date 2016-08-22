@@ -14,6 +14,7 @@
   using Common.GitHub;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
+  using Microsoft.ServiceBus.Messaging;
   using Newtonsoft.Json.Linq;
   using QueueClient;
   using QueueClient.Messages;
@@ -243,7 +244,7 @@
     public static async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<AddOrUpdateRepoWebhooksMessage> addOrUpdateRepoWebhooks,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateRepoWebhooks,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
@@ -290,10 +291,10 @@
                 "james-howard",
                 "aroon", // used in tests only
               }.Contains(x.Owner.Login))
-              .Select(x => addOrUpdateRepoWebhooks.AddAsync(new AddOrUpdateRepoWebhooksMessage {
+              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new AddOrUpdateRepoWebhooksMessage {
                 RepositoryId = x.Id,
                 AccessToken = message.AccessToken
-              }))
+              }, $"repo-{x.Id}")))
             );
           } else {
             logger.WriteLine("Github: Not modified.");
@@ -314,7 +315,7 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] AccountMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<AddOrUpdateOrgWebhooksMessage> addOrUpdateOrgWebhooks,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
@@ -344,10 +345,10 @@
                             "realartists",
                             "realartists-test",
               }.Contains(x.Organization.Login))
-              .Select(x => addOrUpdateOrgWebhooks.AddAsync(new AddOrUpdateOrgWebhooksMessage() {
+              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new AddOrUpdateOrgWebhooksMessage() {
                 AccessToken = message.AccessToken,
                 OrganizationId = x.Organization.Id,
-              })));
+              }, $"org-{x.Organization.Id}"))));
           } else {
             logger.WriteLine("Github: Not modified.");
           }

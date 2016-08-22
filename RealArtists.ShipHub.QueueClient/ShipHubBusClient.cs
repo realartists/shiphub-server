@@ -70,20 +70,32 @@
 
       await Task.WhenAll(checks.Select(x => x.ExistsTask));
 
+      var duplicateDetectionQueues = new string[] {
+        ShipHubQueueNames.AddOrUpdateOrgWebhooks,
+        ShipHubQueueNames.AddOrUpdateRepoWebhooks,
+      };
+      
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
-        .Select(x => _namespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
-          //DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
-          DefaultMessageTimeToLive = TimeSpan.FromDays(7),
+        .Select(x => {
+          var enableDuplicateDetection = duplicateDetectionQueues.Contains(x.QueueName);
 
-          EnableExpress = true,
-          EnableBatchedOperations = true,
-          EnableDeadLetteringOnMessageExpiration = true,
-          EnablePartitioning = true,
-          IsAnonymousAccessible = false,
-          MaxDeliveryCount = 10,
-          MaxSizeInMegabytes = 5120,
-        }));
+          return _namespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
+            //DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
+            DefaultMessageTimeToLive = TimeSpan.FromDays(7),
+            DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
+            // Express mode is not allowed with duplicate detection because
+            // it temporarily queues messages in memory.
+            EnableExpress = !enableDuplicateDetection,
+            EnableBatchedOperations = true,
+            EnableDeadLetteringOnMessageExpiration = true,
+            EnablePartitioning = true,
+            IsAnonymousAccessible = false,
+            MaxDeliveryCount = 10,
+            MaxSizeInMegabytes = 5120,
+            RequiresDuplicateDetection = enableDuplicateDetection,
+          });
+        });
 
       await Task.WhenAll(creations);
     }

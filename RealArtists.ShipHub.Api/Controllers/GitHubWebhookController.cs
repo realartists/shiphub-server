@@ -12,6 +12,7 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
+  using Common.GitHub.Models;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using QueueClient;
@@ -48,9 +49,9 @@
       byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       var deliveryId = Guid.Parse(deliveryIdHeader);
 
-      var payload = await Request.Content.ReadAsStringAsync();
-      var payloadBytes = Encoding.UTF8.GetBytes(payload);
-      var data = JsonConvert.DeserializeObject<JObject>(payload, GitHubClient.JsonSettings);
+      var payloadString = await Request.Content.ReadAsStringAsync();
+      var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
+      var payload = JsonConvert.DeserializeObject<WebhookPayload>(payloadString, GitHubClient.JsonSettings);
 
       Hook hook = null;
 
@@ -72,77 +73,116 @@
       
       hook.LastSeen = DateTimeOffset.Now;
       await Context.SaveChangesAsync();
+
+      var changeSummary = new ChangeSummary();
       
       switch (eventName) {
         case "issues":
-          var actions = new string[] {
-            "opened",
-            "closed",
-            "reopened",
-            "edited",
-            "labeled",
-            "unlabeled",
-            "assigned",
-            "unassigned",
-          };
-
-          if (actions.Contains(data["action"].ToString())) {
-            await HandleIssueUpdate(data);
+          switch (payload.Action) {
+            case "opened":
+            case "closed":
+            case "reopened":
+            case "edited":
+            case "labeled":
+            case "unlabeled":
+            case "assigned":
+            case "unassigned":
+              await HandleIssues(payload, changeSummary);
+              break;
+          }
+          break;
+        case "issue_comment":
+          switch (payload.Action) {
+            case "created":
+            case "edited":
+            case "deleted":
+              await HandleIssueComment(payload, changeSummary);
+              break;
+          }
+          break;
+        case "repository":
+          if (
+            // Created events can only come from the org-level hook.
+            payload.Action.Equals("created") ||
+            // We'll get deletion events from both the repo and org, but
+            // we'll ignore the org one.
+            (type.Equals("repo") && payload.Action.Equals("deleted"))) {
+            await HandleRepository(payload);
           }
           break;
         case "ping":
-          break;
-        case "repository":
-          if (data["action"].ToString().Equals("created")) {
-            await HandleRepositoryCreated(data);
-          }
           break;
         default:
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
+      if (!changeSummary.Empty) {
+        await _busClient.NotifyChanges(changeSummary);
+      }
+
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleRepositoryCreated(JObject data) {
-      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
-      var repository = data["repository"].ToObject<Common.GitHub.Models.Repository>(serializer);
+    private async Task HandleIssueComment(WebhookPayload payload, ChangeSummary changeSummary) {
+      // Ensure the issue that owns this comment exists locally efore we add the comment.
+      await HandleIssues(payload, changeSummary);
 
-      if (repository.Owner.Type != Common.GitHub.Models.GitHubAccountType.Organization) {
-        throw new InvalidOperationException("Should only receive repo created events for repo's owned by organizations.");
+      using (var context = new ShipHubContext()) {
+        changeSummary.UnionWith(await context.BulkUpdateAccounts(
+          DateTimeOffset.Now,
+          Mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
+
+        if (payload.Action.Equals("deleted")) {
+          var commentsExcludingDeletion = Context.Comments
+            .Where(x => x.IssueId == payload.Issue.Id && x.Id != payload.Comment.Id);
+          var commentsExcludingDeletionMapped = Mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
+          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
+            payload.Repository.FullName,
+            (int)payload.Comment.IssueNumber,
+            commentsExcludingDeletionMapped,
+            complete: true));
+        } else {
+          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
+            payload.Repository.FullName,
+            (int)payload.Comment.IssueNumber,
+            Mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
+        }
       }
-      
-      var org = await Context.Organizations.SingleAsync(x => x.Id == repository.Owner.Id);
-      var syncTasks = org.Members
-        .Where(x => x.Token != null)
-        .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
-
-      await Task.WhenAll(syncTasks);
     }
 
-    private async Task HandleIssueUpdate(JObject data) {
-      var serializer = JsonSerializer.CreateDefault(GitHubClient.JsonSettings);
+    private async Task HandleRepository(WebhookPayload payload) {
+      if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
+        var org = await Context.Organizations.SingleAsync(x => x.Id == payload.Repository.Owner.Id);
+        var syncTasks = org.Members
+          .Where(x => x.Token != null)
+          .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+        await Task.WhenAll(syncTasks);
+      } else {
+        // TODO: This should also trigger a sync for contributors of a repo, but at
+        // least this is more correct than what we have now.
+        var owner = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
+        if (owner.Token != null) {
+          await _busClient.SyncAccountRepositories(owner.Id, owner.Login, owner.Token);
+        }
+      }
+    }
 
-      var issue = data["issue"].ToObject<Common.GitHub.Models.Issue>(serializer);
-      long repositoryId = data["repository"]["id"].Value<long>();
-
-      var summary = new ChangeSummary();
-
-      if (issue.Milestone != null) {
-        var milestone = Mapper.Map<MilestoneTableType>(issue.Milestone);
+    private async Task HandleIssues(WebhookPayload payload, ChangeSummary summary) {
+      if (payload.Issue.Milestone != null) {
+        var milestone = Mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
         var milestoneSummary = await Context.BulkUpdateMilestones(
-          repositoryId,
+          payload.Repository.Id,
           new MilestoneTableType[] { milestone });
         summary.UnionWith(milestoneSummary);
       }
 
       var referencedAccounts = new List<Common.GitHub.Models.Account>();
-      referencedAccounts.Add(issue.User);
-      if (issue.Assignees != null) {
-        referencedAccounts.AddRange(issue.Assignees);
+      referencedAccounts.Add(payload.Issue.User);
+      if (payload.Issue.Assignees != null) {
+        referencedAccounts.AddRange(payload.Issue.Assignees);
       }
-      if (issue.ClosedBy != null) {
-        referencedAccounts.Add(issue.ClosedBy);
+      if (payload.Issue.ClosedBy != null) {
+        referencedAccounts.Add(payload.Issue.ClosedBy);
       }
 
       if (referencedAccounts.Count > 0) {
@@ -153,26 +193,22 @@
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
       }
 
-      var issues = new List<Common.GitHub.Models.Issue> { issue };
+      var issues = new List<Common.GitHub.Models.Issue> { payload.Issue };
       var issuesMapped = Mapper.Map<IEnumerable<IssueTableType>>(issues);
 
-      var labels = issue.Labels?.Select(x => new LabelTableType() {
-        ItemId = issue.Id,
+      var labels = payload.Issue.Labels?.Select(x => new LabelTableType() {
+        ItemId = payload.Issue.Id,
         Color = x.Color,
         Name = x.Name
       });
 
-      var assigneeMappings = issue.Assignees?.Select(x => new MappingTableType() {
-        Item1 = issue.Id,
+      var assigneeMappings = payload.Issue.Assignees?.Select(x => new MappingTableType() {
+        Item1 = payload.Issue.Id,
         Item2 = x.Id,
       });
 
-      var issueChanges = await Context.BulkUpdateIssues(repositoryId, issuesMapped, labels, assigneeMappings);
+      var issueChanges = await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings);
       summary.UnionWith(issueChanges);
-
-      if (!summary.Empty) {
-        await _busClient.NotifyChanges(summary);
-      }
     }
   }
 }
