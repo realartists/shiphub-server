@@ -91,7 +91,7 @@
             EnableDeadLetteringOnMessageExpiration = true,
             EnablePartitioning = true,
             IsAnonymousAccessible = false,
-            MaxDeliveryCount = 10,
+            MaxDeliveryCount = 2, // Prevent explosions of errors.
             MaxSizeInMegabytes = 5120,
             RequiresDuplicateDetection = enableDuplicateDetection,
           });
