@@ -24,8 +24,7 @@ BEGIN
   -- Remove
   WHEN NOT MATCHED BY SOURCE
     AND [Target].RepositoryId = @RepositoryId
-    THEN DELETE
-  OPTION (RECOMPILE);
+    THEN DELETE;
 
   IF(@@ROWCOUNT > 0)
   BEGIN

@@ -35,15 +35,13 @@ BEGIN
       [Name] = [Source].[Name],
       [FullName] = [Source].[FullName],
       [Date] = @Date
-  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId)
-  OPTION (RECOMPILE);
+  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
 
   -- Bump existing repos
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (rl.[Type] = 'repository' AND rl.ItemId = c.Id)
-  OPTION (RECOMPILE)
 
   -- New repositories reference themselves
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
@@ -53,7 +51,6 @@ BEGIN
     SELECT *
     FROM RepositoryLog
     WHERE RepositoryId = c.Id AND [Type] = 'repository' AND ItemId = c.Id)
-  OPTION (RECOMPILE)
 
   -- Best to inline owners too
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
@@ -63,10 +60,8 @@ BEGIN
     SELECT *
     FROM RepositoryLog
     WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
-  OPTION (RECOMPILE)
 
   -- Return updated repositories
   SELECT NULL as OrganizationId, Id as RepositoryId, NULL as UserId
   FROM @Changes
-  OPTION (RECOMPILE)
 END

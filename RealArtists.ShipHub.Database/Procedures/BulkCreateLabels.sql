@@ -10,5 +10,4 @@ BEGIN
   SELECT DISTINCT l.Color, l.Name
   FROM @Labels as l
   WHERE NOT EXISTS (SELECT * FROM Labels WHERE Color = l.Color AND Name = l.Name)
-  OPTION (RECOMPILE);
 END

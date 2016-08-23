@@ -23,8 +23,7 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND [Target].OrganizationId = @OrganizationId
     THEN DELETE
-  OUTPUT COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (UserId, [Action])
-  OPTION (RECOMPILE);
+  OUTPUT COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (UserId, [Action]);
 
   -- Deleted or edited users
   UPDATE OrganizationLog WITH (SERIALIZABLE) SET
@@ -32,17 +31,14 @@ BEGIN
     [RowVersion] = DEFAULT
   FROM @Changes 
     INNER JOIN OrganizationLog ON (UserId = AccountId AND OrganizationId = @OrganizationId)
-  OPTION (RECOMPILE)
 
   -- New users
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
   SELECT @OrganizationId, c.UserId, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
-  OPTION (RECOMPILE)
 
   -- Return updated organizations and users
   SELECT @OrganizationId as OrganizationId, NULL as RepositoryId, UserId
   FROM @Changes
-  OPTION (RECOMPILE)
 END

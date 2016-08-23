@@ -32,8 +32,7 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
     THEN DELETE
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action])
-  OPTION (RECOMPILE);
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action]);
 
   -- Deleted or edited reactions
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
@@ -42,14 +41,12 @@ BEGIN
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'reaction'
-  OPTION (RECOMPILE)
 
   -- New reactions
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'reaction', c.Id, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'reaction')
-  OPTION (RECOMPILE)
 
   -- Add new account references to log
   MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
@@ -60,11 +57,9 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
-  OPTION (RECOMPILE);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS (SELECT * FROM @Changes)
-  OPTION (RECOMPILE)
 END

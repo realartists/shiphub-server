@@ -34,8 +34,7 @@ BEGIN
       [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
       [Body] = [Source].[Body],
       [UpdatedAt] = [Source].[UpdatedAt]
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action])
-  OPTION (RECOMPILE);
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action]);
 
   -- Deleted or edited comments
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
@@ -43,14 +42,12 @@ BEGIN
     [RowVersion] = DEFAULT
   FROM @Changes as c
     INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
-  OPTION (RECOMPILE)
 
   -- New comments
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'comment', c.Id, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
-  OPTION (RECOMPILE)
 
   -- Add new account references to log
   MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
@@ -61,11 +58,9 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
-  OPTION (RECOMPILE);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS (SELECT * FROM @Changes)
-  OPTION (RECOMPILE)
 END

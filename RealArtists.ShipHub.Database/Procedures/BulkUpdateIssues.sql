@@ -41,8 +41,7 @@ BEGIN
       [ClosedAt] = [Source].[ClosedAt],
       [ClosedById] = [Source].[ClosedById],
       [PullRequest] = [Source].[PullRequest]
-  OUTPUT INSERTED.Id INTO @Changes (IssueId)
-  OPTION (RECOMPILE);
+  OUTPUT INSERTED.Id INTO @Changes (IssueId);
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
@@ -60,8 +59,7 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT DISTINCT(ItemId) FROM @Labels)
-    THEN DELETE
-  OPTION (RECOMPILE);
+    THEN DELETE;
 
   -- Assignees
   MERGE INTO IssueAssignees WITH(SERIALIZABLE) as [Target]
@@ -77,8 +75,7 @@ BEGIN
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT DISTINCT(Id) FROM @Issues)
     THEN DELETE
-  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId)
-  OPTION (RECOMPILE);
+  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId);
 
   INSERT INTO @UniqueChanges (IssueId)
   SELECT DISTINCT(IssueId) FROM @Changes
@@ -89,14 +86,12 @@ BEGIN
   FROM RepositoryLog as rl
     INNER JOIN @UniqueChanges as c ON (rl.ItemId = c.IssueId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
-  OPTION (RECOMPILE)
 
   -- New issues
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'issue', c.IssueId, 0
   FROM @UniqueChanges as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
-  OPTION (RECOMPILE)
 
   -- Add new account references to log
   -- Removed account references are leaked or GC'd later by another process.
@@ -115,11 +110,9 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
-  OPTION (RECOMPILE);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS (SELECT * FROM @UniqueChanges)
-  OPTION (RECOMPILE)
 END

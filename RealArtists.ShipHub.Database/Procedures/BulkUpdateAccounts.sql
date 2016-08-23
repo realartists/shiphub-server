@@ -41,8 +41,7 @@ BEGIN
       [Type] = [Source].[Type],
       [Login] = [Source].[Login],
       [Date] = @Date
-  OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type])
-  OPTION (RECOMPILE);
+  OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
 
   -- New Organizations reference themselves
   INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
@@ -51,7 +50,6 @@ BEGIN
   FROM @Changes as c
   WHERE c.[Type] = 'org'
     AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)
-  OPTION (RECOMPILE)
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.
@@ -62,8 +60,7 @@ BEGIN
     AND [Delete] = 0
     AND ItemId IN (SELECT Id FROM @Changes)
     AND ItemId != 10137 -- Ghost user (present in most repos. Do not ever mark as updated.)
-  OPTION (RECOMPILE)
 
   -- Return updated organizations and repositories
-  SELECT DISTINCT OrganizationId, RepositoryId, NULL as UserId FROM @Updates OPTION (RECOMPILE)
+  SELECT DISTINCT OrganizationId, RepositoryId, NULL as UserId FROM @Updates
 END

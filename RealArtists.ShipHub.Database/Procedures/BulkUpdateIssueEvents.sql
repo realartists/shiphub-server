@@ -41,8 +41,7 @@ BEGIN
       Restricted = [Source].Restricted,
       Timeline = @Timeline,
       ExtensionData = [Source].ExtensionData
-  OUTPUT INSERTED.Id INTO @Changes (IssueEventId)
-  OPTION (RECOMPILE);
+  OUTPUT INSERTED.Id INTO @Changes (IssueEventId);
 
    -- Add access grants
   INSERT INTO IssueEventAccess WITH (SERIALIZABLE) (IssueEventId, UserId)
@@ -51,13 +50,11 @@ BEGIN
   FROM @IssueEvents as ie
   WHERE ie.Restricted = 1
     AND NOT EXISTS(SELECT * FROM IssueEventAccess WHERE IssueEventId = ie.Id AND UserId = @UserId)
-  OPTION (RECOMPILE)
 
   INSERT INTO @Changes (IssueEventId)
   SELECT ac.IssueEventId
   FROM @AccessChanges as ac
   WHERE NOT EXISTS (SELECT * FROM @Changes WHERE IssueEventId = ac.IssueEventId)
-  OPTION (RECOMPILE)
 
   -- Update existing events
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
@@ -65,14 +62,12 @@ BEGIN
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (rl.ItemId = c.IssueEventId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'event'
-  OPTION (RECOMPILE)
 
   -- New events
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'event', c.IssueEventId, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.IssueEventId AND RepositoryId = @RepositoryId AND [Type] = 'event')
-  OPTION (RECOMPILE)
 
   -- Add missing account references to log
   MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
@@ -85,11 +80,9 @@ BEGIN
   -- Insert
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0)
-  OPTION (RECOMPILE);
+    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS (SELECT * FROM @Changes)
-  OPTION (RECOMPILE)
 END

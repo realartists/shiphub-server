@@ -18,8 +18,7 @@ BEGIN
     VALUES (@UserId, [OrganizationId])
   -- Delete
   WHEN NOT MATCHED BY SOURCE AND [Target].[UserId] = @UserId
-    THEN DELETE
-  OPTION (RECOMPILE);
+    THEN DELETE;
 
   IF(@@ROWCOUNT > 0) -- Not a NOP
   BEGIN

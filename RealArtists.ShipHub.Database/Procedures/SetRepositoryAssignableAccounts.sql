@@ -22,8 +22,7 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND Target.RepositoryId = @RepositoryId
-    THEN DELETE
-  OPTION (RECOMPILE);
+    THEN DELETE;
 
   IF(@@ROWCOUNT > 0) -- Not a NOP
   BEGIN
@@ -44,8 +43,7 @@ BEGIN
       AND [Target].ItemId = AccountId)
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (RepositoryId, [Type], ItemId, [Delete])
-      VALUES (@RepositoryId, 'account', AccountId, 0)
-    OPTION (RECOMPILE);
+      VALUES (@RepositoryId, 'account', AccountId, 0);
   END
 
   -- Return updated organizations and repositories

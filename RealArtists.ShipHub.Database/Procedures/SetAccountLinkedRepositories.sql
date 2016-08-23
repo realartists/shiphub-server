@@ -21,8 +21,7 @@ BEGIN
     VALUES (AccountId, RepositoryId, 0)
   -- Remove
   WHEN NOT MATCHED BY SOURCE AND Target.AccountId = @AccountId
-    THEN DELETE
-  OPTION (RECOMPILE);
+    THEN DELETE;
 
   IF(@@ROWCOUNT > 0) -- Not a NOP
   BEGIN

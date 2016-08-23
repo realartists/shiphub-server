@@ -20,12 +20,10 @@ BEGIN
   SELECT ItemId as RepositoryId
   FROM @RepositoryVersions as rv
   WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId)
-  OPTION (RECOMPILE)
 
   SELECT ItemId as OrganizationId
   FROM @OrganizationVersions as ov
   WHERE NOT EXISTS (SELECT * FROM AccountOrganizations WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
-  OPTION (RECOMPILE)
 
   -- Start sync!
   DECLARE @AllRepoLogs TABLE (
@@ -104,7 +102,6 @@ BEGIN
     FROM Accounts as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'account')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Comments
     SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt,
@@ -113,7 +110,6 @@ BEGIN
       LEFT OUTER JOIN Comments as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.[Type] = 'comment'
-    OPTION (RECOMPILE)
 
     -- Events
     SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.ExtensionData,
@@ -122,7 +118,6 @@ BEGIN
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'event')
       LEFT OUTER JOIN IssueEventAccess as a ON (e.Restricted = 1 AND a.IssueEventId = e.Id AND a.UserId = @UserId)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Milestones
     SELECT l.ItemId as Id, e.RepositoryId, e.Number, e.[State], e.Title, e.[Description],
@@ -131,7 +126,6 @@ BEGIN
       LEFT OUTER JOIN Milestones as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.[Type] = 'milestone'
-    OPTION (RECOMPILE)
 
     -- Reactions
     SELECT l.ItemId as Id, e.UserId, e.IssueId, e.CommentId, e.Content, e.CreatedAt, l.[Delete]
@@ -139,7 +133,6 @@ BEGIN
       LEFT OUTER JOIN Reactions as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.[Type] = 'reaction'
-    OPTION (RECOMPILE)
 
     -- Begin Issues ---------------------------------------------
     -- Issue Labels
@@ -148,14 +141,12 @@ BEGIN
       INNER JOIN IssueLabels as il ON (labels.Id = il.LabelId)
       INNER JOIN @RepoLogs as l ON (il.IssueId = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Issue Assignees
     SELECT IssueId, UserId
     FROM IssueAssignees
       INNER JOIN @RepoLogs as l ON (IssueId = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
@@ -164,7 +155,6 @@ BEGIN
     FROM Issues as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
     -- End Issues ---------------------------------------------
 
     -- Begin Repositories ---------------------------------------------
@@ -174,21 +164,18 @@ BEGIN
       INNER JOIN RepositoryLabels as rl ON (labels.Id = rl.LabelId)
       INNER JOIN @RepoLogs as l ON (rl.RepositoryId = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Repository Assignable Users
     SELECT ra.RepositoryId, ra.AccountId
     FROM RepositoryAccounts as ra
       INNER JOIN @RepoLogs as l ON (ra.RepositoryId = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
 
     -- Repositories
     SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName
     FROM Repositories as e
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-    OPTION (RECOMPILE)
     -- End Repositories ---------------------------------------------
 
     -- Current Versions
@@ -196,7 +183,6 @@ BEGIN
     FROM @RepoVersions
     WHERE RowNumber BETWEEN @WindowBegin AND @WindowEnd
     GROUP BY RepositoryId
-    OPTION (RECOMPILE)
 
     SET @WindowBegin = @WindowBegin + @PageSize
     SET @WindowEnd = @WindowEnd + @PageSize
@@ -229,7 +215,6 @@ BEGIN
   SELECT DISTINCT e.Id, e.[Type], e.[Login]
   FROM Accounts as e
     INNER JOIN @OrgLogs as l ON (e.Id = l.AccountId OR e.Id = l.OrganizationId)
-  OPTION (RECOMPILE)
 
   -- Membership for updated orgs
   SELECT ao.OrganizationId, ao.UserId

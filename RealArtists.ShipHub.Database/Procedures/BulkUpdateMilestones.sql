@@ -36,8 +36,7 @@ BEGIN
       UpdatedAt = [Source].UpdatedAt,
       ClosedAt = [Source].ClosedAt,
       DueOn = [Source].DueOn
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action])
-  OPTION (RECOMPILE);
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
 
   -- Deleted or edited milestones
   UPDATE RepositoryLog WITH (SERIALIZABLE) SET
@@ -46,17 +45,14 @@ BEGIN
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
-  OPTION (RECOMPILE)
 
   -- New milestones
   INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'milestone', c.Id, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')
-  OPTION (RECOMPILE)
 
   -- Return repository if updated
   SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
   WHERE EXISTS (SELECT * FROM @Changes)
-  OPTION (RECOMPILE)
 END
