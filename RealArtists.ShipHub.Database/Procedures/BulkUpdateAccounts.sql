@@ -19,7 +19,7 @@ BEGIN
     [RepositoryId]   BIGINT NULL
   )
 
-  MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Accounts WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Id, [Type], [Login]
     FROM @Accounts
@@ -44,7 +44,7 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
 
   -- New Organizations reference themselves
-  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId, [Delete])
   OUTPUT INSERTED.OrganizationId INTO @Updates (OrganizationId)
   SELECT c.Id, c.Id, 0
   FROM @Changes as c
@@ -53,7 +53,7 @@ BEGIN
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT -- Bump version
   OUTPUT INSERTED.RepositoryId INTO @Updates (RepositoryId)
   WHERE [Type] = 'account'

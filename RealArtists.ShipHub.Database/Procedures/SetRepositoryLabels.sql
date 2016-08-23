@@ -11,7 +11,7 @@ BEGIN
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
-  MERGE INTO RepositoryLabels WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT L1.Id as LabelId
     FROM Labels as L1
       INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
@@ -31,7 +31,7 @@ BEGIN
     SET @Changes = 1
 
     -- Update repo log entry
-    UPDATE RepositoryLog WITH (SERIALIZABLE)
+    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
       SET [RowVersion] = DEFAULT
     WHERE RepositoryId = @RepositoryId
       AND [Type] = 'repository'

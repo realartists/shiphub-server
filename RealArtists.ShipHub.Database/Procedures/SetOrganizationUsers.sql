@@ -13,7 +13,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
+  MERGE INTO AccountOrganizations WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT Item as UserId FROM @UserIds) as [Source]
   ON ([Target].UserId = [Source].UserId  AND [Target].OrganizationId = @OrganizationId)
   -- Add
@@ -26,14 +26,14 @@ BEGIN
   OUTPUT COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (UserId, [Action]);
 
   -- Deleted or edited users
-  UPDATE OrganizationLog WITH (SERIALIZABLE) SET
+  UPDATE OrganizationLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
   FROM @Changes 
     INNER JOIN OrganizationLog ON (UserId = AccountId AND OrganizationId = @OrganizationId)
 
   -- New users
-  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId, [Delete])
   SELECT @OrganizationId, c.UserId, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)

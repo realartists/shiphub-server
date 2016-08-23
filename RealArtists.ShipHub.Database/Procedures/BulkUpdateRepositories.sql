@@ -13,7 +13,7 @@ BEGIN
     [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
   )
 
-  MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Repositories WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [AccountId], [Private], [Name], [FullName]
     FROM @Repositories
@@ -38,13 +38,13 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
 
   -- Bump existing repos
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (rl.[Type] = 'repository' AND rl.ItemId = c.Id)
 
   -- New repositories reference themselves
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT Id, 'repository', Id, 0
     FROM @Changes as c
   WHERE NOT EXISTS (
@@ -53,7 +53,7 @@ BEGIN
     WHERE RepositoryId = c.Id AND [Type] = 'repository' AND ItemId = c.Id)
 
   -- Best to inline owners too
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT Id, 'account', AccountId, 0
     FROM @Changes as c
   WHERE NOT EXISTS (

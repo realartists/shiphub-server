@@ -18,7 +18,7 @@ BEGIN
     [IssueId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
-  MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Issues WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest]
     FROM @Issues
@@ -45,7 +45,7 @@ BEGIN
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
 
-  MERGE INTO IssueLabels WITH (SERIALIZABLE) as [Target]
+  MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT L1.Id as LabelId, L2.ItemId as IssueId
     FROM Labels as L1
@@ -62,7 +62,7 @@ BEGIN
     THEN DELETE;
 
   -- Assignees
-  MERGE INTO IssueAssignees WITH(SERIALIZABLE) as [Target]
+  MERGE INTO IssueAssignees WITH(UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Item1 as IssueId, Item2 as UserId FROM @Assignees
   ) as [Source]
@@ -81,21 +81,21 @@ BEGIN
   SELECT DISTINCT(IssueId) FROM @Changes
 
   -- Update existing issues
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
     INNER JOIN @UniqueChanges as c ON (rl.ItemId = c.IssueId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
 
   -- New issues
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'issue', c.IssueId, 0
   FROM @UniqueChanges as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
 
   -- Add new account references to log
   -- Removed account references are leaked or GC'd later by another process.
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Distinct(UPUserId) as UserId
     FROM Issues as c

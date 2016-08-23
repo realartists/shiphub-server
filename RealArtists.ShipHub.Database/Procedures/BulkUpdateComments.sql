@@ -15,7 +15,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Comments WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT c.Id, i.Id as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
     FROM @Comments as c
@@ -37,20 +37,20 @@ BEGIN
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action]);
 
   -- Deleted or edited comments
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
   FROM @Changes as c
     INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
 
   -- New comments
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'comment', c.Id, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
 
   -- Add new account references to log
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT DISTINCT(UserId) FROM @Changes WHERE [Action] = 'INSERT') as [Source]
   ON ([Target].ItemId = [Source].UserId
     AND [Target].RepositoryId = @RepositoryId

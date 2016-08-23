@@ -14,7 +14,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO Milestones WITH (SERIALIZABLE) as [Target]
+  MERGE INTO Milestones WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
     FROM @Milestones
@@ -39,7 +39,7 @@ BEGIN
   OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
 
   -- Deleted or edited milestones
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
@@ -47,7 +47,7 @@ BEGIN
   WHERE RepositoryId = @RepositoryId AND [Type] = 'milestone'
 
   -- New milestones
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'milestone', c.Id, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'milestone')

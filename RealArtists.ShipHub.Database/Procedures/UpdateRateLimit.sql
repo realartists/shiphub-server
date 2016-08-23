@@ -9,7 +9,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  UPDATE Accounts WITH (SERIALIZABLE) SET
+  UPDATE Accounts WITH (UPDLOCK SERIALIZABLE) SET
     RateLimit = @RateLimit,
     RateLimitRemaining =  @RateLimitRemaining,
     RateLimitReset = @RateLimitReset

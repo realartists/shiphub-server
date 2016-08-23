@@ -9,7 +9,7 @@ BEGIN
 
   DECLARE @Changes BIT = 0
 
-  MERGE INTO AccountOrganizations WITH (SERIALIZABLE) as [Target]
+  MERGE INTO AccountOrganizations WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT [Item] as [OrganizationId] FROM @OrganizationIds) as [Source]
   ON ([Target].[UserId] = @UserId  AND [Target].[OrganizationId] = [Source].[OrganizationId])
   -- Add

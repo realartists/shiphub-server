@@ -9,7 +9,7 @@ BEGIN
 
   DECLARE @Changes BIT = 0
 
-  MERGE INTO RepositoryAccounts WITH (SERIALIZABLE) as Target
+  MERGE INTO RepositoryAccounts WITH (UPDLOCK SERIALIZABLE) as Target
   USING (
     SELECT Item as AccountId, @RepositoryId as RepositoryId
       FROM @AssignableAccountIds) as Source
@@ -29,14 +29,14 @@ BEGIN
     SET @Changes = 1
 
     -- Update repo record in log
-    UPDATE RepositoryLog WITH (SERIALIZABLE)
+    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
       SET [RowVersion] = DEFAULT
     WHERE RepositoryId = @RepositoryId
       AND [Type] = 'repository'
       -- AND ItemId = @RepositoryId
 
     -- Add any missing accounts to the log
-    MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+    MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
     USING (SELECT Item as AccountId FROM @AssignableAccountIds) as [Source]
     ON ([Target].RepositoryId = @RepositoryId
       AND [Target].[Type] = 'account'

@@ -9,7 +9,7 @@ BEGIN
 
   DECLARE @Changes BIT = 0
 
-  MERGE INTO AccountRepositories WITH (SERIALIZABLE) as Target
+  MERGE INTO AccountRepositories WITH (UPDLOCK SERIALIZABLE) as Target
   USING (
     SELECT @AccountId as AccountId, Item as RepositoryId
       FROM @RepositoryIds) as Source

@@ -19,7 +19,7 @@ BEGIN
     [IssueEventId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
-  MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
+  MERGE INTO IssueEvents WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Id, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
     FROM @IssueEvents
@@ -44,7 +44,7 @@ BEGIN
   OUTPUT INSERTED.Id INTO @Changes (IssueEventId);
 
    -- Add access grants
-  INSERT INTO IssueEventAccess WITH (SERIALIZABLE) (IssueEventId, UserId)
+  INSERT INTO IssueEventAccess WITH (UPDLOCK SERIALIZABLE) (IssueEventId, UserId)
   OUTPUT INSERTED.IssueEventId INTO @AccessChanges (IssueEventId)
   SELECT Id, @UserId
   FROM @IssueEvents as ie
@@ -57,20 +57,20 @@ BEGIN
   WHERE NOT EXISTS (SELECT * FROM @Changes WHERE IssueEventId = ac.IssueEventId)
 
   -- Update existing events
-  UPDATE RepositoryLog WITH (SERIALIZABLE) SET
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
   FROM RepositoryLog as rl
     INNER JOIN @Changes as c ON (rl.ItemId = c.IssueEventId)
   WHERE RepositoryId = @RepositoryId AND [Type] = 'event'
 
   -- New events
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'event', c.IssueEventId, 0
   FROM @Changes as c
   WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.IssueEventId AND RepositoryId = @RepositoryId AND [Type] = 'event')
 
   -- Add missing account references to log
-  MERGE INTO RepositoryLog WITH (SERIALIZABLE) as [Target]
+  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Item as UserId FROM @ReferencedAccounts
   ) as [Source]
