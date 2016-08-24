@@ -261,7 +261,10 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        org.Members.Add(user);
+        context.AccountOrganizations.Add(new AccountOrganization() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
         await context.SaveChangesAsync();
 
         var mock = new Mock<IGitHubClient>();
@@ -322,7 +325,10 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        org.Members.Add(user);
+        context.AccountOrganizations.Add(new AccountOrganization() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
         await context.SaveChangesAsync();
 
         var mock = new Mock<IGitHubClient>();
@@ -399,7 +405,10 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        org.Members.Add(user);
+        context.AccountOrganizations.Add(new AccountOrganization() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
         var hook = context.Hooks.Add(new Hook() {
           Id = 1001,
           Active = true,

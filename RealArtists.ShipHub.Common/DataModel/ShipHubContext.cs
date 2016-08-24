@@ -34,6 +34,7 @@
     }
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
+    public virtual DbSet<AccountOrganization> AccountOrganizations { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -129,11 +130,6 @@
         .HasMany(e => e.LinkedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
-
-      modelBuilder.Entity<User>()
-        .HasMany(e => e.Organizations)
-        .WithMany(e => e.Members)
-        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
     public Task RevokeAccessToken(string accessToken) {

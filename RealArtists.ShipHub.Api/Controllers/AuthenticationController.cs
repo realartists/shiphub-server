@@ -61,7 +61,6 @@
       }
 
       var user = await Context.Users
-        .Include(x => x.Organizations)
         .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
       if (user == null) {
         user = (User)Context.Accounts.Add(new User() {

@@ -6,7 +6,7 @@
 
   public class User : Account {
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Organization> Organizations { get; set; } = new HashSet<Organization>();
+    public virtual ICollection<AccountOrganization> AccountOrganizations { get; set; } = new HashSet<AccountOrganization>();
 
     public string RepoMetadataJson {
       get { return RepositoryMetadata.SerializeObject(); }

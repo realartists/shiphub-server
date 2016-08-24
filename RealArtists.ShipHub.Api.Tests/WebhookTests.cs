@@ -183,7 +183,10 @@
         var org = MakeTestOrg(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestOrgHook(context, user.Id, org.Id);
-        org.Members.Add(user);
+        context.AccountOrganizations.Add(new Common.DataModel.AccountOrganization() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
         await context.SaveChangesAsync();
 
         var obj = JObject.FromObject(new {
@@ -884,8 +887,14 @@
           Token = Guid.NewGuid().ToString(),
         });
         org = TestUtil.MakeTestOrg(context);
-        org.Members.Add(user1);
-        org.Members.Add(user2);
+        context.AccountOrganizations.Add(new Common.DataModel.AccountOrganization() {
+          UserId = user1.Id,
+          OrganizationId = org.Id,
+        });
+        context.AccountOrganizations.Add(new Common.DataModel.AccountOrganization() {
+          UserId = user2.Id,
+          OrganizationId = org.Id,
+        });
         hook = MakeTestOrgHook(context, user1.Id, org.Id);
         await context.SaveChangesAsync();
       }
@@ -951,9 +960,14 @@
         });
 
         org = TestUtil.MakeTestOrg(context);
-        org.Members.Add(user1);
-        org.Members.Add(user2);
-
+        context.AccountOrganizations.Add(new Common.DataModel.AccountOrganization() {
+          UserId = user1.Id,
+          OrganizationId = org.Id,
+        });
+        context.AccountOrganizations.Add(new Common.DataModel.AccountOrganization() {
+          UserId = user2.Id,
+          OrganizationId = org.Id,
+        });
         repo = context.Repositories.Add(new Common.DataModel.Repository() {
           Id = 2001,
           Name = "mix",
