@@ -14,5 +14,7 @@
     public long OrganizationId { get; set; }
 
     public virtual Organization Organization { get; set; }
+
+    public bool Admin { get; set; }
   }
 }

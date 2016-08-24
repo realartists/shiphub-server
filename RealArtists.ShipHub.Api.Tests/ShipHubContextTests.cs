@@ -106,5 +106,103 @@
         Assert.AreEqual(false, assocs[1].Admin);
       }
     }
+
+    [Test]
+    public async Task SetOrganizationUsersCanSetAssociations() {
+      using (var context = new ShipHubContext()) {
+        var user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
+        var user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user1.Id, false),
+          Tuple.Create(user2.Id, true),
+        });
+
+        var assocs = context.AccountOrganizations
+          .Where(x => x.OrganizationId == org.Id)
+          .OrderBy(x => x.UserId)
+          .ToArray();
+        Assert.AreEqual(2, assocs.Count());
+        Assert.AreEqual(user1.Id, assocs[0].UserId);
+        Assert.AreEqual(false, assocs[0].Admin);
+        Assert.AreEqual(user2.Id, assocs[1].UserId);
+        Assert.AreEqual(true, assocs[1].Admin);
+      }
+    }
+
+    [Test]
+    public async Task SetOrganizationUsersCanDeleteAssociations() {
+      using (var context = new ShipHubContext()) {
+        var user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
+        var user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        // Set a couple of associations...
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user1.Id, false),
+          Tuple.Create(user2.Id, true),
+        });
+
+        // Them set again and omit user1 to remove it.
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user2.Id, true),
+        });
+
+        var assocs = context.AccountOrganizations
+          .Where(x => x.OrganizationId == org.Id)
+          .OrderBy(x => x.UserId)
+          .ToArray();
+        Assert.AreEqual(1, assocs.Count());
+        Assert.AreEqual(user2.Id, assocs[0].UserId);
+        Assert.AreEqual(true, assocs[0].Admin);
+      }
+    }
+
+    [Test]
+    public async Task SetOrganizationUsersCanUpdateAssociations() {
+      Account user1;
+      Account user2;
+      Organization org;
+
+      using (var context = new ShipHubContext()) {
+        user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
+        user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
+        org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        // Set a couple of associations...
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user1.Id, false),
+          Tuple.Create(user2.Id, true),
+        });
+        
+        var assocs = context.AccountOrganizations
+          .Where(x => x.OrganizationId == org.Id)
+          .OrderBy(x => x.UserId)
+          .ToArray();
+        Assert.AreEqual(2, assocs.Count());
+        Assert.AreEqual(false, assocs[0].Admin);
+        Assert.AreEqual(true, assocs[1].Admin);
+      }
+
+      using (var context = new ShipHubContext()) {
+        // Then change the Admin bit on each.
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user1.Id, true),
+          Tuple.Create(user2.Id, false),
+        });
+
+        var assocs = context.AccountOrganizations
+          .Where(x => x.OrganizationId == org.Id)
+          .OrderBy(x => x.UserId)
+          .ToArray();
+        Assert.AreEqual(2, assocs.Count());
+        Assert.AreEqual(true, assocs[0].Admin);
+        Assert.AreEqual(false, assocs[1].Admin);
+      }
+    }
   }
 }

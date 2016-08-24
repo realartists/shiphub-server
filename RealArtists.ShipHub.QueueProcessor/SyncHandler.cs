@@ -385,7 +385,9 @@
 
       using (var context = new ShipHubContext()) {
         changes = await context.BulkUpdateAccounts(membersResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(all.Select(x => x.Item1)));
-        changes.UnionWith(await context.SetOrganizationUsers(message.Id, all.Select(x => x.Item1.Id)));
+        changes.UnionWith(await context.SetOrganizationUsers(
+          message.Id,
+          all.Select(x => Tuple.Create(x.Item1.Id, x.Item2.Equals("admin")))));
       }
 
       if (!changes.Empty) {

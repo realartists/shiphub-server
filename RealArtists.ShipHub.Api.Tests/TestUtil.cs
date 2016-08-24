@@ -2,10 +2,10 @@ using System;
 
 namespace RealArtists.ShipHub.Api.Tests {
   public class TestUtil {
-    public static Common.DataModel.User MakeTestUser(Common.DataModel.ShipHubContext context) {
+    public static Common.DataModel.User MakeTestUser(Common.DataModel.ShipHubContext context, long userId = 3001, string login = "aroon") {
       var user = new Common.DataModel.User() {
-        Id = 3001,
-        Login = "aroon",
+        Id = userId,
+        Login = login,
         Date = DateTimeOffset.Now,
         Token = Guid.NewGuid().ToString(),
       };
