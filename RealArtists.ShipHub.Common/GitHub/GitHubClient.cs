@@ -172,9 +172,9 @@
       return Fetch<PullRequest>(request);
     }
 
-    public async Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, IGitHubCacheMetadata cacheOptions = null) {
+    public async Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheMetadata cacheOptions = null) {
       // defaults: filter=all, role=all
-      var request = new GitHubRequest($"/orgs/{orgLogin}/members", cacheOptions);
+      var request = new GitHubRequest($"/orgs/{orgLogin}/members?role={role}", cacheOptions);
       var result = await Fetch<IEnumerable<Account>>(request);
       return result.Distinct(x => x.Id);
     }

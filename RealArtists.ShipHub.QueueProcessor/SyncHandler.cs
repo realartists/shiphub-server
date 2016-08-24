@@ -370,12 +370,22 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var memberResponse = await ghc.OrganizationMembers(message.Login);
-      var members = memberResponse.Result;
+      // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
+      // each member.  To workaround, we make two requests and use the filter option
+      // to only get admins or non-admins on each request.
+      var membersTask = ghc.OrganizationMembers(message.Login, role: "member");
+      var adminsTask = ghc.OrganizationMembers(message.Login, role: "admin");
+      await Task.WhenAll(membersTask, adminsTask);
+
+      var membersResponse = membersTask.Result;
+      var adminsResponse = adminsTask.Result;
+
+      var all = membersResponse.Result.Select(x => Tuple.Create(x, "member")).Concat(
+        adminsResponse.Result.Select(x => Tuple.Create(x, "admin"))).ToArray();
 
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateAccounts(memberResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(members));
-        changes.UnionWith(await context.SetOrganizationUsers(message.Id, members.Select(x => x.Id)));
+        changes = await context.BulkUpdateAccounts(membersResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(all.Select(x => x.Item1)));
+        changes.UnionWith(await context.SetOrganizationUsers(message.Id, all.Select(x => x.Item1.Id)));
       }
 
       if (!changes.Empty) {
