@@ -337,6 +337,7 @@
                       Labels = repoLabels.Val((long)ddr.Id, () => new List<se.Label>()),
                       Name = ddr.Name,
                       Private = ddr.Private,
+                      ShipNeedsWebhookHelp = !ddr.HasHook && !ddr.Admin,
                     },
                   });
                 }
@@ -375,6 +376,7 @@
                     var org = new OrganizationEntry() {
                       Identifier = ddr.Id,
                       Login = ddr.Login,
+                      ShipNeedsWebhookHelp = !ddr.Admin && !ddr.HasHook,
                       // Users set later
                     };
                     orgAccounts.Add(org.Identifier, org);
