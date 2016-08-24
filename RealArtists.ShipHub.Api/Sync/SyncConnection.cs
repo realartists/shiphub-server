@@ -19,7 +19,12 @@
   using Newtonsoft.Json.Linq;
   using QueueClient;
 
-  public class SyncConnection : WebSocketHandler {
+  public interface ISyncConnection {
+    Task SendJsonAsync(object message);
+    Task CloseAsync();
+  }
+
+  public class SyncConnection : WebSocketHandler, ISyncConnection {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
     private static readonly Guid _purgeId = new Guid("1789F841-6DC1-4719-9A56-A05908D00000");
     private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();

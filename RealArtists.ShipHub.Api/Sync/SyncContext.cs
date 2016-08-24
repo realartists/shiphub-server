@@ -13,7 +13,7 @@
 
   public class SyncContext {
     private ShipHubPrincipal _user;
-    private SyncConnection _connection;
+    private ISyncConnection _connection;
     private SyncVersions _versions;
 
     private VersionDetails VersionDetails {
@@ -25,7 +25,7 @@
       }
     }
 
-    public SyncContext(ShipHubPrincipal user, SyncConnection connection, SyncVersions initialVersions) {
+    public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
       _user = user;
       _connection = connection;
       _versions = initialVersions;
