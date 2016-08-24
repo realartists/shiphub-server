@@ -83,6 +83,8 @@
     <Compile Include="DataModel\Milestone.cs" />
     <Compile Include="DataModel\Organization.cs" />
     <Compile Include="DataModel\Repository.cs" />
+    <Compile Include="DataModel\OrganizationLog.cs" />
+    <Compile Include="DataModel\RepositoryLog.cs" />
     <Compile Include="DataModel\ShipHubContext.cs" />
     <Compile Include="DataModel\Types\AccountTableType.cs" />
     <Compile Include="DataModel\Types\CommentTableType.cs" />
