@@ -478,8 +478,10 @@
       return result;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
-      var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
+      var repoParam = CreateMappingTable(
+        "RepositoryIds",
+        repoIdAndAdminPairs.Select(x => new MappingTableType() { Item1 = x.Item1, Item2 = x.Item2 ? 1 : 0 }));
 
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;

@@ -271,7 +271,7 @@
               .Distinct(x => x.Login);
             changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
             changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => x.Id)));
+            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
 
             tasks.Add(notifyChanges.Send(changes));
 

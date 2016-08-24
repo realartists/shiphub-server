@@ -124,6 +124,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="AutoRollbackAttribute.cs" />
+    <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SyncHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="WebhookTests.cs" />

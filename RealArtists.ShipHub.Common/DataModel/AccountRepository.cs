@@ -12,6 +12,7 @@
     public long RepositoryId { get; set; }
 
     public bool Hidden { get; set; }
+    public bool Admin { get; set; }
 
     public virtual User Account { get; set; }
 
