@@ -139,7 +139,7 @@
     }
 
     public Task UpdateMetaLimit(string table, string column, long id, GitHubResponse response) {
-      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.Credentials.Parameter, response.RateLimit);
+      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.CacheData.AccessToken, response.RateLimit);
     }
 
     public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {

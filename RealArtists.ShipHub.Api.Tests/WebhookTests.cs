@@ -19,9 +19,9 @@
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
   using RealArtists.ShipHub.Api.Controllers;
-  using RealArtists.ShipHub.Common.DataModel.Types;
-  using RealArtists.ShipHub.Common.GitHub;
-  using RealArtists.ShipHub.Common.GitHub.Models;
+  using Common.DataModel.Types;
+  using Common.GitHub;
+  using Common.GitHub.Models;
   using RealArtists.ShipHub.QueueClient;
 
   [TestFixture]
@@ -57,7 +57,7 @@
     }
 
     private static void ConfigureController(ApiController controller, string eventName, JObject body, string secretKey) {
-      var json = JsonConvert.SerializeObject(body, GitHubClient.JsonSettings);
+      var json = JsonConvert.SerializeObject(body, GitHubSerialization.JsonSerializerSettings);
       var signature = SignatureForPayload(secretKey, json);
 
       var config = new HttpConfiguration();
@@ -104,7 +104,7 @@
           id = repositoryId,
         },
       };
-      return JObject.FromObject(obj, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      return JObject.FromObject(obj, GitHubSerialization.JsonSerializer);
     }
 
     private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
@@ -163,7 +163,7 @@
           repository = new {
             id = repo.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -191,7 +191,7 @@
           organization = new {
             id = org.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -221,7 +221,7 @@
           repository = new {
             id = repo.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
@@ -902,7 +902,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -983,7 +983,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -1050,7 +1050,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -1101,7 +1101,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
     }
 
     [Test]
