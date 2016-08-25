@@ -119,12 +119,12 @@
     /// <summary>
     /// Returns distinct elements from a sequence by using a specified key selector to compare values.
     /// </summary>
-    /// <typeparam name="TElem">The type of the elements of source.</typeparam>
+    /// <typeparam name="TElement">The type of the elements of source.</typeparam>
     /// <typeparam name="TKey">The type of the unique key.</typeparam>
     /// <param name="source">The sequence to remove duplicate elements from.</param>
     /// <param name="keySelector">The key selector for comparison.</param>
     /// <returns>An System.Collections.Generic.IEnumerable`1 that contains distinct elements from the source sequence.</returns>
-    public static IEnumerable<TElem> Distinct<TElem, TKey>(this IEnumerable<TElem> source, Func<TElem, TKey> keySelector) {
+    public static IEnumerable<TElement> Distinct<TElement, TKey>(this IEnumerable<TElement> source, Func<TElement, TKey> keySelector) {
       var keys = new HashSet<TKey>();
       foreach (var item in source) {
         var key = keySelector(item);
