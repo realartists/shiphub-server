@@ -230,7 +230,7 @@
 
         var expectedEvents = new string[] {
           "issues",
-          //"issue_comment",
+          "issue_comment",
           //"member",
           //"public",
           //"pull_request",

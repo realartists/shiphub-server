@@ -31,7 +31,7 @@
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
         var requiredEvents = new string[] {
           "issues",
-          //"issue_comment",
+          "issue_comment",
           //"member",
           //"public",
           //"pull_request",
