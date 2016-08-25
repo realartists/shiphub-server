@@ -1,7 +1,7 @@
 ﻿CREATE TABLE [dbo].[CacheMetadata] (
   [Id]           BIGINT        NOT NULL IDENTITY(1,1),
   [Key]          NVARCHAR(255) NOT NULL,
-  [AccessToken]  AS CAST(JSON_VALUE(MetadataJson, '$.accessToken') as NVARCHAR(64)) PERSISTED,
+  [AccessToken]  AS CONVERT(NVARCHAR(64),JSON_VALUE(MetadataJson,'$.accessToken')) PERSISTED,
   [MetadataJson] NVARCHAR(MAX) NOT NULL,
   CONSTRAINT [PK_CacheMetadata] PRIMARY KEY CLUSTERED ([Id]),
 )
