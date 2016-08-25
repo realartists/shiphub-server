@@ -22,11 +22,15 @@
 
   public static class SyncHandler {
     public static Task AddOrUpdateRepoWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
-      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
     }
 
-    public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
+    public static async Task AddOrUpdateRepoWebhooksWithClient(
+      AddOrUpdateRepoWebhooksMessage message,
+      IGitHubClient client,
+      IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
         var requiredEvents = new string[] {
@@ -87,6 +91,17 @@
           if (!addRepoHookResponse.IsError) {
             hook.GitHubId = addRepoHookResponse.Result.Id;
             await context.SaveChangesAsync();
+
+            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
+              "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @p0 AND [Type] = 'repository' and ItemId = @p0",
+              repo.Id);
+            if (rowsUpdated != 1) {
+              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
+            }
+            
+            var changeSummary = new ChangeSummary();
+            changeSummary.Repositories.Add(repo.Id);
+            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
             Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookResponse.Error}");
             context.Hooks.Remove(hook);
@@ -107,7 +122,8 @@
 
     public static async Task AddOrUpdateOrgWebhooksWithClient(
       AddOrUpdateOrgWebhooksMessage message,
-      IGitHubClient client) {
+      IGitHubClient client,
+      IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var org = await context.Organizations.SingleAsync(x => x.Id == message.OrganizationId);
         var requiredEvents = new string[] {
@@ -161,6 +177,17 @@
           if (!addResponse.IsError) {
             hook.GitHubId = addResponse.Result.Id;
             await context.SaveChangesAsync();
+
+            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
+              "UPDATE OrganizationLog SET [RowVersion] = DEFAULT WHERE OrganizationId = @p0 AND AccountId = @p0",
+              org.Id);
+            if (rowsUpdated != 1) {
+              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
+            }
+            
+            var changeSummary = new ChangeSummary();
+            changeSummary.Organizations.Add(org.Id);
+            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
             Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addResponse.Error}");
             context.Hooks.Remove(hook);
@@ -179,9 +206,10 @@
       }
     }
 
-    public static async Task AddOrUpdateOrgWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message) {
-      await AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    public static Task AddOrUpdateOrgWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      return AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
     }
 
     public static async Task SyncAccount(

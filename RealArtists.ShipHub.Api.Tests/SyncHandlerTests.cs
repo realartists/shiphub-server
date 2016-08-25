@@ -2,11 +2,13 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
+  using System.Threading;
   using System.Threading.Tasks;
   using Common.DataModel;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Microsoft.Azure;
+  using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
   using QueueClient.Messages;
@@ -103,10 +105,11 @@
             return Task.FromResult(result);
           });
 
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
 
         context.Entry(hook).Reload();
 
@@ -181,10 +184,11 @@
             }
           });
 
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -198,6 +202,9 @@
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
+
+        var repoLogItem = context.RepositoryLog.Single(x => x.Type.Equals("repository") && x.ItemId == repo.Id);
+        var repoLogItemRowVersion = repoLogItem.RowVersion;
 
         var mock = new Mock<IGitHubClient>();
 
@@ -222,10 +229,19 @@
             installWebHook = webhook;
           });
 
+        var changeMessages = new List<ChangeMessage>();
+
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
         await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
         var expectedEvents = new string[] {
@@ -253,6 +269,11 @@
         Assert.AreEqual("json", installWebHook.Config.ContentType);
         Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
+
+        context.Entry(repoLogItem).Reload();
+        Assert.Greater(repoLogItem.RowVersion, repoLogItemRowVersion,
+          "row version should get bumped so the repo gets synced");
+        Assert.AreEqual(new long[] { repo.Id }, changeMessages[0].Repositories.ToArray());
       }
     }
 
@@ -266,6 +287,9 @@
           OrganizationId = org.Id,
         });
         await context.SaveChangesAsync();
+
+        var orgLogItem = context.OrganizationLog.Single(x => x.OrganizationId == org.Id && x.AccountId == org.Id);
+        var orgLogItemRowVersion = orgLogItem.RowVersion;
 
         var mock = new Mock<IGitHubClient>();
 
@@ -288,10 +312,18 @@
             installWebHook = webhook;
           });
 
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
         await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
         var expectedEvents = new string[] {
@@ -311,6 +343,11 @@
         Assert.AreEqual("json", installWebHook.Config.ContentType);
         Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
+
+        context.Entry(orgLogItem).Reload();
+        Assert.Greater(orgLogItem.RowVersion, orgLogItemRowVersion,
+          "row version should get bumped so the org gets synced");
+        Assert.AreEqual(new long[] { org.Id }, changeMessages[0].Organizations.ToArray());
       }
     }
 
@@ -385,10 +422,11 @@
             }
           });
 
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -463,10 +501,11 @@
             return Task.FromResult(result);
           });
 
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
-        }, mock.Object);
+        }, mock.Object, collectorMock.Object);
 
         context.Entry(hook).Reload();
 
