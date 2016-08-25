@@ -14,15 +14,15 @@
   using System.Web.Http.Results;
   using System.Web.Http.Routing;
   using AutoMapper;
+  using Common.DataModel.Types;
+  using Common.GitHub;
+  using Common.GitHub.Models;
+  using Controllers;
   using Moq;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
-  using RealArtists.ShipHub.Api.Controllers;
-  using Common.DataModel.Types;
-  using Common.GitHub;
-  using Common.GitHub.Models;
-  using RealArtists.ShipHub.QueueClient;
+  using QueueClient;
 
   [TestFixture]
   [AutoRollback]
@@ -38,18 +38,19 @@
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
 
-        cfg.CreateMap<Common.DataModel.Milestone, Common.GitHub.Models.Milestone>(MemberList.Destination);
-        cfg.CreateMap<Common.DataModel.Issue, Common.GitHub.Models.Issue>(MemberList.Destination)
+        cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
           .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
             if (src.PullRequest) {
-              return new Common.GitHub.Models.PullRequestDetails() {
+              return new PullRequestDetails() {
                 Url = $"https://api.github.com/repos/{src.Repository.FullName}/pulls/{src.Number}",
               };
             } else {
               return null;
             }
           }));
-        cfg.CreateMap<Common.DataModel.Account, Common.GitHub.Models.Account>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Account, Account>(MemberList.Destination)
+          .ForMember(x => x.Type, o => o.ResolveUsing(x => x is Common.DataModel.User ? GitHubAccountType.User : GitHubAccountType.Organization));
       });
 
       var mapper = config.CreateMapper();
@@ -692,7 +693,7 @@
           Id = user.Id,
           Login = user.Login,
           Type = GitHubAccountType.User,
-        },        
+        },
         Milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1027,7 +1028,7 @@
       Common.DataModel.User user;
       Common.DataModel.Hook repoHook;
       Common.DataModel.Repository repo;
-      
+
       using (var context = new Common.DataModel.ShipHubContext()) {
         user = TestUtil.MakeTestUser(context);
         repo = TestUtil.MakeTestRepo(context, user.Id);
@@ -1297,7 +1298,7 @@
         IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
 
         Assert.AreEqual(
-          new long[] { 9002 }, 
+          new long[] { 9002 },
           context.Comments
             .Where(x => x.IssueId == issue.Id)
             .Select(x => x.Id).ToArray(),
