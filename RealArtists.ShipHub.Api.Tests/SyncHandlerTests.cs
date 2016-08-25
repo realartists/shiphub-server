@@ -76,7 +76,7 @@
 
         mock
           .Setup(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>()))
-          .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheMetadata opts) => {
+          .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -169,7 +169,7 @@
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
-          .Callback((string fullName, long hookId, IGitHubCacheMetadata opts) => {
+          .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
           });
 
@@ -217,7 +217,7 @@
               Id = 9999,
             }
           })
-          .Callback((string fullName, Webhook webhook, IGitHubCacheMetadata opts) => {
+          .Callback((string fullName, Webhook webhook) => {
             installRepoName = fullName;
             installWebHook = webhook;
           });
@@ -281,7 +281,7 @@
               Id = 9999,
             }
           })
-          .Callback((string login, Webhook webhook, IGitHubCacheMetadata opts) => {
+          .Callback((string login, Webhook webhook) => {
             installWebHook = webhook;
           });
 
@@ -367,7 +367,7 @@
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
-          .Callback((string fullName, long hookId, IGitHubCacheMetadata opts) => {
+          .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
           });
 
@@ -436,7 +436,7 @@
 
         mock
           .Setup(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, It.IsAny<string[]>()))
-          .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheMetadata opts) => {
+          .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
