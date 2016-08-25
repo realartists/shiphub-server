@@ -116,6 +116,7 @@
     <Compile Include="GitHub\Models\Reaction.cs" />
     <Compile Include="GitHub\Models\ReactionSummary.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />
+    <Compile Include="GitHub\Pipeline\TokenRevocationHandler.cs" />
     <Compile Include="HttpMessageExtensions.cs" />
     <Compile Include="MurmurHash3.cs" />
     <Compile Include="JsonUtility.cs" />

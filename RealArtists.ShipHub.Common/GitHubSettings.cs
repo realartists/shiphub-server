@@ -24,11 +24,20 @@
         };
       }
 
-      return new GitHubClient(ApplicationName, ApplicationVersion, user.Token, rateLimit);
+      return CreateUserClient(user.Token, rateLimit);
     }
 
     public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
-      return new GitHubClient(ApplicationName, ApplicationVersion, accessToken, rateLimit);
+      var client = new GitHubClient(ApplicationName, ApplicationVersion, accessToken, rateLimit);
+
+      // Revoke expired and invalid tokens
+      client.Handler = new TokenRevocationHandler(client.Handler, async token => {
+        using (var context = new ShipHubContext()) {
+          await context.RevokeAccessToken(token);
+        }
+      });
+
+      return client;
     }
   }
 }

@@ -134,6 +134,13 @@
         .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
+    public Task RevokeAccessToken(string accessToken) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        $"EXEC [dbo].[RevokeAccessToken] @Token = @Token",
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken });
+    }
+
     public Task UpdateMetaLimit(string table, long id, GitHubResponse response) {
       return UpdateMetaLimit(table, "MetadataJson", id, response);
     }
