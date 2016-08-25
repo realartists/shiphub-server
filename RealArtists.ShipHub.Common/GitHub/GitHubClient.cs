@@ -62,7 +62,8 @@
         // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
         AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json",
       };
-      return FetchPaged(request, (IssueEvent x) => x.ExtensionDataDictionary["url"]);
+      // Ugh. Uniqueness here is hard because IDs aren't.
+      return FetchPaged(request, (IssueEvent x) => Tuple.Create(x.Event, x.Id, x.ExtensionDataDictionary.Val("url")));
     }
 
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, IGitHubCacheMetadata cacheOptions = null) {
