@@ -24,11 +24,11 @@
         };
       }
 
-      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(user.Token), rateLimit);
+      return new GitHubClient(ApplicationName, ApplicationVersion, user.Token, rateLimit);
     }
 
     public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
-      return new GitHubClient(ApplicationName, ApplicationVersion, GitHubCredentials.ForToken(accessToken), rateLimit);
+      return new GitHubClient(ApplicationName, ApplicationVersion, accessToken, rateLimit);
     }
   }
 }

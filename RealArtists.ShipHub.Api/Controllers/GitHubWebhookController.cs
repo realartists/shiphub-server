@@ -9,12 +9,12 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Newtonsoft.Json;
-  using Newtonsoft.Json.Linq;
   using QueueClient;
 
   [AllowAnonymous]
@@ -51,7 +51,7 @@
 
       var payloadString = await Request.Content.ReadAsStringAsync();
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
-      var payload = JsonConvert.DeserializeObject<WebhookPayload>(payloadString, GitHubClient.JsonSettings);
+      var payload = JsonConvert.DeserializeObject<WebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
 
       Hook hook = null;
 
@@ -62,7 +62,7 @@
       } else {
         throw new ArgumentException("Unexpected type: " + type);
       }
-      
+
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()))) {
         byte[] hash = hmac.ComputeHash(payloadBytes);
         // We're not worth launching a timing attack against.
@@ -70,12 +70,12 @@
           return BadRequest("Invalid signature.");
         }
       }
-      
+
       hook.LastSeen = DateTimeOffset.Now;
       await Context.SaveChangesAsync();
 
       var changeSummary = new ChangeSummary();
-      
+
       switch (eventName) {
         case "issues":
           switch (payload.Action) {
@@ -186,10 +186,8 @@
       }
 
       if (referencedAccounts.Count > 0) {
-        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts)
-          // Dedup the list
-          .GroupBy(x => x.Id)
-          .Select(x => x.First());
+
+        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
       }
 

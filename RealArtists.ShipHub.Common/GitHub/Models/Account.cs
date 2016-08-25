@@ -2,6 +2,8 @@
   using System.Diagnostics.CodeAnalysis;
 
   public enum GitHubAccountType {
+    // This catches errors where the type is not changed from the default value.
+    Unspecified = 0,
     Organization,
     User,
   }

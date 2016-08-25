@@ -14,15 +14,15 @@
   using System.Web.Http.Results;
   using System.Web.Http.Routing;
   using AutoMapper;
+  using Common.DataModel.Types;
+  using Common.GitHub;
+  using Common.GitHub.Models;
+  using Controllers;
   using Moq;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
-  using RealArtists.ShipHub.Api.Controllers;
-  using RealArtists.ShipHub.Common.DataModel.Types;
-  using RealArtists.ShipHub.Common.GitHub;
-  using RealArtists.ShipHub.Common.GitHub.Models;
-  using RealArtists.ShipHub.QueueClient;
+  using QueueClient;
 
   [TestFixture]
   [AutoRollback]
@@ -38,18 +38,19 @@
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
 
-        cfg.CreateMap<Common.DataModel.Milestone, Common.GitHub.Models.Milestone>(MemberList.Destination);
-        cfg.CreateMap<Common.DataModel.Issue, Common.GitHub.Models.Issue>(MemberList.Destination)
+        cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
           .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
             if (src.PullRequest) {
-              return new Common.GitHub.Models.PullRequestDetails() {
+              return new PullRequestDetails() {
                 Url = $"https://api.github.com/repos/{src.Repository.FullName}/pulls/{src.Number}",
               };
             } else {
               return null;
             }
           }));
-        cfg.CreateMap<Common.DataModel.Account, Common.GitHub.Models.Account>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.Account, Account>(MemberList.Destination)
+          .ForMember(x => x.Type, o => o.ResolveUsing(x => x is Common.DataModel.User ? GitHubAccountType.User : GitHubAccountType.Organization));
       });
 
       var mapper = config.CreateMapper();
@@ -57,7 +58,7 @@
     }
 
     private static void ConfigureController(ApiController controller, string eventName, JObject body, string secretKey) {
-      var json = JsonConvert.SerializeObject(body, GitHubClient.JsonSettings);
+      var json = JsonConvert.SerializeObject(body, GitHubSerialization.JsonSerializerSettings);
       var signature = SignatureForPayload(secretKey, json);
 
       var config = new HttpConfiguration();
@@ -104,7 +105,7 @@
           id = repositoryId,
         },
       };
-      return JObject.FromObject(obj, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      return JObject.FromObject(obj, GitHubSerialization.JsonSerializer);
     }
 
     private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
@@ -163,7 +164,7 @@
           repository = new {
             id = repo.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -191,7 +192,7 @@
           organization = new {
             id = org.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
@@ -221,7 +222,7 @@
           repository = new {
             id = repo.Id,
           },
-        }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+        }, GitHubSerialization.JsonSerializer);
 
         var controller = new GitHubWebhookController();
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
@@ -692,7 +693,7 @@
           Id = user.Id,
           Login = user.Login,
           Type = GitHubAccountType.User,
-        },        
+        },
         Milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -902,7 +903,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -983,7 +984,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -1027,7 +1028,7 @@
       Common.DataModel.User user;
       Common.DataModel.Hook repoHook;
       Common.DataModel.Repository repo;
-      
+
       using (var context = new Common.DataModel.ShipHubContext()) {
         user = TestUtil.MakeTestUser(context);
         repo = TestUtil.MakeTestRepo(context, user.Id);
@@ -1050,7 +1051,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
 
       var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
 
@@ -1101,7 +1102,7 @@
           HasIssues = true,
           UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
         },
-      }, JsonSerializer.CreateDefault(GitHubClient.JsonSettings));
+      }, GitHubSerialization.JsonSerializer);
     }
 
     [Test]
@@ -1297,7 +1298,7 @@
         IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
 
         Assert.AreEqual(
-          new long[] { 9002 }, 
+          new long[] { 9002 },
           context.Comments
             .Where(x => x.IssueId == issue.Id)
             .Select(x => x.Id).ToArray(),

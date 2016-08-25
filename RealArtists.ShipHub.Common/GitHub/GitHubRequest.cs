@@ -6,51 +6,84 @@
   using System.Net.Http;
 
   public class GitHubRequest {
-    public GitHubRequest(HttpMethod method, string path, IGitHubCacheOptions opts = null) {
+    public GitHubRequest(HttpMethod method, string path) {
       Method = method;
       Path = path;
-      ETag = opts?.ETag;
-      LastModified = opts?.LastModified;
+      Restricted = true;
     }
 
+    public GitHubRequest(string path, IGitHubCacheMetadata opts = null, bool restricted = false) {
+      Method = HttpMethod.Get;
+      Path = path;
+      _cacheOptions = opts;
+      Restricted = restricted;
+    }
+
+    public string AcceptHeaderOverride { get; set; }
     public HttpMethod Method { get; set; }
     public string Path { get; set; }
-    public string ETag { get; set; }
-    public DateTimeOffset? LastModified { get; set; }
-    public string AcceptHeaderOverride { get; set; }
 
-    // Arguably should allow duplicate keys, but no. Don't do that.
-    // Should it be case sensitive? Meh.
-    public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>();
+    /// <summary>
+    /// Set to true to restrict pipeline handlers from changing the access token used for the request.
+    /// </summary>
+    public bool Restricted { get; }
 
+    private IGitHubCacheMetadata _cacheOptions;
+    public IGitHubCacheMetadata CacheOptions {
+      get { return _cacheOptions; }
+      set {
+        if (Restricted) {
+          throw new InvalidOperationException("Cannot change cache options on restricted requests.");
+        }
+        _cacheOptions = value;
+      }
+    }
+
+    public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    private Uri _uri;
     public Uri Uri {
       get {
-        if (Parameters.Any()) {
-          var parms = Parameters.Select(x => string.Join("=", WebUtility.UrlEncode(x.Key), WebUtility.UrlEncode(x.Value)));
-          var query = string.Join("&", parms);
-          return new Uri(string.Join("?", Path, query), UriKind.Relative);
-        } else {
-          return new Uri(Path, UriKind.Relative);
-        }
-      }
-      set {
-        if (!value.IsAbsoluteUri) {
-          throw new ArgumentException($"Uri is not absolute: {value}", nameof(value));
+        if (_uri == null) {
+          if (Parameters.Any()) {
+            var parms = Parameters
+              .OrderBy(x => x.Key)
+              .Select(x => string.Join("=", WebUtility.UrlEncode(x.Key), WebUtility.UrlEncode(x.Value)));
+            var query = string.Join("&", parms);
+            _uri = new Uri(string.Join("?", Path, query), UriKind.Relative);
+          } else {
+            _uri = new Uri(Path, UriKind.Relative);
+          }
         }
 
-        Path = value.GetComponents(UriComponents.Path, UriFormat.Unescaped);
-        ETag = null;
-        LastModified = null;
-
-        Parameters.Clear();
-        var parsed = value.ParseQueryString();
-        for (int i = 0; i < parsed.Count; ++i) {
-          Parameters.Add(parsed.GetKey(i), parsed.GetValues(i).Single());
-        }
+        return _uri;
       }
+    }
+
+    public GitHubRequest CloneWithNewUri(Uri uri, bool preserveCache = false) {
+      if (!uri.IsAbsoluteUri) {
+        throw new ArgumentException($"Only absolute URIs are supported. Given: {uri}", nameof(uri));
+      }
+
+      // TODO: Retain cache options? I think it's important to preserve credentials at least.
+      var cache = preserveCache ? CacheOptions : null;
+      var clone = new GitHubRequest(uri.GetComponents(UriComponents.Path, UriFormat.Unescaped), cache, Restricted) {
+        Method = Method,
+        AcceptHeaderOverride = AcceptHeaderOverride,
+      };
+
+      var parsed = uri.ParseQueryString();
+      for (int i = 0; i < parsed.Count; ++i) {
+        clone.AddParameter(parsed.GetKey(i), parsed.GetValues(i).Single());
+      }
+
+      return clone;
     }
 
     public GitHubRequest AddParameter(string key, string value) {
+      if (_uri != null) {
+        throw new InvalidOperationException("Cannot change parameters after request Uri has been used.");
+      }
       Parameters.Add(key, value);
       return this;
     }
@@ -74,15 +107,15 @@
 
   public class GitHubRequest<T> : GitHubRequest
     where T : class {
-    public GitHubRequest(HttpMethod method, string path, T body, IGitHubCacheOptions opts = null)
-      : base(method, path, opts) {
+    public GitHubRequest(HttpMethod method, string path, T body)
+      : base(method, path) {
       Body = body;
     }
 
     public T Body { get; set; }
 
     public override HttpContent CreateBodyContent() {
-      return new ObjectContent<T>(Body, GitHubClient.JsonMediaTypeFormatter, GitHubClient.JsonMediaType);
+      return new ObjectContent<T>(Body, GitHubSerialization.JsonMediaTypeFormatter, GitHubSerialization.JsonMediaType);
     }
   }
 }

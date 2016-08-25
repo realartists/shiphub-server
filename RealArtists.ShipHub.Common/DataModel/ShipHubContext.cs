@@ -40,6 +40,7 @@
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
+    public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
 
@@ -138,7 +139,7 @@
     }
 
     public Task UpdateMetaLimit(string table, string column, long id, GitHubResponse response) {
-      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.Credentials.Parameter, response.RateLimit);
+      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.CacheData.AccessToken, response.RateLimit);
     }
 
     public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {

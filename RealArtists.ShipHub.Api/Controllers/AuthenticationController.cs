@@ -69,7 +69,7 @@
         });
       }
       Mapper.Map(userInfo, user);
-      user.Token = userResponse.Credentials.Parameter;
+      user.Token = userResponse.CacheData.AccessToken;
       user.Scopes = string.Join(",", userResponse.Scopes);
       user.RateLimit = userResponse.RateLimit.RateLimit;
       user.RateLimitRemaining = userResponse.RateLimit.RateLimitRemaining;

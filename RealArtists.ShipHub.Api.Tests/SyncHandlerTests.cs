@@ -3,14 +3,14 @@
   using System.Collections.Generic;
   using System.Linq;
   using System.Threading.Tasks;
+  using Common.DataModel;
+  using Common.GitHub;
+  using Common.GitHub.Models;
   using Microsoft.Azure;
   using Moq;
   using NUnit.Framework;
-  using RealArtists.ShipHub.Common.DataModel;
-  using RealArtists.ShipHub.Common.GitHub;
-  using RealArtists.ShipHub.Common.GitHub.Models;
-  using RealArtists.ShipHub.QueueClient.Messages;
-  using RealArtists.ShipHub.QueueProcessor;
+  using QueueClient.Messages;
+  using QueueProcessor;
 
   [TestFixture]
   [AutoRollback]
@@ -37,7 +37,7 @@
           "team_add",
         };
 
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = context.Hooks.Add(new Hook() {
@@ -54,7 +54,7 @@
 
         mock
           .Setup(x => x.RepoWebhooks(repo.FullName, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
                 Id = 8001,
@@ -75,9 +75,9 @@
           });
 
         mock
-          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>(), null))
-          .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheOptions opts) => {
-            var result = new GitHubResponse<Webhook>() {
+          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>()))
+          .Returns((string repoName, long hookId, string[] eventList) => {
+            var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
                 Active = true,
@@ -122,7 +122,7 @@
     /// <returns></returns>
     [Test]
     public async Task WillRemoveExistingHooksBeforeAddingOneForRepo() {
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
@@ -131,7 +131,7 @@
 
         mock
           .Setup(x => x.RepoWebhooks(repo.FullName, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
                     Id = 8001,
@@ -165,17 +165,17 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteRepoWebhook(repo.FullName, It.IsAny<long>(), null))
-          .ReturnsAsync(new GitHubResponse<bool>() {
+          .Setup(x => x.DeleteRepoWebhook(repo.FullName, It.IsAny<long>()))
+          .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
-          .Callback((string fullName, long hookId, IGitHubCacheOptions opts) => {
+          .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
           });
 
         mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>(), null))
-          .ReturnsAsync(new GitHubResponse<Webhook>() {
+          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             }
@@ -194,7 +194,7 @@
 
     [Test]
     public async Task WillAddHookWhenNoneExistsForRepo() {
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
@@ -203,7 +203,7 @@
 
         mock
           .Setup(x => x.RepoWebhooks(repo.FullName, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
 
@@ -211,13 +211,13 @@
         Webhook installWebHook = null;
 
         mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>(), null))
-          .ReturnsAsync(new GitHubResponse<Webhook>() {
+          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             }
           })
-          .Callback((string fullName, Webhook webhook, IGitHubCacheOptions opts) => {
+          .Callback((string fullName, Webhook webhook) => {
             installRepoName = fullName;
             installWebHook = webhook;
           });
@@ -258,7 +258,7 @@
 
     [Test]
     public async Task WillAddHookWhenNoneExistsForOrg() {
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
         org.Members.Add(user);
@@ -268,20 +268,20 @@
 
         mock
           .Setup(x => x.OrgWebhooks(org.Login, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
 
         Webhook installWebHook = null;
 
         mock
-          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>(), null))
-          .ReturnsAsync(new GitHubResponse<Webhook>() {
+          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             }
           })
-          .Callback((string login, Webhook webhook, IGitHubCacheOptions opts) => {
+          .Callback((string login, Webhook webhook) => {
             installWebHook = webhook;
           });
 
@@ -301,7 +301,7 @@
         Assert.Null(hook.RepositoryId);
         Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
-        
+
         Assert.AreEqual("web", installWebHook.Name);
         Assert.AreEqual(true, installWebHook.Active);
         Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
@@ -319,7 +319,7 @@
     /// <returns></returns>
     [Test]
     public async Task WillRemoveExistingHooksBeforeAddingOneForOrg() {
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
         org.Members.Add(user);
@@ -329,7 +329,7 @@
 
         mock
           .Setup(x => x.OrgWebhooks(org.Login, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
                     Id = 8001,
@@ -363,17 +363,17 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteOrgWebhook(org.Login, It.IsAny<long>(), null))
-          .ReturnsAsync(new GitHubResponse<bool>() {
+          .Setup(x => x.DeleteOrgWebhook(org.Login, It.IsAny<long>()))
+          .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
-          .Callback((string fullName, long hookId, IGitHubCacheOptions opts) => {
+          .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
           });
 
         mock
-          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>(), null))
-          .ReturnsAsync(new GitHubResponse<Webhook>() {
+          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             }
@@ -396,7 +396,7 @@
           "repository",
         };
 
-      using (var context = new Common.DataModel.ShipHubContext()) {
+      using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
         org.Members.Add(user);
@@ -414,7 +414,7 @@
 
         mock
           .Setup(x => x.OrgWebhooks(org.Login, null))
-          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>() {
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
                 Id = 8001,
@@ -435,9 +435,9 @@
           });
 
         mock
-          .Setup(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, It.IsAny<string[]>(), null))
-          .Returns((string repoName, long hookId, string[] eventList, IGitHubCacheOptions opts) => {
-            var result = new GitHubResponse<Webhook>() {
+          .Setup(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, It.IsAny<string[]>()))
+          .Returns((string repoName, long hookId, string[] eventList) => {
+            var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
                 Active = true,
@@ -466,4 +466,3 @@
     }
   }
 }
-
