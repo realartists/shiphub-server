@@ -59,7 +59,7 @@ BEGIN
     VALUES (IssueId, LabelId)
   -- Delete
   WHEN NOT MATCHED BY SOURCE
-    AND [Target].IssueId IN (SELECT DISTINCT(ItemId) FROM @Labels)
+    AND [Target].IssueId IN (SELECT Id FROM @Issues)
     THEN DELETE;
 
   -- Assignees
