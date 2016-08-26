@@ -361,7 +361,6 @@
             var orgs = orgResponse.Result;
 
             changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
-            changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Organization.Id)));
 
             tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.AccessToken))));
 

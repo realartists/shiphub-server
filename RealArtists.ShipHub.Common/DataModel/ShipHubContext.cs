@@ -485,15 +485,6 @@
       });
     }
 
-    public Task<ChangeSummary> SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
-      var orgTable = CreateItemListTable("OrganizationIds", organizationIds);
-
-      return ExecuteAndReadChanges("[dbo].[SetUserOrganizations]", x => {
-        x.UserId = userId;
-        x.OrganizationIds = orgTable;
-      });
-    }
-
     public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<Tuple<long, bool>> orgIdAndAdminPairs) {
       return ExecuteAndReadChanges("[dbo].[SetOrganizationUsers]", x => {
         x.OrganizationId = organizationId;
