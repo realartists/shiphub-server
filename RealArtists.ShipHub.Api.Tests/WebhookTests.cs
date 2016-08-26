@@ -14,6 +14,7 @@
   using System.Web.Http.Results;
   using System.Web.Http.Routing;
   using AutoMapper;
+  using Common;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
@@ -40,6 +41,7 @@
 
         cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
+          .ForMember(dest => dest.Reactions, o => o.ResolveUsing(src => src.Reactions == null ? null : src.Reactions.DeserializeObject<ReactionSummary>()))
           .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
             if (src.PullRequest) {
               return new PullRequestDetails() {

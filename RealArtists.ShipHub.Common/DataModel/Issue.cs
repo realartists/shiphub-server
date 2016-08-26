@@ -38,6 +38,8 @@
 
     public bool PullRequest { get; set; }
 
+    public string Reactions { get; set; }
+
     public virtual Account ClosedBy { get; set; }
 
     public virtual Account User { get; set; }

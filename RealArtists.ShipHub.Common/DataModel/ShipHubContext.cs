@@ -317,6 +317,7 @@
           Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
           Tuple.Create("ClosedById", typeof(long)),
           Tuple.Create("PullRequest", typeof(bool)),
+          Tuple.Create("Reactions", typeof(string)),
         },
         x => new object[] {
           x.Id,
@@ -332,6 +333,7 @@
           x.ClosedAt,
           x.ClosedById,
           x.PullRequest,
+          x.Reactions,
         },
         issues);
 

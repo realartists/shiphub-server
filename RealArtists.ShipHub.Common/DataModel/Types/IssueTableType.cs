@@ -15,5 +15,6 @@
     public DateTimeOffset UpdatedAt { get; set; }
     public long? ClosedById { get; set; }
     public bool PullRequest { get; set; }
+    public string Reactions { get; set; }
   }
 }

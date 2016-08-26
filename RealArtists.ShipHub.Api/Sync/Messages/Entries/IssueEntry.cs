@@ -17,6 +17,7 @@
     public DateTimeOffset? ClosedAt { get; set; }
     public long? ClosedBy { get; set; }
     public bool PullRequest { get; set; }
+    public ReactionSummary ShipReactionSummary { get; set; }
 
     public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<Label> Labels { get; set; }

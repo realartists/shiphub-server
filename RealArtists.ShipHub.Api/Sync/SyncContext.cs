@@ -290,6 +290,8 @@
                       Locked = ddr.Locked,
                       Milestone = ddr.MilestoneId,
                       Number = ddr.Number,
+                      // This is hack that works until GitHub changes their version
+                      ShipReactionSummary = ((string)ddr.Reactions).DeserializeObject<ReactionSummary>(),
                       Repository = ddr.RepositoryId,
                       State = ddr.State,
                       Title = ddr.Title,

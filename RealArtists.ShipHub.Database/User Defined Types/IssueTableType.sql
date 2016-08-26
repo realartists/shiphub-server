@@ -11,5 +11,6 @@
   [UpdatedAt]    DATETIMEOFFSET NOT NULL,
   [ClosedAt]     DATETIMEOFFSET NULL,
   [ClosedById]   BIGINT         NULL,
-  [PullRequest]  BIT            NOT NULL
+  [PullRequest]  BIT            NOT NULL,
+  [Reactions]    NVARCHAR(MAX)  NULL
 )

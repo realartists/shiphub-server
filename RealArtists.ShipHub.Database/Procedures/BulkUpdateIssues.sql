@@ -20,14 +20,14 @@ BEGIN
 
   MERGE INTO Issues WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest]
+    SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions]
     FROM @Issues
   ) as [Source]
   ON ([Target].[Id] = [Source].[Id])
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
-    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest])
+    INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
+    VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
   -- Update (this bumps for label only changes too)
   WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
     UPDATE SET
@@ -40,7 +40,8 @@ BEGIN
       [UpdatedAt] = [Source].[UpdatedAt],
       [ClosedAt] = [Source].[ClosedAt],
       [ClosedById] = [Source].[ClosedById],
-      [PullRequest] = [Source].[PullRequest]
+      [PullRequest] = [Source].[PullRequest],
+      [Reactions] = [Source].[Reactions]
   OUTPUT INSERTED.Id INTO @Changes (IssueId);
 
   EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
