@@ -34,6 +34,7 @@
     }
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
+    public virtual DbSet<AccountOrganization> AccountOrganizations { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -42,7 +43,9 @@
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
+    public virtual DbSet<OrganizationLog> OrganizationLog { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
+    public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -127,11 +130,6 @@
         .HasMany(e => e.LinkedRepositories)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
-
-      modelBuilder.Entity<User>()
-        .HasMany(e => e.Organizations)
-        .WithMany(e => e.Members)
-        .Map(m => m.ToTable("AccountOrganizations").MapLeftKey("UserId").MapRightKey("OrganizationId"));
     }
 
     public Task RevokeAccessToken(string accessToken) {
@@ -476,8 +474,10 @@
       return result;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<long> repositoryIds) {
-      var repoParam = CreateItemListTable("RepositoryIds", repositoryIds);
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
+      var repoParam = CreateMappingTable(
+        "RepositoryIds",
+        repoIdAndAdminPairs.Select(x => new MappingTableType() { Item1 = x.Item1, Item2 = x.Item2 ? 1 : 0 }));
 
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
@@ -485,19 +485,10 @@
       });
     }
 
-    public Task<ChangeSummary> SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
-      var orgTable = CreateItemListTable("OrganizationIds", organizationIds);
-
-      return ExecuteAndReadChanges("[dbo].[SetUserOrganizations]", x => {
-        x.UserId = userId;
-        x.OrganizationIds = orgTable;
-      });
-    }
-
-    public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<long> userIds) {
+    public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<Tuple<long, bool>> orgIdAndAdminPairs) {
       return ExecuteAndReadChanges("[dbo].[SetOrganizationUsers]", x => {
         x.OrganizationId = organizationId;
-        x.UserIds = CreateItemListTable("UserIds", userIds);
+        x.UserIds = CreateMappingTable("UserIds", orgIdAndAdminPairs.Select(y => new MappingTableType() { Item1 = y.Item1, Item2 = y.Item2 ? 1 : 0 }));
       });
     }
 

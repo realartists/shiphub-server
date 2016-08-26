@@ -30,7 +30,7 @@
     Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), IGitHubCacheMetadata cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubCacheMetadata cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubCacheMetadata cacheOptions = null);
-    Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, IGitHubCacheMetadata cacheOptions = null);
+    Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheMetadata cacheOptions = null);
     Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheMetadata cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Account>>> Organizations(IGitHubCacheMetadata cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubCacheMetadata cacheOptions = null);

@@ -152,10 +152,13 @@
 
     private async Task HandleRepository(WebhookPayload payload) {
       if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
-        var org = await Context.Organizations.SingleAsync(x => x.Id == payload.Repository.Owner.Id);
-        var syncTasks = org.Members
-          .Where(x => x.Token != null)
-          .Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+        var users = await Context.AccountOrganizations
+          .Where(x => x.OrganizationId == payload.Repository.Owner.Id)
+          .Include(x => x.User)
+          .Where(x => x.User.Token != null)
+          .Select(x => x.User)
+          .ToListAsync();
+        var syncTasks = users.Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
         await Task.WhenAll(syncTasks);
       } else {
         // TODO: This should also trigger a sync for contributors of a repo, but at

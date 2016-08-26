@@ -10,5 +10,6 @@
 
     public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<Label> Labels { get; set; }
+    public bool ShipNeedsWebhookHelp { get; set; }
   }
 }

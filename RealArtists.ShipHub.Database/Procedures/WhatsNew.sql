@@ -172,8 +172,12 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
 
     -- Repositories
-    SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName
+    SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName,
+      CAST (CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END AS bit) AS HasHook,
+      ar.[Admin]
     FROM Repositories as e
+      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = e.Id AND ar.AccountId = @UserId)
+      LEFT OUTER JOIN Hooks AS h ON (h.RepositoryId = e.Id)
       INNER JOIN @RepoLogs as l ON (e.Id = l.ItemId AND l.[Type] = 'repository')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
     -- End Repositories ---------------------------------------------
@@ -212,9 +216,14 @@ BEGIN
 
   -- Accounts
   -- Return org itself as well
-  SELECT DISTINCT e.Id, e.[Type], e.[Login]
+  SELECT DISTINCT e.Id, e.[Type], e.[Login],
+    -- HasHook + Admin only apply to orgs.
+    CAST(CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END as bit) as HasHook,
+    CAST(COALESCE(ao.[Admin], 0) as bit) as Admin
   FROM Accounts as e
     INNER JOIN @OrgLogs as l ON (e.Id = l.AccountId OR e.Id = l.OrganizationId)
+    LEFT OUTER JOIN Hooks as h ON (h.OrganizationId = e.Id AND e.[Type] = 'org')
+    LEFT OUTER JOIN AccountOrganizations as ao ON (e.[Type] = 'org' AND ao.UserId = @UserId AND ao.OrganizationId = e.Id)
 
   -- Membership for updated orgs
   SELECT ao.OrganizationId, ao.UserId

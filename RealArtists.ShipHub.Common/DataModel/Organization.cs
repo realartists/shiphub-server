@@ -4,6 +4,6 @@
 
   public class Organization : Account {
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<User> Members { get; set; } = new HashSet<User>();
+    public virtual ICollection<AccountOrganization> AccountOrganizations { get; set; } = new HashSet<AccountOrganization>();
   }
 }

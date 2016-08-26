@@ -22,11 +22,15 @@
 
   public static class SyncHandler {
     public static Task AddOrUpdateRepoWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message) {
-      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
     }
 
-    public static async Task AddOrUpdateRepoWebhooksWithClient(AddOrUpdateRepoWebhooksMessage message, IGitHubClient client) {
+    public static async Task AddOrUpdateRepoWebhooksWithClient(
+      AddOrUpdateRepoWebhooksMessage message,
+      IGitHubClient client,
+      IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
         var requiredEvents = new string[] {
@@ -87,6 +91,17 @@
           if (!addRepoHookResponse.IsError) {
             hook.GitHubId = addRepoHookResponse.Result.Id;
             await context.SaveChangesAsync();
+
+            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
+              "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @p0 AND [Type] = 'repository' and ItemId = @p0",
+              repo.Id);
+            if (rowsUpdated != 1) {
+              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
+            }
+            
+            var changeSummary = new ChangeSummary();
+            changeSummary.Repositories.Add(repo.Id);
+            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
             Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookResponse.Error}");
             context.Hooks.Remove(hook);
@@ -107,7 +122,8 @@
 
     public static async Task AddOrUpdateOrgWebhooksWithClient(
       AddOrUpdateOrgWebhooksMessage message,
-      IGitHubClient client) {
+      IGitHubClient client,
+      IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var org = await context.Organizations.SingleAsync(x => x.Id == message.OrganizationId);
         var requiredEvents = new string[] {
@@ -161,6 +177,17 @@
           if (!addResponse.IsError) {
             hook.GitHubId = addResponse.Result.Id;
             await context.SaveChangesAsync();
+
+            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
+              "UPDATE OrganizationLog SET [RowVersion] = DEFAULT WHERE OrganizationId = @p0 AND AccountId = @p0",
+              org.Id);
+            if (rowsUpdated != 1) {
+              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
+            }
+            
+            var changeSummary = new ChangeSummary();
+            changeSummary.Organizations.Add(org.Id);
+            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
             Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addResponse.Error}");
             context.Hooks.Remove(hook);
@@ -179,9 +206,10 @@
       }
     }
 
-    public static async Task AddOrUpdateOrgWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message) {
-      await AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken));
+    public static Task AddOrUpdateOrgWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      return AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
     }
 
     public static async Task SyncAccount(
@@ -271,7 +299,7 @@
               .Distinct(x => x.Login);
             changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
             changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => x.Id)));
+            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
 
             tasks.Add(notifyChanges.Send(changes));
 
@@ -333,7 +361,6 @@
             var orgs = orgResponse.Result;
 
             changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
-            changes.UnionWith(await context.SetUserOrganizations(message.Id, orgs.Select(x => x.Organization.Id)));
 
             tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.AccessToken))));
 
@@ -370,12 +397,24 @@
       var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
       ChangeSummary changes;
 
-      var memberResponse = await ghc.OrganizationMembers(message.Login);
-      var members = memberResponse.Result;
+      // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
+      // each member.  To workaround, we make two requests and use the filter option
+      // to only get admins or non-admins on each request.
+      var membersTask = ghc.OrganizationMembers(message.Login, role: "member");
+      var adminsTask = ghc.OrganizationMembers(message.Login, role: "admin");
+      await Task.WhenAll(membersTask, adminsTask);
+
+      var membersResponse = membersTask.Result;
+      var adminsResponse = adminsTask.Result;
+
+      var all = membersResponse.Result.Select(x => Tuple.Create(x, "member")).Concat(
+        adminsResponse.Result.Select(x => Tuple.Create(x, "admin"))).ToArray();
 
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateAccounts(memberResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(members));
-        changes.UnionWith(await context.SetOrganizationUsers(message.Id, members.Select(x => x.Id)));
+        changes = await context.BulkUpdateAccounts(membersResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(all.Select(x => x.Item1)));
+        changes.UnionWith(await context.SetOrganizationUsers(
+          message.Id,
+          all.Select(x => Tuple.Create(x.Item1.Id, x.Item2.Equals("admin")))));
       }
 
       if (!changes.Empty) {

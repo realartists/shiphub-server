@@ -13,7 +13,7 @@
 
   public class SyncContext {
     private ShipHubPrincipal _user;
-    private SyncConnection _connection;
+    private ISyncConnection _connection;
     private SyncVersions _versions;
 
     private VersionDetails VersionDetails {
@@ -25,7 +25,7 @@
       }
     }
 
-    public SyncContext(ShipHubPrincipal user, SyncConnection connection, SyncVersions initialVersions) {
+    public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
       _user = user;
       _connection = connection;
       _versions = initialVersions;
@@ -337,6 +337,7 @@
                       Labels = repoLabels.Val((long)ddr.Id, () => new List<se.Label>()),
                       Name = ddr.Name,
                       Private = ddr.Private,
+                      ShipNeedsWebhookHelp = !ddr.HasHook && !ddr.Admin,
                     },
                   });
                 }
@@ -375,6 +376,7 @@
                     var org = new OrganizationEntry() {
                       Identifier = ddr.Id,
                       Login = ddr.Login,
+                      ShipNeedsWebhookHelp = !ddr.Admin && !ddr.HasHook,
                       // Users set later
                     };
                     orgAccounts.Add(org.Identifier, org);
