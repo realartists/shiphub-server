@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IncludeCompositeObjects>True</IncludeCompositeObjects>
+    <TargetDatabaseName>ShipHub</TargetDatabaseName>
+    <DeployScriptFileName>RealArtists.ShipHub.Database.sql</DeployScriptFileName>
+    <ProfileVersionNumber>1</ProfileVersionNumber>
+    <TargetConnectionString>
+    </TargetConnectionString>
+    <BlockOnPossibleDataLoss>False</BlockOnPossibleDataLoss>
+    <AllowDropBlockingAssemblies>True</AllowDropBlockingAssemblies>
+    <GenerateSmartDefaults>True</GenerateSmartDefaults>
+    <ScriptDatabaseCollation>True</ScriptDatabaseCollation>
+    <ScriptDatabaseCompatibility>True</ScriptDatabaseCompatibility>
+    <DropObjectsNotInSource>True</DropObjectsNotInSource>
+    <DropRoleMembersNotInSource>False</DropRoleMembersNotInSource>
+    <DoNotDropFilegroups>True</DoNotDropFilegroups>
+    <ExcludeFilegroups>True</ExcludeFilegroups>
+    <ScriptDatabaseOptions>True</ScriptDatabaseOptions>
+    <PopulateFilesOnFileGroups>False</PopulateFilesOnFileGroups>
+  </PropertyGroup>
+</Project>

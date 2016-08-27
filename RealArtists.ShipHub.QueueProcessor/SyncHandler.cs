@@ -96,7 +96,7 @@
               "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @p0 AND [Type] = 'repository' and ItemId = @p0",
               repo.Id);
             if (rowsUpdated != 1) {
-              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
+              throw new InvalidOperationException($"Updated RepositoryLog but rowsUpdated != 1 (was {rowsUpdated})");
             }
             
             var changeSummary = new ChangeSummary();

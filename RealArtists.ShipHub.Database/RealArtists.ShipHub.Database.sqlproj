@@ -136,6 +136,9 @@
   <ItemGroup>
     <None Include="LocalDB.scmp" />
     <None Include="StaticCodeAnalysis.SuppressMessages.xml" />
+    <None Include="RealArtists.ShipHub.Database.publish.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <RefactorLog Include="RealArtists.ShipHub.Database.refactorlog" />
@@ -146,4 +149,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(ProjectDir)$(OutputPath)*" "$(SolutionDir)RealArtists.ShipHub.Database.Deployment\$(OutputPath)"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
