@@ -71,7 +71,7 @@
         }
       }
 
-      hook.LastSeen = DateTimeOffset.Now;
+      hook.LastSeen = DateTimeOffset.UtcNow;
       await Context.SaveChangesAsync();
 
       var changeSummary = new ChangeSummary();
@@ -129,7 +129,7 @@
 
       using (var context = new ShipHubContext()) {
         changeSummary.UnionWith(await context.BulkUpdateAccounts(
-          DateTimeOffset.Now,
+          DateTimeOffset.UtcNow,
           Mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
         if (payload.Action.Equals("deleted")) {
@@ -191,7 +191,7 @@
       if (referencedAccounts.Count > 0) {
 
         var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
-        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.Now, accountsMapped));
+        summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.UtcNow, accountsMapped));
       }
 
       var issues = new List<Common.GitHub.Models.Issue> { payload.Issue };

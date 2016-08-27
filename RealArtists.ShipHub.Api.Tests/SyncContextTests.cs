@@ -55,12 +55,12 @@
           Private = true,
         };
 
-        await context.BulkUpdateAccounts(DateTimeOffset.Now, new[] { userAccount, orgAccount });
+        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount, orgAccount });
         var user = context.Accounts.Single(x => x.Id == userAccount.Id);
         user.Token = Guid.NewGuid().ToString();
         await context.SaveChangesAsync();
 
-        await context.BulkUpdateRepositories(DateTimeOffset.Now, new[] { repo });
+        await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
         await context.SetOrganizationUsers(orgAccount.Id, new[] { Tuple.Create(user.Id, false) });
 
         await context.SetAccountLinkedRepositories(
@@ -136,7 +136,7 @@
           Type = "org",
         };
         
-        await context.BulkUpdateAccounts(DateTimeOffset.Now, new[] { userAccount, orgAccount });
+        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount, orgAccount });
         var user = context.Accounts.Single(x => x.Id == userAccount.Id);
         user.Token = Guid.NewGuid().ToString();
 
