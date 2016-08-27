@@ -88,6 +88,9 @@ IF /I "%IN_PLACE_DEPLOYMENT%" NEQ "1" (
   IF !ERRORLEVEL! NEQ 0 goto error
 )
 
+:: Skip DB Deployment for now :(
+goto end
+
 echo Deploying DB
 
 :: 4. DB Sync
