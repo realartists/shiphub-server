@@ -132,6 +132,20 @@
         .WillCascadeOnDelete(false);
     }
 
+    public Task BumpRepositoryVersion(long repositoryId) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @RepoId AND [Type] = 'repository' and ItemId = @RepoId",
+        new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repositoryId });
+    }
+
+    public Task BumpOrganizationVersion(long organizationId) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        "UPDATE OrganizationLog SET [RowVersion] = DEFAULT WHERE OrganizationId = @OrgId AND AccountId = @OrgId",
+        new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
+    }
+
     public Task RevokeAccessToken(string accessToken) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,

@@ -19,6 +19,10 @@
 
     public bool Delete { get; set; }
 
+    [ConcurrencyCheck]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public long RowVersion { get; set; }
+
+    public virtual Repository Repository { get; set; }
   }
 }

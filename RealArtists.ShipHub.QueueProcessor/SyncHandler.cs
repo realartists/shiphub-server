@@ -92,12 +92,7 @@
             hook.GitHubId = addRepoHookResponse.Result.Id;
             await context.SaveChangesAsync();
 
-            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
-              "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @p0 AND [Type] = 'repository' and ItemId = @p0",
-              repo.Id);
-            if (rowsUpdated != 1) {
-              throw new InvalidOperationException($"Updated RepositoryLog but rowsUpdated != 1 (was {rowsUpdated})");
-            }
+            await context.BumpRepositoryVersion(repo.Id);
             
             var changeSummary = new ChangeSummary();
             changeSummary.Repositories.Add(repo.Id);
@@ -178,12 +173,7 @@
             hook.GitHubId = addResponse.Result.Id;
             await context.SaveChangesAsync();
 
-            var rowsUpdated = await context.Database.ExecuteSqlCommandAsync(
-              "UPDATE OrganizationLog SET [RowVersion] = DEFAULT WHERE OrganizationId = @p0 AND AccountId = @p0",
-              org.Id);
-            if (rowsUpdated != 1) {
-              throw new InvalidOperationException($"Updated OrganizationLog but rowsUpdated != 1 (was {rowsUpdated})");
-            }
+            await context.BumpOrganizationVersion(org.Id);
             
             var changeSummary = new ChangeSummary();
             changeSummary.Organizations.Add(org.Id);

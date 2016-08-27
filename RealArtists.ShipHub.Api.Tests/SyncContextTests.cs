@@ -15,12 +15,6 @@
   [TestFixture]
   [AutoRollback]
   public class SyncContextTests {
-
-    private static async Task<long> NextSyncIdentifier(ShipHubContext context) {
-      var rawQuery = context.Database.SqlQuery<long>("SELECT NEXT VALUE FOR dbo.[SyncIdentifier];");
-      return await rawQuery.SingleAsync();
-    }
-
     [Test]
     public async Task RepoShipNeedsWebhookHelpIsTrueWithNoHookAndNonAdminRole() {
       // We need help because 1) no hook is registered yet, and 2) the user is not
@@ -100,9 +94,7 @@
         await syncContext.Sync();
 
         // Bump RowVersion for this repo.
-        var repoLog = context.RepositoryLog.Single(x => x.RepositoryId == repo.Id && x.Type.Equals("repository"));
-        repoLog.RowVersion = await NextSyncIdentifier(context);
-        await context.SaveChangesAsync();
+        await context.BumpRepositoryVersion(repo.Id);
 
         logs.Clear();
         await syncContext.Sync();
@@ -176,9 +168,7 @@
         await syncContext.Sync();
 
         // Bump RowVersion for this org.
-        var orgLog = context.OrganizationLog.Single(x => x.OrganizationId == orgAccount.Id && x.AccountId == orgAccount.Id);
-        orgLog.RowVersion = await NextSyncIdentifier(context);
-        await context.SaveChangesAsync();
+        await context.BumpOrganizationVersion(orgAccount.Id);
 
         logs.Clear();
         await syncContext.Sync();
