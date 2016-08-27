@@ -226,7 +226,16 @@
             };
 
             return requestor;
-          });
+          }).ToArray();
+
+
+        // Check if we can request all the pages within the limit.
+        if (firstPage.RateLimit.RateLimitRemaining < (pageRequestors.Length + RateLimitFloor)) {
+          firstPage.Result = default(TCollection);
+          firstPage.IsError = true;
+          firstPage.ErrorSeverity = GitHubErrorSeverity.RateLimited;
+          return firstPage;
+        }
 
         batch = await Batch(pageRequestors);
 
