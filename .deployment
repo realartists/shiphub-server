@@ -1,2 +1,2 @@
 [config]
-project = RealArtists.ShipHub.Api/RealArtists.ShipHub.Api.csproj
+command = deploy.cmd
