@@ -137,7 +137,6 @@
     private Common.DataModel.Hook MakeTestRepoHook(Common.DataModel.ShipHubContext context, long creatorId, long repoId) {
       return context.Hooks.Add(new Common.DataModel.Hook() {
         Secret = Guid.NewGuid(),
-        Active = true,
         Events = "event1,event2",
         RepositoryId = repoId,
       });
@@ -146,7 +145,6 @@
     private Common.DataModel.Hook MakeTestOrgHook(Common.DataModel.ShipHubContext context, long creatorId, long orgId) {
       return context.Hooks.Add(new Common.DataModel.Hook() {
         Secret = Guid.NewGuid(),
-        Active = true,
         Events = "event1,event2",
         OrganizationId = orgId,
       });
@@ -215,7 +213,6 @@
 
         var hook = context.Hooks.Add(new Common.DataModel.Hook() {
           Secret = Guid.NewGuid(),
-          Active = true,
           Events = "some events",
           RepositoryId = repo.Id,
         });
@@ -238,15 +235,16 @@
     }
 
     [Test]
-    public async Task TestWebhookCallUpdatesLastSeen() {
+    public async Task TestWebhookCallUpdatesLastSeenAndPingCount() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestRepoHook(context, user.Id, repo.Id);
 
-        await context.SaveChangesAsync();
+        hook.LastSeen = DateTimeOffset.Parse("1/1/2000");
+        hook.PingCount = 2;
 
-        Assert.Null(hook.LastSeen);
+        await context.SaveChangesAsync();
 
         var obj = new JObject(
         new JProperty("zen", "It's not fully shipped until it's fast."),
@@ -264,7 +262,8 @@
         Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
 
         context.Entry(hook).Reload();
-        Assert.NotNull(hook.LastSeen);
+        Assert.Greater(hook.LastSeen, DateTimeOffset.Parse("1/1/2000"));
+        Assert.IsNull(hook.PingCount);
       }
     }
 

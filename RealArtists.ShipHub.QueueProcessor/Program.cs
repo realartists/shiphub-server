@@ -60,6 +60,7 @@
       sbConfig.PrefetchCount = sbConfig.MessageOptions.MaxConcurrentCalls * 20 * ratePerSecond;
 
       config.UseServiceBus(sbConfig);
+      config.UseTimers();
 
 #if DEBUG
       var timer = new Stopwatch();

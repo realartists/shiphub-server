@@ -8,13 +8,12 @@
 
     public Guid Secret { get; set; }
 
-    public bool Active { get; set; }
-
     [Required]
     [StringLength(500)]
     public string Events { get; set; }
 
     public DateTimeOffset? LastSeen { get; set; }
+    public int? PingCount { get; set; }
 
     public long? RepositoryId { get; set; }
     public long? OrganizationId { get; set; }
