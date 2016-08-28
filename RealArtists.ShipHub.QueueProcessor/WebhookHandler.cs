@@ -71,7 +71,6 @@
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
           hook = context.Hooks.Add(new Hook() {
-            Active = false,
             Events = string.Join(",", requiredEvents),
             Secret = Guid.NewGuid(),
             RepositoryId = repo.Id,
@@ -167,7 +166,6 @@
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
           hook = context.Hooks.Add(new Hook() {
-            Active = false,
             Events = string.Join(",", requiredEvents),
             Secret = Guid.NewGuid(),
             OrganizationId = org.Id,
