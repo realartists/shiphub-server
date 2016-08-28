@@ -4,6 +4,7 @@
   [Secret]           UNIQUEIDENTIFIER NOT NULL,
   [Events]           NVARCHAR(500)    NOT NULL,
   [LastSeen]         DATETIMEOFFSET   NULL,
+  [PingCount]        INT              NULL,
   [RepositoryId]     BIGINT           NULL,
   [OrganizationId]   BIGINT           NULL,
   CONSTRAINT [PK_Hooks] PRIMARY KEY CLUSTERED ([Id]),
@@ -21,4 +22,9 @@ GO
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Hooks_OrganizationId]
   ON [dbo].[Hooks] ([OrganizationId])
   WHERE ([OrganizationId] IS NOT NULL)
+GO
+
+CREATE NONCLUSTERED INDEX [UIX_Hooks_LastSeen]
+  ON [dbo].[Hooks] ([LastSeen])
+  WHERE ([LastSeen] IS NOT NULL)
 GO
