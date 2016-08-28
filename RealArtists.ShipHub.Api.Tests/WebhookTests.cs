@@ -235,15 +235,17 @@
     }
 
     [Test]
-    public async Task TestWebhookCallUpdatesLastSeen() {
+    public async Task TestWebhookCallUpdatesLastSeenAndPingCount() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestRepoHook(context, user.Id, repo.Id);
 
-        await context.SaveChangesAsync();
+        hook.LastSeen = DateTimeOffset.Parse("1/1/2000");
+        hook.LastPing = DateTimeOffset.Parse("1/1/2000");
+        hook.PingCount = 2;
 
-        Assert.Null(hook.LastSeen);
+        await context.SaveChangesAsync();
 
         var obj = new JObject(
         new JProperty("zen", "It's not fully shipped until it's fast."),
@@ -261,7 +263,9 @@
         Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
 
         context.Entry(hook).Reload();
-        Assert.NotNull(hook.LastSeen);
+        Assert.Greater(hook.LastSeen, DateTimeOffset.Parse("1/1/2000"));
+        Assert.IsNull(hook.PingCount);
+        Assert.IsNull(hook.LastPing);
       }
     }
 

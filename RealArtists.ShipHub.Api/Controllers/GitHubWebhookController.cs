@@ -72,6 +72,9 @@
       }
 
       hook.LastSeen = DateTimeOffset.UtcNow;
+      // Reset the ping count so this webhook won't get reaped.
+      hook.PingCount = null;
+      hook.LastPing = null;
       await Context.SaveChangesAsync();
 
       var changeSummary = new ChangeSummary();
