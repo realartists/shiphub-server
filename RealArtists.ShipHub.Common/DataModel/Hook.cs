@@ -8,8 +8,6 @@
 
     public Guid Secret { get; set; }
 
-    public bool Active { get; set; }
-
     [Required]
     [StringLength(500)]
     public string Events { get; set; }

@@ -2,7 +2,6 @@
   [Id]               BIGINT           NOT NULL IDENTITY(1, 1),
   [GitHubId]         BIGINT           NULL,
   [Secret]           UNIQUEIDENTIFIER NOT NULL,
-  [Active]           BIT              NOT NULL,
   [Events]           NVARCHAR(500)    NOT NULL,
   [LastSeen]         DATETIMEOFFSET   NULL,
   [RepositoryId]     BIGINT           NULL,
