@@ -152,6 +152,7 @@
       // Polling for updates
       _pollSubscription = _PollInterval
         .ObserveOn(TaskPoolScheduler.Default)
+        .StartWith(0)
         .Select(_ =>
           Observable.FromAsync(() => _QueueClient.SyncAccount(_user.Token))
           .Catch<Unit, Exception>(LogError<Unit>))
