@@ -13,7 +13,7 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO AccountOrganizations WITH (UPDLOCK SERIALIZABLE) as [Target]
+  MERGE INTO OrganizationAccounts WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT Item1 as UserId, Item2 as [Admin] FROM @UserIds) as [Source]
   ON ([Target].UserId = [Source].UserId  AND [Target].OrganizationId = @OrganizationId)
   -- Add

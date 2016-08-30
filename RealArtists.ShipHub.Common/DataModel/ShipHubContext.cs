@@ -34,7 +34,6 @@
     }
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
-    public virtual DbSet<AccountOrganization> AccountOrganizations { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
@@ -43,6 +42,7 @@
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
+    public virtual DbSet<OrganizationAccount> AccountOrganizations { get; set; }
     public virtual DbSet<OrganizationLog> OrganizationLog { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }

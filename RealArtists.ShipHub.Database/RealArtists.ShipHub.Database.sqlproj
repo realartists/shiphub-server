@@ -83,7 +83,7 @@
     <Build Include="Tables\Repositories.sql" />
     <Build Include="Tables\Accounts.sql" />
     <Build Include="Sequences\SyncIdentifier.sql" />
-    <Build Include="Tables\AccountOrganizations.sql" />
+    <Build Include="Tables\OrganizationAccounts.sql" />
     <Build Include="Security\RoleMemberships.sql" />
     <Build Include="Procedures\UpdateRateLimit.sql" />
     <Build Include="Tables\Issues.sql" />

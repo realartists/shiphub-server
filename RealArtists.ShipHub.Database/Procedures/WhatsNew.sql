@@ -23,7 +23,7 @@ BEGIN
 
   SELECT ItemId as OrganizationId
   FROM @OrganizationVersions as ov
-  WHERE NOT EXISTS (SELECT * FROM AccountOrganizations WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
+  WHERE NOT EXISTS (SELECT * FROM OrganizationAccounts WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
 
   -- Start sync!
   DECLARE @AllRepoLogs TABLE (
@@ -206,9 +206,9 @@ BEGIN
   INSERT INTO @OrgLogs
   SELECT ol.OrganizationId, ol.AccountId, ol.[RowVersion]
   FROM OrganizationLog as ol
-    INNER JOIN AccountOrganizations as ao ON (ao.OrganizationId = ol.OrganizationId)
+    INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = ol.OrganizationId)
     LEFT OUTER JOIN @OrganizationVersions as ov ON (ov.ItemId = ol.OrganizationId)
-  WHERE ao.UserId = @UserId
+  WHERE oa.UserId = @UserId
     AND ISNULL(ov.[RowVersion], 0) < ol.[RowVersion]
 
   -- Mark as repo logs
@@ -219,16 +219,16 @@ BEGIN
   SELECT DISTINCT e.Id, e.[Type], e.[Login],
     -- HasHook + Admin only apply to orgs.
     CAST(CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END as bit) as HasHook,
-    CAST(COALESCE(ao.[Admin], 0) as bit) as Admin
+    CAST(COALESCE(oa.[Admin], 0) as bit) as Admin
   FROM Accounts as e
     INNER JOIN @OrgLogs as l ON (e.Id = l.AccountId OR e.Id = l.OrganizationId)
     LEFT OUTER JOIN Hooks as h ON (h.OrganizationId = e.Id AND e.[Type] = 'org')
-    LEFT OUTER JOIN AccountOrganizations as ao ON (e.[Type] = 'org' AND ao.UserId = @UserId AND ao.OrganizationId = e.Id)
+    LEFT OUTER JOIN OrganizationAccounts as oa ON (e.[Type] = 'org' AND oa.UserId = @UserId AND oa.OrganizationId = e.Id)
 
   -- Membership for updated orgs
-  SELECT ao.OrganizationId, ao.UserId
-  FROM AccountOrganizations as ao
-  WHERE EXISTS (SELECT * FROM @OrgLogs as l WHERE l.OrganizationId = ao.OrganizationId)
+  SELECT oa.OrganizationId, oa.UserId
+  FROM OrganizationAccounts as oa
+  WHERE EXISTS (SELECT * FROM @OrgLogs as l WHERE l.OrganizationId = oa.OrganizationId)
 
   -- Org Versions
   SELECT OrganizationId, MAX([RowVersion]) as [RowVersion]
