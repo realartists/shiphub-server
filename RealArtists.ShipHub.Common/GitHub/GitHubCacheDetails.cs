@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub {
   using System;
 
-  public interface IGitHubCacheMetadata {
+  public interface IGitHubCacheDetails {
     string AccessToken { get; }
     string ETag { get; }
     DateTimeOffset? Expires { get; }
@@ -9,7 +9,7 @@
     TimeSpan PollInterval { get; }
   }
 
-  public class GitHubCacheMetadata : IGitHubCacheMetadata {
+  public class GitHubCacheDetails : IGitHubCacheDetails {
     public string AccessToken { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? LastModified { get; set; }

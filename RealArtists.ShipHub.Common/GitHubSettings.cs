@@ -18,6 +18,7 @@
       GitHubRateLimit rateLimit = null;
       if (user.RateLimitReset != EpochUtility.EpochOffset) {
         rateLimit = new GitHubRateLimit() {
+          AccessToken = user.Token,
           RateLimit = user.RateLimit,
           RateLimitRemaining = user.RateLimitRemaining,
           RateLimitReset = user.RateLimitReset,

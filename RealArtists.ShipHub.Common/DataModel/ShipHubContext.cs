@@ -36,12 +36,12 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<AccountOrganization> AccountOrganizations { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
+    public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
-    public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<OrganizationLog> OrganizationLog { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
@@ -50,7 +50,7 @@
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
 
-    public SqlConnectionFactory ConnectionFactory { get; private set; }
+    public SqlConnectionFactory ConnectionFactory { get; }
 
     public override int SaveChanges() {
       throw new NotImplementedException("Please use asynchronous methods instead.");
@@ -174,14 +174,35 @@
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
-    public Task UpdateRateLimits(string accessToken, GitHubRateLimit limit) {
+    public Task UpdateRateLimit(GitHubRateLimit limit) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
-        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
+        $"EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
         new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
         new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
+    }
+
+    public Task UpdateRateAndCache(GitHubRateLimit limit, string cacheKey, GitHubMetadata cacheData) {
+      if (limit == null) {
+        return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
+        new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
+        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
+      } else {
+        return Database.ExecuteSqlCommandAsync(
+          TransactionalBehavior.DoNotEnsureTransaction,
+            "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset"
+          + "\n\nEXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
+          new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
+          new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
+          new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
+          new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset },
+          new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
+          new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
+      }
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {

@@ -63,7 +63,7 @@
         throw new InvalidOperationException("Only GETs are supported for pagination.");
       }
 
-      // Always request the larhest page size
+      // Always request the largest page size
       if (!request.Parameters.ContainsKey("per_page")) {
         request.AddParameter("per_page", PageSize);
       }
@@ -90,13 +90,15 @@
         httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
       }
 
+      // Restricted
+      if (request.Restricted && request.CacheOptions?.AccessToken != client.DefaultToken) {
+        // When requesting restricted data, cached and current access tokens must match.
+        request.CacheOptions = null;
+      }
+
       // Authentication (prefer token from cache metadata if present)
       var accessToken = request.CacheOptions?.AccessToken ?? client.DefaultToken;
       httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", accessToken);
-
-      if (request.Restricted && accessToken != client.DefaultToken) {
-        throw new InvalidOperationException("When requesting restricted data, cached and current access tokens must match.");
-      }
 
       // Caching (Only for GETs when not restricted or token matches)
       if (request.Method == HttpMethod.Get && request.CacheOptions != null) {
@@ -136,7 +138,7 @@
       };
 
       // Cache Headers
-      result.CacheData = new GitHubCacheMetadata() {
+      result.CacheData = new GitHubCacheDetails() {
         AccessToken = accessToken,
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
@@ -158,6 +160,7 @@
       // These aren't always sent. Check for presence and fail gracefully.
       if (response.Headers.Contains("X-RateLimit-Limit")) {
         result.RateLimit = new GitHubRateLimit() {
+          AccessToken = accessToken,
           RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
           RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
           RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),

@@ -12,7 +12,7 @@
       Restricted = true;
     }
 
-    public GitHubRequest(string path, IGitHubCacheMetadata opts = null, bool restricted = false) {
+    public GitHubRequest(string path, IGitHubCacheDetails opts = null, bool restricted = false) {
       Method = HttpMethod.Get;
       Path = path;
       _cacheOptions = opts;
@@ -28,11 +28,11 @@
     /// </summary>
     public bool Restricted { get; }
 
-    private IGitHubCacheMetadata _cacheOptions;
-    public IGitHubCacheMetadata CacheOptions {
+    private IGitHubCacheDetails _cacheOptions;
+    public IGitHubCacheDetails CacheOptions {
       get { return _cacheOptions; }
       set {
-        if (Restricted) {
+        if (Restricted && value != null) {
           throw new InvalidOperationException("Cannot change cache options on restricted requests.");
         }
         _cacheOptions = value;

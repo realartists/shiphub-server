@@ -18,7 +18,7 @@
     public GitHubError Error { get; set; }
     public GitHubErrorSeverity ErrorSeverity { get; set; }
 
-    public GitHubCacheMetadata CacheData { get; set; }
+    public GitHubCacheDetails CacheData { get; set; }
     public GitHubRateLimit RateLimit { get; set; }
     public GitHubRedirect Redirect { get; set; }
     public GitHubPagination Pagination { get; set; }
@@ -33,7 +33,7 @@
     public T Result {
       get {
         if (IsError) {
-          throw new InvalidOperationException("Cannot get the result of failed request.");
+          throw new InvalidOperationException($"Cannot get the result of failed request. ({Status}): {Error?.Message}");
         }
 
         if (!_resultSet) {

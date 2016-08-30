@@ -92,7 +92,7 @@
     <Compile Include="DataModel\Types\IssueEventTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
-    <Compile Include="DataModel\Types\GitHubMetaData.cs" />
+    <Compile Include="DataModel\Types\GitHubMetadata.cs" />
     <Compile Include="DataModel\Types\MappingTableType.cs" />
     <Compile Include="DataModel\Types\MilestoneTableType.cs" />
     <Compile Include="DataModel\Types\ReactionTableType.cs" />
@@ -107,7 +107,7 @@
     <Compile Include="EnumerableExtensions.cs" />
     <Compile Include="ExceptionUtilities.cs" />
     <Compile Include="GitHubSettings.cs" />
-    <Compile Include="GitHub\GitHubCacheMetadata.cs" />
+    <Compile Include="GitHub\GitHubCacheDetails.cs" />
     <Compile Include="GitHub\GitHubErrorSeverity.cs" />
     <Compile Include="GitHub\GitHubRateLimit.cs" />
     <Compile Include="GitHub\GitHubSerialization.cs" />
