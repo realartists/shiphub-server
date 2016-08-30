@@ -8,9 +8,9 @@
 )
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_CacheMetadata_Key_Token_LastRefresh] ON [dbo].[CacheMetadata] ([Key], AccessToken, LastRefresh)
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_CacheMetadata_Key_Token] ON [dbo].[CacheMetadata] ([Key], AccessToken) INCLUDE (LastRefresh)
 GO
 
 -- Used to purge cache entries for expired tokens.
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_CacheMetadata_Token] ON [dbo].[CacheMetadata] (AccessToken)
+CREATE NONCLUSTERED INDEX [IX_CacheMetadata_Token] ON [dbo].[CacheMetadata] (AccessToken)
 GO
