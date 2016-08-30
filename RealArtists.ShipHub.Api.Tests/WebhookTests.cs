@@ -670,6 +670,19 @@
         Assert.AreEqual("Blue", labels[0].Name);
         Assert.AreEqual("0000ff", labels[0].Color);
       };
+
+      // Then remove the last label.
+      issue.Labels = new Label[] { };
+      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+
+      // Expect null if there are no changes to notify about.
+      Assert.Null(changeSummary);
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        var labels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(0, updatedIssue.Labels.Count());
+      };
     }
 
     [Test]
