@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
+  using System;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using Newtonsoft.Json;
@@ -16,7 +17,7 @@
     public string AccessToken { get; set; }
 
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
-    public string LastRefresh { get; set; }
+    public DateTimeOffset LastRefresh { get; set; }
 
     [Required]
     public string MetadataJson {
