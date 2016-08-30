@@ -19,7 +19,7 @@
         _issueUrl = value;
         IssueNumber = null;
 
-        if (!string.IsNullOrWhiteSpace(_issueUrl)) {
+        if (!_issueUrl.IsNullOrWhiteSpace()) {
           var parts = _issueUrl.Split('/');
           IssueNumber = int.Parse(parts[parts.Length - 1]);
         }

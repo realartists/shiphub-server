@@ -67,7 +67,7 @@
       };
 
       // Accept
-      if (!string.IsNullOrWhiteSpace(request.AcceptHeaderOverride)) {
+      if (!request.AcceptHeaderOverride.IsNullOrWhiteSpace()) {
         httpRequest.Headers.Accept.Clear();
         httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
       }
@@ -86,7 +86,7 @@
       if (request.Method == HttpMethod.Get && request.CacheOptions != null) {
         var cache = request.CacheOptions;
         httpRequest.Headers.IfModifiedSince = cache.LastModified;
-        if (!string.IsNullOrWhiteSpace(cache.ETag)) {
+        if (!cache.ETag.IsNullOrWhiteSpace()) {
           httpRequest.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(cache.ETag));
         }
       }

@@ -30,10 +30,10 @@
     [HttpPost]
     [Route("login")]
     public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
-      if (string.IsNullOrWhiteSpace(request.AccessToken)) {
+      if (request.AccessToken.IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(request.AccessToken)} is required.");
       }
-      if (string.IsNullOrWhiteSpace(request.ClientName)) {
+      if (request.ClientName.IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 

@@ -3,6 +3,7 @@
   using System.Collections.Concurrent;
   using System.Linq;
   using System.Threading.Tasks;
+  using Common;
   using Common.DataModel.Types;
   using Messages;
   using Microsoft.Azure;
@@ -43,7 +44,7 @@
     // TODO: Non-public
     public static async Task<SubscriptionClient> SubscriptionClientForName(string topicName, string subscriptionName = null) {
       // For auto expiring subscriptions we only care that the names never overlap
-      if (string.IsNullOrWhiteSpace(subscriptionName)) {
+      if (subscriptionName.IsNullOrWhiteSpace()) {
         subscriptionName = Guid.NewGuid().ToString("N");
       }
 

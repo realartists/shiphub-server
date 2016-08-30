@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
   using System.Diagnostics;
+  using Common;
   using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
@@ -22,14 +23,14 @@
 
       // Application Insights
       var instrumentationKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
-      if (!string.IsNullOrWhiteSpace(instrumentationKey)) {
+      if (!instrumentationKey.IsNullOrWhiteSpace()) {
         TelemetryConfiguration.Active.InstrumentationKey = instrumentationKey;
         config.Tracing.Tracers.Add(new ApplicationInsightsTraceWriter());
       }
 
       // Raygun
       var apiKey = CloudConfigurationManager.GetSetting(RaygunApiKey);
-      if (!string.IsNullOrWhiteSpace(apiKey)) {
+      if (!apiKey.IsNullOrWhiteSpace()) {
         config.Tracing.Tracers.Add(new RaygunTraceWriter(apiKey));
       }
 

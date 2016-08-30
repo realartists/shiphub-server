@@ -38,7 +38,7 @@
 
     public static T DeserializeObject<T>(this string json)
       where T : class {
-      if (string.IsNullOrWhiteSpace(json)) {
+      if (json.IsNullOrWhiteSpace()) {
         return null;
       }
 

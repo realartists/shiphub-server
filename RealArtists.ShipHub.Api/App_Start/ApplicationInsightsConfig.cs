@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api {
+  using Common;
   using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.Azure;
 
@@ -6,7 +7,7 @@
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
     public static void Register() {
       var instrumentationKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
-      if (!string.IsNullOrWhiteSpace(instrumentationKey)) {
+      if (!instrumentationKey.IsNullOrWhiteSpace()) {
         TelemetryConfiguration.Active.InstrumentationKey = instrumentationKey;
       }
     }
