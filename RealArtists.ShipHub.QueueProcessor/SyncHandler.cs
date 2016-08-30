@@ -126,9 +126,9 @@
                 "james-howard",
                 "aroon", // used in tests only
               }.Contains(x.Owner.Login))
-              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new AddOrUpdateRepoWebhooksMessage {
+              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new RepoWebhooksMessage {
                 RepositoryId = x.Id,
-                AccessToken = message.AccessToken
+                UserId = user.Id
               }, $"repo-{x.Id}")))
             );
           } else {
@@ -179,8 +179,8 @@
                             "realartists",
                             "realartists-test",
               }.Contains(x.Organization.Login))
-              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new AddOrUpdateOrgWebhooksMessage() {
-                AccessToken = message.AccessToken,
+              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new OrgWebhooksMessage() {
+                UserId = user.Id,
                 OrganizationId = x.Organization.Id,
               }, $"org-{x.Organization.Id}"))));
           } else {

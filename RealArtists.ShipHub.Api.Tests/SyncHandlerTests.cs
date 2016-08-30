@@ -106,9 +106,9 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new RepoWebhooksMessage() {
           RepositoryId = repo.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
         context.Entry(hook).Reload();
@@ -185,9 +185,9 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new RepoWebhooksMessage() {
           RepositoryId = repo.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
@@ -238,9 +238,9 @@
             return Task.CompletedTask;
           });
 
-        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new RepoWebhooksMessage() {
           RepositoryId = repo.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
@@ -320,9 +320,9 @@
             return Task.CompletedTask;
           });
 
-        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new OrgWebhooksMessage() {
           OrganizationId = org.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
@@ -423,9 +423,9 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new OrgWebhooksMessage() {
           OrganizationId = org.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
@@ -502,9 +502,9 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new OrgWebhooksMessage() {
           OrganizationId = org.Id,
-          AccessToken = user.Token,
+          UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
         context.Entry(hook).Reload();

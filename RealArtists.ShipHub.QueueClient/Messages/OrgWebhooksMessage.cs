@@ -1,6 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueClient.Messages {
-  public class AddOrUpdateOrgWebhooksMessage {
+  public class OrgWebhooksMessage {
     public long OrganizationId { get; set; }
-    public string AccessToken { get; set; }
+    public long UserId { get; set; }
   }
 }

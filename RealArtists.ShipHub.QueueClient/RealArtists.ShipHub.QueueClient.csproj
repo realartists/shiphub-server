@@ -62,10 +62,10 @@
   <ItemGroup>
     <Compile Include="Messages\AccessTokenMessage.cs" />
     <Compile Include="Messages\AccountMessage.cs" />
-    <Compile Include="Messages\AddOrUpdateOrgWebhooksMessage.cs" />
+    <Compile Include="Messages\OrgWebhooksMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
     <Compile Include="Messages\IssueCommentMessage.cs" />
-    <Compile Include="Messages\AddOrUpdateRepoWebhooksMessage.cs" />
+    <Compile Include="Messages\RepoWebhooksMessage.cs" />
     <Compile Include="Messages\IssueMessage.cs" />
     <Compile Include="Messages\RepositoryMessage.cs" />
     <Compile Include="ShipHubBusClient.cs" />

@@ -5,8 +5,8 @@
   /// one of the existing messages.  For now, I'm making my own so I can avoid rebase
   /// hell.
   /// </summary>
-  public class AddOrUpdateRepoWebhooksMessage {
+  public class RepoWebhooksMessage {
     public long RepositoryId { get; set; }
-    public string AccessToken { get; set; }
+    public long UserId { get; set; }
   }
 }

@@ -16,14 +16,22 @@
   using gm = Common.GitHub.Models;
 
   public static class WebhookHandler {
-    public static Task AddOrUpdateRepoWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] AddOrUpdateRepoWebhooksMessage message,
+    public static async Task AddOrUpdateRepoWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] RepoWebhooksMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      return AddOrUpdateRepoWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
+      IGitHubClient ghc;
+      using (var context = new ShipHubContext()) {
+        var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
+        ghc = GitHubSettings.CreateUserClient(user);
+      }
+      await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
     }
 
     public static async Task AddOrUpdateRepoWebhooksWithClient(
-      AddOrUpdateRepoWebhooksMessage message,
+      RepoWebhooksMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
@@ -110,14 +118,23 @@
       }
     }
 
-    public static Task AddOrUpdateOrgWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] AddOrUpdateOrgWebhooksMessage message,
+    public static async Task AddOrUpdateOrgWebhooks(
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] OrgWebhooksMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      return AddOrUpdateOrgWebhooksWithClient(message, GitHubSettings.CreateUserClient(message.AccessToken), notifyChanges);
+      IGitHubClient ghc;
+      using (var context = new ShipHubContext()) {
+        var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
+        ghc = GitHubSettings.CreateUserClient(user);
+      }
+
+      await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);
     }
 
     public static async Task AddOrUpdateOrgWebhooksWithClient(
-      AddOrUpdateOrgWebhooksMessage message,
+      OrgWebhooksMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
