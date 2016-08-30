@@ -106,7 +106,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
@@ -185,7 +185,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
@@ -238,7 +238,7 @@
             return Task.CompletedTask;
           });
 
-        await SyncHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new AddOrUpdateRepoWebhooksMessage() {
           RepositoryId = repo.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
@@ -320,7 +320,7 @@
             return Task.CompletedTask;
           });
 
-        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
@@ -423,7 +423,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
@@ -502,7 +502,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await SyncHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new AddOrUpdateOrgWebhooksMessage() {
           OrganizationId = org.Id,
           AccessToken = user.Token,
         }, mock.Object, collectorMock.Object);
