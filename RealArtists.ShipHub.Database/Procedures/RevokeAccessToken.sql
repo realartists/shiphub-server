@@ -13,4 +13,6 @@ BEGIN
     RateLimitRemaining =  DEFAULT,
     RateLimitReset = DEFAULT
   WHERE Token = @Token
+
+  DELETE FROM CacheMetadata WHERE AccessToken = @Token
 END
