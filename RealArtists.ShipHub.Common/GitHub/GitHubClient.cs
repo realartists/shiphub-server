@@ -18,7 +18,8 @@
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
 
-    public GitHubClient(string productName, string productVersion, string accessToken = null, GitHubRateLimit rateLimit = null) {
+    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string accessToken = null, GitHubRateLimit rateLimit = null) {
+      Handler = handler;
       UserAgent = new ProductInfoHeaderValue(productName, productVersion);
       DefaultToken = accessToken;
       _rateLimit = rateLimit;
@@ -34,7 +35,7 @@
       }
     }
 
-    public IGitHubHandler Handler { get; set; } = new GitHubHandler();
+    public IGitHubHandler Handler { get; set; }
 
     private Task<GitHubResponse<T>> Fetch<T>(GitHubRequest request) {
       return Handler.Fetch<T>(this, request);

@@ -9,6 +9,23 @@
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
+    private static IGitHubHandler HandlerPipeline { get; } = CreatePipeline();
+
+    private static IGitHubHandler CreatePipeline() {
+      IGitHubHandler handler = new GitHubHandler();
+      //handler = new ShipHubFilter(handler);
+      handler = new PaginationHandler(handler);
+
+      // Revoke expired and invalid tokens
+      handler = new TokenRevocationHandler(handler, async token => {
+        using (var context = new ShipHubContext()) {
+          await context.RevokeAccessToken(token);
+        }
+      });
+
+      return handler;
+    }
+
     [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Only a valid operation for users.")]
     public static GitHubClient CreateUserClient(User user) {
       if (user == null) {
@@ -29,16 +46,7 @@
     }
 
     public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
-      var client = new GitHubClient(ApplicationName, ApplicationVersion, accessToken, rateLimit);
-
-      // Revoke expired and invalid tokens
-      client.Handler = new TokenRevocationHandler(client.Handler, async token => {
-        using (var context = new ShipHubContext()) {
-          await context.RevokeAccessToken(token);
-        }
-      });
-
-      return client;
+      return new GitHubClient(HandlerPipeline, ApplicationName, ApplicationVersion, accessToken, rateLimit);
     }
   }
 }
