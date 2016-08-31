@@ -98,8 +98,8 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
+        mock.Verify(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
-
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
     }
@@ -549,8 +549,8 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
+        mock.Verify(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
-
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
     }
