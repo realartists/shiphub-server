@@ -2,14 +2,14 @@
   public class AccountMessage {
     public AccountMessage() { }
 
-    public AccountMessage(long id, string login, string accessToken) {
-      Id = id;
-      Login = login;
-      AccessToken = accessToken;
+    public AccountMessage(long targetId, string targetLogin, long forUserId) {
+      TargetId = targetId;
+      TargetLogin = targetLogin;
+      ForUserId = forUserId;
     }
 
-    public long Id { get; set; }
-    public string Login { get; set; }
-    public string AccessToken { get; set; }
+    public long TargetId { get; set; }
+    public string TargetLogin { get; set; }
+    public long ForUserId { get; set; }
   }
 }

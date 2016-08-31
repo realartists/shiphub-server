@@ -16,14 +16,6 @@
     [NotMapped]
     public GitHubMetadata RepositoryMetadata { get; set; }
 
-    public string OrgMetadataJson {
-      get { return OrganizationMetadata.SerializeObject(); }
-      set { OrganizationMetadata = value.DeserializeObject<GitHubMetadata>(); }
-    }
-
-    [NotMapped]
-    public GitHubMetadata OrganizationMetadata { get; set; }
-
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> AssignableRepositories { get; set; } = new HashSet<Repository>();
 

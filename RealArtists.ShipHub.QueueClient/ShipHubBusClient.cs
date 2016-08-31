@@ -12,9 +12,9 @@
 
   public interface IShipHubBusClient {
     Task NotifyChanges(IChangeSummary changeSummary);
-    Task SyncAccount(string accessToken);
-    Task SyncAccountRepositories(long accountId, string login, string accessToken);
-    Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber);
+    Task SyncAccount(long userId);
+    Task SyncAccountRepositories(long userId);
+    Task SyncRepositoryIssueTimeline(long userId, string repositoryFullName, int issueNumber);
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
@@ -131,18 +131,18 @@
       }
     }
 
-    public async Task SyncAccount(string accessToken) {
+    public async Task SyncAccount(long userId) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccount);
 
-      var message = new AccessTokenMessage(accessToken);
+      var message = new UserIdMessage(userId);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);
       }
     }
 
-    public async Task SyncAccountRepositories(long accountId, string login, string accessToken) {
-      var message = new AccountMessage(accountId, login, accessToken);
+    public async Task SyncAccountRepositories(long userId) {
+      var message = new UserIdMessage(userId);
 
       var queue = QueueClientForName(ShipHubQueueNames.SyncAccountRepositories);
       using (var bm = WebJobInterop.CreateMessage(message)) {
@@ -150,10 +150,10 @@
       }
     }
 
-    public async Task SyncRepositoryIssueTimeline(string accessToken, string repositoryFullName, int issueNumber) {
+    public async Task SyncRepositoryIssueTimeline(long userId, string repositoryFullName, int issueNumber) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
 
-      var message = new IssueMessage(repositoryFullName, issueNumber, accessToken);
+      var message = new IssueViewMessage(userId, repositoryFullName, issueNumber);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);

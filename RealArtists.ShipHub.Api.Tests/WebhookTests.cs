@@ -930,15 +930,14 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+      var syncAccountRepositoryCalls = new List<long>();
 
       var mockBusClient = new Mock<IShipHubBusClient>();
       mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
-        .Callback((long accountId, string login, string accessToken) => {
-          syncAccountRepositoryCalls.Add(
-            new Tuple<long, string, string>(accountId, login, accessToken));
+        .Callback((long accountId) => {
+          syncAccountRepositoryCalls.Add(accountId);
         });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
@@ -948,9 +947,9 @@
       Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
 
       Assert.AreEqual(
-        new List<Tuple<long, string, string>> {
-          Tuple.Create(user1.Id, user1.Login, user1.Token),
-          Tuple.Create(user2.Id, user2.Login, user2.Token),
+        new List<long> {
+          user1.Id,
+          user2.Id,
         },
         syncAccountRepositoryCalls);
     }
@@ -1016,15 +1015,14 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+      var syncAccountRepositoryCalls = new List<long>();
 
       var mockBusClient = new Mock<IShipHubBusClient>();
       mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
-        .Callback((long accountId, string login, string accessToken) => {
-          syncAccountRepositoryCalls.Add(
-            new Tuple<long, string, string>(accountId, login, accessToken));
+        .Callback((long accountId) => {
+          syncAccountRepositoryCalls.Add(accountId);
         });
 
       // We register for the "repository" event on both the org and repo levels.
@@ -1046,9 +1044,9 @@
       Assert.AreEqual(2, syncAccountRepositoryCalls.Count,
         "should have only 1 call for each user in the org");
       Assert.AreEqual(
-        new List<Tuple<long, string, string>> {
-          Tuple.Create(user1.Id, user1.Login, user1.Token),
-          Tuple.Create(user2.Id, user2.Login, user2.Token),
+        new List<long> {
+          user1.Id,
+          user2.Id,
         },
         syncAccountRepositoryCalls);
     }
@@ -1083,15 +1081,14 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<Tuple<long, string, string>>();
+      var syncAccountRepositoryCalls = new List<long>();
 
       var mockBusClient = new Mock<IShipHubBusClient>();
       mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<string>()))
+        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
-        .Callback((long accountId, string login, string accessToken) => {
-          syncAccountRepositoryCalls.Add(
-            new Tuple<long, string, string>(accountId, login, accessToken));
+        .Callback((long accountId) => {
+          syncAccountRepositoryCalls.Add(accountId);
         });
 
       var controller = new GitHubWebhookController(mockBusClient.Object);
@@ -1101,8 +1098,8 @@
       Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
 
       Assert.AreEqual(
-        new List<Tuple<long, string, string>> {
-          Tuple.Create(user.Id, user.Login, user.Token),
+        new List<long> {
+          user.Id,
         },
         syncAccountRepositoryCalls,
         "should only trigger sync for repo owner");

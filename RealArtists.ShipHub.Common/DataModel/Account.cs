@@ -28,6 +28,14 @@
     [NotMapped]
     public GitHubMetadata Metadata { get; set; }
 
+    public string OrgMetadataJson {
+      get { return OrganizationMetadata.SerializeObject(); }
+      set { OrganizationMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata OrganizationMetadata { get; set; }
+
     [StringLength(64)]
     public string Token { get; set; }
 

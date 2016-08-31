@@ -77,7 +77,7 @@
       // Be sure to save the account *before* syncing it!
       await Context.SaveChangesAsync();
 
-      await _QueueClient.SyncAccount(user.Token);
+      await _QueueClient.SyncAccount(user.Id);
 
       return Ok(userInfo);
     }

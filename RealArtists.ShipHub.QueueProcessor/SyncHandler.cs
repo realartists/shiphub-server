@@ -21,22 +21,25 @@
 
   public static class SyncHandler {
     public static async Task SyncAccount(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] AccessTokenMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<AccountMessage> syncAccountRepos,
-      [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<AccountMessage> syncAccountOrgs,
+      [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] UserIdMessage message,
+      [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<UserIdMessage> syncAccountRepos,
+      [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<UserIdMessage> syncAccountOrgs,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
         ChangeSummary changes = null;
 
-        var user = await context.Users.SingleAsync(x => x.Token == message.AccessToken);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
 
         logger.WriteLine($"User details for {user.Login} cached until {user.Metadata?.Expires:o}");
         if (user.Metadata == null || user.Metadata.Expires < DateTimeOffset.UtcNow) {
           logger.WriteLine($"Polling: User");
           var ghc = GitHubSettings.CreateUserClient(user);
-          var userResponse = await ghc.User(user.Metadata);
+          var userResponse = await ghc.User(user.Metadata.IfValidFor(user));
 
           if (userResponse.Status != HttpStatusCode.NotModified) {
             logger.WriteLine("GitHub: Changed. Saving changes.");
@@ -50,35 +53,20 @@
           tasks.Add(context.UpdateMetaLimit("Accounts", user.Id, userResponse));
           tasks.Add(notifyChanges.Send(changes));
         } else {
-          logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
+          logger.WriteLine($"Waiting: Using cache from {user.Metadata.LastRefresh:o}");
         }
 
         // Now that the user is saved in the DB, safe to sync all repos and user's orgs
-        // These checks here cost nothing even though they're done inside the child tasks too.
-        var am = new AccountMessage(user.Id, user.Login, message.AccessToken);
-
-        logger.WriteLine($"Repositories cached until {user.RepositoryMetadata?.Expires:o}");
-        if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
-          logger.WriteLine("Updating account repositories.");
-          tasks.Add(syncAccountRepos.AddAsync(am));
-        } else {
-          logger.WriteLine($"Skipping account repository update.");
-        }
-
-        logger.WriteLine($"Organizations cached until {user.OrganizationMetadata?.Expires:o}");
-        if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
-          logger.WriteLine("Updating account organizations.");
-          tasks.Add(syncAccountOrgs.AddAsync(am));
-        } else {
-          logger.WriteLine($"Skipping account organizations update.");
-        }
+        var am = new UserIdMessage(user.Id);
+        tasks.Add(syncAccountRepos.AddAsync(am));
+        tasks.Add(syncAccountOrgs.AddAsync(am));
 
         await Task.WhenAll(tasks);
       }
     }
 
     public static async Task SyncAccountRepositories(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] AccountMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<RepositoryMessage> syncRepo,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateRepoWebhooks,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -87,13 +75,16 @@
         var tasks = new List<Task>();
         ChangeSummary changes = null;
 
-        var user = await context.Users.SingleAsync(x => x.Token == message.AccessToken);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
 
         logger.WriteLine($"Account repositories for {user.Login} cached until {user.RepositoryMetadata?.Expires:o}");
         if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
           logger.WriteLine("Polling: Account repositories.");
           var ghc = GitHubSettings.CreateUserClient(user);
-          var repoResponse = await ghc.Repositories(user.RepositoryMetadata);
+          var repoResponse = await ghc.Repositories(user.RepositoryMetadata.IfValidFor(user));
 
           if (repoResponse.Status != HttpStatusCode.NotModified) {
             logger.WriteLine("Github: Changed. Saving changes.");
@@ -107,7 +98,7 @@
               .Distinct(x => x.Login);
             changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
             changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-            changes.UnionWith(await context.SetAccountLinkedRepositories(message.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
+            changes.UnionWith(await context.SetAccountLinkedRepositories(user.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
 
             tasks.Add(notifyChanges.Send(changes));
 
@@ -147,7 +138,7 @@
     /// NOTE WELL: We sync only sync orgs for which the user is a member. If they can see a repo in an org
     /// but aren't a member, too bad for them. The permissions are too painful otherwise.
     public static async Task SyncAccountOrganizations(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] AccountMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<AccountMessage> syncOrgMembers,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
@@ -156,21 +147,23 @@
         var tasks = new List<Task>();
         ChangeSummary changes = null;
 
-        var user = await context.Users.SingleAsync(x => x.Id == message.Id);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
 
         logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
         if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
-          logger.WriteLine("Polling: Organiztion membership.");
+          logger.WriteLine("Polling: Organization membership.");
           var ghc = GitHubSettings.CreateUserClient(user);
-          var orgResponse = await ghc.OrganizationMemberships(user.OrganizationMetadata);
+          var orgResponse = await ghc.OrganizationMemberships(user.OrganizationMetadata.IfValidFor(user));
 
           if (orgResponse.Status != HttpStatusCode.NotModified) {
             logger.WriteLine("Github: Changed. Saving changes.");
             var orgs = orgResponse.Result;
 
             changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
-
-            tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.AccessToken))));
+            tasks.Add(notifyChanges.Send(changes));
 
             tasks.AddRange(orgs
               .Where(x => x.Role.Equals("admin"))
@@ -183,50 +176,67 @@
                 UserId = user.Id,
                 OrganizationId = x.Organization.Id,
               }, $"org-{x.Organization.Id}"))));
+            tasks.AddRange(orgs.Select(x => syncOrgMembers.AddAsync(new AccountMessage(x.Organization.Id, x.Organization.Login, message.UserId))));
           } else {
+            // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
             logger.WriteLine("Github: Not modified.");
           }
-
-          // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
 
           tasks.Add(context.UpdateMetaLimit("Accounts", "OrgMetadataJson", user.Id, orgResponse));
         } else {
           logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
         }
 
-        tasks.Add(notifyChanges.Send(changes));
         await Task.WhenAll(tasks);
       }
     }
 
     public static async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] AccountMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-      ChangeSummary changes;
-
-      // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
-      // each member.  To workaround, we make two requests and use the filter option
-      // to only get admins or non-admins on each request.
-      var membersTask = ghc.OrganizationMembers(message.Login, role: "member");
-      var adminsTask = ghc.OrganizationMembers(message.Login, role: "admin");
-      await Task.WhenAll(membersTask, adminsTask);
-
-      var membersResponse = membersTask.Result;
-      var adminsResponse = adminsTask.Result;
-
-      var all = membersResponse.Result.Select(x => Tuple.Create(x, "member")).Concat(
-        adminsResponse.Result.Select(x => Tuple.Create(x, "admin"))).ToArray();
-
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger) {
       using (var context = new ShipHubContext()) {
-        changes = await context.BulkUpdateAccounts(membersResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(all.Select(x => x.Item1)));
-        changes.UnionWith(await context.SetOrganizationUsers(
-          message.Id,
-          all.Select(x => Tuple.Create(x.Item1.Id, x.Item2.Equals("admin")))));
-      }
+        var tasks = new List<Task>();
+        ChangeSummary changes = null;
 
-      if (!changes.Empty) {
-        await notifyChanges.AddAsync(new ChangeMessage(changes));
+        // Lookup requesting user and org.
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
+
+        var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
+
+        logger.WriteLine($"Organization members for {org.Login} cached until {org.OrganizationMetadata?.Expires}");
+        if (org.OrganizationMetadata == null || org.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
+          logger.WriteLine("Polling: Organization membership.");
+          var ghc = GitHubSettings.CreateUserClient(user);
+
+          // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
+          // each member.  To workaround, we make two requests and use the filter option
+          // to only get admins or non-admins on each request.
+          var membersTask = ghc.OrganizationMembers(message.TargetLogin, role: "member");
+          var adminsTask = ghc.OrganizationMembers(message.TargetLogin, role: "admin");
+          await Task.WhenAll(membersTask, adminsTask);
+
+          var members = membersTask.Result.Result;
+          var admins = adminsTask.Result.Result;
+
+          changes = await context.BulkUpdateAccounts(
+            membersTask.Result.Date,
+            SharedMapper.Map<IEnumerable<AccountTableType>>(members.Concat(admins)));
+          changes.UnionWith(await context.SetOrganizationUsers(
+            org.Id,
+            members.Select(x => Tuple.Create(x.Id, false))
+            .Concat(admins.Select(x => Tuple.Create(x.Id, true)))));
+
+          tasks.Add(notifyChanges.Send(changes));
+          tasks.Add(context.UpdateMetaLimit("Accounts", "OrgMetadataJson", org.Id, membersTask.Result));
+        } else {
+          logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
+        }
+
+        await Task.WhenAll(tasks);
       }
     }
 
@@ -531,7 +541,7 @@
 
     private static HashSet<string> _FilterEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
     public static async Task SyncRepositoryIssueTimeline(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueViewMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<IssueMessage> syncIssueComments,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueReactions)] IAsyncCollector<IssueMessage> syncRepoIssueReactions,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
@@ -544,27 +554,26 @@
        * by the repo.
        */
       //////////////////////////////////////////
-
-      var ghc = GitHubSettings.CreateUserClient(message.AccessToken);
-      ChangeSummary changes;
-      var tasks = new List<Task>();
-
-      // TODO: Just trigger a full repo issue sync once incremental is implemented
-      var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
-      var issue = issueResponse.Result;
-
-      var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
-      var timeline = timelineResponse.Result;
-
-      // Now just filter
-      var filteredEvents = timeline.Where(x => !_FilterEvents.Contains(x.Event)).ToArray();
-
       using (var context = new ShipHubContext()) {
-        // TODO: Gross
-        var userId = await context.Users
-          .Where(x => x.Token == message.AccessToken)
-          .Select(x => x.Id)
-          .SingleAsync();
+        var tasks = new List<Task>();
+        ChangeSummary changes = null;
+
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
+        if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          return;
+        }
+
+        var ghc = GitHubSettings.CreateUserClient(user);
+
+        // TODO: Just trigger a full repo issue sync once incremental is implemented
+        var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
+        var issue = issueResponse.Result;
+
+        var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
+        var timeline = timelineResponse.Result;
+
+        // Now just filter
+        var filteredEvents = timeline.Where(x => !_FilterEvents.Contains(x.Event)).ToArray();
 
         // HACK: This is broken. Will fail when the issue is not yet saved to the DB.
         var issueDetails = await context.Issues
@@ -588,7 +597,7 @@
         }
 
         // Find all events with associated commits, and embed them.
-        var withCommits = filteredEvents.Where(x => !string.IsNullOrWhiteSpace(x.CommitUrl)).ToArray();
+        var withCommits = filteredEvents.Where(x => !x.CommitUrl.IsNullOrWhiteSpace()).ToArray();
         var commits = withCommits.Select(x => x.CommitUrl).Distinct();
 
         if (commits.Any()) {
@@ -709,13 +718,15 @@
             Item2 = x.Id,
           })));
 
+        var issueMessage = new IssueMessage(message.RepositoryFullName, message.Number, user.Token);
+
         // Now safe to sync reactions
-        tasks.Add(syncRepoIssueReactions.AddAsync(message));
+        tasks.Add(syncRepoIssueReactions.AddAsync(issueMessage));
 
         // If we find comments, sync them
         // TODO: Incrementally
         if (timeline.Any(x => x.Event == "commented")) {
-          tasks.Add(syncIssueComments.AddAsync(message));
+          tasks.Add(syncIssueComments.AddAsync(issueMessage));
           // Can't sync comment reactions yet in case they don't exist
         }
 
@@ -769,14 +780,10 @@
         foreach (var item in events) {
           item.IssueId = issueDetails.IssueId;
         }
-        changes.UnionWith(await context.BulkUpdateTimelineEvents(userId, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
+        changes.UnionWith(await context.BulkUpdateTimelineEvents(user.Id, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
+        tasks.Add(notifyChanges.Send(changes));
+        await Task.WhenAll(tasks);
       }
-
-      if (!changes.Empty) {
-        tasks.Add(notifyChanges.AddAsync(new ChangeMessage(changes)));
-      }
-
-      await Task.WhenAll(tasks);
     }
   }
 

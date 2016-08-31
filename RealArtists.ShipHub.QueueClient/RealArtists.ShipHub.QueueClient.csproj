@@ -60,7 +60,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Messages\AccessTokenMessage.cs" />
+    <Compile Include="Messages\IssueViewMessage.cs" />
+    <Compile Include="Messages\UserIdMessage.cs" />
     <Compile Include="Messages\AccountMessage.cs" />
     <Compile Include="Messages\OrgWebhooksMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />

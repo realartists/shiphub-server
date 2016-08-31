@@ -100,7 +100,7 @@
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
           var qc = new ShipHubBusClient();
-          await qc.SyncRepositoryIssueTimeline(_user.Token, repoFullName, issueNumber);
+          await qc.SyncRepositoryIssueTimeline(_user.UserId, repoFullName, issueNumber);
           return;
         default:
           // Ignore unknown messages for now
@@ -154,7 +154,7 @@
         .ObserveOn(TaskPoolScheduler.Default)
         .StartWith(0)
         .Select(_ =>
-          Observable.FromAsync(() => _QueueClient.SyncAccount(_user.Token))
+          Observable.FromAsync(() => _QueueClient.SyncAccount(_user.UserId))
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequentual evaluation
         .Subscribe();

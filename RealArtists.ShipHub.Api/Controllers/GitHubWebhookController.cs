@@ -161,14 +161,14 @@
           .Where(x => x.User.Token != null)
           .Select(x => x.User)
           .ToListAsync();
-        var syncTasks = users.Select(x => _busClient.SyncAccountRepositories(x.Id, x.Login, x.Token));
+        var syncTasks = users.Select(x => _busClient.SyncAccountRepositories(x.Id));
         await Task.WhenAll(syncTasks);
       } else {
         // TODO: This should also trigger a sync for contributors of a repo, but at
         // least this is more correct than what we have now.
         var owner = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
         if (owner.Token != null) {
-          await _busClient.SyncAccountRepositories(owner.Id, owner.Login, owner.Token);
+          await _busClient.SyncAccountRepositories(owner.Id);
         }
       }
     }
