@@ -91,7 +91,7 @@
                 Secret = hook.Secret.ToString(),
               },
             });
-          Task.WaitAny(addRepoHookTask);
+          await Task.WhenAny(addRepoHookTask);
 
           if (!addRepoHookTask.IsFaulted && !addRepoHookTask.Result.IsError) {
             hook.GitHubId = addRepoHookTask.Result.Result.Id;
@@ -195,7 +195,7 @@
                 Secret = hook.Secret.ToString(),
               },
             });
-          Task.WaitAny(addTask);
+          await Task.WhenAny(addTask);
 
           if (!addTask.IsFaulted && !addTask.Result.IsError) {
             hook.GitHubId = addTask.Result.Result.Id;
