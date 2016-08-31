@@ -34,7 +34,7 @@
     Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Account>>> Organizations(IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubCacheDetails cacheOptions = null);
-    Task<GitHubResponse<bool>> PingRepoWebhook(string repoFullname, long hookId);
+    Task<GitHubResponse<bool>> PingRepoWebhook(string repoFullName, long hookId);
     Task<GitHubResponse<bool>> PingOrgWebhook(string name, long hookId);
     Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubCacheDetails cacheOptions = null);

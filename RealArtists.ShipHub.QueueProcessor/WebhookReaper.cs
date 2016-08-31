@@ -8,9 +8,11 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using System.Collections.Generic;
+  using System.Diagnostics.CodeAnalysis;
 
   public class WebhookReaper {
 
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
     public static Task Timer([TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo) {
       return new WebhookReaper().Run();
     }
