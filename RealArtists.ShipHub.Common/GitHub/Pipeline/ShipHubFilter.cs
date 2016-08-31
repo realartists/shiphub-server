@@ -4,6 +4,7 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
+  using System.Net.Http;
   using System.Threading.Tasks;
   using DataModel;
   using DataModel.Types;
@@ -31,7 +32,7 @@
     }
 
     private async Task HandleRequest(GitHubClient client, GitHubRequest request) {
-      if (request.CacheOptions != null) {
+      if (request.CacheOptions != null || request.Method != HttpMethod.Get) {
         return;
       }
 
@@ -49,7 +50,7 @@
 
     private async Task HandleResponse(GitHubResponse response) {
       using (var context = new ShipHubContext()) {
-        if (response.Status == HttpStatusCode.OK) {
+        if (response.Status == HttpStatusCode.OK && response.Request.Method == HttpMethod.Get) {
           // Update rate and cache
           await context.UpdateRateAndCache(response.RateLimit, response.Request.Uri.ToString(), GitHubMetadata.FromResponse(response));
         } else if (response.RateLimit != null) {
