@@ -18,6 +18,8 @@
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
+    public static readonly TimeSpan DefaultTimeToLive = TimeSpan.FromMinutes(2);
+
     static readonly string _connString = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
     static readonly NamespaceManager _namespaceManager = NamespaceManager.CreateFromConnectionString(_connString);
     static ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
@@ -75,21 +77,20 @@
         ShipHubQueueNames.AddOrUpdateOrgWebhooks,
         ShipHubQueueNames.AddOrUpdateRepoWebhooks,
       };
-      
+
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
         .Select(x => {
           var enableDuplicateDetection = duplicateDetectionQueues.Contains(x.QueueName);
 
           return _namespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
-            //DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
-            DefaultMessageTimeToLive = TimeSpan.FromDays(7),
+            DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
             DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
             // Express mode is not allowed with duplicate detection because
             // it temporarily queues messages in memory.
             EnableExpress = !enableDuplicateDetection,
             EnableBatchedOperations = true,
-            EnableDeadLetteringOnMessageExpiration = true,
+            EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
             EnablePartitioning = true,
             IsAnonymousAccessible = false,
             MaxDeliveryCount = 2, // Prevent explosions of errors.
@@ -112,7 +113,7 @@
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
         .Select(x => _namespaceManager.CreateTopicAsync(new TopicDescription(x.TopicName) {
-          DefaultMessageTimeToLive = TimeSpan.FromMinutes(5),
+          DefaultMessageTimeToLive = DefaultTimeToLive,
           EnableExpress = true,
           EnableBatchedOperations = true,
           EnablePartitioning = true,
