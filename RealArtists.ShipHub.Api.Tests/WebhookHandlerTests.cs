@@ -277,6 +277,68 @@
     }
 
     [Test]
+    public async Task RepoHookIsRemovedIfGitHubAddRequestFails() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+        await context.SaveChangesAsync();
+        
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>(),
+          });
+       mock
+          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .ThrowsAsync(new Exception("some exception!"));
+          
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new RepoWebhooksMessage() {
+          RepositoryId = repo.Id,
+          UserId = user.Id,
+        }, mock.Object, collectorMock.Object);
+
+        var hook = context.Hooks.SingleOrDefault(x => x.RepositoryId == repo.Id);
+        Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
+      }
+    }
+
+    [Test]
+    public async Task OrgHookIsRemovedIfGitHubAddRequestFails() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        context.AccountOrganizations.Add(new OrganizationAccount() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>(),
+          });
+        mock
+           .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+           .ThrowsAsync(new Exception("some exception!"));
+
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new OrgWebhooksMessage() {
+          OrganizationId = org.Id,
+          UserId = user.Id,
+        }, mock.Object, collectorMock.Object);
+
+        var hook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
+        Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
+      }
+    }
+
+    [Test]
     public async Task WillAddHookWhenNoneExistsForOrg() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);

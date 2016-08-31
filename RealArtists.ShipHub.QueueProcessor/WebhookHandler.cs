@@ -77,7 +77,7 @@
           });
           await context.SaveChangesAsync();
 
-          var addRepoHookResponse = await client.AddRepoWebhook(
+          var addRepoHookTask = client.AddRepoWebhook(
             repo.FullName,
             new gm.Webhook() {
               Name = "web",
@@ -89,9 +89,10 @@
                 Secret = hook.Secret.ToString(),
               },
             });
+          Task.WaitAny(addRepoHookTask);
 
-          if (!addRepoHookResponse.IsError) {
-            hook.GitHubId = addRepoHookResponse.Result.Id;
+          if (!addRepoHookTask.IsFaulted && !addRepoHookTask.Result.IsError) {
+            hook.GitHubId = addRepoHookTask.Result.Result.Id;
             await context.SaveChangesAsync();
 
             await context.BumpRepositoryVersion(repo.Id);
@@ -100,7 +101,7 @@
             changeSummary.Repositories.Add(repo.Id);
             await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
-            Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookResponse.Error}");
+            Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookTask.Exception}");
             context.Hooks.Remove(hook);
             await context.SaveChangesAsync();
           }
@@ -172,7 +173,7 @@
           });
           await context.SaveChangesAsync();
 
-          var addResponse = await client.AddOrgWebhook(
+          var addTask = client.AddOrgWebhook(
             org.Login,
             new gm.Webhook() {
               Name = "web",
@@ -184,9 +185,10 @@
                 Secret = hook.Secret.ToString(),
               },
             });
+          Task.WaitAny(addTask);
 
-          if (!addResponse.IsError) {
-            hook.GitHubId = addResponse.Result.Id;
+          if (!addTask.IsFaulted && !addTask.Result.IsError) {
+            hook.GitHubId = addTask.Result.Result.Id;
             await context.SaveChangesAsync();
 
             await context.BumpOrganizationVersion(org.Id);
@@ -195,7 +197,7 @@
             changeSummary.Organizations.Add(org.Id);
             await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
           } else {
-            Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addResponse.Error}");
+            Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addTask.Exception}");
             context.Hooks.Remove(hook);
             await context.SaveChangesAsync();
           }
