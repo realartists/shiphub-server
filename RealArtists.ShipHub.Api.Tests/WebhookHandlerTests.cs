@@ -70,7 +70,7 @@
           });
 
         mock
-          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, It.IsAny<string[]>()))
+          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<string[]>()))
           .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
@@ -98,7 +98,7 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
-        mock.Verify(x => x.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
@@ -524,7 +524,7 @@
           });
 
         mock
-          .Setup(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, It.IsAny<string[]>()))
+          .Setup(x => x.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<string[]>()))
           .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
@@ -549,9 +549,101 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
-        mock.Verify(x => x.EditOrgWebhookEvents(org.Login, hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
+      }
+    }
+
+    [Test]
+    public async Task OrgHookWithNullGitHubIdIsRemoved() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        context.AccountOrganizations.Add(new OrganizationAccount() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Events = "event1,event2",
+          GitHubId = null, // Empty GitHub Id
+          OrganizationId = org.Id,
+          Secret = Guid.NewGuid(),
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+
+        mock
+          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>() {
+            },
+          });
+        mock
+          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
+            Result = new Webhook() {
+              Id = 9999,
+            }
+          });
+
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        await WebhookHandler.AddOrUpdateOrgWebhooksWithClient(new OrgWebhooksMessage() {
+          OrganizationId = org.Id,
+          UserId = user.Id,
+        }, mock.Object, collectorMock.Object);
+
+        var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
+        Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
+
+        var newHook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
+        Assert.NotNull(newHook);
+        Assert.AreEqual(9999, newHook.GitHubId);
+      }
+    }
+
+    [Test]
+    public async Task RepoHookWithNullGitHubIdIsRemoved() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Events = "event1,event2",
+          GitHubId = null, // Empty GitHubId
+          RepositoryId = repo.Id,
+          Secret = Guid.NewGuid(),
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubClient>();
+        mock
+          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>(),
+          });
+        mock
+          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .ReturnsAsync(new GitHubResponse<Webhook>(null) {
+            Result = new Webhook() {
+              Id = 9999,
+            }
+          });
+
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        await WebhookHandler.AddOrUpdateRepoWebhooksWithClient(new RepoWebhooksMessage() {
+          RepositoryId = repo.Id,
+          UserId = user.Id,
+        }, mock.Object, collectorMock.Object);
+
+        var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
+        Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
+
+        var newHook = context.Hooks.SingleOrDefault(x => x.RepositoryId == repo.Id);
+        Assert.NotNull(newHook);
+        Assert.AreEqual(9999, newHook.GitHubId);
       }
     }
   }

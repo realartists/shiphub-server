@@ -47,6 +47,14 @@
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.RepositoryId);
 
+        if (hook != null && hook.GitHubId == null) {
+          // We attempted to add a webhook for this earlier, but something failed
+          // and we never got a chance to learn its GitHubId.
+          context.Hooks.Remove(hook);
+          await context.SaveChangesAsync();
+          hook = null;
+        }
+
         if (hook == null) {
           var existingHooks = (await client.RepoWebhooks(repo.FullName)).Result
             .Where(x => x.Name.Equals("web"))
@@ -100,7 +108,7 @@
             await context.SaveChangesAsync();
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditRepoWebhookEvents(repo.FullName, hook.GitHubId, requiredEvents);
+          var editResponse = await client.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, requiredEvents);
 
           if (editResponse.IsError) {
             Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
@@ -142,6 +150,14 @@
         }
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.OrganizationId);
+
+        if (hook != null && hook.GitHubId == null) {
+          // We attempted to add a webhook for this earlier, but something failed
+          // and we never got a chance to learn its GitHubId.
+          context.Hooks.Remove(hook);
+          await context.SaveChangesAsync();
+          hook = null;
+        }
 
         if (hook == null) {
           var existingHooks = (await client.OrgWebhooks(org.Login)).Result
@@ -196,7 +212,7 @@
             await context.SaveChangesAsync();
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditOrgWebhookEvents(org.Login, hook.GitHubId, requiredEvents);
+          var editResponse = await client.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, requiredEvents);
 
           if (editResponse.IsError) {
             Trace.TraceWarning($"Failed to edit hook for org '{org.Login}': {editResponse.Error}");

@@ -4,7 +4,7 @@
 
   public class Hook {
     public long Id { get; set; }
-    public long GitHubId { get; set; }
+    public long? GitHubId { get; set; }
 
     public Guid Secret { get; set; }
 
