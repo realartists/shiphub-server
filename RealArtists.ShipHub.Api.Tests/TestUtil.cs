@@ -30,15 +30,15 @@ namespace RealArtists.ShipHub.Api.Tests {
       return context.Repositories.Single(x => x.Id == repoId);
     }
 
-    public static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
+    public static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context, long orgId = 6001, string login = "myorg") {
       context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] {
         new AccountTableType() {
-          Id = 6001,
-          Login = "myorg",
+          Id = orgId,
+          Login = login,
           Type = "org",
         },
       }).Wait();
-      return context.Organizations.Single(x => x.Id == 6001);
+      return context.Organizations.Single(x => x.Id == orgId);
     }
   }
 }

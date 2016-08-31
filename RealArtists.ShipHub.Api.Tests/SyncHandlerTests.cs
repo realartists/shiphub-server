@@ -44,7 +44,6 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = context.Hooks.Add(new Hook() {
           Id = 1001,
-          Active = true,
           Events = "event1,event2",
           GitHubId = 8001,
           RepositoryId = repo.Id,
@@ -449,7 +448,6 @@
         });
         var hook = context.Hooks.Add(new Hook() {
           Id = 1001,
-          Active = true,
           Events = "event1,event2",
           GitHubId = 8001,
           OrganizationId = org.Id,
