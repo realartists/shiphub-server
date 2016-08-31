@@ -39,12 +39,6 @@
         var requiredEvents = new string[] {
           "issues",
           "issue_comment",
-          //"member",
-          //"public",
-          //"pull_request",
-          //"pull_request_review_comment",
-          //"repository",
-          //"team_add",
         };
         var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
         if (apiHostname == null) {
