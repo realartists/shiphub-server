@@ -16,7 +16,7 @@
 
   [TestFixture]
   [AutoRollback]
-  public class SyncHandlerTests {
+  public class WebhookHandlerTests {
 
     static string ApiHostname {
       get {

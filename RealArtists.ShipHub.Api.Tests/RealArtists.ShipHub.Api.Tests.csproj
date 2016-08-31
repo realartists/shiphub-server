@@ -158,7 +158,7 @@
     <Compile Include="AutoRollbackAttribute.cs" />
     <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SyncContextTests.cs" />
-    <Compile Include="SyncHandlerTests.cs" />
+    <Compile Include="WebhookHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="WebhookReaperTests.cs" />
     <Compile Include="WebhookTests.cs" />
