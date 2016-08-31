@@ -44,7 +44,17 @@
           client.UpdateInternalRateLimit(result.RateLimit);
         }
 
-        if (!result.IsError || result.ErrorSeverity != GitHubErrorSeverity.Retry) {
+        if (!result.IsError) {
+          // Much success
+          break;
+        }
+
+        // This might be too cute?
+        if (result.Status == HttpStatusCode.Unauthorized && client.DefaultToken != request.CacheOptions?.AccessToken) {
+          // Try again with default credentials
+          // HACK: Better to clear expired/stale metadata, but that's hard.
+          request.CacheOptions = null;
+        } else if (result.ErrorSeverity != GitHubErrorSeverity.Retry) {
           break;
         }
 
