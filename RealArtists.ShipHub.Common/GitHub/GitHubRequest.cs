@@ -6,14 +6,18 @@
   using System.Net.Http;
 
   public class GitHubRequest {
-    public GitHubRequest(HttpMethod method, string path) {
-      Method = method;
-      Path = path;
-      Restricted = true;
-    }
+    public GitHubRequest(HttpMethod method, string path)
+      : this(method, path, null, true) { }
 
-    public GitHubRequest(string path, IGitHubCacheDetails opts = null, bool restricted = false) {
-      Method = HttpMethod.Get;
+    public GitHubRequest(string path, IGitHubCacheDetails opts = null, bool restricted = false)
+      : this(HttpMethod.Get, path, opts, restricted) { }
+
+    private GitHubRequest(HttpMethod method, string path, IGitHubCacheDetails opts, bool restricted) {
+      if (path.IsNullOrWhiteSpace() || path.Contains('?')) {
+        throw new ArgumentException($"path must be non null and cannot contain query parameters. provided: {path}", nameof(path));
+      }
+
+      Method = method;
       Path = path;
       _cacheOptions = opts;
       Restricted = restricted;

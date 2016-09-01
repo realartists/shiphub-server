@@ -156,7 +156,8 @@
 
     public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null) {
       // defaults: filter=all, role=all
-      var request = new GitHubRequest($"/orgs/{orgLogin}/members?role={role}", cacheOptions);
+      var request = new GitHubRequest($"/orgs/{orgLogin}/members", cacheOptions);
+      request.AddParameter("role", role);
       return FetchPaged(request, (Account x) => x.Id);
     }
 
