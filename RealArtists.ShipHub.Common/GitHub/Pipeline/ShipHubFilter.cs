@@ -52,7 +52,9 @@
 
     private async Task HandleResponse(GitHubResponse response) {
       using (var context = new ShipHubContext()) {
-        if (response.Status == HttpStatusCode.OK && response.Request.Method == HttpMethod.Get) {
+        if (response.Status == HttpStatusCode.OK
+          && response.Request.Method == HttpMethod.Get
+          && response.Request.CacheOptions != GitHubCacheDetails.Empty) {
           // Update rate and cache
           await context.UpdateRateAndCache(response.RateLimit, response.Request.Uri.ToString(), GitHubMetadata.FromResponse(response));
         } else if (response.RateLimit != null) {
