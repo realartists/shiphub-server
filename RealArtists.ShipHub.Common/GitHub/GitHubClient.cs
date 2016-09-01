@@ -118,7 +118,7 @@
     }
 
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"/repos/{repoFullName}/commits/{hash}", cacheOptions);
+      var request = new GitHubRequest($"/repos/{repoFullName}/commits/{hash}", cacheOptions, restricted:true);
       return Fetch<Commit>(request);
     }
 
@@ -140,22 +140,8 @@
       return FetchPaged(request, (Milestone x) => x.Id);
     }
 
-    public async Task<GitHubResponse<IEnumerable<Account>>> Organizations(IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user/orgs", cacheOptions);
-      var result = await FetchPaged(request, (Account x) => x.Id);
-
-      if (!result.IsError) {
-        // Seriously GitHub?
-        foreach (var org in result.Result) {
-          org.Type = GitHubAccountType.Organization;
-        }
-      }
-
-      return result;
-    }
-
     public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user/memberships/orgs", cacheOptions);
+      var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted:true);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
 
       if (!result.IsError) {
@@ -185,8 +171,9 @@
       return FetchPaged(request, (Account x) => x.Id);
     }
 
-    public async Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login, IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"/repos/{repoFullName}/assignees/{login}", cacheOptions);
+    public async Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login) {
+      // Pass empty cache options to ensure we get a response. We need the result.
+      var request = new GitHubRequest($"/repos/{repoFullName}/assignees/{login}", GitHubCacheDetails.Empty);
       var response = await Fetch<bool>(request);
       response.IsError = false;
       switch (response.Status) {
