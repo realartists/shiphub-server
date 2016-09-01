@@ -241,19 +241,13 @@
       return Fetch<Webhook>(request);
     }
 
-      var request = new GitHubRequest<object>(
-        new HttpMethod("POST"),
-        $"/orgs/{name}/hooks/{hookId}/pings",
-        null);
     public Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Post, $"/orgs/{name}/hooks/{hookId}/pings");
       return Fetch<bool>(request);
     }
 
-      var request = new GitHubRequest<object>(
-        new HttpMethod("POST"),
-        $"/repos/{repoFullName}/hooks/{hookId}/pings",
-        null);
     public Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Post,$"/repos/{repoFullName}/hooks/{hookId}/pings");
       return Fetch<bool>(request);
     }
   }
