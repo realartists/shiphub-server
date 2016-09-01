@@ -155,7 +155,7 @@
 
     private async Task HandleRepository(WebhookPayload payload) {
       if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
-        var users = await Context.AccountOrganizations
+        var users = await Context.OrganizationAccounts
           .Where(x => x.OrganizationId == payload.Repository.Owner.Id)
           .Include(x => x.User)
           .Where(x => x.User.Token != null)

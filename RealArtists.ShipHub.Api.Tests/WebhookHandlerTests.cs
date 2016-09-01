@@ -292,7 +292,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new OrganizationAccount() {
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });
@@ -325,7 +325,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new OrganizationAccount() {
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });
@@ -405,7 +405,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new OrganizationAccount() {
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });
@@ -486,7 +486,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new OrganizationAccount() {
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });
@@ -560,7 +560,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new OrganizationAccount() {
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });

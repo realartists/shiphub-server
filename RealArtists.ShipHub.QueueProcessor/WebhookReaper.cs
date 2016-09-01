@@ -71,7 +71,7 @@
               hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
               hook.LastPing = now;
 
-              var accountOrganization = await context.AccountOrganizations
+              var accountOrganization = await context.OrganizationAccounts
                 .Include(x => x.User)
                 .Include(x => x.Organization)
                 .Where(x => x.OrganizationId == hook.OrganizationId && x.Admin && x.User.Token != null)

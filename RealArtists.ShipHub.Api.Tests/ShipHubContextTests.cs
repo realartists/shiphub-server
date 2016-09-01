@@ -120,7 +120,7 @@
           Tuple.Create(user2.Id, true),
         });
 
-        var assocs = context.AccountOrganizations
+        var assocs = context.OrganizationAccounts
           .Where(x => x.OrganizationId == org.Id)
           .OrderBy(x => x.UserId)
           .ToArray();
@@ -151,7 +151,7 @@
           Tuple.Create(user2.Id, true),
         });
 
-        var assocs = context.AccountOrganizations
+        var assocs = context.OrganizationAccounts
           .Where(x => x.OrganizationId == org.Id)
           .OrderBy(x => x.UserId)
           .ToArray();
@@ -179,7 +179,7 @@
           Tuple.Create(user2.Id, true),
         });
         
-        var assocs = context.AccountOrganizations
+        var assocs = context.OrganizationAccounts
           .Where(x => x.OrganizationId == org.Id)
           .OrderBy(x => x.UserId)
           .ToArray();
@@ -195,7 +195,7 @@
           Tuple.Create(user2.Id, false),
         });
 
-        var assocs = context.AccountOrganizations
+        var assocs = context.OrganizationAccounts
           .Where(x => x.OrganizationId == org.Id)
           .OrderBy(x => x.UserId)
           .ToArray();

@@ -181,7 +181,7 @@
         var org = MakeTestOrg(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         var hook = MakeTestOrgHook(context, user.Id, org.Id);
-        context.AccountOrganizations.Add(new Common.DataModel.OrganizationAccount() {
+        context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user.Id,
           OrganizationId = org.Id,
         });
@@ -901,11 +901,11 @@
           Token = Guid.NewGuid().ToString(),
         });
         org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new Common.DataModel.OrganizationAccount() {
+        context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user1.Id,
           OrganizationId = org.Id,
         });
-        context.AccountOrganizations.Add(new Common.DataModel.OrganizationAccount() {
+        context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user2.Id,
           OrganizationId = org.Id,
         });
@@ -973,11 +973,11 @@
         });
 
         org = TestUtil.MakeTestOrg(context);
-        context.AccountOrganizations.Add(new Common.DataModel.OrganizationAccount() {
+        context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user1.Id,
           OrganizationId = org.Id,
         });
-        context.AccountOrganizations.Add(new Common.DataModel.OrganizationAccount() {
+        context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user2.Id,
           OrganizationId = org.Id,
         });
