@@ -70,7 +70,11 @@
       }
 
       // TODO: Retain cache options? I think it's important to preserve credentials at least.
-      var cache = preserveCache ? CacheOptions : null;
+      IGitHubCacheDetails cache = null;
+      if (preserveCache || CacheOptions == GitHubCacheDetails.Empty) {
+        cache = _cacheOptions;
+      }
+
       var clone = new GitHubRequest(uri.GetComponents(UriComponents.Path, UriFormat.Unescaped), cache, Restricted) {
         Method = Method,
         AcceptHeaderOverride = AcceptHeaderOverride,
