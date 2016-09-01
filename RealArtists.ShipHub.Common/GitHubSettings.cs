@@ -13,7 +13,7 @@
 
     private static IGitHubHandler CreatePipeline() {
       IGitHubHandler handler = new GitHubHandler();
-      //handler = new ShipHubFilter(handler);
+      handler = new ShipHubFilter(handler);
       handler = new PaginationHandler(handler);
 
       // Revoke expired and invalid tokens
