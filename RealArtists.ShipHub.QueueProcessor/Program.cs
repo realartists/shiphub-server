@@ -116,7 +116,7 @@
 #if DEBUG
         host.Start();
         Console.WriteLine("Press Any Key to Exit.");
-        Console.ReadKey();
+        Console.ReadLine();
         Console.WriteLine("Stopping job host...");
         host.Stop();
 #else
