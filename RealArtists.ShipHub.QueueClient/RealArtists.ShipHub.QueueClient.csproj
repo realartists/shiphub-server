@@ -62,13 +62,12 @@
   <ItemGroup>
     <Compile Include="Messages\IssueViewMessage.cs" />
     <Compile Include="Messages\UserIdMessage.cs" />
-    <Compile Include="Messages\AccountMessage.cs" />
+    <Compile Include="Messages\TargetMessage.cs" />
     <Compile Include="Messages\OrgWebhooksMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
     <Compile Include="Messages\IssueCommentMessage.cs" />
     <Compile Include="Messages\RepoWebhooksMessage.cs" />
     <Compile Include="Messages\IssueMessage.cs" />
-    <Compile Include="Messages\RepositoryMessage.cs" />
     <Compile Include="ShipHubBusClient.cs" />
     <Compile Include="ShipHubTopicNames.cs" />
     <Compile Include="ShipHubQueueNames.cs" />
