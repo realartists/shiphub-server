@@ -26,7 +26,7 @@
           var mockClient = new Mock<IGitHubClient>();
 
           mockClient
-            .Setup(x => x.PingRepoWebhook(It.IsAny<string>(), It.IsAny<long>()))
+            .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>()))
             .Returns((string repoFullName, long hookId) => {
               pings[accessToken].Add(Tuple.Create("repo", repoFullName, hookId));
               return Task.FromResult(new GitHubResponse<bool>(null) {
@@ -35,7 +35,7 @@
             });
 
           mockClient
-              .Setup(x => x.PingOrgWebhook(It.IsAny<string>(), It.IsAny<long>()))
+              .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>()))
               .Returns((string name, long hookId) => {
                 pings[accessToken].Add(Tuple.Create("org", name, hookId));
                 return Task.FromResult(new GitHubResponse<bool>(null) {

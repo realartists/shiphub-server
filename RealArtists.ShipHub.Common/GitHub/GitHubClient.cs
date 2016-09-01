@@ -203,37 +203,37 @@
       return response;
     }
 
-    public Task<GitHubResponse<IEnumerable<Webhook>>> OrgWebhooks(string name, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"/orgs/{name}/hooks", cacheOptions);
       return FetchPaged(request, (Webhook x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Webhook>>> RepoWebhooks(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"/repos/{repoFullName}/hooks", cacheOptions);
       return FetchPaged(request, (Webhook x) => x.Id);
     }
 
-    public Task<GitHubResponse<Webhook>> AddRepoWebhook(string repoFullName, Webhook hook) {
+    public Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook) {
       var request = new GitHubRequest<Webhook>(HttpMethod.Post, $"/repos/{repoFullName}/hooks", hook);
       return Fetch<Webhook>(request);
     }
 
-    public Task<GitHubResponse<Webhook>> AddOrgWebhook(string orgName, Webhook hook) {
+    public Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook) {
       var request = new GitHubRequest<Webhook>(HttpMethod.Post, $"/orgs/{orgName}/hooks", hook);
       return Fetch<Webhook>(request);
     }
 
-    public Task<GitHubResponse<bool>> DeleteRepoWebhook(string repoFullName, long hookId) {
+    public Task<GitHubResponse<bool>> DeleteRepositoryWebhook(string repoFullName, long hookId) {
       var request = new GitHubRequest(HttpMethod.Delete, $"/repos/{repoFullName}/hooks/{hookId}");
       return Fetch<bool>(request);
     }
 
-    public Task<GitHubResponse<bool>> DeleteOrgWebhook(string orgName, long hookId) {
+    public Task<GitHubResponse<bool>> DeleteOrganizationWebhook(string orgName, long hookId) {
       var request = new GitHubRequest(HttpMethod.Delete, $"/orgs/{orgName}/hooks/{hookId}");
       return Fetch<bool>(request);
     }
 
-    public Task<GitHubResponse<Webhook>> EditRepoWebhookEvents(string repoFullName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, string[] events) {
       var request = new GitHubRequest<object>(
         new HttpMethod("PATCH"),
         $"/repos/{repoFullName}/hooks/{hookId}",
@@ -244,7 +244,7 @@
       return Fetch<Webhook>(request);
     }
 
-    public Task<GitHubResponse<Webhook>> EditOrgWebhookEvents(string orgName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, string[] events) {
       var request = new GitHubRequest<object>(
         new HttpMethod("PATCH"),
         $"/orgs/{orgName}/hooks/{hookId}",
@@ -255,19 +255,19 @@
       return Fetch<Webhook>(request);
     }
 
-    public Task<GitHubResponse<bool>> PingOrgWebhook(string name, long hookId) {
       var request = new GitHubRequest<object>(
         new HttpMethod("POST"),
         $"/orgs/{name}/hooks/{hookId}/pings",
         null);
+    public Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId) {
       return Fetch<bool>(request);
     }
 
-    public Task<GitHubResponse<bool>> PingRepoWebhook(string repoFullName, long hookId) {
       var request = new GitHubRequest<object>(
         new HttpMethod("POST"),
         $"/repos/{repoFullName}/hooks/{hookId}/pings",
         null);
+    public Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId) {
       return Fetch<bool>(request);
     }
   }

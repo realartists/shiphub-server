@@ -48,7 +48,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -70,7 +70,7 @@
           });
 
         mock
-          .Setup(x => x.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<string[]>()))
+          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<string[]>()))
           .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
@@ -98,7 +98,7 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
-        mock.Verify(x => x.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
@@ -120,7 +120,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
@@ -155,7 +155,7 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteRepoWebhook(repo.FullName, It.IsAny<long>()))
+          .Setup(x => x.DeleteRepositoryWebhook(repo.FullName, It.IsAny<long>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
@@ -164,7 +164,7 @@
           });
 
         mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -196,7 +196,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -205,7 +205,7 @@
         Webhook installWebHook = null;
 
         mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -268,12 +268,12 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
        mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
           .ThrowsAsync(new Exception("some exception!"));
           
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -301,12 +301,12 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
         mock
-           .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+           .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
            .ThrowsAsync(new Exception("some exception!"));
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -337,7 +337,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -345,7 +345,7 @@
         Webhook installWebHook = null;
 
         mock
-          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -414,7 +414,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
@@ -449,7 +449,7 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteOrgWebhook(org.Login, It.IsAny<long>()))
+          .Setup(x => x.DeleteOrganizationWebhook(org.Login, It.IsAny<long>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
           })
@@ -458,7 +458,7 @@
           });
 
         mock
-          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -502,7 +502,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -524,7 +524,7 @@
           });
 
         mock
-          .Setup(x => x.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<string[]>()))
+          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<string[]>()))
           .Returns((string repoName, long hookId, string[] eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
@@ -549,7 +549,7 @@
           UserId = user.Id,
         }, mock.Object, collectorMock.Object);
 
-        mock.Verify(x => x.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
         Assert.AreEqual(expectedEvents, hook.Events.Split(','));
       }
@@ -576,13 +576,13 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrgWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
             },
           });
         mock
-          .Setup(x => x.AddOrgWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -620,12 +620,12 @@
 
         var mock = new Mock<IGitHubClient>();
         mock
-          .Setup(x => x.RepoWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
         mock
-          .Setup(x => x.AddRepoWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,

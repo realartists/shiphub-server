@@ -65,7 +65,7 @@
 
               if (accountRepository != null) {
                 var client = CreateGitHubClient(accountRepository.Account.Token);
-                pingTasks.Add(client.PingRepoWebhook(accountRepository.Repository.FullName, hook.Id));
+                pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, hook.Id));
               }
             } else if (hook.OrganizationId != null) {
               hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
@@ -80,7 +80,7 @@
 
               if (accountOrganization != null) {
                 var client = CreateGitHubClient(accountOrganization.User.Token);
-                pingTasks.Add(client.PingOrgWebhook(accountOrganization.Organization.Login, hook.Id));
+                pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, hook.Id));
               }
             } else {
               throw new InvalidOperationException("RepositoryId or OrganizationId should be non null");

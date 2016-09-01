@@ -56,14 +56,14 @@
         }
 
         if (hook == null) {
-          var existingHooks = (await client.RepoWebhooks(repo.FullName)).Result
+          var existingHooks = (await client.RepositoryWebhooks(repo.FullName)).Result
             .Where(x => x.Name.Equals("web"))
             .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
-            var deleteResponse = await client.DeleteRepoWebhook(repo.FullName, existingHook.Id);
+            var deleteResponse = await client.DeleteRepositoryWebhook(repo.FullName, existingHook.Id);
             if (deleteResponse.IsError || !deleteResponse.Result) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for repo '{repo.FullName}'");
             }
@@ -79,7 +79,7 @@
           });
           await context.SaveChangesAsync();
 
-          var addRepoHookTask = client.AddRepoWebhook(
+          var addRepoHookTask = client.AddRepositoryWebhook(
             repo.FullName,
             new gm.Webhook() {
               Name = "web",
@@ -108,7 +108,7 @@
             await context.SaveChangesAsync();
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditRepoWebhookEvents(repo.FullName, (long)hook.GitHubId, requiredEvents);
+          var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, requiredEvents);
 
           if (editResponse.IsError) {
             Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
@@ -160,14 +160,14 @@
         }
 
         if (hook == null) {
-          var existingHooks = (await client.OrgWebhooks(org.Login)).Result
+          var existingHooks = (await client.OrganizationWebhooks(org.Login)).Result
             .Where(x => x.Name.Equals("web"))
             .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
-            var deleteResponse = await client.DeleteOrgWebhook(org.Login, existingHook.Id);
+            var deleteResponse = await client.DeleteOrganizationWebhook(org.Login, existingHook.Id);
             if (deleteResponse.IsError || !deleteResponse.Result) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for org '{org.Login}'");
             }
@@ -183,7 +183,7 @@
           });
           await context.SaveChangesAsync();
 
-          var addTask = client.AddOrgWebhook(
+          var addTask = client.AddOrganizationWebhook(
             org.Login,
             new gm.Webhook() {
               Name = "web",
@@ -212,7 +212,7 @@
             await context.SaveChangesAsync();
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditOrgWebhookEvents(org.Login, (long)hook.GitHubId, requiredEvents);
+          var editResponse = await client.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, requiredEvents);
 
           if (editResponse.IsError) {
             Trace.TraceWarning($"Failed to edit hook for org '{org.Login}': {editResponse.Error}");
