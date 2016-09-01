@@ -32,7 +32,9 @@
     }
 
     private async Task HandleRequest(GitHubClient client, GitHubRequest request) {
-      if (request.CacheOptions != null || request.Method != HttpMethod.Get) {
+      if (request.CacheOptions != null
+        || request.Method != HttpMethod.Get
+        || request.Restricted) {
         return;
       }
 
