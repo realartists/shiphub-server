@@ -4,6 +4,7 @@
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using System.Diagnostics.CodeAnalysis;
+  using Types;
 
   public class Repository {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
@@ -23,15 +24,63 @@
 
     public DateTimeOffset Date { get; set; }
 
-    //public long? AssignableMetadataId { get; set; }
-
-    //public long? LabelMetadataId { get; set; }
-
     public virtual Account Account { get; set; }
 
-    //public virtual GitHubMetadata AssignableMetadata { get; set; }
+    public string MetadataJson {
+      get { return Metadata.SerializeObject(); }
+      set { Metadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
 
-    //public virtual GitHubMetadata LabelMetadata { get; set; }
+    [NotMapped]
+    public GitHubMetadata Metadata { get; set; }
+
+    public string AssignableMetadataJson {
+      get { return AssignableMetadata.SerializeObject(); }
+      set { AssignableMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata AssignableMetadata { get; set; }
+
+    public string CommentMetadataJson {
+      get { return CommentMetadata.SerializeObject(); }
+      set { CommentMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata CommentMetadata { get; set; }
+
+    public string EventMetadataJson {
+      get { return EventMetadata.SerializeObject(); }
+      set { EventMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata EventMetadata { get; set; }
+
+    public string IssueMetadataJson {
+      get { return IssueMetadata.SerializeObject(); }
+      set { IssueMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata IssueMetadata { get; set; }
+
+    public string LabelMetadataJson {
+      get { return LabelMetadata.SerializeObject(); }
+      set { LabelMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata LabelMetadata { get; set; }
+
+    public string MilestoneMetadataJson {
+      get { return MilestoneMetadata.SerializeObject(); }
+      set { MilestoneMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata MilestoneMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
