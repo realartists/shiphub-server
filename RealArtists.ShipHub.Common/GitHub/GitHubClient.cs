@@ -154,16 +154,15 @@
       return result;
     }
 
+    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null) {
+      // defaults: filter=all, role=all
+      var request = new GitHubRequest($"/orgs/{orgLogin}/members?role={role}", cacheOptions);
+      return FetchPaged(request, (Account x) => x.Id);
+    }
+
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"/repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions);
       return Fetch<PullRequest>(request);
-    }
-
-    public async Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null) {
-      // defaults: filter=all, role=all
-      var request = new GitHubRequest($"/orgs/{orgLogin}/members?role={role}", cacheOptions);
-      var result = await Fetch<IEnumerable<Account>>(request);
-      return result.Distinct(x => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
