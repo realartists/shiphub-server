@@ -215,8 +215,8 @@
           // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
           // each member.  To workaround, we make two requests and use the filter option
           // to only get admins or non-admins on each request.
-          var membersTask = ghc.OrganizationMembers(message.TargetLogin, role: "member");
-          var adminsTask = ghc.OrganizationMembers(message.TargetLogin, role: "admin");
+          var membersTask = ghc.OrganizationMembers(message.TargetLogin, role: "member", cacheOptions: GitHubCacheDetails.Empty);
+          var adminsTask = ghc.OrganizationMembers(message.TargetLogin, role: "admin", , cacheOptions: GitHubCacheDetails.Empty);
           await Task.WhenAll(membersTask, adminsTask);
 
           var members = membersTask.Result.Result;
