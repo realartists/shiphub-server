@@ -1,22 +1,36 @@
 ﻿namespace WebSocketTestClient {
   using System;
   using System.Configuration;
+  using System.Data.Entity;
   using System.IO;
   using System.IO.Compression;
+  using System.Linq;
   using System.Net.WebSockets;
   using System.Text;
   using System.Threading;
   using System.Threading.Tasks;
   using Newtonsoft.Json.Linq;
   using RealArtists.ShipHub.Common;
+  using RealArtists.ShipHub.Common.DataModel;
 
   static class Program {
     static void Main(string[] args) {
       try {
-        DoAsync().Wait();
+        //DoAsync().Wait();
+        //PingTest().Wait();
       } catch (Exception e) {
         Console.WriteLine(e.ToString());
         Console.ReadKey();
+      }
+    }
+
+    static async Task PingTest() {
+      using (var context = new ShipHubContext()) {
+        var user = await context.Users.SingleAsync(x => x.Login == "kogir");
+        var ghc = GitHubSettings.CreateUserClient(user);
+        var hooks = await ghc.RepositoryWebhooks("realartists/shiphub-server");
+        var hook = hooks.Result.First();
+        var ping = await ghc.PingRepositoryWebhook("realartists/shiphub-server", hook.Id);
       }
     }
 
