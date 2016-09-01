@@ -17,11 +17,11 @@
 
   public static class WebhookHandler {
     public static async Task AddOrUpdateRepoWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] RepoWebhooksMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       IGitHubClient ghc;
       using (var context = new ShipHubContext()) {
-        var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
+        var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
         if (user == null || user.Token.IsNullOrWhiteSpace()) {
           return;
         }
@@ -31,11 +31,11 @@
     }
 
     public static async Task AddOrUpdateRepoWebhooksWithClient(
-      RepoWebhooksMessage message,
+      TargetMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
-        var repo = await context.Repositories.SingleAsync(x => x.Id == message.RepositoryId);
+        var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
         var requiredEvents = new string[] {
           "issues",
           "issue_comment",
@@ -45,7 +45,7 @@
           throw new ApplicationException("ApiHostname not specified in configuration.");
         }
 
-        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.RepositoryId);
+        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
 
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed
@@ -121,11 +121,11 @@
     }
 
     public static async Task AddOrUpdateOrgWebhooks(
-      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] OrgWebhooksMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       IGitHubClient ghc;
       using (var context = new ShipHubContext()) {
-        var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
+        var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
         if (user == null || user.Token.IsNullOrWhiteSpace()) {
           return;
         }
@@ -136,11 +136,11 @@
     }
 
     public static async Task AddOrUpdateOrgWebhooksWithClient(
-      OrgWebhooksMessage message,
+      TargetMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
-        var org = await context.Organizations.SingleAsync(x => x.Id == message.OrganizationId);
+        var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
         var requiredEvents = new string[] {
           "repository",
         };
@@ -149,7 +149,7 @@
           throw new ApplicationException("ApiHostname not specified in configuration.");
         }
 
-        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.OrganizationId);
+        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
 
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed

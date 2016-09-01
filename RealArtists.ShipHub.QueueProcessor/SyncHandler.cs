@@ -116,10 +116,7 @@
                 "james-howard",
                 "aroon", // used in tests only
               }.Contains(x.Owner.Login))
-              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new RepoWebhooksMessage {
-                RepositoryId = x.Id,
-                UserId = user.Id
-              }, $"repo-{x.Id}")))
+              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(x.Id, user.Id), $"repo-{x.Id}")))
             );
           } else {
             logger.WriteLine("Github: Not modified.");
@@ -179,10 +176,7 @@
                             "realartists",
                             "realartists-test",
               }.Contains(x.Organization.Login))
-              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new OrgWebhooksMessage() {
-                UserId = user.Id,
-                OrganizationId = x.Organization.Id,
-              }, $"org-{x.Organization.Id}"))));
+              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(user.Id, x.Organization.Id), $"org-{x.Organization.Id}"))));
           } else {
             // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
             logger.WriteLine("Github: Not modified.");
