@@ -153,25 +153,23 @@
         new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken });
     }
 
-    public Task UpdateMetaLimit(string table, long id, GitHubResponse response) {
-      return UpdateMetaLimit(table, "MetadataJson", id, response);
+    public Task UpdateMetadata(string table, long id, GitHubResponse response) {
+      return UpdateMetadata(table, "MetadataJson", id, response);
     }
 
-    public Task UpdateMetaLimit(string table, string column, long id, GitHubResponse response) {
-      return UpdateMetaLimit(table, column, id, GitHubMetadata.FromResponse(response), response.CacheData.AccessToken, response.RateLimit);
+    public Task UpdateMetadata(string table, string column, long id, GitHubResponse response) {
+      return UpdateMetadata(table, column, id, GitHubMetadata.FromResponse(response));
     }
 
-    public Task UpdateMetaLimit(string table, string column, long id, GitHubMetadata metadata, string accessToken, GitHubRateLimit limit) {
+    public Task UpdateMetadata(string table, string column, long id, GitHubMetadata metadata) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        $"UPDATE [{table}] SET [{column}] = @Metadata WHERE Id = @Id AND([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))"
-        + "\n\nEXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
+        $@"UPDATE [{table}] SET
+             [{column}] = @Metadata
+           WHERE Id = @Id
+             AND ([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))",
         new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
-        new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() },
-        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken },
-        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
-        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
-        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
+        new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
     public Task UpdateRateLimit(GitHubRateLimit limit) {

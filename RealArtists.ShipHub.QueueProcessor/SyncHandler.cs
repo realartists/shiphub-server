@@ -50,7 +50,7 @@
             logger.WriteLine($"GitHub: Not modified.");
           }
 
-          tasks.Add(context.UpdateMetaLimit("Accounts", user.Id, userResponse));
+          tasks.Add(context.UpdateMetadata("Accounts", user.Id, userResponse));
           tasks.Add(notifyChanges.Send(changes));
         } else {
           logger.WriteLine($"Waiting: Using cache from {user.Metadata.LastRefresh:o}");
@@ -126,7 +126,7 @@
             logger.WriteLine("Github: Not modified.");
           }
 
-          tasks.Add(context.UpdateMetaLimit("Accounts", "RepoMetadataJson", user.Id, repoResponse));
+          tasks.Add(context.UpdateMetadata("Accounts", "RepoMetadataJson", user.Id, repoResponse));
         } else {
           logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
         }
@@ -182,7 +182,7 @@
             logger.WriteLine("Github: Not modified.");
           }
 
-          tasks.Add(context.UpdateMetaLimit("Accounts", "OrgMetadataJson", user.Id, orgResponse));
+          tasks.Add(context.UpdateMetadata("Accounts", "OrgMetadataJson", user.Id, orgResponse));
         } else {
           logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
         }
@@ -231,7 +231,7 @@
             .Concat(admins.Select(x => Tuple.Create(x.Id, true)))));
 
           tasks.Add(notifyChanges.Send(changes));
-          tasks.Add(context.UpdateMetaLimit("Accounts", "OrgMetadataJson", org.Id, membersTask.Result));
+          tasks.Add(context.UpdateMetadata("Accounts", "OrgMetadataJson", org.Id, membersTask.Result));
         } else {
           logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
         }
