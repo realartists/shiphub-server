@@ -14,7 +14,7 @@
     Task NotifyChanges(IChangeSummary changeSummary);
     Task SyncAccount(long userId);
     Task SyncAccountRepositories(long userId);
-    Task SyncRepositoryIssueTimeline(long userId, string repositoryFullName, int issueNumber);
+    Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId);
   }
 
   public class ShipHubBusClient : IShipHubBusClient {
@@ -150,10 +150,10 @@
       }
     }
 
-    public async Task SyncRepositoryIssueTimeline(long userId, string repositoryFullName, int issueNumber) {
+    public async Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId) {
       var queue = QueueClientForName(ShipHubQueueNames.SyncRepositoryIssueTimeline);
 
-      var message = new IssueViewMessage(userId, repositoryFullName, issueNumber);
+      var message = new IssueViewMessage(repositoryFullName, issueNumber, forUserId);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await queue.SendAsync(bm);

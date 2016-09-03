@@ -2,14 +2,14 @@
   public class IssueViewMessage {
     public IssueViewMessage() { }
 
-    public IssueViewMessage(long userId, string repoFullName, int issueNumber) {
+    public IssueViewMessage(string repoFullName, int issueNumber, long forUserId) {
       RepositoryFullName = repoFullName;
       Number = issueNumber;
-      UserId = userId;
+      ForUserId = forUserId;
     }
 
     public int Number { get; set; }
     public string RepositoryFullName { get; set; }
-    public long UserId { get; set; }
+    public long ForUserId { get; set; }
   }
 }

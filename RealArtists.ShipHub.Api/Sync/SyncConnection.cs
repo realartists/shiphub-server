@@ -100,7 +100,7 @@
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
           var qc = new ShipHubBusClient();
-          await qc.SyncRepositoryIssueTimeline(_user.UserId, repoFullName, issueNumber);
+          await qc.SyncRepositoryIssueTimeline(repoFullName, issueNumber, _user.UserId);
           return;
         default:
           // Ignore unknown messages for now

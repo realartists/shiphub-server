@@ -758,12 +758,14 @@
       }
     }
 
-    private static HashSet<string> _FilterEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
+    private static HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
     public static async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueViewMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<TargetMessage> syncIssueComments,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueReactions)] IAsyncCollector<TargetMessage> syncRepoIssueReactions,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
+      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<TargetMessage> syncRepoIssues,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger) {
       ///////////////////////////////////////////
       /* NOTE!
        * We can't sync the timeline incrementally, because the client wants commit and
@@ -775,231 +777,249 @@
       //////////////////////////////////////////
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
-        ChangeSummary changes = null;
+        ChangeSummary changes = new ChangeSummary();
 
-        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
         if (user == null || user.Token.IsNullOrWhiteSpace()) {
           return;
         }
 
         var ghc = GitHubSettings.CreateUserClient(user);
 
-        // TODO: Just trigger a full repo issue sync once incremental is implemented
-        var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number);
-        var issue = issueResponse.Result;
-
-        var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
-        var timeline = timelineResponse.Result;
-
-        // Now just filter
-        var filteredEvents = timeline.Where(x => !_FilterEvents.Contains(x.Event)).ToArray();
-
-        // HACK: This is broken. Will fail when the issue is not yet saved to the DB.
-        var issueDetails = await context.Issues
-          .Where(x => x.Repository.FullName == message.RepositoryFullName)
-          .Where(x => x.Number == message.Number)
-          .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
+        // Client doesn't send repoId :(
+        var repoId = await context.Repositories
+          .Where(x => x.FullName == message.RepositoryFullName)
+          .Select(x => x.Id)
           .SingleAsync();
 
-        // For adding to the DB later
-        var accounts = new List<gm.Account>();
-        accounts.Add(issue.ClosedBy);
-        accounts.Add(issue.User);
-        if (issue.Assignees.Any()) {
-          accounts.AddRange(issue.Assignees);
-        }
+        // Look up the issue info
+        var issueInfo = await context.Issues
+          .Where(x => x.RepositoryId == repoId && x.Number == message.Number)
+          .SingleOrDefaultAsync();
 
-        foreach (var tl in filteredEvents) {
-          accounts.Add(tl.Actor);
-          accounts.Add(tl.Assignee);
-          accounts.Add(tl.Source?.Actor);
-        }
+        var issueId = issueInfo?.Id;
 
-        // Find all events with associated commits, and embed them.
-        var withCommits = filteredEvents.Where(x => !x.CommitUrl.IsNullOrWhiteSpace()).ToArray();
-        var commits = withCommits.Select(x => x.CommitUrl).Distinct();
+        // Sadly there exist cases where the client knows about issues before the server.
+        // Even hooks aren't fast enough to completely prevent this.
+        // The intercepting proxy should alleviate most but not all cases.
+        // In the meantime, always discover/refresh the issue on view
+        var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number, issueInfo?.Metadata);
+        if (issueResponse.Status != HttpStatusCode.NotModified) {
+          var update = issueResponse.Result;
 
-        if (commits.Any()) {
-          var commitLookups = commits
-            .Select(x => {
-              var parts = x.Split('/');
-              var numParts = parts.Length;
-              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-              var sha = parts[numParts - 1];
-              return new {
-                Id = x,
-                Task = ghc.Commit(repoName, sha),
-              };
-            })
-            .ToDictionary(x => x.Id, x => x.Task);
+          issueId = update.Id;
 
-          // TODO: Lookup Repo Name->ID mapping
+          // TODO: Unify this code with other issue update places to reduce bugs.
 
-          await Task.WhenAll(commitLookups.Values);
+          var upAccounts = new[] { update.User, update.ClosedBy }.Concat(update.Assignees)
+              .Where(x => x != null)
+              .Distinct(x => x.Id);
+          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(upAccounts)));
 
-          foreach (var item in withCommits) {
-            var lookup = commitLookups[item.CommitUrl].Result;
-
-            // best effort - requests will fail when the user doesn't have source access.
-            // see Nick's account and references from the github-beta repo
-            if (lookup.IsError) {
-              continue;
-            }
-
-            var commit = lookup.Result;
-            accounts.Add(commit.Author);
-            accounts.Add(commit.Committer);
-            item.ExtensionDataDictionary["ship_commit_message"] = commit.CommitDetails.Message;
-            if (commit.Author != null) {
-              item.ExtensionDataDictionary["ship_commit_author"] = JObject.FromObject(commit.Author);
-            }
-            if (commit.Committer != null) {
-              item.ExtensionDataDictionary["ship_commit_committer"] = JObject.FromObject(commit.Committer);
-            }
+          if (update.Milestone != null) {
+            changes.UnionWith(await context.BulkUpdateMilestones(repoId, SharedMapper.Map<IEnumerable<MilestoneTableType>>(new[] { update.Milestone })));
           }
+
+          changes.UnionWith(await context.BulkUpdateIssues(
+            repoId,
+            SharedMapper.Map<IEnumerable<IssueTableType>>(new[] { update }),
+            update.Labels?.Select(y => new LabelTableType() { ItemId = update.Id, Color = y.Color, Name = y.Name }),
+            update.Assignees?.Select(y => new MappingTableType() { Item1 = update.Id, Item2 = y.Id })
+          ));
         }
 
-        var withSources = filteredEvents.Where(x => x.Source != null).ToArray();
-        var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
+        tasks.Add(context.UpdateMetadata("Issues", "MetadataJson", issueId.Value, issueResponse));
 
-        if (sources.Any()) {
-          var sourceLookups = sources
-            .Select(x => {
-              var parts = x.Split('/');
-              var numParts = parts.Length;
-              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-              var issueNum = int.Parse(parts[numParts - 1]);
-              return new {
-                Id = x,
-                Task = ghc.Issue(repoName, issueNum),
-              };
-            })
-            .ToDictionary(x => x.Id, x => x.Task);
+        // This will be cached per-user by the ShipHubFilter.
+        var timelineResponse = await ghc.Timeline(message.RepositoryFullName, message.Number);
+        if (timelineResponse.Status != HttpStatusCode.NotModified) {
+          var timeline = timelineResponse.Result;
 
-          await Task.WhenAll(sourceLookups.Values);
+          // Now just filter
+          var filteredEvents = timeline.Where(x => !_IgnoreTimelineEvents.Contains(x.Event)).ToArray();
 
-          var prLookups = sourceLookups.Values
-            .Where(x => x.Result.Result.PullRequest != null)
-            .Select(x => {
-              var url = x.Result.Result.PullRequest.Url;
-              var parts = url.Split('/');
-              var numParts = parts.Length;
-              var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
-              var prNum = int.Parse(parts[numParts - 1]);
-              return new {
-                Id = url,
-                Task = ghc.PullRequest(repoName, prNum),
-              };
-            })
-            .ToDictionary(x => x.Id, x => x.Task);
+          // For adding to the DB later
+          var accounts = new List<gm.Account>();
 
-          await Task.WhenAll(prLookups.Values);
-
-          foreach (var item in withSources) {
-            var refIssue = sourceLookups[item.Source.IssueUrl].Result.Result;
-            accounts.Add(item.Source.Actor);
-            if (refIssue.Assignees.Any()) {
-              accounts.AddRange(refIssue.Assignees); // Do we need both assignee and assignees? I think yes.
-            }
-            accounts.Add(refIssue.ClosedBy);
-            accounts.Add(refIssue.User);
-
-            item.ExtensionDataDictionary["ship_issue_state"] = refIssue.State;
-            item.ExtensionDataDictionary["ship_issue_title"] = refIssue.Title;
-
-            if (refIssue.PullRequest != null) {
-              item.ExtensionDataDictionary["ship_is_pull_request"] = true;
-
-              var pr = prLookups[refIssue.PullRequest.Url].Result.Result;
-              item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
-            }
+          foreach (var tl in filteredEvents) {
+            accounts.Add(tl.Actor);
+            accounts.Add(tl.Assignee);
+            accounts.Add(tl.Source?.Actor);
           }
-        }
 
-        // Update accounts
-        var uniqueAccounts = accounts
-          .Where(x => x != null)
-          .Distinct(x => x.Login);
-        var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
-        changes = await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam);
+          // Find all events with associated commits, and embed them.
+          var withCommits = filteredEvents.Where(x => !x.CommitUrl.IsNullOrWhiteSpace()).ToArray();
+          var commits = withCommits.Select(x => x.CommitUrl).Distinct();
 
-        // Update issue
-        changes.UnionWith(await context.BulkUpdateIssues(
-          issueDetails.RepositoryId,
-          new[] { SharedMapper.Map<IssueTableType>(issue) },
-          issue.Labels?.Select(x => new LabelTableType() {
-            ItemId = issue.Id,
-            Color = x.Color,
-            Name = x.Name,
-          }),
-          issue.Assignees?.Select(x => new MappingTableType() {
-            Item1 = issue.Id,
-            Item2 = x.Id,
-          })));
+          if (commits.Any()) {
+            var commitLookups = commits
+              .Select(x => {
+                var parts = x.Split('/');
+                var numParts = parts.Length;
+                var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+                var sha = parts[numParts - 1];
+                return new {
+                  Id = x,
+                  Task = ghc.Commit(repoName, sha, GitHubCacheDetails.Empty),
+                };
+              })
+              .ToDictionary(x => x.Id, x => x.Task);
 
-        var issueMessage = new TargetMessage(issueDetails.IssueId, user.Id);
+            // TODO: Lookup Repo Name->ID mapping
 
-        // Now safe to sync reactions
-        tasks.Add(syncRepoIssueReactions.AddAsync(issueMessage));
+            await Task.WhenAll(commitLookups.Values);
 
-        // If we find comments, sync them
-        // TODO: Incrementally
-        if (timeline.Any(x => x.Event == "commented")) {
-          tasks.Add(syncIssueComments.AddAsync(issueMessage));
-          // Can't sync comment reactions yet in case they don't exist
-        }
+            foreach (var item in withCommits) {
+              var lookup = commitLookups[item.CommitUrl].Result;
 
-        // Cleanup the data
-        foreach (var item in filteredEvents) {
-          // Oh GitHub, how I hate thee. Why can't you provide ids?
-          // We're regularly seeing GitHub ids as large as 31 bits.
-          // We can only store four things this way because we only have two free bits :(
-          // TODO: HACK! THIS IS BRITTLE AND WILL BREAK!
-          var ones31 = 0x7FFFFFFFL;
-          var issuePart = (issueDetails.IssueId & ones31);
-          if (issuePart != issueDetails.IssueId) {
-            throw new NotSupportedException($"IssueId {issueDetails.IssueId} exceeds 31 bits!");
-          }
-          switch (item.Event) {
-            case "cross-referenced":
-              // high bits 11
-              var commentPart = (item.Source.CommentId & ones31);
-              if (commentPart != item.Source.CommentId) {
-                throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 31 bits!");
+              // best effort - requests will fail when the user doesn't have source access.
+              // see Nick's account and references from the github-beta repo
+              if (lookup.IsError) {
+                continue;
               }
-              item.Id = ((long)3) << 62 | commentPart << 31 | issuePart;
-              item.Actor = item.Source.Actor;
-              break;
-            case "committed":
-              // high bits 10
-              var sha = item.ExtensionDataDictionary["sha"].ToObject<string>();
-              var shaBytes = SoapHexBinary.Parse(sha).Value;
-              var shaPart = BitConverter.ToInt64(shaBytes, 0) & ones31;
-              item.Id = ((long)2) << 62 | shaPart << 31 | issuePart;
-              item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
-              break;
-            default:
-              break;
+
+              var commit = lookup.Result;
+              accounts.Add(commit.Author);
+              accounts.Add(commit.Committer);
+              item.ExtensionDataDictionary["ship_commit_message"] = commit.CommitDetails.Message;
+              if (commit.Author != null) {
+                item.ExtensionDataDictionary["ship_commit_author"] = JObject.FromObject(commit.Author);
+              }
+              if (commit.Committer != null) {
+                item.ExtensionDataDictionary["ship_commit_committer"] = JObject.FromObject(commit.Committer);
+              }
+            }
           }
+
+          var withSources = filteredEvents.Where(x => x.Source != null).ToArray();
+          var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
+
+          if (sources.Any()) {
+            var sourceLookups = sources
+              .Select(x => {
+                var parts = x.Split('/');
+                var numParts = parts.Length;
+                var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+                var issueNum = int.Parse(parts[numParts - 1]);
+                return new {
+                  Id = x,
+                  Task = ghc.Issue(repoName, issueNum, GitHubCacheDetails.Empty),
+                };
+              })
+              .ToDictionary(x => x.Id, x => x.Task);
+
+            await Task.WhenAll(sourceLookups.Values);
+
+            var prLookups = sourceLookups.Values
+              .Where(x => x.Result.Result.PullRequest != null)
+              .Select(x => {
+                var url = x.Result.Result.PullRequest.Url;
+                var parts = url.Split('/');
+                var numParts = parts.Length;
+                var repoName = parts[numParts - 4] + "/" + parts[numParts - 3];
+                var prNum = int.Parse(parts[numParts - 1]);
+                return new {
+                  Id = url,
+                  Task = ghc.PullRequest(repoName, prNum, GitHubCacheDetails.Empty),
+                };
+              })
+              .ToDictionary(x => x.Id, x => x.Task);
+
+            await Task.WhenAll(prLookups.Values);
+
+            foreach (var item in withSources) {
+              var refIssue = sourceLookups[item.Source.IssueUrl].Result.Result;
+              accounts.Add(item.Source.Actor);
+              if (refIssue.Assignees.Any()) {
+                accounts.AddRange(refIssue.Assignees); // Do we need both assignee and assignees? I think yes.
+              }
+              accounts.Add(refIssue.ClosedBy);
+              accounts.Add(refIssue.User);
+
+              item.ExtensionDataDictionary["ship_issue_state"] = refIssue.State;
+              item.ExtensionDataDictionary["ship_issue_title"] = refIssue.Title;
+
+              if (refIssue.PullRequest != null) {
+                item.ExtensionDataDictionary["ship_is_pull_request"] = true;
+
+                var pr = prLookups[refIssue.PullRequest.Url].Result.Result;
+                item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
+              }
+            }
+          }
+
+          // Update accounts
+          var uniqueAccounts = accounts
+            .Where(x => x != null)
+            .Distinct(x => x.Login);
+          var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
+          changes.UnionWith(await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam));
+
+          var issueMessage = new TargetMessage(issueId.Value, user.Id);
+
+          // Now safe to sync reactions
+          tasks.Add(syncRepoIssueReactions.AddAsync(issueMessage));
+
+          // If we find comments, sync them
+          // TODO: Incrementally
+          if (timeline.Any(x => x.Event == "commented")) {
+            tasks.Add(syncIssueComments.AddAsync(issueMessage));
+            // Can't sync comment reactions yet in case they don't exist
+          }
+
+          // Cleanup the data
+          foreach (var item in filteredEvents) {
+            // Oh GitHub, how I hate thee. Why can't you provide ids?
+            // We're regularly seeing GitHub ids as large as 31 bits.
+            // We can only store four things this way because we only have two free bits :(
+            // TODO: HACK! THIS IS BRITTLE AND WILL BREAK!
+            var ones31 = 0x7FFFFFFFL;
+            var issuePart = (issueId.Value & ones31);
+            if (issuePart != issueId.Value) {
+              throw new NotSupportedException($"IssueId {issueId.Value} exceeds 31 bits!");
+            }
+            switch (item.Event) {
+              case "cross-referenced":
+                // high bits 11
+                var commentPart = (item.Source.CommentId & ones31);
+                if (commentPart != item.Source.CommentId) {
+                  throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 31 bits!");
+                }
+                item.Id = ((long)3) << 62 | commentPart << 31 | issuePart;
+                item.Actor = item.Source.Actor;
+                break;
+              case "committed":
+                // high bits 10
+                var sha = item.ExtensionDataDictionary["sha"].ToObject<string>();
+                var shaBytes = SoapHexBinary.Parse(sha).Value;
+                var shaPart = BitConverter.ToInt64(shaBytes, 0) & ones31;
+                item.Id = ((long)2) << 62 | shaPart << 31 | issuePart;
+                item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
+                break;
+              default:
+                break;
+            }
 
 #if DEBUG
-          // Sanity check whilst debugging
-          if (item.Id == 0
-            || item.CreatedAt == DateTimeOffset.MinValue) {
-            // Ruh roh
-            Debugger.Break();
-          }
+            // Sanity check whilst debugging
+            if (item.Id == 0
+              || item.CreatedAt == DateTimeOffset.MinValue) {
+              // Ruh roh
+              Debugger.Break();
+            }
 #endif
+          }
+
+          // This conversion handles the restriction field and hash.
+          var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
+
+          // Set issueId
+          foreach (var item in events) {
+            item.IssueId = issueId.Value;
+          }
+          changes.UnionWith(await context.BulkUpdateTimelineEvents(user.Id, repoId, events, accountsParam.Select(x => x.Id)));
         }
 
-        // This conversion handles the restriction field and hash.
-        var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
-
-        // Set issueId
-        foreach (var item in events) {
-          item.IssueId = issueDetails.IssueId;
-        }
-        changes.UnionWith(await context.BulkUpdateTimelineEvents(user.Id, issueDetails.RepositoryId, events, accountsParam.Select(x => x.Id)));
         tasks.Add(notifyChanges.Send(changes));
         await Task.WhenAll(tasks);
       }
