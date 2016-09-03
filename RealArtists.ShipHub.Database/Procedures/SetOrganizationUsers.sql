@@ -15,7 +15,7 @@ BEGIN
 
   MERGE INTO OrganizationAccounts WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (SELECT Item1 as UserId, Item2 as [Admin] FROM @UserIds) as [Source]
-  ON ([Target].UserId = [Source].UserId  AND [Target].OrganizationId = @OrganizationId)
+  ON ([Target].OrganizationId = @OrganizationId AND [Target].UserId = [Source].UserId)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (UserId, OrganizationId, [Admin])
@@ -29,18 +29,20 @@ BEGIN
     THEN DELETE
   OUTPUT COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (UserId, [Action]);
 
-  -- Deleted or edited users
-  UPDATE OrganizationLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
-    [RowVersion] = DEFAULT
-  FROM @Changes 
-    INNER JOIN OrganizationLog ON (UserId = AccountId AND OrganizationId = @OrganizationId)
+  IF (@@ROWCOUNT > 0)
+  BEGIN
+    -- If users added or removed, bump the org
+    UPDATE OrganizationLog WITH (UPDLOCK SERIALIZABLE) SET
+      [RowVersion] = DEFAULT
+    WHERE OrganizationId = @OrganizationId AND AccountId = @OrganizationId
 
-  -- New users
-  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId, [Delete])
-  SELECT @OrganizationId, c.UserId, 0
-  FROM @Changes as c
-  WHERE NOT EXISTS (SELECT * FROM OrganizationLog WHERE AccountId = UserId AND OrganizationId = @OrganizationId)
+    -- New users
+    INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId)
+    SELECT @OrganizationId, c.UserId
+    FROM @Changes as c
+    WHERE c.[Action] = 'INSERT'
+      AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = @OrganizationId AND AccountId = UserId)
+  END
 
   -- Return updated organizations and users
   SELECT @OrganizationId as OrganizationId, NULL as RepositoryId, UserId

@@ -44,9 +44,9 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
 
   -- New Organizations reference themselves
-  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId, [Delete])
+  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId)
   OUTPUT INSERTED.OrganizationId INTO @Updates (OrganizationId)
-  SELECT c.Id, c.Id, 0
+  SELECT c.Id, c.Id
   FROM @Changes as c
   WHERE c.[Type] = 'org'
     AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)

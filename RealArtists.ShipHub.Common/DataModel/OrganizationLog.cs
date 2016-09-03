@@ -11,8 +11,6 @@
 
     public long AccountId { get; set; }
 
-    public bool Delete { get; set; }
-
     [ConcurrencyCheck]
     [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
     public long RowVersion { get; set; }

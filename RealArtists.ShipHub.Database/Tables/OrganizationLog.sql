@@ -2,7 +2,6 @@
   [Id]             BIGINT NOT NULL IDENTITY(1,1),
   [OrganizationId] BIGINT NOT NULL,
   [AccountId]      BIGINT NOT NULL,
-  [Delete]         BIT    NOT NULL,
   [RowVersion]     BIGINT NOT NULL CONSTRAINT [DF_OrganizationLog_RowVersion] DEFAULT (NEXT VALUE FOR [dbo].[SyncIdentifier]),
   CONSTRAINT [PK_OrganizationLog] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_OrganizationLog_OrganizationId_Accounts_Id] FOREIGN KEY ([OrganizationId]) REFERENCES [dbo].[Accounts] ([Id]),
