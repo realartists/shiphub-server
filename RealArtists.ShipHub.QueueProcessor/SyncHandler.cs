@@ -156,6 +156,8 @@
           return;
         }
 
+        var allUserOrgs = new List<long>();
+
         logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
         if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
           logger.WriteLine("Polling: Organization membership.");
@@ -165,6 +167,8 @@
           if (orgResponse.Status != HttpStatusCode.NotModified) {
             logger.WriteLine("Github: Changed. Saving changes.");
             var orgs = orgResponse.Result;
+
+            allUserOrgs.AddRange(orgs.Select(x => x.Organization.Id));
 
             changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
             tasks.Add(notifyChanges.Send(changes));
@@ -189,13 +193,17 @@
 
         await Task.WhenAll(tasks);
 
-        var orgIds = await context.OrganizationAccounts
+        var existingIds = await context.OrganizationAccounts
           .Where(x => x.UserId == user.Id)
           .Select(x => x.OrganizationId)
           .ToArrayAsync();
 
+        if (existingIds.Any()) {
+          allUserOrgs.AddRange(existingIds);
+        }
+
         // Refresh member list as well
-        await Task.WhenAll(orgIds.Select(x => syncOrgMembers.AddAsync(new TargetMessage(x, user.Id))));
+        await Task.WhenAll(allUserOrgs.Distinct().Select(x => syncOrgMembers.AddAsync(new TargetMessage(x, user.Id))));
       }
     }
 
