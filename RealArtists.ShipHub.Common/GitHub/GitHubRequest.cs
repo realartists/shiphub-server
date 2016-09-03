@@ -36,7 +36,7 @@
     public IGitHubCacheDetails CacheOptions {
       get { return _cacheOptions; }
       set {
-        if (Restricted && value != null) {
+        if (Restricted && _cacheOptions != null && value != null) {
           throw new InvalidOperationException("Cannot change cache options on restricted requests.");
         }
         _cacheOptions = value;
