@@ -33,7 +33,7 @@
     }
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
-      client.RateLimit.ThrowIfUnder(RateLimitFloor);
+      client.RateLimit.ThrowIfUnder(RateLimitFloor, client.UserInfo);
 
       GitHubResponse<T> result = null;
 

@@ -11,17 +11,19 @@
   public class GitHubClient : IGitHubClient {
     public Uri ApiRoot { get; } = new Uri("https://api.github.com/");
     public string DefaultToken { get; set; }
-    public ProductInfoHeaderValue UserAgent { get; private set; }
+    public ProductInfoHeaderValue UserAgent { get; }
+    public string UserInfo { get; }
 
     // Rate limit concurrency requires some finesse
     private object _rateLimitLock = new object();
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
 
-    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string accessToken = null, GitHubRateLimit rateLimit = null) {
+    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, string accessToken = null, GitHubRateLimit rateLimit = null) {
       Handler = handler;
-      UserAgent = new ProductInfoHeaderValue(productName, productVersion);
       DefaultToken = accessToken;
+      UserAgent = new ProductInfoHeaderValue(productName, productVersion);
+      UserInfo = userInfo;
       _rateLimit = rateLimit;
     }
 

@@ -13,9 +13,9 @@
   }
 
   public static class GitHubRateLimitExtensions {
-    public static void ThrowIfUnder(this GitHubRateLimit rateLimit, uint floor) {
+    public static void ThrowIfUnder(this GitHubRateLimit rateLimit, uint floor, string userInfo) {
       if (rateLimit != null && rateLimit.IsUnder(floor)) {
-        throw new GitHubException($"Rate limit exceeded. Only {rateLimit.RateLimitRemaining} requests left before {rateLimit.RateLimitReset:o}.");
+        throw new GitHubException($"Rate limit exceeded. Only {rateLimit.RateLimitRemaining} requests left before {rateLimit.RateLimitReset:o} ({userInfo}).");
       }
     }
   }

@@ -42,11 +42,11 @@
         };
       }
 
-      return CreateUserClient(user.Token, rateLimit);
+      return CreateUserClient(user.Token, $"{user.Login}/{user.Id}", rateLimit);
     }
 
-    public static GitHubClient CreateUserClient(string accessToken, GitHubRateLimit rateLimit = null) {
-      return new GitHubClient(HandlerPipeline, ApplicationName, ApplicationVersion, accessToken, rateLimit);
+    public static GitHubClient CreateUserClient(string accessToken, string userInfo, GitHubRateLimit rateLimit = null) {
+      return new GitHubClient(HandlerPipeline, ApplicationName, ApplicationVersion, userInfo, accessToken, rateLimit);
     }
   }
 }

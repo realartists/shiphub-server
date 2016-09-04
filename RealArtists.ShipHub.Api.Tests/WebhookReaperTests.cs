@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
-  using System.Text;
   using System.Threading.Tasks;
   using Common.DataModel;
   using Common.GitHub;
@@ -17,18 +16,18 @@
       Dictionary<string, List<Tuple<string, string, long>>> pings) {
       var mock = new Mock<WebhookReaper>() { CallBase = true };
       mock
-        .Setup(x => x.CreateGitHubClient(It.IsAny<string>()))
-        .Returns((string accessToken) => {
-          if (!pings.ContainsKey(accessToken)) {
-            pings[accessToken] = new List<Tuple<string, string, long>>();
+        .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
+        .Returns((User user) => {
+          if (!pings.ContainsKey(user.Token)) {
+            pings[user.Token] = new List<Tuple<string, string, long>>();
           }
-          
+
           var mockClient = new Mock<IGitHubClient>();
 
           mockClient
             .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>()))
             .Returns((string repoFullName, long hookId) => {
-              pings[accessToken].Add(Tuple.Create("repo", repoFullName, hookId));
+              pings[user.Token].Add(Tuple.Create("repo", repoFullName, hookId));
               return Task.FromResult(new GitHubResponse<bool>(null) {
                 Result = true,
               });
@@ -37,7 +36,7 @@
           mockClient
               .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>()))
               .Returns((string name, long hookId) => {
-                pings[accessToken].Add(Tuple.Create("org", name, hookId));
+                pings[user.Token].Add(Tuple.Create("org", name, hookId));
                 return Task.FromResult(new GitHubResponse<bool>(null) {
                   Result = true,
                 });
@@ -66,7 +65,7 @@
       var env = new Environment();
       env.user1 = TestUtil.MakeTestUser(context, 3001, "aroon");
       env.user2 = TestUtil.MakeTestUser(context, 3002, "alok");
-      
+
       env.org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
       env.org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
 
@@ -113,7 +112,7 @@
         Tuple.Create(env.user2.Id, true),
       });
       await context.SaveChangesAsync();
-      
+
       return env;
     }
 
@@ -177,7 +176,7 @@
     public async Task WillNotPingOrgHooksWhenWeCannotFindAdmins() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
-        
+
         // org1's hook is stale; org2's hook is fresh.
         env.org1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
         env.org2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-23);

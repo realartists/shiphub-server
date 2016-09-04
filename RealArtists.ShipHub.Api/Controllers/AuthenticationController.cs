@@ -37,7 +37,7 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userClient = GitHubSettings.CreateUserClient(request.AccessToken);
+      var userClient = GitHubSettings.CreateUserClient(request.AccessToken, "ShipHub Login");
       // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
       var userResponse = await userClient.User();
 

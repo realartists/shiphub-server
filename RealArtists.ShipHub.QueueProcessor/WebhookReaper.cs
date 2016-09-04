@@ -1,14 +1,14 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
-  using System.Linq;
+  using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Diagnostics.CodeAnalysis;
+  using System.Linq;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
-  using System.Collections.Generic;
-  using System.Diagnostics.CodeAnalysis;
 
   public class WebhookReaper {
 
@@ -17,8 +17,8 @@
       return new WebhookReaper().Run();
     }
 
-    public virtual IGitHubClient CreateGitHubClient(string accessToken) {
-      return GitHubSettings.CreateUserClient(accessToken);
+    public virtual IGitHubClient CreateGitHubClient(User user) {
+      return GitHubSettings.CreateUserClient(user);
     }
 
     public virtual DateTimeOffset UtcNow {
@@ -40,7 +40,7 @@
            .Where(x => x.LastSeen <= staleDateTimeOffset && (x.LastPing == null || x.LastPing <= pingTime))
            .Take(batchSize)
            .ToList();
-          
+
           var pingTasks = new List<Task<GitHubResponse<bool>>>();
 
           foreach (var hook in staleHooks) {
@@ -64,7 +64,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountRepository != null) {
-                var client = CreateGitHubClient(accountRepository.Account.Token);
+                var client = CreateGitHubClient(accountRepository.Account);
                 pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, hook.Id));
               }
             } else if (hook.OrganizationId != null) {
@@ -79,7 +79,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountOrganization != null) {
-                var client = CreateGitHubClient(accountOrganization.User.Token);
+                var client = CreateGitHubClient(accountOrganization.User);
                 pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, hook.Id));
               }
             } else {
