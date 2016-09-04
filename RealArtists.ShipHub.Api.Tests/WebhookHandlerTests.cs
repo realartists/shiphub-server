@@ -117,7 +117,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
@@ -190,7 +190,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -259,7 +259,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -289,7 +289,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -322,7 +322,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
@@ -396,7 +396,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
@@ -552,7 +552,7 @@
         var mock = new Mock<IGitHubClient>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
             },
@@ -593,7 +593,7 @@
 
         var mock = new Mock<IGitHubClient>();
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
           });
