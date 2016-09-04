@@ -13,6 +13,20 @@ BEGIN
     [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
   )
 
+  -- Check for FullName collisions and assume the existing repo has been deleted
+  DECLARE @DeletedRepositories ItemListTableType
+  
+  INSERT INTO @DeletedRepositories (Item)
+  SELECT r.Id
+  FROM @Repositories as rvar
+    INNER JOIN Repositories as r ON (r.FullName = rvar.FullName AND r.Id != rvar.Id)
+  
+  IF EXISTS (SELECT * FROM @DeletedRepositories)
+  BEGIN
+    EXEC [dbo].[DeleteRepositories] @Repositories = @DeletedRepositories
+  END
+
+  -- It's business time
   MERGE INTO Repositories WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [AccountId], [Private], [Name], [FullName]

@@ -15,4 +15,7 @@
   <SuppressedFile FilePath="Procedures\RevokeAccessToken.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\DeleteRepositories.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
 </StaticCodeAnalysis>
