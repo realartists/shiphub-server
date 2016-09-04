@@ -31,7 +31,7 @@
 
     // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
-      Observable.Interval(TimeSpan.FromMinutes(1))
+      Observable.Interval(TimeSpan.FromMinutes(2))
       .Publish()
       .RefCount();
 
