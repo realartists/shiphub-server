@@ -56,7 +56,7 @@
         }
 
         if (hook == null) {
-          var existingHooks = (await client.RepositoryWebhooks(repo.FullName)).Result
+          var existingHooks = (await client.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))
             .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
 
@@ -160,7 +160,7 @@
         }
 
         if (hook == null) {
-          var existingHooks = (await client.OrganizationWebhooks(org.Login)).Result
+          var existingHooks = (await client.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))
             .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
 
