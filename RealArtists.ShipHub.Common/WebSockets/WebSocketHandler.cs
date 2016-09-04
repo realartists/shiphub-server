@@ -29,9 +29,9 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     public virtual Task OnMessage(byte[] message) { throw new NotImplementedException(); }
 
-    public virtual Task OnError() { return TaskAsyncHelper.Empty; }
+    public virtual Task OnError(Exception exception) { return Task.CompletedTask; }
 
-    public virtual Task OnClose() { return TaskAsyncHelper.Empty; }
+    public virtual Task OnClose() { return Task.CompletedTask; }
 
     // Sends a text message to the client
     public virtual Task Send(string message) {
@@ -104,8 +104,6 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     public WebSocket WebSocket { get; set; }
 
-    public Exception Error { get; set; }
-
     public Task ProcessWebSocketRequestAsync(WebSocket webSocket, CancellationToken disconnectToken) {
       if (webSocket == null) {
         throw new ArgumentNullException("webSocket");
@@ -155,15 +153,13 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       } catch (OperationCanceledException ex) {
         // ex.CancellationToken never has the token that was actually cancelled
         if (!disconnectToken.IsCancellationRequested) {
-          Error = ex;
-          await OnError();
+          await OnError(ex);
         }
       } catch (ObjectDisposedException) {
         // If the websocket was disposed while we were reading then noop
       } catch (Exception ex) {
         if (IsFatalException(ex)) {
-          Error = ex;
-          await OnError();
+          await OnError(ex);
         }
       }
 

@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
+  using System.Collections.Generic;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
@@ -16,6 +17,8 @@
   using Common.WebSockets;
   using Filters;
   using Messages;
+  using Microsoft.ApplicationInsights;
+  using Mindscape.Raygun4Net.WebApi;
   using Newtonsoft.Json.Linq;
   using QueueClient;
 
@@ -48,9 +51,30 @@
       _syncManager = syncManager;
     }
 
-    // TODO: This should not be needed, but I'm seeing weird behavior without it. Look into this later?
-    public override Task OnError() {
-      Unsubscribe();
+    public override Task OnError(Exception exception) {
+      try {
+        // TODO: This should not be needed, but I'm seeing weird behavior without it. Look into this later?
+        Unsubscribe();
+      } finally {
+        // Ensure we log the original error
+
+        exception = exception.Simplify();
+        var userInfo = $"{_user.Login} ({_user.UserId})";
+
+        // HACK: This is gross. Find a way to inject these or something.
+        // No need to cache since connection closed immediately after this.
+        var raygunClient = new RaygunWebApiClient() {
+          User = userInfo,
+        };
+        raygunClient.AddWrapperExceptions(typeof(AggregateException));
+        raygunClient.Send(exception);
+
+        var aiClient = new TelemetryClient();
+        aiClient.TrackException(exception, new Dictionary<string, string>() {
+          { "User", userInfo },
+        });
+      }
+
       return Task.CompletedTask;
     }
 
