@@ -159,7 +159,12 @@ namespace RealArtists.ShipHub.Common.WebSockets {
         // If the websocket was disposed while we were reading then noop
       } catch (Exception ex) {
         if (IsFatalException(ex)) {
-          await OnError(ex);
+          var wse = ex as WebSocketException;
+          if (wse?.WebSocketErrorCode == WebSocketError.NativeError) {
+            // We don't care. Usually a disconnect.
+          } else {
+            await OnError(ex);
+          }
         }
       }
 
