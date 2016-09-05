@@ -107,15 +107,6 @@
             // TODO: Do we want this here? May not trigger as often as Fred intended.
             tasks.AddRange(keepRepos
               .Where(x => x.Permissions.Admin)
-              // Don't risk crapping over other people's repos yet.
-              .Where(x => new string[] {
-                "fpotter",
-                "realartists",
-                "realartists-test",
-                "kogir",
-                "james-howard",
-                "aroon", // used in tests only
-              }.Contains(x.Owner.Login))
               .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(x.Id, user.Id), $"repo-{x.Id}")))
             );
           } else {
@@ -172,11 +163,6 @@
 
             tasks.AddRange(orgs
               .Where(x => x.Role.Equals("admin"))
-              // Don't risk crapping over other people's orgs yet.
-              .Where(x => new string[] {
-                            "realartists",
-                            "realartists-test",
-              }.Contains(x.Organization.Login))
               .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(user.Id, x.Organization.Id), $"org-{x.Organization.Id}"))));
           } else {
             // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
