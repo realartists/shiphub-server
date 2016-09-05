@@ -9,18 +9,22 @@
   using QueueClient;
   using QueueClient.Messages;
 
-  public class SyncManager {
+  public interface ISyncManager {
+    IObservable<ChangeSummary> Changes { get; }
+  }
+
+  public class SyncManager : ISyncManager {
     // TODO: Pick a real value for these
     private const int _BatchSize = 1024;
     private static readonly TimeSpan _WindowTimeout = TimeSpan.FromSeconds(2);
 
     public IObservable<ChangeSummary> Changes { get; private set; }
 
-    public SyncManager() {
+    public SyncManager(IServiceBusFactory serviceBusFactory) {
       Changes = Observable
         .Create<ChangeSummary>(async observer => { // TODO: Support cancellation? 
-          // topic creation is handled by the webjob(s)
-          var client = await ShipHubBusClient.SubscriptionClientForName(ShipHubTopicNames.Changes);
+          
+          var client = await serviceBusFactory.SubscriptionClientForName(ShipHubTopicNames.Changes);
           client.PrefetchCount = _BatchSize;
 
           // TODO: convert to batches?

@@ -6,6 +6,7 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using Common.DataModel;
 
   [RoutePrefix("github")]
   public class GitHubProxyController : ShipHubController {
@@ -15,6 +16,9 @@
       MaxResponseContentBufferSize = 1024 * 1024 * 5, // 5MB is pretty generous
       Timeout = TimeSpan.FromSeconds(10), // so is 10 seconds
     };
+
+    public GitHubProxyController(ShipHubContext context) : base(context) {
+    }
 
     private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
 

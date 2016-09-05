@@ -64,7 +64,8 @@
     <Compile Include="Messages\UserIdMessage.cs" />
     <Compile Include="Messages\TargetMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
-    <Compile Include="ShipHubBusClient.cs" />
+    <Compile Include="ShipHubQueueClient.cs" />
+    <Compile Include="ServiceBusFactory.cs" />
     <Compile Include="ShipHubTopicNames.cs" />
     <Compile Include="ShipHubQueueNames.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

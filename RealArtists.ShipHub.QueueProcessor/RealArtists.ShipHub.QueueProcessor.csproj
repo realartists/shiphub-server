@@ -139,6 +139,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="PairedMessagingProvider.cs" />
     <Compile Include="WebhookReaper.cs" />
     <Compile Include="Test.cs" />
     <Compile Include="Tracing\ApplicationInsightsTraceWriter.cs" />
