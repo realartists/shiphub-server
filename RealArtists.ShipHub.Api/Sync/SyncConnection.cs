@@ -30,7 +30,6 @@
   public class SyncConnection : WebSocketHandler, ISyncConnection {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
     private static readonly Guid _purgeId = new Guid("1789F841-6DC1-4719-9A56-A05908D00000");
-    private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
 
     // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
@@ -39,16 +38,19 @@
       .RefCount();
 
     private ShipHubPrincipal _user;
-    private SyncManager _syncManager;
     private SyncContext _syncContext;
+    private ISyncManager _syncManager;
+    private IShipHubQueueClient _queueClient;
 
     private IDisposable _syncSubscription;
     private IDisposable _pollSubscription;
 
-    public SyncConnection(ShipHubPrincipal user, SyncManager syncManager)
+
+    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IShipHubQueueClient queueClient)
       : base(_MaxMessageSize) {
       _user = user;
       _syncManager = syncManager;
+      _queueClient = queueClient;
     }
 
     public override Task OnError(Exception exception) {
@@ -106,6 +108,10 @@
       var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
       switch (data.MessageType) {
         case "hello":
+          if (_syncContext != null) {
+            throw new InvalidOperationException("hello can only be sent once at initial connection of websocket.");
+          }
+
           // parse message, update local versions
           var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
 
@@ -123,8 +129,7 @@
           var parts = viewing.Issue.Split('#');
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
-          var qc = new ShipHubBusClient();
-          await qc.SyncRepositoryIssueTimeline(repoFullName, issueNumber, _user.UserId);
+          await _queueClient.SyncRepositoryIssueTimeline(repoFullName, issueNumber, _user.UserId);
           return;
         default:
           // Ignore unknown messages for now
@@ -178,7 +183,7 @@
         .ObserveOn(TaskPoolScheduler.Default)
         .StartWith(0)
         .Select(_ =>
-          Observable.FromAsync(() => _QueueClient.SyncAccount(_user.UserId))
+          Observable.FromAsync(() => _queueClient.SyncAccount(_user.UserId))
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequentual evaluation
         .Subscribe();

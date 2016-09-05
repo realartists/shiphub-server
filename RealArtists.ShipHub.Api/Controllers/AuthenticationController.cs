@@ -5,6 +5,7 @@
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using AutoMapper;
   using Common;
   using Common.DataModel;
   using QueueClient;
@@ -17,7 +18,8 @@
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
-    private static readonly ShipHubBusClient _QueueClient = new ShipHubBusClient();
+    private IShipHubQueueClient _queueClient;
+    private IMapper _mapper;
 
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
       "user:email",
@@ -26,6 +28,11 @@
       "admin:repo_hook",
       "admin:org_hook",
     }.AsReadOnly();
+
+    public AuthenticationController(ShipHubContext context, IShipHubQueueClient queueClient, IMapper mapper) : base (context) {
+      _queueClient = queueClient;
+      _mapper = mapper;
+    }
 
     [HttpPost]
     [Route("login")]
@@ -67,7 +74,7 @@
           Id = userInfo.Id,
         });
       }
-      Mapper.Map(userInfo, user);
+      _mapper.Map(userInfo, user);
       user.Token = userResponse.CacheData.AccessToken;
       user.Scopes = string.Join(",", userResponse.Scopes);
       user.RateLimit = userResponse.RateLimit.RateLimit;
@@ -77,7 +84,7 @@
       // Be sure to save the account *before* syncing it!
       await Context.SaveChangesAsync();
 
-      await _QueueClient.SyncAccount(user.Id);
+      await _queueClient.SyncAccount(user.Id);
 
       return Ok(userInfo);
     }

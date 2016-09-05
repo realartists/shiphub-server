@@ -9,6 +9,7 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using AutoMapper;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
@@ -24,13 +25,12 @@
     public const string DeliveryIdHeaderName = "X-GitHub-Delivery";
     public const string SignatureHeaderName = "X-Hub-Signature";
 
-    private IShipHubBusClient _busClient;
+    private IShipHubQueueClient _queueClient;
+    private IMapper _mapper;
 
-    public GitHubWebhookController() : this(new ShipHubBusClient()) {
-    }
-
-    public GitHubWebhookController(IShipHubBusClient busClient) {
-      _busClient = busClient;
+    public GitHubWebhookController(ShipHubContext context, IShipHubQueueClient queueClient, IMapper mapper) : base(context) {
+      _queueClient = queueClient;
+      _mapper = mapper;
     }
 
     [HttpPost]
@@ -120,7 +120,7 @@
       }
 
       if (!changeSummary.Empty) {
-        await _busClient.NotifyChanges(changeSummary);
+        await _queueClient?.NotifyChanges(changeSummary);
       }
 
       return StatusCode(HttpStatusCode.Accepted);
@@ -133,12 +133,12 @@
       using (var context = new ShipHubContext()) {
         changeSummary.UnionWith(await context.BulkUpdateAccounts(
           DateTimeOffset.UtcNow,
-          Mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
+          _mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
         if (payload.Action.Equals("deleted")) {
           var commentsExcludingDeletion = Context.Comments
             .Where(x => x.IssueId == payload.Issue.Id && x.Id != payload.Comment.Id);
-          var commentsExcludingDeletionMapped = Mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
+          var commentsExcludingDeletionMapped = _mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
           changeSummary.UnionWith(await context.BulkUpdateIssueComments(
             payload.Repository.FullName,
             (int)payload.Comment.IssueNumber,
@@ -148,7 +148,7 @@
           changeSummary.UnionWith(await context.BulkUpdateIssueComments(
             payload.Repository.FullName,
             (int)payload.Comment.IssueNumber,
-            Mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
+            _mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
         }
       }
     }
@@ -161,21 +161,21 @@
           .Where(x => x.User.Token != null)
           .Select(x => x.User)
           .ToListAsync();
-        var syncTasks = users.Select(x => _busClient.SyncAccountRepositories(x.Id));
+        var syncTasks = users.Select(x => _queueClient?.SyncAccountRepositories(x.Id));
         await Task.WhenAll(syncTasks);
       } else {
         // TODO: This should also trigger a sync for contributors of a repo, but at
         // least this is more correct than what we have now.
         var owner = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
         if (owner.Token != null) {
-          await _busClient.SyncAccountRepositories(owner.Id);
+          await _queueClient?.SyncAccountRepositories(owner.Id);
         }
       }
     }
 
     private async Task HandleIssues(WebhookPayload payload, ChangeSummary summary) {
       if (payload.Issue.Milestone != null) {
-        var milestone = Mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
+        var milestone = _mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
         var milestoneSummary = await Context.BulkUpdateMilestones(
           payload.Repository.Id,
           new MilestoneTableType[] { milestone });
@@ -193,12 +193,12 @@
 
       if (referencedAccounts.Count > 0) {
 
-        var accountsMapped = Mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
+        var accountsMapped = _mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.UtcNow, accountsMapped));
       }
 
       var issues = new List<Common.GitHub.Models.Issue> { payload.Issue };
-      var issuesMapped = Mapper.Map<IEnumerable<IssueTableType>>(issues);
+      var issuesMapped = _mapper.Map<IEnumerable<IssueTableType>>(issues);
 
       var labels = payload.Issue.Labels?.Select(x => new LabelTableType() {
         ItemId = payload.Issue.Id,

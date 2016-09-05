@@ -6,6 +6,7 @@
     protected void Application_Start() {
       ApplicationInsightsConfig.Register();
       GlobalConfiguration.Configure(WebApiConfig.Register);
+      GlobalConfiguration.Configure(SimpleInjectorConfig.Register);
     }
   }
 }

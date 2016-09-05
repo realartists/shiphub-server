@@ -43,9 +43,6 @@
       // Adjust this based on real performance data
       //sbConfig.MessageOptions.AutoRenewTimeout = 
 
-      // TOOD: Override default messaging provider?
-      //sbConfig.MessagingProvider = 
-
       // See https://github.com/Azure/azure-webjobs-sdk/wiki/Running-Locally
       if (config.IsDevelopment) {
         config.UseDevelopmentSettings();
@@ -60,56 +57,25 @@
       var ratePerSecond = 1;
       sbConfig.PrefetchCount = sbConfig.MessageOptions.MaxConcurrentCalls * 20 * ratePerSecond;
 
-      config.UseServiceBus(sbConfig);
-      config.UseTimers();
-
 #if DEBUG
       var timer = new Stopwatch();
-      Console.WriteLine("Creating Missing Queues");
+      Console.WriteLine($"Initializing Service Bus.");
       timer.Start();
 #endif
 
-      ShipHubBusClient.EnsureQueues().Wait();
+      var sbFactory = new ServiceBusFactory(); // Defaults are fine.
+      sbFactory.Initialize().Wait();
 
 #if DEBUG
       timer.Stop();
       Console.WriteLine($"Done in {timer.Elapsed}\n");
-
-      Console.WriteLine("Creating Missing Topics");
-      timer.Restart();
 #endif
 
-      ShipHubBusClient.EnsureTopics().Wait();
+      // Override default messaging provider to use pairing.
+      sbConfig.MessagingProvider = new PairedMessagingProvider(sbConfig, sbFactory);
 
-#if DEBUG
-      timer.Stop();
-      Console.WriteLine($"Done in {timer.Elapsed}\n");
-
-      //Console.Write("Send Sync Message? [y/N]: ");
-      //var key = Console.Read();
-      //if (key == (int)'y') {
-      //  Console.WriteLine("Sending sync account message");
-      //  timer.Restart();
-      //  var qc = new ShipHubBusClient();
-      //  qc.SyncAccount(CloudConfigurationManager.GetSetting("GitHubTestToken")).Wait();
-      //  timer.Stop();
-      //  Console.WriteLine($"Done in {timer.Elapsed}\n");
-      //}
-
-      // HACKS!
-
-      //ShipHubBusClient.EnsureSubscription(ShipHubTopicNames.Changes, "DEBUGGING").Wait();
-      //var changes = ShipHubBusClient.SubscriptionClientForName(ShipHubTopicNames.Changes, "DEBUGGING");
-      //changes.OnMessage(m => {
-      //  using (var body = m.GetBody<Stream>())
-      //  using (var reader = new StreamReader(body, Encoding.UTF8)) {
-      //    Console.WriteLine(reader.ReadToEnd());
-      //  }
-      //  m.Complete();
-      //});
-
-      // END HACKS!
-#endif
+      config.UseServiceBus(sbConfig);
+      config.UseTimers();
 
       Console.WriteLine("Starting job host...\n\n");
       using (var host = new JobHost(config)) {

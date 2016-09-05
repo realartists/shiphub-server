@@ -35,7 +35,9 @@
       return "sha1=" + new SoapHexBinary(hash).ToString();
     }
 
-    private static IMapper AutoMapper() {
+    private static IMapper AutoMapper { get; } = CreateMapper();
+    
+    private static IMapper CreateMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
 
@@ -53,6 +55,8 @@
           }));
         cfg.CreateMap<Common.DataModel.Account, Account>(MemberList.Destination)
           .ForMember(x => x.Type, o => o.ResolveUsing(x => x is Common.DataModel.User ? GitHubAccountType.User : GitHubAccountType.Organization));
+
+        cfg.CreateMap<Common.DataModel.Comment, CommentTableType>(MemberList.Destination);
       });
 
       var mapper = config.CreateMapper();
@@ -84,12 +88,12 @@
     private static async Task<IChangeSummary> ChangeSummaryFromHook(string eventName, JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
       IChangeSummary changeSummary = null;
 
-      var mockBusClient = new Mock<IShipHubBusClient>();
+      var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
         .Returns(Task.CompletedTask)
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object);
+      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
       ConfigureController(controller, eventName, obj, secret);
 
       IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
@@ -166,7 +170,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController();
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -197,7 +201,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController();
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("org", org.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -226,7 +230,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController();
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(BadRequestErrorMessageResult), result);
@@ -256,7 +260,7 @@
           new JProperty("id", repo.Id)
           )));
 
-        var controller = new GitHubWebhookController();
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -932,7 +936,7 @@
 
       var syncAccountRepositoryCalls = new List<long>();
 
-      var mockBusClient = new Mock<IShipHubBusClient>();
+      var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient
         .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
@@ -940,7 +944,7 @@
           syncAccountRepositoryCalls.Add(accountId);
         });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object);
+      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
       ConfigureController(controller, "repository", obj, hook.Secret.ToString());
       var result = await controller.HandleHook("org", org.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1017,7 +1021,7 @@
 
       var syncAccountRepositoryCalls = new List<long>();
 
-      var mockBusClient = new Mock<IShipHubBusClient>();
+      var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient
         .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
@@ -1034,7 +1038,7 @@
       };
 
       foreach (var test in tests) {
-        var controller = new GitHubWebhookController(mockBusClient.Object);
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
         ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
         var result = await controller.HandleHook(test.Item1, test.Item2);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1083,7 +1087,7 @@
 
       var syncAccountRepositoryCalls = new List<long>();
 
-      var mockBusClient = new Mock<IShipHubBusClient>();
+      var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient
         .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
         .Returns(Task.CompletedTask)
@@ -1091,7 +1095,7 @@
           syncAccountRepositoryCalls.Add(accountId);
         });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object);
+      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
       ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
       var result = await controller.HandleHook("repo", repo.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1149,7 +1153,7 @@
 
         var obj = IssueCommentPayload(
           "created",
-          AutoMapper().Map<Issue>(issue),
+          AutoMapper.Map<Issue>(issue),
           user,
           repo,
           new Comment() {
@@ -1199,7 +1203,7 @@
         await context.SaveChangesAsync();
 
         var obj = IssueCommentPayload("created",
-          AutoMapper().Map<Issue>(issue),
+          AutoMapper.Map<Issue>(issue),
           user,
           repo,
           new Comment() {
@@ -1242,7 +1246,7 @@
 
         var obj = IssueCommentPayload(
           "created",
-          AutoMapper().Map<Issue>(issue),
+          AutoMapper.Map<Issue>(issue),
           user,
           repo,
           new Comment() {
@@ -1307,7 +1311,7 @@
 
         var obj = IssueCommentPayload(
           "deleted",
-          AutoMapper().Map<Issue>(issue),
+          AutoMapper.Map<Issue>(issue),
           user,
           repo,
           new Comment() {

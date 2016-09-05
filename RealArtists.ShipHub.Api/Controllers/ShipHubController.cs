@@ -2,22 +2,16 @@
   using System.Net;
   using System.Runtime.CompilerServices;
   using System.Web.Http;
-  using AutoMapper;
   using Common.DataModel;
   using Filters;
 
   public abstract class ShipHubController : ApiController {
-#pragma warning disable UseAutoPropertyFadedToken // Use auto property
-#pragma warning disable UseAutoProperty // Use auto property
-    private ShipHubContext _context = new ShipHubContext();
-
-    protected ShipHubContext Context { get { return _context; } }
-#pragma warning restore UseAutoProperty // Use auto property
-#pragma warning restore UseAutoPropertyFadedToken // Use auto property
-
+    protected ShipHubContext Context { get; private set; }
     protected ShipHubPrincipal ShipHubUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
 
-    public IMapper Mapper { get; } = AutoMapperConfig.Mapper;
+    protected ShipHubController(ShipHubContext context) {
+      Context = context;
+    }
 
     public IHttpActionResult Error(
                          string message,
@@ -42,9 +36,9 @@
 
     protected override void Dispose(bool disposing) {
       if (disposing) {
-        if (_context != null) {
-          _context.Dispose();
-          _context = null;
+        if (Context != null) {
+          Context.Dispose();
+          Context = null;
         }
       }
       base.Dispose(disposing);
