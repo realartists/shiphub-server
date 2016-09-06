@@ -63,6 +63,10 @@
         throw new ArgumentException("Unexpected type: " + type);
       }
 
+      if (hook == null) {
+        throw new ArgumentException("Webhook does not match any known repository or organization.");
+      }
+
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()))) {
         byte[] hash = hmac.ComputeHash(payloadBytes);
         // We're not worth launching a timing attack against.

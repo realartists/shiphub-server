@@ -274,6 +274,30 @@
     }
 
     [Test]
+    public async Task WillThrowExceptionWhenCallDoesNotMatchKnownRepoOrOrg() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+
+        await context.SaveChangesAsync();
+
+        var obj = JObject.FromObject(new {
+          hook_id = 1234,
+          repository = new {
+            id = repo.Id,
+          },
+        }, GitHubSerialization.JsonSerializer);
+
+        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        ConfigureController(controller, "ping", obj, "someIncorrectSignature");
+
+        Assert.ThrowsAsync(typeof(ArgumentException), async () => {
+          await controller.HandleHook("repo", repo.Id);
+        }, "Webhook does not match any known repository or organization.");
+      }
+    }
+
+    [Test]
     public async Task TestIssueOpened() {
       Common.DataModel.User user;
       Common.DataModel.Repository repo;
