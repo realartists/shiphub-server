@@ -50,7 +50,9 @@
         }
 
         // This might be too cute?
-        if (result.Status == HttpStatusCode.Unauthorized && client.DefaultToken != request.CacheOptions?.AccessToken) {
+        if ((result.Status == HttpStatusCode.Unauthorized
+            || result.Status == HttpStatusCode.NotFound)
+          && client.DefaultToken != request.CacheOptions?.AccessToken) {
           // Try again with default credentials
           // HACK: Better to clear expired/stale metadata, but that's hard.
           request.CacheOptions = null;
