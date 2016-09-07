@@ -1,10 +1,12 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
+  using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Web;
   using System.Web.Http;
   using System.Web.Http.ExceptionHandling;
   using Common;
+  using Controllers;
   using Diagnostics;
   using Filters;
   using Mindscape.Raygun4Net.WebApi;
@@ -27,13 +29,22 @@
       config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());
     }
 
-    public static RaygunWebApiClient GenerateRaygunClient() {
+    public static RaygunWebApiClient GenerateRaygunClient(HttpRequestMessage requestMessage) {
       var client = new RaygunWebApiClient();
       client.AddWrapperExceptions(typeof(AggregateException));
-      var user = HttpContext.Current?.User as ShipHubPrincipal;
-      if (user != null) {
-        client.User = $"{user.Login} ({user.UserId})";
+
+      if (requestMessage.GetActionDescriptor()?.ControllerDescriptor?.ControllerType == typeof(GitHubWebhookController)) {
+        // Webhook calls from GitHub don't really have a user, but we'd still like for Raygun
+        // to show us how many unique orgs + repos are affected by a given error.  We can abuse
+        // the User concept to get this.
+        client.User = requestMessage.RequestUri.PathAndQuery.Replace('/', '_');
+      } else {
+        var user = HttpContext.Current?.User as ShipHubPrincipal;
+        if (user != null) {
+          client.User = $"{user.Login} ({user.UserId})";
+        }
       }
+
       return client;
     }
   }
