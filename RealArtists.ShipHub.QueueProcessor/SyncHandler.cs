@@ -103,12 +103,6 @@
             changes.UnionWith(await context.SetAccountLinkedRepositories(user.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
 
             tasks.Add(notifyChanges.Send(changes));
-
-            // TODO: Do we want this here? May not trigger as often as Fred intended.
-            tasks.AddRange(keepRepos
-              .Where(x => x.Permissions.Admin)
-              .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(x.Id, user.Id), $"repo-{x.Id}")))
-            );
           } else {
             logger.WriteLine("Github: Not modified.");
           }
@@ -120,13 +114,15 @@
 
         await Task.WhenAll(tasks);
 
-        var repoIds = await context.AccountRepositories
+        var repos = await context.AccountRepositories
           .Where(x => x.AccountId == user.Id)
-          .Select(x => x.RepositoryId)
           .ToArrayAsync();
 
         // Now that owners, repos, and links are saved, safe to sync the repos themselves.
-        await Task.WhenAll(repoIds.Select(x => syncRepo.AddAsync(new TargetMessage(x, user.Id))));
+        await Task.WhenAll(repos.Select(x => syncRepo.AddAsync(new TargetMessage(x.RepositoryId, user.Id))));
+        await Task.WhenAll(repos
+          .Where(x => x.Admin)
+          .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(x.RepositoryId, user.Id), $"repo-{x.RepositoryId}"))));
       }
     }
 
@@ -136,7 +132,6 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<TargetMessage> syncOrgMembers,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
@@ -160,10 +155,6 @@
             changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
             changes.UnionWith(await context.SetUserOrganizations(user.Id, orgs.Select(x => x.Organization.Id)));
             tasks.Add(notifyChanges.Send(changes));
-
-            tasks.AddRange(orgs
-              .Where(x => x.Role.Equals("admin"))
-              .Select(x => addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(user.Id, x.Organization.Id), $"org-{x.Organization.Id}"))));
           } else {
             // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
             logger.WriteLine("Github: Not modified.");
@@ -191,6 +182,7 @@
     public static async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var tasks = new List<Task>();
@@ -234,6 +226,12 @@
         }
 
         await Task.WhenAll(tasks);
+
+        var membership = await context.OrganizationAccounts
+          .SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId && x.UserId == message.ForUserId);
+        if (membership != null && membership.Admin) {
+          await addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(message, $"org-{message.TargetId}"));
+        }
       }
     }
 
