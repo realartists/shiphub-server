@@ -73,22 +73,26 @@
       env.repo2 = TestUtil.MakeTestRepo(context, env.org1.Id, 2002, "girafficorns");
 
       env.repo1Hook = context.Hooks.Add(new Hook() {
+        GitHubId = 5551,
         Secret = Guid.NewGuid(),
         Events = "event1,event2",
         RepositoryId = env.repo1.Id,
       });
       env.repo2Hook = context.Hooks.Add(new Hook() {
+        GitHubId = 5552,
         Secret = Guid.NewGuid(),
         Events = "event1,event2",
         RepositoryId = env.repo2.Id,
       });
 
       env.org1Hook = context.Hooks.Add(new Hook() {
+        GitHubId = 6661,
         Secret = Guid.NewGuid(),
         Events = "event1,event2",
         OrganizationId = env.org1.Id,
       });
       env.org2Hook = context.Hooks.Add(new Hook() {
+        GitHubId = 6662,
         Secret = Guid.NewGuid(),
         Events = "event1,event2",
         OrganizationId = env.org2.Id,
@@ -144,8 +148,8 @@
         Assert.AreEqual(new[] { env.user1.Token }, pings.Keys.ToArray());
         Assert.AreEqual(
           new[] {
-            Tuple.Create("repo", "aroon/unicorns", env.repo1Hook.Id),
-            Tuple.Create("org", "myorg2", env.org2Hook.Id),
+            Tuple.Create("repo", "aroon/unicorns", (long)env.repo1Hook.GitHubId),
+            Tuple.Create("org", "myorg2", (long)env.org2Hook.GitHubId),
           },
           pings[env.user1.Token].ToArray());
 

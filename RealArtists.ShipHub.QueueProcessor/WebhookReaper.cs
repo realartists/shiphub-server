@@ -37,7 +37,10 @@
           var batchSize = 100;
 
           var staleHooks = context.Hooks
-           .Where(x => x.LastSeen <= staleDateTimeOffset && (x.LastPing == null || x.LastPing <= pingTime))
+           .Where(x =>
+             (x.LastSeen <= staleDateTimeOffset) &&
+             (x.LastPing == null || x.LastPing <= pingTime) &&
+             (x.GitHubId != null))
            .Take(batchSize)
            .ToList();
 
@@ -65,7 +68,7 @@
 
               if (accountRepository != null) {
                 var client = CreateGitHubClient(accountRepository.Account);
-                pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, hook.Id));
+                pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
               }
             } else if (hook.OrganizationId != null) {
               hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
@@ -80,7 +83,7 @@
 
               if (accountOrganization != null) {
                 var client = CreateGitHubClient(accountOrganization.User);
-                pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, hook.Id));
+                pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
               }
             } else {
               throw new InvalidOperationException("RepositoryId or OrganizationId should be non null");
