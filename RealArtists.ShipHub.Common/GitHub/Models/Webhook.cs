@@ -5,7 +5,7 @@
     public string Url { get; set; }
     public string ContentType { get; set; }
     public string Secret { get; set; }
-    public int InsecureSsl { get; set; }
+    public bool InsecureSsl { get; set; }
   }
 
   public class Webhook {

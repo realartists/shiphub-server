@@ -56,7 +56,7 @@
                 Active = true,
                 Config = new WebhookConfiguration() {
                   ContentType = "json",
-                  InsecureSsl = 0,
+                  InsecureSsl = false,
                   Secret = "*******",
                   Url = $"https://{ApiHostname}/webhook/repo/1234",
                 },
@@ -78,7 +78,7 @@
                 Active = true,
                 Config = new WebhookConfiguration() {
                   ContentType = "json",
-                  InsecureSsl = 0,
+                  InsecureSsl = false,
                   Secret = "*******",
                   Url = $"https://{ApiHostname}/webhook/repo/1234",
                 },
@@ -125,7 +125,7 @@
                     Active = true,
                     Config = new WebhookConfiguration() {
                       ContentType = "json",
-                      InsecureSsl = 0,
+                      InsecureSsl = false,
                       Secret = "*******",
                       Url = $"https://{ApiHostname}/webhook/repo/1",
                     },
@@ -138,7 +138,7 @@
                     Active = true,
                     Config = new WebhookConfiguration() {
                       ContentType = "json",
-                      InsecureSsl = 0,
+                      InsecureSsl = false,
                       Secret = "*******",
                       Url = $"https://{ApiHostname}/webhook/repo/2",
                     },
@@ -239,7 +239,7 @@
         Assert.AreEqual(true, installWebHook.Active);
         Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
         Assert.AreEqual("json", installWebHook.Config.ContentType);
-        Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
+        Assert.AreEqual(false, installWebHook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
 
         context.Entry(repoLogItem).Reload();
@@ -366,7 +366,7 @@
         Assert.AreEqual(true, installWebHook.Active);
         Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
         Assert.AreEqual("json", installWebHook.Config.ContentType);
-        Assert.AreEqual(0, installWebHook.Config.InsecureSsl);
+        Assert.AreEqual(false, installWebHook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
 
         context.Entry(orgLogItem).Reload();
@@ -404,7 +404,7 @@
                     Active = true,
                     Config = new WebhookConfiguration() {
                       ContentType = "json",
-                      InsecureSsl = 0,
+                      InsecureSsl = false,
                       Secret = "*******",
                       Url = $"https://{ApiHostname}/webhook/org/1",
                     },
@@ -417,7 +417,7 @@
                     Active = true,
                     Config = new WebhookConfiguration() {
                       ContentType = "json",
-                      InsecureSsl = 0,
+                      InsecureSsl = false,
                       Secret = "*******",
                       Url = $"https://{ApiHostname}/webhook/repo/2",
                     },
@@ -489,7 +489,7 @@
                 Active = true,
                 Config = new WebhookConfiguration() {
                   ContentType = "json",
-                  InsecureSsl = 0,
+                  InsecureSsl = false,
                   Secret = "*******",
                   Url = $"https://{ApiHostname}/webhook/repo/1234",
                 },
@@ -511,7 +511,7 @@
                 Active = true,
                 Config = new WebhookConfiguration() {
                   ContentType = "json",
-                  InsecureSsl = 0,
+                  InsecureSsl = false,
                   Secret = "*******",
                   Url = $"https://{ApiHostname}/webhook/org/1234",
                 },
