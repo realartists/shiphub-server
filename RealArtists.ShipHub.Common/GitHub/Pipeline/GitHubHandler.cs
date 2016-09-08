@@ -146,15 +146,15 @@
       };
 
       // Expires and Caching Max-Age
-      //var expires = response.Content?.Headers?.Expires;
-      //var maxAgeSpan = response.Headers.CacheControl?.SharedMaxAge ?? response.Headers.CacheControl?.MaxAge;
-      //if (maxAgeSpan != null) {
-      //  var maxAgeExpires = DateTimeOffset.UtcNow.Add(maxAgeSpan.Value);
-      //  if (expires == null || maxAgeExpires < expires) {
-      //    expires = maxAgeExpires;
-      //  }
-      //}
-      //result.CacheData.Expires = expires;
+      var expires = response.Content?.Headers?.Expires;
+      var maxAgeSpan = response.Headers.CacheControl?.SharedMaxAge ?? response.Headers.CacheControl?.MaxAge;
+      if (maxAgeSpan != null) {
+        var maxAgeExpires = DateTimeOffset.UtcNow.Add(maxAgeSpan.Value);
+        if (expires == null || maxAgeExpires < expires) {
+          expires = maxAgeExpires;
+        }
+      }
+      result.CacheData.Expires = expires;
 
       // Experiment:
       result.CacheData.Expires = result.Date.Add(result.CacheData.PollInterval);
