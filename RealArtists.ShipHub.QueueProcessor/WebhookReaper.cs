@@ -11,12 +11,6 @@
   using Microsoft.Azure.WebJobs;
 
   public class WebhookReaper {
-
-    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
-    public static Task Timer([TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo) {
-      return new WebhookReaper().Run();
-    }
-
     public virtual IGitHubClient CreateGitHubClient(User user) {
       return GitHubSettings.CreateUserClient(user);
     }
@@ -25,6 +19,11 @@
       get {
         return DateTimeOffset.UtcNow;
       }
+    }
+
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
+    public async Task ReaperTimer([TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo) {
+      await Run();
     }
 
     public async Task Run() {

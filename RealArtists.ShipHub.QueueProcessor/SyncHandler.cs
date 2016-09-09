@@ -8,6 +8,7 @@
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Threading.Tasks;
+  using AutoMapper;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
@@ -19,8 +20,14 @@
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
 
-  public static class SyncHandler {
-    public static async Task SyncAccount(
+  public class SyncHandler {
+    private IMapper _mapper;
+
+    public SyncHandler(IMapper mapper) {
+      _mapper = mapper;
+    }
+
+    public async Task SyncAccount(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<UserIdMessage> syncAccountRepos,
       [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<UserIdMessage> syncAccountOrgs,
@@ -45,7 +52,7 @@
             logger.WriteLine("GitHub: Changed. Saving changes.");
             changes = await context.UpdateAccount(
               userResponse.Date,
-              SharedMapper.Map<AccountTableType>(userResponse.Result));
+              _mapper.Map<AccountTableType>(userResponse.Result));
           } else {
             logger.WriteLine($"GitHub: Not modified.");
           }
@@ -67,7 +74,7 @@
       }
     }
 
-    public static async Task SyncAccountRepositories(
+    public async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<TargetMessage> syncRepo,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateRepoWebhooks,
@@ -98,8 +105,8 @@
             var owners = keepRepos
               .Select(x => x.Owner)
               .Distinct(x => x.Login);
-            changes = await context.BulkUpdateAccounts(repoResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(owners));
-            changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, SharedMapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
+            changes = await context.BulkUpdateAccounts(repoResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(owners));
+            changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
             changes.UnionWith(await context.SetAccountLinkedRepositories(user.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
 
             tasks.Add(notifyChanges.Send(changes));
@@ -128,7 +135,7 @@
 
     /// NOTE WELL: We sync only sync orgs for which the user is a member. If they can see a repo in an org
     /// but aren't a member, too bad for them. The permissions are too painful otherwise.
-    public static async Task SyncAccountOrganizations(
+    public async Task SyncAccountOrganizations(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<TargetMessage> syncOrgMembers,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -152,7 +159,7 @@
             logger.WriteLine("Github: Changed. Saving changes.");
             var orgs = orgResponse.Result;
 
-            changes = await context.BulkUpdateAccounts(orgResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
+            changes = await context.BulkUpdateAccounts(orgResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
             changes.UnionWith(await context.SetUserOrganizations(user.Id, orgs.Select(x => x.Organization.Id)));
             tasks.Add(notifyChanges.Send(changes));
           } else {
@@ -179,7 +186,7 @@
       }
     }
 
-    public static async Task SyncOrganizationMembers(
+    public async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
@@ -213,7 +220,7 @@
 
           changes = await context.BulkUpdateAccounts(
             membersTask.Result.Date,
-            SharedMapper.Map<IEnumerable<AccountTableType>>(members.Concat(admins)));
+            _mapper.Map<IEnumerable<AccountTableType>>(members.Concat(admins)));
           changes.UnionWith(await context.SetOrganizationUsers(
             org.Id,
             members.Select(x => Tuple.Create(x.Id, false))
@@ -240,7 +247,7 @@
     /// Postcondition: None.
     /// </summary>
     /// TODO: Should this be inlined?
-    public static async Task SyncRepository(
+    public async Task SyncRepository(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] TargetMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<TargetMessage> syncRepoAssignees,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<TargetMessage> syncRepoMilestones,
@@ -258,7 +265,7 @@
     /// Precondition: Repository exists
     /// Postcondition: Repository assignees exist and are linked.
     /// </summary>
-    public static async Task SyncRepositoryAssignees(
+    public async Task SyncRepositoryAssignees(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryAssignees)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -285,7 +292,7 @@
             logger.WriteLine("Github: Changed. Saving changes.");
             var assignees = response.Result;
 
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(assignees));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees));
             changes.UnionWith(await context.SetRepositoryAssignableAccounts(repo.Id, assignees.Select(x => x.Id)));
 
             tasks.Add(notifyChanges.Send(changes));
@@ -306,7 +313,7 @@
     /// Precondition: Repository exists
     /// Postcondition: Milestones exist
     /// </summary>
-    public static async Task SyncRepositoryMilestones(
+    public async Task SyncRepositoryMilestones(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryMilestones)] TargetMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<TargetMessage> syncRepoIssues,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -334,7 +341,7 @@
             logger.WriteLine("Github: Changed. Saving changes.");
             var milestones = response.Result;
 
-            changes = await context.BulkUpdateMilestones(repo.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones));
+            changes = await context.BulkUpdateMilestones(repo.Id, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones));
 
             tasks.Add(notifyChanges.Send(changes));
           } else {
@@ -357,7 +364,7 @@
     /// Precondition: Repository exists
     /// Postcondition: Labels exist
     /// </summary>
-    public static async Task SyncRepositoryLabels(
+    public async Task SyncRepositoryLabels(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryLabels)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -411,7 +418,7 @@
     /// Precondition: Repository and Milestones exist
     /// Postcondition: Issues exist
     /// </summary>
-    public static async Task SyncRepositoryIssues(
+    public async Task SyncRepositoryIssues(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] TargetMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<TargetMessage> syncRepoComments,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<TargetMessage> syncRepoIssueEvents,
@@ -444,17 +451,17 @@
               .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
               .Where(x => x != null)
               .Distinct(x => x.Id);
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(accounts));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
 
             var milestones = issues
               .Select(x => x.Milestone)
               .Where(x => x != null)
               .Distinct(x => x.Id);
-            changes.UnionWith(await context.BulkUpdateMilestones(repo.Id, SharedMapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
+            changes.UnionWith(await context.BulkUpdateMilestones(repo.Id, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
 
             changes.UnionWith(await context.BulkUpdateIssues(
               repo.Id,
-              SharedMapper.Map<IEnumerable<IssueTableType>>(issues),
+              _mapper.Map<IEnumerable<IssueTableType>>(issues),
               issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
               issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
             ));
@@ -479,7 +486,7 @@
       }
     }
 
-    public static async Task SyncRepositoryComments(
+    public async Task SyncRepositoryComments(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -509,10 +516,10 @@
             var users = comments
               .Select(x => x.User)
               .Distinct(x => x.Id);
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
             var issueComments = comments.Where(x => x.IssueNumber != null);
-            changes.UnionWith(await context.BulkUpdateComments(repo.Id, SharedMapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
+            changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
 
             tasks.Add(notifyChanges.Send(changes));
           } else {
@@ -528,7 +535,7 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueEvents(
+    public async Task SyncRepositoryIssueEvents(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueEvents)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -562,9 +569,9 @@
               .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
               .Where(x => x != null)
               .Distinct(x => x.Login);
-            var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(accounts);
+            var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(accounts);
             changes = await context.BulkUpdateAccounts(response.Date, accountsParam);
-            var eventsParam = SharedMapper.Map<IEnumerable<IssueEventTableType>>(events);
+            var eventsParam = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
             changes.UnionWith(await context.BulkUpdateIssueEvents(user.Id, repo.Id, eventsParam, accountsParam.Select(x => x.Id)));
 
             tasks.Add(notifyChanges.Send(changes));
@@ -581,7 +588,7 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueComments(
+    public async Task SyncRepositoryIssueComments(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueComments)] TargetMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueCommentReactions)] IAsyncCollector<TargetMessage> syncReactions,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -615,12 +622,12 @@
             var users = comments
               .Select(x => x.User)
               .Distinct(x => x.Id);
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
             changes.UnionWith(await context.BulkUpdateIssueComments(
               issue.Repository.FullName,
               issue.Number,
-              SharedMapper.Map<IEnumerable<CommentTableType>>(comments),
+              _mapper.Map<IEnumerable<CommentTableType>>(comments),
               complete: true));
 
             tasks.Add(notifyChanges.Send(changes));
@@ -639,7 +646,7 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueReactions(
+    public async Task SyncRepositoryIssueReactions(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueReactions)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -671,12 +678,12 @@
             var users = reactions
               .Select(x => x.User)
               .Distinct(x => x.Id);
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
             changes.UnionWith(await context.BulkUpdateIssueReactions(
               issue.RepositoryId,
               issue.Id,
-              SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+              _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
 
             tasks.Add(notifyChanges.Send(changes));
           } else {
@@ -692,7 +699,7 @@
       }
     }
 
-    public static async Task SyncRepositoryIssueCommentReactions(
+    public async Task SyncRepositoryIssueCommentReactions(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueCommentReactions)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger) {
@@ -724,12 +731,12 @@
             var users = reactions
               .Select(x => x.User)
               .Distinct(x => x.Id);
-            changes = await context.BulkUpdateAccounts(response.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(users));
+            changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
             changes.UnionWith(await context.BulkUpdateCommentReactions(
               comment.RepositoryId,
               comment.Id,
-              SharedMapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+              _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
 
             tasks.Add(notifyChanges.Send(changes));
           } else {
@@ -746,7 +753,7 @@
     }
 
     private static HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
-    public static async Task SyncRepositoryIssueTimeline(
+    public async Task SyncRepositoryIssueTimeline(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueViewMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<TargetMessage> syncIssueComments,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueReactions)] IAsyncCollector<TargetMessage> syncRepoIssueReactions,
@@ -801,15 +808,15 @@
           var upAccounts = new[] { update.User, update.ClosedBy }.Concat(update.Assignees)
               .Where(x => x != null)
               .Distinct(x => x.Id);
-          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, SharedMapper.Map<IEnumerable<AccountTableType>>(upAccounts)));
+          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(upAccounts)));
 
           if (update.Milestone != null) {
-            changes.UnionWith(await context.BulkUpdateMilestones(repoId, SharedMapper.Map<IEnumerable<MilestoneTableType>>(new[] { update.Milestone })));
+            changes.UnionWith(await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { update.Milestone })));
           }
 
           changes.UnionWith(await context.BulkUpdateIssues(
             repoId,
-            SharedMapper.Map<IEnumerable<IssueTableType>>(new[] { update }),
+            _mapper.Map<IEnumerable<IssueTableType>>(new[] { update }),
             update.Labels?.Select(y => new LabelTableType() { ItemId = update.Id, Color = y.Color, Name = y.Name }),
             update.Assignees?.Select(y => new MappingTableType() { Item1 = update.Id, Item2 = y.Id })
           ));
@@ -939,7 +946,7 @@
           var uniqueAccounts = accounts
             .Where(x => x != null)
             .Distinct(x => x.Login);
-          var accountsParam = SharedMapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
+          var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
           changes.UnionWith(await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam));
 
           var issueMessage = new TargetMessage(issueId.Value, user.Id);
@@ -998,7 +1005,7 @@
           }
 
           // This conversion handles the restriction field and hash.
-          var events = SharedMapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
+          var events = _mapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
 
           // Set issueId
           foreach (var item in events) {

@@ -25,7 +25,7 @@
       container.Register<IServiceBusFactory>(() => {
         // HACK: This is gross
         var sbf = new ServiceBusFactory();
-        sbf.Initialize().Wait();
+        sbf.Initialize().GetAwaiter().GetResult();
         return sbf;
       }, Lifestyle.Singleton);
 

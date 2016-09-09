@@ -15,8 +15,8 @@
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
 
-  public static class WebhookHandler {
-    public static async Task AddOrUpdateRepoWebhooks(
+  public class WebhookHandler {
+    public async Task AddOrUpdateRepoWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       IGitHubClient ghc;
@@ -30,7 +30,7 @@
       await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
     }
 
-    public static async Task AddOrUpdateRepoWebhooksWithClient(
+    public async Task AddOrUpdateRepoWebhooksWithClient(
       TargetMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
@@ -120,7 +120,7 @@
       }
     }
 
-    public static async Task AddOrUpdateOrgWebhooks(
+    public async Task AddOrUpdateOrgWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
       IGitHubClient ghc;
@@ -135,7 +135,7 @@
       await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);
     }
 
-    public static async Task AddOrUpdateOrgWebhooksWithClient(
+    public async Task AddOrUpdateOrgWebhooksWithClient(
       TargetMessage message,
       IGitHubClient client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
