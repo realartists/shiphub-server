@@ -16,8 +16,8 @@
   static class Program {
     static void Main(string[] args) {
       try {
-        //DoAsync().Wait();
-        //PingTest().Wait();
+        //DoAsync().GetAwaiter().GetResult();
+        //PingTest().GetAwaiter().GetResult();
       } catch (Exception e) {
         Console.WriteLine(e.ToString());
         Console.ReadKey();

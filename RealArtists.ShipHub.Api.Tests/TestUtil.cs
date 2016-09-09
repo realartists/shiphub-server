@@ -11,7 +11,7 @@ namespace RealArtists.ShipHub.Api.Tests {
           Login = login,
           Type = "user",
         },
-      }).Wait();
+      }).GetAwaiter().GetResult();
       var user = context.Users.Single(x => x.Id == userId);
       user.Token = Guid.NewGuid().ToString();
       return user;
@@ -26,7 +26,7 @@ namespace RealArtists.ShipHub.Api.Tests {
           AccountId = accountId,
           Private = true,
         },
-      }).Wait();
+      }).GetAwaiter().GetResult();
       return context.Repositories.Single(x => x.Id == repoId);
     }
 
@@ -37,7 +37,7 @@ namespace RealArtists.ShipHub.Api.Tests {
           Login = login,
           Type = "org",
         },
-      }).Wait();
+      }).GetAwaiter().GetResult();
       return context.Organizations.Single(x => x.Id == orgId);
     }
   }
