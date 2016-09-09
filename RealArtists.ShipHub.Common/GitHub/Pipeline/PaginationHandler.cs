@@ -9,6 +9,7 @@
   public class PaginationHandler : IGitHubHandler {
     public const int PerFetchConcurrencyLimit = 16;
     public const int PageSize = 100;
+    public const bool InterpolationEnabled = false;
 
     private IGitHubHandler _next;
 
@@ -48,7 +49,7 @@
 
       // TODO: Cancellation (for when errors are encountered)?
 
-      if (firstPage.Pagination?.CanInterpolate == true) {
+      if (InterpolationEnabled && firstPage.Pagination?.CanInterpolate == true) {
         var pages = firstPage.Pagination.Interpolate();
         var pageRequestors = pages
           .Select(page => {
