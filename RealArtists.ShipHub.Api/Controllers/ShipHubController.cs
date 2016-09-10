@@ -6,12 +6,8 @@
   using Filters;
 
   public abstract class ShipHubController : ApiController {
-    protected ShipHubContext Context { get; private set; }
-    protected ShipHubPrincipal ShipHubUser { get { return RequestContext.Principal as ShipHubPrincipal; } }
-
-    protected ShipHubController(ShipHubContext context) {
-      Context = context;
-    }
+    protected ShipHubContext Context { get; private set; } = new ShipHubContext();
+    protected ShipHubPrincipal ShipHubUser => RequestContext.Principal as ShipHubPrincipal;
 
     public IHttpActionResult Error(
                          string message,

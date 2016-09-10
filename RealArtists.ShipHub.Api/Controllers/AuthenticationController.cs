@@ -29,7 +29,7 @@
       "admin:org_hook",
     }.AsReadOnly();
 
-    public AuthenticationController(ShipHubContext context, IShipHubQueueClient queueClient, IMapper mapper) : base (context) {
+    public AuthenticationController(IShipHubQueueClient queueClient, IMapper mapper) {
       _queueClient = queueClient;
       _mapper = mapper;
     }

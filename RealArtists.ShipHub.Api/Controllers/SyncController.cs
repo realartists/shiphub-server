@@ -7,16 +7,16 @@
   using System.Web;
   using System.Web.Http;
   using System.Web.WebSockets;
-  using Common.DataModel;
+  using Filters;
   using QueueClient;
   using Sync;
 
   [RoutePrefix("api/sync")]
-  public class SyncController : ShipHubController {
+  public class SyncController : ApiController {
     private ISyncManager _syncManager;
     private IShipHubQueueClient _queueClient;
 
-    public SyncController(ShipHubContext context, ISyncManager syncManager, IShipHubQueueClient queueClient) : base(context) {
+    public SyncController(ISyncManager syncManager, IShipHubQueueClient queueClient) {
       _syncManager = syncManager;
       _queueClient = queueClient;
     }
@@ -27,7 +27,8 @@
     public HttpResponseMessage Sync() {
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {
-        var handler = new SyncConnection(ShipHubUser, _syncManager, _queueClient);
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        var handler = new SyncConnection(user, _syncManager, _queueClient);
         context.AcceptWebSocketRequest(handler.AcceptWebSocketRequest, new AspNetWebSocketOptions() { SubProtocol = "V1" });
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }

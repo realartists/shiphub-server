@@ -4,7 +4,6 @@
   using Common.DataModel;
   using QueueClient;
   using SimpleInjector;
-  using SimpleInjector.Diagnostics;
   using SimpleInjector.Integration.WebApi;
   using Sync.Messages;
 
@@ -35,17 +34,8 @@
       // Sync Manager
       container.Register<ISyncManager, SyncManager>(Lifestyle.Singleton);
 
-      // Database
-      container.Register(() => new ShipHubContext(), Lifestyle.Transient);
-      
       // This is an extension method from the integration package.
       container.RegisterWebApiControllers(GlobalConfiguration.Configuration);
-
-      // Pre-verification hacks
-      container
-        .GetRegistration(typeof(ShipHubContext))
-        .Registration
-        .SuppressDiagnosticWarning(DiagnosticType.DisposableTransientComponent, "I know better.");
 
       container.Verify();
 

@@ -28,7 +28,7 @@
     private IShipHubQueueClient _queueClient;
     private IMapper _mapper;
 
-    public GitHubWebhookController(ShipHubContext context, IShipHubQueueClient queueClient, IMapper mapper) : base(context) {
+    public GitHubWebhookController(IShipHubQueueClient queueClient, IMapper mapper) {
       _queueClient = queueClient;
       _mapper = mapper;
     }

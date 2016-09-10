@@ -36,7 +36,7 @@
     }
 
     private static IMapper AutoMapper { get; } = CreateMapper();
-    
+
     private static IMapper CreateMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
@@ -93,7 +93,7 @@
         .Returns(Task.CompletedTask)
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
-      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
       ConfigureController(controller, eventName, obj, secret);
 
       IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
@@ -170,7 +170,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -201,7 +201,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("org", org.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -230,7 +230,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(BadRequestErrorMessageResult), result);
@@ -260,7 +260,7 @@
           new JProperty("id", repo.Id)
           )));
 
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -288,7 +288,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
 
         Assert.ThrowsAsync(typeof(ArgumentException), async () => {
@@ -968,7 +968,7 @@
           syncAccountRepositoryCalls.Add(accountId);
         });
 
-      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
       ConfigureController(controller, "repository", obj, hook.Secret.ToString());
       var result = await controller.HandleHook("org", org.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1062,7 +1062,7 @@
       };
 
       foreach (var test in tests) {
-        var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
+        var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
         ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
         var result = await controller.HandleHook(test.Item1, test.Item2);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1119,7 +1119,7 @@
           syncAccountRepositoryCalls.Add(accountId);
         });
 
-      var controller = new GitHubWebhookController(new Common.DataModel.ShipHubContext(), mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
       ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
       var result = await controller.HandleHook("repo", repo.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
