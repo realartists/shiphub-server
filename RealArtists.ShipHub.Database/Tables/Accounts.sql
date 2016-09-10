@@ -24,5 +24,6 @@ GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Token]
   ON [dbo].[Accounts]([Token])
+  INCLUDE ([RateLimitRemaining], [RateLimitReset])
   WHERE ([Token] IS NOT NULL)
 GO
