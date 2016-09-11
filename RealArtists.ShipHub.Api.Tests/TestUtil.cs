@@ -18,11 +18,12 @@ namespace RealArtists.ShipHub.Api.Tests {
     }
 
     public static Common.DataModel.Repository MakeTestRepo(Common.DataModel.ShipHubContext context, long accountId, long repoId = 2001, string name = "myrepo") {
+      var account = context.Accounts.Single(x => x.Id == accountId);
       context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] {
         new RepositoryTableType() {
           Id = repoId,
           Name = name,
-          FullName = "aroon/" + name,
+          FullName = $"{account.Login}/{name}",
           AccountId = accountId,
           Private = true,
         },

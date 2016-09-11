@@ -149,7 +149,7 @@
         Assert.AreEqual(new[] { env.user1.Token }, pings.Keys.ToArray());
         Assert.AreEqual(
           new[] {
-            Tuple.Create("repo", "aroon/unicorns", (long)env.repo1Hook.GitHubId),
+            Tuple.Create("repo", "myorg1/unicorns", (long)env.repo1Hook.GitHubId),
             Tuple.Create("org", "myorg2", (long)env.org2Hook.GitHubId),
           },
           pings[env.user1.Token].ToArray());
