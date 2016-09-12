@@ -32,6 +32,7 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<UserIdMessage> syncAccountRepos,
       [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<UserIdMessage> syncAccountOrgs,
+      [ServiceBus(ShipHubQueueNames.BillingGetOrCreateSubscription)] IAsyncCollector<BrokeredMessage> getOrCreateSubscription,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
@@ -71,6 +72,7 @@
           var am = new UserIdMessage(user.Id);
           tasks.Add(syncAccountRepos.AddAsync(am));
           tasks.Add(syncAccountOrgs.AddAsync(am));
+          tasks.Add(getOrCreateSubscription.AddAsync(WebJobInterop.CreateMessage(am, user.Id.ToString())));
 
           await Task.WhenAll(tasks);
         }

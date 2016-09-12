@@ -55,6 +55,13 @@
       // Gross manual DI
       ConfigureGlobalLogging(config, telemetryClient, raygunClient);
 
+      // ChargeBee
+      var chargeBeeHostAndApiKey = CloudConfigurationManager.GetSetting("ChargeBeeHostAndKey");
+      if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
+        var parts = chargeBeeHostAndApiKey.Split(':');
+        ChargeBee.Api.ApiConfig.Configure(parts[0], parts[1]);
+      }
+
       var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
       var sbConfig = new ServiceBusConfiguration() {
         ConnectionString = azureWebJobsServiceBus,
