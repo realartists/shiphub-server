@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Threading;
@@ -44,10 +45,13 @@
         request.Content = null;
       }
 
-      var response = await _ProxyClient.SendAsync(request, cancellationToken);
-      response.Headers.Remove("Server");
-
-      return response;
+      try {
+        var response = await _ProxyClient.SendAsync(request, cancellationToken);
+        response.Headers.Remove("Server");
+        return response;
+      } catch (TaskCanceledException exception) {
+        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      }
     }
   }
 }
