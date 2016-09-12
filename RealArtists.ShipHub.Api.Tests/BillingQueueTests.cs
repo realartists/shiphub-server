@@ -26,6 +26,10 @@
   [AutoRollback]
   public class BillingQueueTests {
 
+    private static BillingQueueHandler CreateHandler() {
+      return new BillingQueueHandler(new DetailedExceptionLogger());
+    }
+
     /// <summary>
     /// ChargeBee's client library is not easily tested.  Instead of trying to shim all
     /// of its things, we'll use this to watch outgoing HTTP requests and return fake
@@ -172,17 +176,197 @@
             }
           });
 
-          await (new BillingQueueHandler(new DetailedExceptionLogger()))
-            .GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
-
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
         Assert.IsTrue(createdAccount);
         Assert.IsTrue(createdSubscription);
         Assert.IsTrue(setSubscriptionToCancel);
       }
     }
+
+    [Test]
+    public async Task WillNotCreateCustomerIfOneAlreadyExists() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = user.Id,
+              Login = "aroon",
+              Name = "Aroon Pahwa",
+              Email = "aroon@pureimaginary.com",
+              Type = Common.GitHub.Models.GitHubAccountType.User,
+            }
+          });
+
+        bool createdAccount = false;
+        bool createdSubscription = false;
+        bool setSubscriptionToCancel = false;
+
+        using (ShimsContext.Create()) {
+          ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+              // Pretend no existing customers found for this id.
+              return new {
+                list = new object[] {
+                  new {
+                    customer = new {
+                      id = $"user-{user.Id}",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
+              Assert.AreEqual(
+                new Dictionary<string, string> {
+                      { "id", $"user-{user.Id}" },
+                      { "first_name", $"Aroon"},
+                      { "last_name", $"Pahwa"},
+                },
+                data);
+              createdAccount = true;
+              // Fake response for customer creation.
+              return new {
+                customer = new {
+                  id = $"user-{user.Id}",
+                },
+              };
+            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("personal", data["plan_id[is]"]);
+
+              // Pretend no existing subscriptions found.
+              return new {
+                list = new object[0],
+                next_offset = null as string,
+              };
+            } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
+              Assert.AreEqual(
+                new Dictionary<string, string> {
+                      { "plan_id", "personal"},
+                },
+                data);
+              createdSubscription = true;
+              // Fake response for creating the subscription.
+              return new {
+                subscription = new {
+                  id = "some-sub-id",
+                  status = "in_trial",
+                },
+              };
+            } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/some-sub-id/cancel")) {
+              Assert.AreEqual(new Dictionary<string, string> { { "end_of_term", "true" } }, data);
+              setSubscriptionToCancel = true;
+              // Fake response for scheduling the trial to auto cancel at end of month.
+              return new {
+                subscription = new {
+                  id = "some-sub-id",
+                  status = "in_trial",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+        }
+
+        var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
+        Assert.AreEqual(SubscriptionState.InTrial, sub.State);
+        Assert.IsFalse(createdAccount);
+        Assert.IsTrue(createdSubscription);
+        Assert.IsTrue(setSubscriptionToCancel);
+      }
+    }
+
+    [Test]
+    public async Task WillNotCreateSubscriptionIfOneAlreadyExists() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = user.Id,
+              Login = "aroon",
+              Name = "Aroon Pahwa",
+              Email = "aroon@pureimaginary.com",
+              Type = Common.GitHub.Models.GitHubAccountType.User,
+            }
+          });
+        
+        using (ShimsContext.Create()) {
+          ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+              // Pretend no existing customers found for this id.
+              return new {
+                list = new object[] {
+                  new {
+                    customer = new {
+                      id = $"user-{user.Id}",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("personal", data["plan_id[is]"]);
+
+              // Pretend no existing subscriptions found.
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = "active",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+        }
+
+        var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+      }
+    }
+
   }
 }
