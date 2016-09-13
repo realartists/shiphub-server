@@ -41,7 +41,7 @@
       } else {
         var user = HttpContext.Current?.User as ShipHubPrincipal;
         if (user != null) {
-          client.User = $"{user.Login} ({user.UserId})";
+          client.User = user.DebugIdentifier;
         }
       }
 

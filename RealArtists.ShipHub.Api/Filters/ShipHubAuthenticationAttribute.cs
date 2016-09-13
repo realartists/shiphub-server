@@ -99,6 +99,7 @@
     public long UserId { get; private set; }
     public string Login { get; private set; }
     public string Token { get; private set; }
+    public string DebugIdentifier => $"{UserId} ({Login})";
   }
 
   public class ShipHubChallengeWrapperResult : IHttpActionResult {

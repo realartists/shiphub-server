@@ -13,8 +13,9 @@
       var user = context.RequestContext.Principal as ShipHubPrincipal;
       if (user != null) {
         properties = new Dictionary<string, string> {
-            { "Login", user.Login },
-            { "UserId", $"{ user.UserId }" },
+          { "Login", user.Login },
+          { "UserId", user.UserId.ToString() },
+          { "DebugIdentifier", user.DebugIdentifier },
         };
       }
 

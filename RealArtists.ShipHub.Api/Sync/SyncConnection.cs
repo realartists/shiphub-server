@@ -61,7 +61,7 @@
         // Ensure we log the original error
 
         exception = exception.Simplify();
-        var userInfo = $"{_user.Login} ({_user.UserId})";
+        var userInfo = _user.DebugIdentifier;
 
         // HACK: This is gross. Find a way to inject these or something.
         // No need to cache since connection closed immediately after this.
