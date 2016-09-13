@@ -47,7 +47,7 @@
           logger.WriteLine($"User details for {user.Login} cached until {user.Metadata?.Expires:o}");
           if (user.Metadata == null || user.Metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine($"Polling: User");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
             var userResponse = await ghc.User(user.Metadata.IfValidFor(user));
 
             if (userResponse.Status != HttpStatusCode.NotModified) {
@@ -96,7 +96,7 @@
           logger.WriteLine($"Account repositories for {user.Login} cached until {user.RepositoryMetadata?.Expires:o}");
           if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Account repositories.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
             var repoResponse = await ghc.Repositories(user.RepositoryMetadata.IfValidFor(user));
 
             if (repoResponse.Status != HttpStatusCode.NotModified) {
@@ -158,7 +158,7 @@
           logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
           if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Organization membership.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
             var orgResponse = await ghc.OrganizationMemberships(user.OrganizationMetadata.IfValidFor(user));
 
             if (orgResponse.Status != HttpStatusCode.NotModified) {
@@ -214,7 +214,7 @@
           logger.WriteLine($"Organization members for {org.Login} cached until {org.OrganizationMetadata?.Expires}");
           if (org.OrganizationMetadata == null || org.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Organization membership.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
             // each member.  To workaround, we make two requests and use the filter option
@@ -298,7 +298,7 @@
           logger.WriteLine($"Assignees for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository assignees.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.Assignable(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -349,7 +349,7 @@
           logger.WriteLine($"Milestones for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository milestones.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.Milestones(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -401,7 +401,7 @@
           logger.WriteLine($"Labels for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository labels.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.Labels(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -459,7 +459,7 @@
           logger.WriteLine($"Issues for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository issues.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.Issues(repo.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -527,7 +527,7 @@
           logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository comments.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.Comments(repo.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -578,7 +578,7 @@
           logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository events.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Events(repo.FullName, metadata);
@@ -636,7 +636,7 @@
           logger.WriteLine($"Comments for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue comments.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Comments(issue.Repository.FullName, null, metadata);
@@ -695,7 +695,7 @@
           logger.WriteLine($"Reactions for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -750,7 +750,7 @@
           logger.WriteLine($"Reactions for comment {comment.Id} in {comment.Repository.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -809,7 +809,7 @@
             return;
           }
 
-          var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+          var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
           // Client doesn't send repoId :(
           var repoId = await context.Repositories

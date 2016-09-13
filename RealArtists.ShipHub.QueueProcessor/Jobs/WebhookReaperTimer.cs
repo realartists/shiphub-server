@@ -15,7 +15,7 @@
   public class WebhookReaperTimer : LoggingHandlerBase {
     public WebhookReaperTimer(IDetailedExceptionLogger logger) : base(logger) { }
 
-    public virtual IGitHubClient CreateGitHubClient(User user, string correlationId) {
+    public virtual IGitHubClient CreateGitHubClient(User user, Guid correlationId) {
       return GitHubSettings.CreateUserClient(user, correlationId);
     }
 
@@ -74,7 +74,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountRepository != null) {
-                var client = CreateGitHubClient(accountRepository.Account, correlationId);
+                var client = CreateGitHubClient(accountRepository.Account, Guid.NewGuid());
                 pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
               }
             } else if (hook.OrganizationId != null) {
@@ -89,7 +89,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountOrganization != null) {
-                var client = CreateGitHubClient(accountOrganization.User, "correlationId");
+                var client = CreateGitHubClient(accountOrganization.User, Guid.NewGuid());
                 pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
               }
             } else {

@@ -46,7 +46,7 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userClient = GitHubSettings.CreateUserClient(request.AccessToken, "ShipHub Login", Guid.NewGuid().ToString());
+      var userClient = GitHubSettings.CreateUserClient(request.AccessToken, "ShipHub Login", Guid.NewGuid());
       var userResponse = await userClient.User(GitHubCacheDetails.Empty);
 
       if (userResponse.IsError) {

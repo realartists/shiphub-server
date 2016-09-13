@@ -12,7 +12,7 @@
     GitHubRateLimit RateLimit { get; }
     ProductInfoHeaderValue UserAgent { get; }
     string UserInfo { get; }
-    string CorrelationId { get; }
+    Guid CorrelationId { get; }
 
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);

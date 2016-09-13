@@ -27,7 +27,7 @@
     }
 
     [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Only a valid operation for users.")]
-    public static GitHubClient CreateUserClient(User user, string correlationId) {
+    public static GitHubClient CreateUserClient(User user, Guid correlationId) {
       if (user == null) {
         throw new ArgumentNullException(nameof(user));
       }
@@ -45,7 +45,7 @@
       return CreateUserClient(user.Token, $"{user.Id} ({user.Login})", correlationId, rateLimit);
     }
 
-    public static GitHubClient CreateUserClient(string accessToken, string userInfo, string correlationId, GitHubRateLimit rateLimit = null) {
+    public static GitHubClient CreateUserClient(string accessToken, string userInfo, Guid correlationId, GitHubRateLimit rateLimit = null) {
       return new GitHubClient(HandlerPipeline, ApplicationName, ApplicationVersion, userInfo, correlationId, accessToken, rateLimit);
     }
   }

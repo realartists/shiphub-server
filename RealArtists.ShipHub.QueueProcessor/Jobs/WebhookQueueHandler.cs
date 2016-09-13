@@ -31,7 +31,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
         }
         await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
       });
@@ -138,7 +138,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
         }
 
         await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);

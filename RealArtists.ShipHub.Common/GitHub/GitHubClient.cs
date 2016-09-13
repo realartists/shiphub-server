@@ -13,14 +13,14 @@
     public string DefaultToken { get; set; }
     public ProductInfoHeaderValue UserAgent { get; }
     public string UserInfo { get; }
-    public string CorrelationId { get; }
+    public Guid CorrelationId { get; }
 
     // Rate limit concurrency requires some finesse
     private object _rateLimitLock = new object();
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
 
-    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, string correlationId, string accessToken = null, GitHubRateLimit rateLimit = null) {
+    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, Guid correlationId, string accessToken = null, GitHubRateLimit rateLimit = null) {
       Handler = handler;
       DefaultToken = accessToken;
       UserAgent = new ProductInfoHeaderValue(productName, productVersion);

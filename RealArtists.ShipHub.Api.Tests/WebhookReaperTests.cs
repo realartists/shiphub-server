@@ -17,8 +17,8 @@
       Dictionary<string, List<Tuple<string, string, long>>> pings) {
       var mock = new Mock<WebhookReaperTimer>(new DetailedExceptionLogger()) { CallBase = true };
       mock
-        .Setup(x => x.CreateGitHubClient(It.IsAny<User>(), It.IsAny<string>()))
-        .Returns((User user, string correlationId) => {
+        .Setup(x => x.CreateGitHubClient(It.IsAny<User>(), It.IsAny<Guid>()))
+        .Returns((User user, Guid correlationId) => {
           if (!pings.ContainsKey(user.Token)) {
             pings[user.Token] = new List<Tuple<string, string, long>>();
           }

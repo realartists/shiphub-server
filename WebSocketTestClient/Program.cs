@@ -27,7 +27,7 @@
     static async Task PingTest() {
       using (var context = new ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Login == "kogir");
-        var ghc = GitHubSettings.CreateUserClient(user, Guid.NewGuid().ToString());
+        var ghc = GitHubSettings.CreateUserClient(user, Guid.NewGuid());
         var hooks = await ghc.RepositoryWebhooks("realartists/shiphub-server");
         var hook = hooks.Result.First();
         var ping = await ghc.PingRepositoryWebhook("realartists/shiphub-server", hook.Id);
