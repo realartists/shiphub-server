@@ -6,7 +6,8 @@
   using Filters;
 
   public abstract class ShipHubController : ApiController {
-    protected ShipHubContext Context { get; private set; } = new ShipHubContext();
+    private ShipHubContext _context = new ShipHubContext();
+    protected ShipHubContext Context => _context;
     protected ShipHubPrincipal ShipHubUser => RequestContext.Principal as ShipHubPrincipal;
 
     public IHttpActionResult Error(
@@ -32,9 +33,9 @@
 
     protected override void Dispose(bool disposing) {
       if (disposing) {
-        if (Context != null) {
-          Context.Dispose();
-          Context = null;
+        if (_context != null) {
+          _context.Dispose();
+          _context = null;
         }
       }
       base.Dispose(disposing);
