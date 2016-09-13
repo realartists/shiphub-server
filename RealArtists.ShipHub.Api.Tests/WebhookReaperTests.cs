@@ -8,13 +8,14 @@
   using Moq;
   using NUnit.Framework;
   using QueueProcessor;
+  using QueueProcessor.Jobs;
 
   [TestFixture]
   [AutoRollback]
   public class WebhookReaperTests {
-    private static Mock<WebhookReaper> MockReaper(
+    private static Mock<WebhookReaperTimer> MockReaper(
       Dictionary<string, List<Tuple<string, string, long>>> pings) {
-      var mock = new Mock<WebhookReaper>() { CallBase = true };
+      var mock = new Mock<WebhookReaperTimer>() { CallBase = true };
       mock
         .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
         .Returns((User user) => {

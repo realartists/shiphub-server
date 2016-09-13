@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.QueueProcessor {
+﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
@@ -10,7 +10,7 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
 
-  public class WebhookReaper {
+  public class WebhookReaperTimer {
     public virtual IGitHubClient CreateGitHubClient(User user) {
       return GitHubSettings.CreateUserClient(user);
     }

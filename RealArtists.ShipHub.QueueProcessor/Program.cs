@@ -5,12 +5,15 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Microsoft.ApplicationInsights;
   using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
+  using Mindscape.Raygun4Net;
   using QueueClient;
   using SimpleInjector;
+  using Tracing;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
@@ -21,7 +24,25 @@
       var azureWebJobsDashboard = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard");
       var azureWebJobsStorage = CloudConfigurationManager.GetSetting("AzureWebJobsStorage");
 
-      var container = CreateContainer();
+      // Raygun Client
+      var raygunApiKey = CloudConfigurationManager.GetSetting(RaygunApiKey);
+      RaygunClient raygunClient = null;
+      if (!raygunApiKey.IsNullOrWhiteSpace()) {
+        raygunClient = new RaygunClient(raygunApiKey);
+        raygunClient.AddWrapperExceptions(typeof(AggregateException));
+      }
+
+      // App Insights Client
+      var applicationInsightsKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
+      TelemetryClient telemetryClient = null;
+      if (!applicationInsightsKey.IsNullOrWhiteSpace()) {
+        TelemetryConfiguration.Active.InstrumentationKey = applicationInsightsKey;
+        telemetryClient = new TelemetryClient();
+      }
+
+      var detailedLogger = new DetailedExceptionLogger(telemetryClient, raygunClient);
+
+      var container = CreateContainer(detailedLogger);
 
       // Job Host Configuration
       var config = new JobHostConfiguration() {
@@ -31,7 +52,8 @@
       };
       config.Queues.MaxDequeueCount = 2; // Only try twice
 
-      ConfigureLogging(config);
+      // Gross manual DI
+      ConfigureGlobalLogging(config, telemetryClient, raygunClient);
 
       var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
       var sbConfig = new ServiceBusConfiguration() {
@@ -70,6 +92,7 @@
 
       config.UseServiceBus(sbConfig);
       config.UseTimers();
+      config.UseCore(); // For ExecutionContext
 
       Console.WriteLine("Starting job host...\n\n");
       using (var host = new JobHost(config)) {
@@ -85,32 +108,34 @@
       }
     }
 
-    static void ConfigureLogging(JobHostConfiguration config) {
+    static void ConfigureGlobalLogging(JobHostConfiguration config, TelemetryClient telemetryClient, RaygunClient raygunClient) {
+      // These are still needed to capture top level exceptions, but new injected logger should
+      // provide much more useful information from functions that use it.
+
       // Application Insights
-      var instrumentationKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
-      if (!instrumentationKey.IsNullOrWhiteSpace()) {
-        TelemetryConfiguration.Active.InstrumentationKey = instrumentationKey;
-        config.Tracing.Tracers.Add(new ApplicationInsightsTraceWriter());
+      if (telemetryClient != null) {
+        config.Tracing.Tracers.Add(new ApplicationInsightsTraceWriter(telemetryClient));
       }
 
       // Raygun
-      var apiKey = CloudConfigurationManager.GetSetting(RaygunApiKey);
-      if (!apiKey.IsNullOrWhiteSpace()) {
-        config.Tracing.Tracers.Add(new RaygunTraceWriter(apiKey));
+      if (raygunClient != null) {
+        config.Tracing.Tracers.Add(new RaygunTraceWriter(raygunClient));
       }
     }
 
-    static Container CreateContainer() {
+    static Container CreateContainer(IDetailedExceptionLogger detailedLogger) {
       Container container = null;
 
       try {
         container = new Container();
 
         // AutoMapper
-        container.Register(() => new MapperConfiguration(cfg => {
-          cfg.AddProfile<GitHubToDataModelProfile>();
-        }).CreateMapper(),
-          Lifestyle.Singleton);
+        container.Register(() => {
+          var config = new MapperConfiguration(cfg => {
+            cfg.AddProfile<GitHubToDataModelProfile>();
+          });
+          return config.CreateMapper();
+        }, Lifestyle.Singleton);
 
         // Service Bus
         container.Register<IServiceBusFactory>(() => {
@@ -122,6 +147,9 @@
 
         // Queue Client
         container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);
+
+        // IDetailedExceptionLogger
+        container.Register(() => detailedLogger, Lifestyle.Singleton);
 
         container.Verify();
       } catch {

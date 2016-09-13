@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.QueueProcessor {
+﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
@@ -15,7 +15,7 @@
   using QueueClient.Messages;
   using gm = Common.GitHub.Models;
 
-  public class WebhookHandler {
+  public class WebhookQueueHandler {
     public async Task AddOrUpdateRepoWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
