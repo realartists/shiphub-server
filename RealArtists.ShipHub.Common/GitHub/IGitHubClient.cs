@@ -11,6 +11,8 @@
     IGitHubHandler Handler { get; set; }
     GitHubRateLimit RateLimit { get; }
     ProductInfoHeaderValue UserAgent { get; }
+    string UserInfo { get; }
+    string CorrelationId { get; }
 
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);
@@ -41,5 +43,6 @@
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubCacheDetails cacheOptions = null);
     void UpdateInternalRateLimit(GitHubRateLimit rateLimit);
     Task<GitHubResponse<Account>> User(IGitHubCacheDetails cacheOptions = null);
+    int NextRequestId();
   }
 }

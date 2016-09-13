@@ -7,18 +7,18 @@
   using Common.GitHub;
   using Moq;
   using NUnit.Framework;
-  using QueueProcessor;
   using QueueProcessor.Jobs;
+  using QueueProcessor.Tracing;
 
   [TestFixture]
   [AutoRollback]
   public class WebhookReaperTests {
     private static Mock<WebhookReaperTimer> MockReaper(
       Dictionary<string, List<Tuple<string, string, long>>> pings) {
-      var mock = new Mock<WebhookReaperTimer>() { CallBase = true };
+      var mock = new Mock<WebhookReaperTimer>(new DetailedExceptionLogger()) { CallBase = true };
       mock
-        .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
-        .Returns((User user) => {
+        .Setup(x => x.CreateGitHubClient(It.IsAny<User>(), It.IsAny<string>()))
+        .Returns((User user, string correlationId) => {
           if (!pings.ContainsKey(user.Token)) {
             pings[user.Token] = new List<Tuple<string, string, long>>();
           }
@@ -140,7 +140,7 @@
         var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
 
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
 
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
@@ -158,7 +158,7 @@
         // see pings.  (The threshold for re-pinging is 30+ minutes)
         pings.Clear();
         mock.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow.AddMinutes(29));
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
         Assert.AreEqual(1, env.repo1Hook.PingCount);
@@ -168,7 +168,7 @@
         // going up if we run again.
         pings.Clear();
         mock.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow.AddMinutes(31));
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
         Assert.AreEqual(2, env.repo1Hook.PingCount);
@@ -201,7 +201,7 @@
         var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
 
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
 
         context.Entry(env.org1Hook).Reload();
         Assert.AreEqual(1, env.org1Hook.PingCount);
@@ -231,7 +231,7 @@
         var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
 
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
 
         context.Entry(env.repo1Hook).Reload();
         Assert.AreEqual(1, env.repo1Hook.PingCount);
@@ -261,12 +261,11 @@
 
         var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
-        await mock.Object.Run();
+        await mock.Object.Run("correlationId");
 
         var remainingHookIds = context.Hooks.Select(x => x.Id).ToArray();
         Assert.AreEqual(new[] { env.repo2Hook.Id, env.org1Hook.Id }, remainingHookIds);
       }
     }
-
   }
 }

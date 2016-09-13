@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
@@ -8,6 +9,7 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Common.GitHub;
   using QueueClient;
 
   public class HelloRequest {
@@ -44,9 +46,8 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userClient = GitHubSettings.CreateUserClient(request.AccessToken, "ShipHub Login");
-      // DO NOT SEND ANY OPTIONS - we want to ensure we use the default credentials.
-      var userResponse = await userClient.User();
+      var userClient = GitHubSettings.CreateUserClient(request.AccessToken, "ShipHub Login", Guid.NewGuid().ToString());
+      var userResponse = await userClient.User(GitHubCacheDetails.Empty);
 
       if (userResponse.IsError) {
         Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);

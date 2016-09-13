@@ -3,16 +3,20 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics.CodeAnalysis;
+  using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
+  using Tracing;
 
-  public class WebhookReaperTimer {
-    public virtual IGitHubClient CreateGitHubClient(User user) {
-      return GitHubSettings.CreateUserClient(user);
+  public class WebhookReaperTimer : LoggingHandlerBase {
+    public WebhookReaperTimer(IDetailedExceptionLogger logger) : base(logger) { }
+
+    public virtual IGitHubClient CreateGitHubClient(User user, string correlationId) {
+      return GitHubSettings.CreateUserClient(user, correlationId);
     }
 
     public virtual DateTimeOffset UtcNow {
@@ -22,11 +26,15 @@
     }
 
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
-    public async Task ReaperTimer([TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo) {
-      await Run();
+    public async Task ReaperTimer(
+      [TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo,
+      TextWriter logger, ExecutionContext executionContext) {
+      await WithEnhancedLogging(executionContext.InvocationId, null, null, async () => {
+        await Run(executionContext.InvocationId.ToString());
+      });
     }
 
-    public async Task Run() {
+    public async Task Run(string correlationId) {
       while (true) {
         using (var context = new ShipHubContext()) {
           var now = UtcNow;
@@ -66,7 +74,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountRepository != null) {
-                var client = CreateGitHubClient(accountRepository.Account);
+                var client = CreateGitHubClient(accountRepository.Account, correlationId);
                 pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
               }
             } else if (hook.OrganizationId != null) {
@@ -81,7 +89,7 @@
                 .FirstOrDefaultAsync();
 
               if (accountOrganization != null) {
-                var client = CreateGitHubClient(accountOrganization.User);
+                var client = CreateGitHubClient(accountOrganization.User, "correlationId");
                 pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
               }
             } else {

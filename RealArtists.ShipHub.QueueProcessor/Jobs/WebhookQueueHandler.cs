@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics;
+  using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
@@ -13,21 +14,27 @@
   using Microsoft.Azure.WebJobs;
   using QueueClient;
   using QueueClient.Messages;
+  using Tracing;
   using gm = Common.GitHub.Models;
 
-  public class WebhookQueueHandler {
+  public class WebhookQueueHandler : LoggingHandlerBase {
+    public WebhookQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
+
     public async Task AddOrUpdateRepoWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] TargetMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      IGitHubClient ghc;
-      using (var context = new ShipHubContext()) {
-        var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
-        if (user == null || user.Token.IsNullOrWhiteSpace()) {
-          return;
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger, ExecutionContext executionContext) {
+      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
+        IGitHubClient ghc;
+        using (var context = new ShipHubContext()) {
+          var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
+          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+            return;
+          }
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
         }
-        ghc = GitHubSettings.CreateUserClient(user);
-      }
-      await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
+        await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
+      });
     }
 
     public async Task AddOrUpdateRepoWebhooksWithClient(
@@ -122,17 +129,20 @@
 
     public async Task AddOrUpdateOrgWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] TargetMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges) {
-      IGitHubClient ghc;
-      using (var context = new ShipHubContext()) {
-        var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
-        if (user == null || user.Token.IsNullOrWhiteSpace()) {
-          return;
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger, ExecutionContext executionContext) {
+      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
+        IGitHubClient ghc;
+        using (var context = new ShipHubContext()) {
+          var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
+          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+            return;
+          }
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId.ToString());
         }
-        ghc = GitHubSettings.CreateUserClient(user);
-      }
 
-      await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);
+        await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);
+      });
     }
 
     public async Task AddOrUpdateOrgWebhooksWithClient(

@@ -12,12 +12,16 @@
   using Moq;
   using NUnit.Framework;
   using QueueClient.Messages;
-  using QueueProcessor;
   using QueueProcessor.Jobs;
+  using QueueProcessor.Tracing;
 
   [TestFixture]
   [AutoRollback]
   public class WebhookHandlerTests {
+
+    public static WebhookQueueHandler CreateHandler() {
+      return new WebhookQueueHandler(new DetailedExceptionLogger());
+    }
 
     static string ApiHostname {
       get {
@@ -94,7 +98,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
 
         mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
@@ -170,7 +174,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -220,7 +224,7 @@
             return Task.CompletedTask;
           });
 
-        await new WebhookQueueHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
         var expectedEvents = new string[] {
@@ -269,7 +273,7 @@
            .ThrowsAsync(new Exception("some exception!"));
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
 
         var hook = context.Hooks.SingleOrDefault(x => x.RepositoryId == repo.Id);
         Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
@@ -299,7 +303,7 @@
            .ThrowsAsync(new Exception("some exception!"));
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
 
         var hook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
         Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
@@ -349,7 +353,7 @@
             return Task.CompletedTask;
           });
 
-        await new WebhookQueueHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
         var expectedEvents = new string[] {
@@ -449,7 +453,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -524,7 +528,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
 
         mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, expectedEvents));
         context.Entry(hook).Reload();
@@ -567,7 +571,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
 
         var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
         Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
@@ -607,7 +611,7 @@
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await new WebhookQueueHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
 
         var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
         Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
