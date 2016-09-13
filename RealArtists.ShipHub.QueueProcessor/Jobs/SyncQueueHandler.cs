@@ -438,8 +438,8 @@
     /// </summary>
     public async Task SyncRepositoryIssues(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] TargetMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<TargetMessage> syncRepoComments,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<TargetMessage> syncRepoIssueEvents,
+      //[ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<TargetMessage> syncRepoComments,
+      //[ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<TargetMessage> syncRepoIssueEvents,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
@@ -498,10 +498,10 @@
           await Task.WhenAll(tasks);
 
           // Do these unconditionally
-          await Task.WhenAll(
-            syncRepoComments.AddAsync(message),
-            syncRepoIssueEvents.AddAsync(message)
-          );
+          //await Task.WhenAll(
+          //  syncRepoComments.AddAsync(message),
+          //  syncRepoIssueEvents.AddAsync(message)
+          //);
         }
       });
     }
