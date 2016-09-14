@@ -175,7 +175,7 @@
         .Select(_ =>
           Observable.FromAsync(_syncContext.Sync)
           .Catch<Unit, Exception>(LogError<Unit>))
-        .Concat() // Force sequentual evaluation
+        .Concat() // Force sequential evaluation
         .Subscribe();
 
       // Polling for updates
@@ -185,7 +185,7 @@
         .Select(_ =>
           Observable.FromAsync(() => _queueClient.SyncAccount(_user.UserId))
           .Catch<Unit, Exception>(LogError<Unit>))
-        .Concat() // Force sequentual evaluation
+        .Concat() // Force sequential evaluation
         .Subscribe();
     }
 
