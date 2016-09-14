@@ -6,6 +6,9 @@
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Threading.Tasks;
+  using Logging;
+  using Microsoft.Azure;
+  using Microsoft.WindowsAzure.Storage;
 
   public interface IGitHubHandler {
     Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request);
@@ -113,6 +116,10 @@
       httpRequest.Headers.UserAgent.Clear();
       httpRequest.Headers.UserAgent.Add(client.UserAgent);
 
+      // For logging
+      var blobName = $"{client.UserInfo}/{client.CorrelationId}/{client.NextRequestId()}_{DateTime.UtcNow:o}{httpRequest.RequestUri.PathAndQuery}.log";
+      httpRequest.Properties[LoggingMessageProcessingHandler.LogBlobNameKey] = blobName;
+
       var response = await HttpClient.SendAsync(httpRequest);
 
       // Handle redirects
@@ -217,7 +224,7 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
-      var handler = new HttpClientHandler() {
+      HttpMessageHandler handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
         MaxRequestContentBufferSize = 4 * 1024 * 1024,
@@ -235,6 +242,15 @@
         ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
       }
 #endif
+
+      // TODO: Inject this or something.
+      var gitHubLoggingStorage = CloudConfigurationManager.GetSetting("GitHubLoggingStorage");
+      if (!gitHubLoggingStorage.IsNullOrWhiteSpace()) {
+        var account = CloudStorageAccount.Parse(gitHubLoggingStorage);
+        var logHandler = new LoggingMessageProcessingHandler(account, "github-logs", handler); ;
+        logHandler.Initialize().GetAwaiter().GetResult();
+        handler = logHandler;
+      }
 
       var httpClient = new HttpClient(handler, true);
 
