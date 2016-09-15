@@ -21,6 +21,7 @@
   using QueueProcessor;
   using QueueProcessor.Tracing;
   using System.Linq;
+  using System.Globalization;
 
   [TestFixture]
   [AutoRollback]
@@ -158,6 +159,10 @@
                 subscription = new {
                   id = "some-sub-id",
                   status = "in_trial",
+                  trial_end = DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
             } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/some-sub-id/cancel")) {
@@ -168,6 +173,10 @@
                 subscription = new {
                   id = "some-sub-id",
                   status = "in_trial",
+                  trial_end = DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
             } else {
@@ -181,6 +190,11 @@
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
+        Assert.AreEqual(DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal),
+                        sub.TrialEndDate);
         Assert.IsTrue(createdAccount);
         Assert.IsTrue(createdSubscription);
         Assert.IsTrue(setSubscriptionToCancel);
@@ -237,7 +251,6 @@
               Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
               Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              // Pretend no existing subscriptions found.
               return new {
                 list = new object[] {
                   new {
@@ -261,6 +274,91 @@
         context.Entry(subscription).Reload();
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
           "should change to subscribed because chargebee says subscription is active.");
+      }
+    }
+
+    [Test]
+    public async Task WillUpdateTrailEndDateFromExistingSubscription() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var subscription = context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.NoSubscription,
+        });
+        await context.SaveChangesAsync();
+
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+        var mockClient = new Mock<IGitHubClient>();
+
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = user.Id,
+              Login = "aroon",
+              Name = "Aroon Pahwa",
+              Email = "aroon@pureimaginary.com",
+              Type = Common.GitHub.Models.GitHubAccountType.User,
+            }
+          });
+
+        using (ShimsContext.Create()) {
+          ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+              // Pretend no existing customers found for this id.
+              return new {
+                list = new object[] {
+                  new {
+                    customer = new {
+                      id = $"user-{user.Id}",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("personal", data["plan_id[is]"]);
+
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = "in_trial",
+                      trial_end = DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+        }
+
+        context.Entry(subscription).Reload();
+        Assert.AreEqual(SubscriptionState.InTrial, subscription.State,
+          "should change to subscribed because chargebee says subscription is active.");
+        Assert.AreEqual(DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal),
+                        subscription.TrialEndDate);
       }
     }
 
@@ -345,6 +443,10 @@
                 subscription = new {
                   id = "some-sub-id",
                   status = "in_trial",
+                  trial_end = DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
             } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/some-sub-id/cancel")) {
@@ -355,6 +457,10 @@
                 subscription = new {
                   id = "some-sub-id",
                   status = "in_trial",
+                  trial_end = DateTimeOffset.Parse(
+                        "10/1/2016 08:00:00 PM +00:00",
+                        null,
+                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
             } else {

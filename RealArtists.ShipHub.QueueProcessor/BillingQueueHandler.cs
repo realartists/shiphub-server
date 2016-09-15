@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
+  using System;
   using System.Data.Entity;
   using System.IO;
   using System.Linq;
@@ -83,6 +84,7 @@
               break;
             case ChargeBee.Models.Subscription.StatusEnum.InTrial:
               accountSubscription.State = SubscriptionState.InTrial;
+              accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value);
               break;
             default:
               accountSubscription.State = SubscriptionState.NoSubscription;

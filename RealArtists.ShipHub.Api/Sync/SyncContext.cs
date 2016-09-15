@@ -39,7 +39,7 @@
         || changes.Users.Contains(_user.UserId);
     }
 
-    private async Task<SubscriptionMode> GetSubscriptionMode() {
+    private async Task<SubscriptionEntry> GetSubscriptionEntry() {
       using (var context = new ShipHubContext()) {
         var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
         var numOfSubscribedOrgs = await context.OrganizationAccounts
@@ -48,6 +48,7 @@
             x.Organization.Subscription.State == SubscriptionState.Subscribed);
 
         SubscriptionMode mode;
+        DateTimeOffset? trialEndDate = null;
 
         if (personalSub == null) {
           mode = SubscriptionMode.Paid;
@@ -57,11 +58,15 @@
           mode = SubscriptionMode.Paid;
         } else if (personalSub.State == SubscriptionState.InTrial) {
           mode = SubscriptionMode.Trial;
+          trialEndDate = personalSub.TrialEndDate;
         } else {
           mode = SubscriptionMode.Free;
         }
 
-        return mode;
+        return new SubscriptionEntry() {
+          Mode = mode,
+          TrialEndDate = trialEndDate,
+        };
       }
     }
 
@@ -130,9 +135,7 @@
           entries.Add(new SyncLogEntry() {
             Action = SyncLogAction.Set,
             Entity = SyncEntityType.Subscription,
-            Data = new SubscriptionEntry() {
-              Mode = await GetSubscriptionMode(),
-            },
+            Data = await GetSubscriptionEntry(),
           });
 
           // Send

@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
+  using System;
   using System.Runtime.Serialization;
 
   public enum SubscriptionMode {
@@ -14,5 +15,6 @@
 
   public class SubscriptionEntry : SyncEntity {
     public SubscriptionMode Mode { get; set; }
+    public DateTimeOffset? TrialEndDate { get; set; }
   }
 }

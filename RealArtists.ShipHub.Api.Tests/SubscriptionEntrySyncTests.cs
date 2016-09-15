@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
+  using System.Globalization;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
@@ -168,6 +169,28 @@
         SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
         Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
           "A paid organization overrides a user's trial");
+        Assert.IsNull(entry.TrialEndDate, "should not be set if we're in paid mode");
+      }
+    }
+
+    [Test]
+    public async Task TrialEndDateIsSetWhenUserIsInTrial() {
+      using (var context = new ShipHubContext()) {
+        Environment env = await MakeEnvironment(context);
+
+        var trialEndDate = DateTimeOffset.Parse("10/1/2016 08:00:00 PM +00:00", null, DateTimeStyles.AssumeUniversal);
+
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = env.user1.Id,
+          State = SubscriptionState.InTrial,
+          TrialEndDate = trialEndDate,
+        });
+        await context.SaveChangesAsync();
+
+        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        Assert.AreEqual(SubscriptionMode.Trial, entry.Mode,
+          "A paid organization overrides a user's trial");
+        Assert.AreEqual(trialEndDate, entry.TrialEndDate);
       }
     }
   }

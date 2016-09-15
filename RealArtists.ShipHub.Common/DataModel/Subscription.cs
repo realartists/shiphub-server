@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
+  using System;
   using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
 
@@ -36,5 +37,7 @@
 
     [Required]
     public SubscriptionState State { get; set; }
+
+    public DateTimeOffset TrialEndDate { get; set; }
   }
 }
