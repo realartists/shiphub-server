@@ -7,7 +7,14 @@
   using Mindscape.Raygun4Net.Messages;
 
   public interface IDetailedExceptionLogger {
-    void Log(Guid functionInstanceId, long? forUserId, object message, Exception exception);
+    void Log(
+      Guid functionInstanceId,
+      long? forUserId,
+      object message,
+      Exception exception,
+      string memberName = "",
+      string sourceFilePath = "",
+      int sourceLineNumber = 0);
   }
 
   public class DetailedExceptionLogger : IDetailedExceptionLogger {
@@ -24,7 +31,14 @@
       _raygunClient = raygunClient;
     }
 
-    public void Log(Guid functionInstanceId, long? forUserId, object message, Exception exception) {
+    public void Log(
+      Guid functionInstanceId,
+      long? forUserId,
+      object message,
+      Exception exception,
+      string memberName = "",
+      string sourceFilePath = "",
+      int sourceLineNumber = 0) {
       // This should be fast and queue if needed.
       var ex = exception.Simplify();
 
@@ -33,6 +47,9 @@
         { "forUserId", forUserId?.ToString() },
         { "timestamp", DateTime.UtcNow.ToString("o") },
         { "message", message.SerializeObject() },
+        { "memberName", memberName },
+        { "sourceFilePath", sourceFilePath },
+        { "sourceLineNumber", sourceLineNumber.ToString() },
       };
 
       _raygunClient?.SendInBackground(ex, null, props, new RaygunIdentifierMessage(forUserId?.ToString()));

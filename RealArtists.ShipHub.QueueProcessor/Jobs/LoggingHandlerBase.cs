@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
   using System;
+  using System.Runtime.CompilerServices;
   using System.Threading.Tasks;
   using Tracing;
 
@@ -17,11 +18,18 @@
     /// <param name="forUserId">So we know (finally!) who was affected.</param>
     /// <param name="message">So we can replay the message that failed, and determine why.</param>
     /// <param name="action">The stuff to try to do.</param>
-    public async Task WithEnhancedLogging(Guid functionInstanceId, long? forUserId, object message, Func<Task> action) {
+    public async Task WithEnhancedLogging(
+                         Guid functionInstanceId,
+                         long? forUserId,
+                         object message,
+                         Func<Task> action,
+      [CallerMemberName] string memberName = "",
+      [CallerFilePath]   string sourceFilePath = "",
+      [CallerLineNumber] int sourceLineNumber = 0) {
       try {
         await action();
       } catch (Exception e) {
-        _logger.Log(functionInstanceId, forUserId, message, e);
+        _logger.Log(functionInstanceId, forUserId, message, e, memberName, sourceFilePath, sourceLineNumber);
         throw new TraceBypassException("Exception already logged", e);
       }
     }
