@@ -120,6 +120,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataModel\Subscription.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\OrganizationAccount.cs" />
     <Compile Include="DataModel\AccountRepository.cs" />

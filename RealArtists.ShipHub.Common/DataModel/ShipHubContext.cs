@@ -46,6 +46,7 @@
     public virtual DbSet<OrganizationLog> OrganizationLog { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -73,6 +74,11 @@
 
       modelBuilder.Entity<Account>()
         .HasMany(e => e.OwnedRepositories)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Account>()
+        .HasOptional(e => e.Subscription)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
