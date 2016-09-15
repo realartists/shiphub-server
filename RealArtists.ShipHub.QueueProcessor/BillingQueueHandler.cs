@@ -67,24 +67,32 @@
           sub = subList.First().Subscription;
         }
 
-        var accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
-          AccountId = user.Id,
-        });
+        using (var transaction = context.Database.BeginTransaction()) {
+          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
 
-        switch (sub.Status) {
-          case ChargeBee.Models.Subscription.StatusEnum.Active:
-          case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
-            accountSubscription.State = SubscriptionState.Subscribed;
-            break;
-          case ChargeBee.Models.Subscription.StatusEnum.InTrial:
-            accountSubscription.State = SubscriptionState.InTrial;
-            break;
-          default:
-            accountSubscription.State = SubscriptionState.NoSubscription;
-            break;
+          if (accountSubscription == null) {
+            accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+              AccountId = user.Id,
+            });
+          }
+          
+          switch (sub.Status) {
+            case ChargeBee.Models.Subscription.StatusEnum.Active:
+            case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
+              accountSubscription.State = SubscriptionState.Subscribed;
+              break;
+            case ChargeBee.Models.Subscription.StatusEnum.InTrial:
+              accountSubscription.State = SubscriptionState.InTrial;
+              break;
+            default:
+              accountSubscription.State = SubscriptionState.NoSubscription;
+              break;
+          }
+
+          await context.SaveChangesAsync();
+
+          transaction.Commit();
         }
-
-        await context.SaveChangesAsync();
       }
     }
 
