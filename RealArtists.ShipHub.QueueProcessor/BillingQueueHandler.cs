@@ -7,6 +7,7 @@
   using ChargeBee.Models;
   using Common;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Jobs;
   using Microsoft.Azure.WebJobs;
@@ -91,9 +92,15 @@
               break;
           }
 
-          await context.SaveChangesAsync();
+          int recordsSaved = await context.SaveChangesAsync();
 
           transaction.Commit();
+
+          if (recordsSaved > 0) {
+            var changes = new ChangeSummary();
+            changes.Users.Add(user.Id);
+            await notifyChanges.AddAsync(new ChangeMessage(changes));
+          }
         }
       }
     }
