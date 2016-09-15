@@ -126,6 +126,7 @@
 
       if (message.Content != null) {
         streamWriter.Flush();
+        await message.Content.LoadIntoBufferAsync();
         await message.Content.CopyToAsync(stream);
         streamWriter.WriteLine();
       }
@@ -146,6 +147,7 @@
 
       if (message.Content != null) {
         streamWriter.Flush();
+        await message.Content.LoadIntoBufferAsync();
         await message.Content.CopyToAsync(stream);
       }
     }
