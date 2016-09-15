@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Logging {
   using System;
   using System.Diagnostics;
+  using System.IO;
   using System.Linq;
   using System.Net.Http;
   using System.Reactive;
@@ -14,12 +15,11 @@
   using Microsoft.WindowsAzure.Storage.Blob;
 
   public class AppendBlobEntry {
-    public bool Create { get; set; }
     public string BlobName { get; set; }
     public string Content { get; set; }
   }
 
-  public class LoggingMessageProcessingHandler : MessageProcessingHandler {
+  public class LoggingMessageProcessingHandler : DelegatingHandler {
     public const string LogBlobNameKey = "LogBlobName";
 
     private CloudBlobClient _blobClient;
@@ -42,6 +42,7 @@
       if (_initialized) {
         return;
       }
+      _initialized = true;
 
       _container = _blobClient.GetContainerReference(_containerName);
       await _container.CreateIfNotExistsAsync();
@@ -57,6 +58,10 @@
         .Subscribe();
     }
 
+    public static void SetLogBlobName(HttpRequestMessage request, string blobName) {
+      request.Properties[LogBlobNameKey] = blobName;
+    }
+
     private IObservable<T> LogError<T>(Exception exception) {
 #if DEBUG
       Debugger.Break();
@@ -64,32 +69,31 @@
       return Observable.Empty<T>();
     }
 
-    protected override HttpRequestMessage ProcessRequest(HttpRequestMessage request, CancellationToken cancellationToken) {
+    protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
       var blobName = ExtractBlobName(request);
-      if (!blobName.IsNullOrWhiteSpace()) {
-        var blob = new AppendBlobEntry() {
-          Create = true,
-          BlobName = blobName,
-          Content = Stringify(request).GetAwaiter().GetResult(),
-        };
-        _appendBlobs.OnNext(blob);
+
+      if (blobName.IsNullOrWhiteSpace()) {
+        // pass through
+        return await base.SendAsync(request, cancellationToken);
       }
 
-      return request;
-    }
-
-    protected override HttpResponseMessage ProcessResponse(HttpResponseMessage response, CancellationToken cancellationToken) {
-      var blobName = ExtractBlobName(response.RequestMessage);
-      if (!blobName.IsNullOrWhiteSpace()) {
-        var blob = new AppendBlobEntry() {
-          Create = false,
-          BlobName = blobName,
-          Content = Stringify(response).GetAwaiter().GetResult(),
-        };
-        _appendBlobs.OnNext(blob);
+      if (!_initialized) {
+        await Initialize();
       }
 
-      return response;
+      using (var ms = new MemoryStream())
+      using (var sw = new StreamWriter(ms, Encoding.UTF8)) {
+        await WriteRequest(ms, sw, request);
+        var response = await base.SendAsync(request, cancellationToken);
+        await WriteResponse(ms, sw, response);
+
+        _appendBlobs.OnNext(new AppendBlobEntry() {
+          BlobName = blobName,
+          Content = Encoding.UTF8.GetString(ms.ToArray()),
+        });
+
+        return response;
+      }
     }
 
     private string ExtractBlobName(HttpRequestMessage request) {
@@ -102,53 +106,48 @@
 
     private async Task WriteEntry(AppendBlobEntry entry) {
       var blob = _container.GetAppendBlobReference(entry.BlobName);
-      if (entry.Create) {
-        await blob.CreateOrReplaceAsync();
-      }
-      await blob.AppendTextAsync(entry.Content);
+      await blob.UploadTextAsync(entry.Content);
     }
 
-    // TODO: Streams?
-    private async Task<string> Stringify(HttpRequestMessage message) {
-      var s = new StringBuilder();
-      s.AppendLine($"{message.Method} {message.RequestUri.PathAndQuery} HTTP/{message.Version}");
+    private async Task WriteRequest(Stream stream, StreamWriter streamWriter, HttpRequestMessage message) {
+      streamWriter.WriteLine($"{message.Method} {message.RequestUri.PathAndQuery} HTTP/{message.Version}");
+
       foreach (var header in message.Headers) {
-        s.AppendLine($"{header.Key}: {string.Join(", ", header.Value)}");
+        streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
       }
+
       if (message.Content != null) {
         foreach (var header in message.Content.Headers) {
-          s.AppendLine($"{header.Key}: {string.Join(", ", header.Value)}");
+          streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
         }
       }
 
-      s.AppendLine();
+      streamWriter.WriteLine();
 
       if (message.Content != null) {
-        s.Append(await message.Content.ReadAsStringAsync());
+        streamWriter.Flush();
+        await message.Content.CopyToAsync(stream);
+        streamWriter.WriteLine();
       }
-
-      return s.ToString();
     }
 
-    private async Task<string> Stringify(HttpResponseMessage message) {
-      var s = new StringBuilder();
-      s.AppendLine($"HTTP/{message.Version} {(int)message.StatusCode} {message.ReasonPhrase}");
+    private async Task WriteResponse(Stream stream, StreamWriter streamWriter, HttpResponseMessage message) {
+      streamWriter.WriteLine($"HTTP/{message.Version} {(int)message.StatusCode} {message.ReasonPhrase}");
       foreach (var header in message.Headers) {
-        s.AppendLine($"{header.Key}: {string.Join(", ", header.Value)}");
+        streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
       }
       if (message.Content != null) {
         foreach (var header in message.Content.Headers) {
-          s.AppendLine($"{header.Key}: {string.Join(", ", header.Value)}");
+          streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
         }
       }
 
-      s.AppendLine();
+      streamWriter.WriteLine();
 
       if (message.Content != null) {
-        s.Append(await message.Content.ReadAsStringAsync());
+        streamWriter.Flush();
+        await message.Content.CopyToAsync(stream);
       }
-
-      return s.ToString();
     }
 
     protected override void Dispose(bool disposing) {

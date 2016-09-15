@@ -117,8 +117,10 @@
       httpRequest.Headers.UserAgent.Add(client.UserAgent);
 
       // For logging
-      var blobName = $"{client.UserInfo}/{client.CorrelationId}/{client.NextRequestId()}_{DateTime.UtcNow:o}{httpRequest.RequestUri.PathAndQuery}.log";
-      httpRequest.Properties[LoggingMessageProcessingHandler.LogBlobNameKey] = blobName;
+      LoggingMessageProcessingHandler.SetLogBlobName(
+        httpRequest,
+        $"{client.UserInfo}/{client.CorrelationId}/{client.NextRequestId()}_{DateTime.UtcNow:o}{httpRequest.RequestUri.PathAndQuery}.log"
+      );
 
       var response = await HttpClient.SendAsync(httpRequest);
 
@@ -247,8 +249,7 @@
       var gitHubLoggingStorage = CloudConfigurationManager.GetSetting("GitHubLoggingStorage");
       if (!gitHubLoggingStorage.IsNullOrWhiteSpace()) {
         var account = CloudStorageAccount.Parse(gitHubLoggingStorage);
-        var logHandler = new LoggingMessageProcessingHandler(account, "github-logs", handler); ;
-        logHandler.Initialize().GetAwaiter().GetResult();
+        var logHandler = new LoggingMessageProcessingHandler(account, "github-logs", handler);
         handler = logHandler;
       }
 
