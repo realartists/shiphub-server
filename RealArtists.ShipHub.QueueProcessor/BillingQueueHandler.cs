@@ -82,6 +82,7 @@
             case ChargeBee.Models.Subscription.StatusEnum.Active:
             case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
               accountSubscription.State = SubscriptionState.Subscribed;
+              accountSubscription.TrialEndDate = null;
               break;
             case ChargeBee.Models.Subscription.StatusEnum.InTrial:
               accountSubscription.State = SubscriptionState.InTrial;
@@ -89,6 +90,7 @@
               break;
             default:
               accountSubscription.State = SubscriptionState.NoSubscription;
+              accountSubscription.TrialEndDate = null;
               break;
           }
 

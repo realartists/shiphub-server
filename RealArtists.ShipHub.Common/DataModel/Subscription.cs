@@ -38,6 +38,6 @@
     [Required]
     public SubscriptionState State { get; set; }
 
-    public DateTimeOffset TrialEndDate { get; set; }
+    public DateTimeOffset? TrialEndDate { get; set; }
   }
 }

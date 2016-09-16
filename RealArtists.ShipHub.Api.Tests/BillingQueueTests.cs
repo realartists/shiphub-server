@@ -212,7 +212,8 @@
         var user = TestUtil.MakeTestUser(context);
         var subscription = context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
-          State = SubscriptionState.NoSubscription,
+          State = SubscriptionState.InTrial,
+          TrialEndDate = DateTimeOffset.Parse("1/1/2017"),
         });
         await context.SaveChangesAsync();
 
@@ -279,6 +280,7 @@
         context.Entry(subscription).Reload();
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
           "should change to subscribed because chargebee says subscription is active.");
+        Assert.IsNull(subscription.TrialEndDate);
 
         Assert.AreEqual(
           new long[] { user.Id },
