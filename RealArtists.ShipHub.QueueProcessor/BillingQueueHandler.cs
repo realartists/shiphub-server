@@ -40,12 +40,14 @@
           var firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
           var lastName = nameParts.Last();
 
+          logger.WriteLine("Billing: Creating customer");
           customer = Customer.Create()
             .Id(customerId)
             .FirstName(firstName)
             .LastName(lastName)
             .Request().Customer;
         } else {
+          logger.WriteLine("Billing: Customer already exists");
           customer = customerList.First().Customer;
         }
 
@@ -58,14 +60,17 @@
         ChargeBee.Models.Subscription sub = null;
 
         if (subList.Count == 0) {
+          logger.WriteLine("Billing: Creating personal subscription");
           sub = ChargeBee.Models.Subscription.CreateForCustomer(customerId)
             .PlanId("personal")
             .Request().Subscription;
 
+          logger.WriteLine("Billing: Scheduling subscription to cancel at end of term");
           sub = ChargeBee.Models.Subscription.Cancel(sub.Id)
             .EndOfTerm(true)
             .Request().Subscription;
         } else {
+          logger.WriteLine("Billing: Subscription already exists");
           sub = subList.First().Subscription;
         }
 
