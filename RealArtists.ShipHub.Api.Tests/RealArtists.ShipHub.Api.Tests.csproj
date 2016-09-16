@@ -171,6 +171,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="AutoRollbackAttribute.cs" />
+    <Compile Include="BillingControllerTests.cs" />
     <Compile Include="BillingQueueTests.cs" />
     <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SubscriptionEntrySyncTests.cs" />
