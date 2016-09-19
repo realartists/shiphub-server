@@ -376,6 +376,7 @@
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
+      Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
@@ -421,6 +422,7 @@
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
+      Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
@@ -472,6 +474,7 @@
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
+      Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
@@ -619,6 +622,7 @@
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
+      Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
@@ -676,6 +680,7 @@
 
       IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
+      Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
