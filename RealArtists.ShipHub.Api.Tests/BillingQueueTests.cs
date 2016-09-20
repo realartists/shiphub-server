@@ -370,7 +370,7 @@
         var user = TestUtil.MakeTestUser(context);
         var subscription = context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
-          State = SubscriptionState.NoSubscription,
+          State = SubscriptionState.NotSubscribed,
         });
         await context.SaveChangesAsync();
 

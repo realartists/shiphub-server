@@ -12,7 +12,7 @@
     /// Customer never had a paying subscription, or their subscription
     /// was cancelled, or their trial lapsed.
     /// </summary>
-    NoSubscription = 0,
+    NotSubscribed,
 
     /// <summary>
     /// Customer is still in the trial period and has not yet provided

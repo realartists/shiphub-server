@@ -82,11 +82,11 @@
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
-          State = SubscriptionState.NoSubscription,
+          State = SubscriptionState.NotSubscribed,
         });
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.org.Id,
-          State = SubscriptionState.NoSubscription,
+          State = SubscriptionState.NotSubscribed,
         });
         await context.SaveChangesAsync();
 
@@ -137,7 +137,7 @@
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
-          State = SubscriptionState.NoSubscription,
+          State = SubscriptionState.NotSubscribed,
         });
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.org.Id,

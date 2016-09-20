@@ -94,7 +94,7 @@
               accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value);
               break;
             default:
-              accountSubscription.State = SubscriptionState.NoSubscription;
+              accountSubscription.State = SubscriptionState.NotSubscribed;
               accountSubscription.TrialEndDate = null;
               break;
           }
