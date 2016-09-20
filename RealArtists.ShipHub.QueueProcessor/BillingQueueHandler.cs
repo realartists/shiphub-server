@@ -117,17 +117,18 @@
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger,
       ExecutionContext executionContext) {
-
-      IGitHubClient ghc;
-      using (var context = new ShipHubContext()) {
-        var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
-        if (user == null || user.Token.IsNullOrWhiteSpace()) {
-          return;
+      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
+        IGitHubClient ghc;
+        using (var context = new ShipHubContext()) {
+          var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
+          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+            return;
+          }
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
         }
-        ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
-      }
 
-      await GetOrCreateSubscriptionHelper(message, notifyChanges, ghc, logger);
+        await GetOrCreateSubscriptionHelper(message, notifyChanges, ghc, logger);
+      });
     }
   }
 }
