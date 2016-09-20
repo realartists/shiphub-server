@@ -45,7 +45,7 @@
         var numOfSubscribedOrgs = await context.OrganizationAccounts
           .CountAsync(x =>
             x.UserId == _user.UserId &&
-            x.Organization.Subscription.State == SubscriptionState.Subscribed);
+            x.Organization.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()));
 
         SubscriptionMode mode;
         DateTimeOffset? trialEndDate = null;
