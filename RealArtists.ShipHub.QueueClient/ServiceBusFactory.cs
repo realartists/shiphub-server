@@ -130,6 +130,7 @@
       var duplicateDetectionQueues = new string[] {
         ShipHubQueueNames.AddOrUpdateOrgWebhooks,
         ShipHubQueueNames.AddOrUpdateRepoWebhooks,
+        ShipHubQueueNames.BillingGetOrCreateSubscription,
       };
 
       var creations = checks

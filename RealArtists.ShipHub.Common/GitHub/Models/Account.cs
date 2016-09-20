@@ -12,6 +12,9 @@
     public long Id { get; set; }
     public string Login { get; set; }
 
+    public string Name { get; set; }
+    public string Email { get; set; }
+
     [SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
     public GitHubAccountType Type { get; set; }
   }

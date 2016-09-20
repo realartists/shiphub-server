@@ -99,7 +99,7 @@
         logs.Clear();
         await syncContext.Sync();
 
-        return ((RepositoryEntry)logs[0].Data).ShipNeedsWebhookHelp;
+        return ((RepositoryEntry)logs.Single(x => x.Entity == SyncEntityType.Repository).Data).ShipNeedsWebhookHelp;
       }
     }
 
@@ -173,7 +173,7 @@
         logs.Clear();
         await syncContext.Sync();
 
-        return ((OrganizationEntry)logs[0].Data).ShipNeedsWebhookHelp;
+        return ((OrganizationEntry)logs.Single(x => x.Entity == SyncEntityType.Organization).Data).ShipNeedsWebhookHelp;
       }
     }
   }

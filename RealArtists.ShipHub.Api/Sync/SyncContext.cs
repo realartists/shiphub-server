@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
   using System.Collections.Generic;
+  using System.Data.Entity;
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
@@ -38,9 +39,42 @@
         || changes.Users.Contains(_user.UserId);
     }
 
+    private async Task<SubscriptionEntry> GetSubscriptionEntry() {
+      using (var context = new ShipHubContext()) {
+        var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
+        var numOfSubscribedOrgs = await context.OrganizationAccounts
+          .CountAsync(x =>
+            x.UserId == _user.UserId &&
+            x.Organization.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()));
+
+        SubscriptionMode mode;
+        DateTimeOffset? trialEndDate = null;
+
+        if (personalSub == null) {
+          mode = SubscriptionMode.Paid;
+        } else if (numOfSubscribedOrgs > 0) {
+          mode = SubscriptionMode.Paid;
+        } else if (personalSub.State == SubscriptionState.Subscribed) {
+          mode = SubscriptionMode.Paid;
+        } else if (personalSub.State == SubscriptionState.InTrial) {
+          mode = SubscriptionMode.Trial;
+          trialEndDate = personalSub.TrialEndDate;
+        } else {
+          mode = SubscriptionMode.Free;
+        }
+
+        return new SubscriptionEntry() {
+          Mode = mode,
+          TrialEndDate = trialEndDate,
+        };
+      }
+    }
+
     public async Task Sync() {
       var pageSize = 1000;
       var tasks = new List<Task>();
+
+      var subscriptionEntry = await GetSubscriptionEntry();
 
       using (var context = new ShipHubContext()) {
         var dsp = context.PrepareWhatsNew(
@@ -99,6 +133,12 @@
             });
             _versions.OrgVersions.Remove(orgId);
           }
+
+          entries.Add(new SyncLogEntry() {
+            Action = SyncLogAction.Set,
+            Entity = SyncEntityType.Subscription,
+            Data = subscriptionEntry,
+          });
 
           // Send
           if (entries.Any()) {

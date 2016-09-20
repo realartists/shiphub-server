@@ -61,5 +61,7 @@
     // This applies to users and orgs
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Repository> OwnedRepositories { get; set; } = new HashSet<Repository>();
+
+    public virtual Subscription Subscription { get; set; }
   }
 }

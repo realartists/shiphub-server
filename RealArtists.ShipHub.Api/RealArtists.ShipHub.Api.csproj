@@ -57,6 +57,10 @@
       <HintPath>..\packages\AutoMapper.5.1.1\lib\net45\AutoMapper.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="ChargeBee, Version=2.1.3.0, Culture=neutral, PublicKeyToken=2efc9456dd1bdb9d, processorArchitecture=MSIL">
+      <HintPath>..\packages\ChargeBee.2.1.3.0\lib\net30\ChargeBee.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.1.3\lib\net45\EntityFramework.dll</HintPath>
       <Private>True</Private>
@@ -192,6 +196,7 @@
     <Compile Include="App_Start\SimpleInjectorConfig.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\AuthenticationController.cs" />
+    <Compile Include="Controllers\BillingController.cs" />
     <Compile Include="Controllers\GitHubProxyController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
@@ -206,6 +211,7 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionSummary.cs" />
+    <Compile Include="Sync\Messages\Entries\SubscriptionEntry.cs" />
     <Compile Include="Sync\Messages\HelloResponse.cs" />
     <Compile Include="Sync\Messages\ViewingRequest.cs" />
     <Compile Include="Sync\SyncConnection.cs" />

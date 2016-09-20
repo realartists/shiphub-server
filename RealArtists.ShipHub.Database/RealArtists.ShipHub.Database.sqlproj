@@ -132,6 +132,7 @@
     <Build Include="Procedures\RevokeAccessToken.sql" />
     <Build Include="Procedures\UpdateCacheMetadata.sql" />
     <Build Include="Procedures\DeleteRepositories.sql" />
+    <Build Include="Tables\Subscriptions.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
