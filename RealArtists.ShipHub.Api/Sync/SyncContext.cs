@@ -74,6 +74,8 @@
       var pageSize = 1000;
       var tasks = new List<Task>();
 
+      var subscriptionEntry = await GetSubscriptionEntry();
+
       using (var context = new ShipHubContext()) {
         var dsp = context.PrepareWhatsNew(
           _user.Token,
@@ -135,7 +137,7 @@
           entries.Add(new SyncLogEntry() {
             Action = SyncLogAction.Set,
             Entity = SyncEntityType.Subscription,
-            Data = await GetSubscriptionEntry(),
+            Data = subscriptionEntry,
           });
 
           // Send
