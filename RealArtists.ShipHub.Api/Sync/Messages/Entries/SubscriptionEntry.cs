@@ -3,8 +3,11 @@
   using System.Runtime.Serialization;
 
   public enum SubscriptionMode {
+    [EnumMember(Value = "unknown")]
+    Unknown = 0,
+
     [EnumMember(Value = "paid")]
-    Paid = 0,
+    Paid,
 
     [EnumMember(Value = "trial")]
     Trial,
