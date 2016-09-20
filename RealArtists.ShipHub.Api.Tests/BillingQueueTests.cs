@@ -105,7 +105,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
@@ -246,7 +245,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
@@ -328,7 +326,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
@@ -403,7 +400,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
@@ -483,7 +479,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
@@ -601,7 +596,6 @@
               Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
-              Email = "aroon@pureimaginary.com",
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
