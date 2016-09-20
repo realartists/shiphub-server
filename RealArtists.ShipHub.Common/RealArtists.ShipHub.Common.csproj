@@ -169,6 +169,7 @@
     <Compile Include="GitHub\Models\PullRequest.cs" />
     <Compile Include="GitHub\Models\Reaction.cs" />
     <Compile Include="GitHub\Models\ReactionSummary.cs" />
+    <Compile Include="GitHub\Models\UserEmail.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />
     <Compile Include="GitHub\Pipeline\PaginationHandler.cs" />
     <Compile Include="GitHub\Pipeline\ShipHubFilter.cs" />

@@ -109,6 +109,17 @@
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
+        mockClient
+          .Setup(x => x.UserEmails(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Common.GitHub.Models.UserEmail>>(null) {
+            Result = new[] {
+              new Common.GitHub.Models.UserEmail() {
+                Email = "aroon@pureimaginary.com",
+                Primary = true,
+                Verified = true,
+              }
+            },
+          });
 
         bool createdAccount = false;
         bool createdSubscription = false;
@@ -126,9 +137,11 @@
             } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
               Assert.AreEqual(
                 new Dictionary<string, string> {
-                      { "id", $"user-{user.Id}" },
-                      { "first_name", $"Aroon"},
-                      { "last_name", $"Pahwa"},
+                  { "id", $"user-{user.Id}" },
+                  { "cf_github_username", "aroon" },
+                  { "email", "aroon@pureimaginary.com" },
+                  { "first_name", $"Aroon"},
+                  { "last_name", $"Pahwa"},
                 },
                 data);
               createdAccount = true;

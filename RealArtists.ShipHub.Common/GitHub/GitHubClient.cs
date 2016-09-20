@@ -56,6 +56,11 @@
       return Fetch<Account>(request);
     }
 
+    public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(IGitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest("user/emails", cacheOptions);
+      return FetchPaged(request, (UserEmail x) => x.Email);
+    }
+
     public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/repos", cacheOptions, restricted: true);
       return FetchPaged(request, (Repository x) => x.Id);

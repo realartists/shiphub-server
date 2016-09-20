@@ -35,17 +35,25 @@
           // Cannot use cache because we need fields like Name + Email which
           // we don't currently save to the DB.
           var githubUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
+          var emails = (await ghc.UserEmails(GitHubCacheDetails.Empty)).Result;
+          var primaryEmail = emails.First(x => x.Primary);
 
-          var nameParts = githubUser.Name.Trim().Split(' ');
-          var firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
-          var lastName = nameParts.Last();
+          var createRequest = Customer.Create()
+            .Id(customerId)
+            .Param("cf_github_username", githubUser.Login)
+            .Email(primaryEmail.Email);
+
+          // Name is optional for Github.
+          if (!githubUser.Name.IsNullOrWhiteSpace()) {
+            var nameParts = githubUser.Name.Trim().Split(' ');
+            var firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
+            var lastName = nameParts.Last();
+            createRequest.FirstName(firstName);
+            createRequest.LastName(lastName);
+          }
 
           logger.WriteLine("Billing: Creating customer");
-          customer = Customer.Create()
-            .Id(customerId)
-            .FirstName(firstName)
-            .LastName(lastName)
-            .Request().Customer;
+          customer = createRequest.Request().Customer;
         } else {
           logger.WriteLine("Billing: Customer already exists");
           customer = customerList.First().Customer;

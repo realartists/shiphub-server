@@ -43,6 +43,7 @@
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubCacheDetails cacheOptions = null);
     void UpdateInternalRateLimit(GitHubRateLimit rateLimit);
     Task<GitHubResponse<Account>> User(IGitHubCacheDetails cacheOptions = null);
+    Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(IGitHubCacheDetails cacheOptions = null);
     int NextRequestId();
   }
 }
