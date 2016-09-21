@@ -83,9 +83,10 @@
         mockConnection
           .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
           .Returns((object obj) => {
-            var response = (SyncResponse)obj;
-            Assert.IsInstanceOf<SyncResponse>(obj);
-            logs.AddRange(response.Logs);
+            if (obj is SyncResponse) {
+              var response = (SyncResponse)obj;
+              logs.AddRange(response.Logs);
+            }
             return Task.CompletedTask;
           });
 
@@ -157,9 +158,10 @@
         mockConnection
           .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
           .Returns((object obj) => {
-            var response = (SyncResponse)obj;
-            Assert.IsInstanceOf<SyncResponse>(obj);
-            logs.AddRange(response.Logs);
+            if (obj is SyncResponse) {
+              var response = (SyncResponse)obj;
+              logs.AddRange(response.Logs);
+            }
             return Task.CompletedTask;
           });
 

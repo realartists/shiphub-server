@@ -39,16 +39,15 @@
       return env;
     }
 
-    private static async Task<SubscriptionEntry> GetSubscriptionEntry(User user) {
-      var logEntries = new List<SyncLogEntry>();
+    private static async Task<SubscriptionResponse> GetSubscriptionResponse(User user) {
+      var messages = new List<SyncMessageBase>();
 
       var mockConnection = new Mock<ISyncConnection>();
       mockConnection
         .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
         .Returns((object obj) => {
-          var response = (SyncResponse)obj;
-          Assert.IsInstanceOf<SyncResponse>(obj);
-          logEntries.AddRange(response.Logs);
+          Assert.IsInstanceOf<SyncMessageBase>(obj);
+          messages.Add((SyncMessageBase)obj);
           return Task.CompletedTask;
         });
 
@@ -56,21 +55,20 @@
       var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
       await syncContext.Sync();
 
-      var result = logEntries
-        .Where(x => x.Entity == SyncEntityType.Subscription)
-        .Select(x => (SubscriptionEntry)x.Data)
+      var result = messages
+        .Where(x => x.MessageType.Equals("subscription"))
         .SingleOrDefault();
       Assert.IsNotNull(result, "Should have been sent a SubscriptionEntry.");
 
-      return result;
+      return (SubscriptionResponse)result;
     }
 
     [Test]
     public async Task ModeDefaultsToPaid() {
       using (var context = new ShipHubContext()) {
         Environment env = await MakeEnvironment(context);
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
-        Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
+        var response = await GetSubscriptionResponse(env.user1);
+        Assert.AreEqual(SubscriptionMode.Paid, response.Mode,
           "If we haven't been able to fetch the data from ChargeBee yet, act as if paid.");
       }
     }
@@ -90,7 +88,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Free, entry.Mode,
           "Mode is free if nobody (personal or org) is paying.");
       }
@@ -107,7 +105,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Trial, entry.Mode,
           "We're in trial mode when user is in trial");
       }
@@ -124,7 +122,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
           "Mode is paid with a personal subscription.");
       }
@@ -145,7 +143,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
           "Mode is paid when an org pays.");
       }
@@ -166,7 +164,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
           "A paid organization overrides a user's trial");
         Assert.IsNull(entry.TrialEndDate, "should not be set if we're in paid mode");
@@ -187,7 +185,7 @@
         });
         await context.SaveChangesAsync();
 
-        SubscriptionEntry entry = await GetSubscriptionEntry(env.user1);
+        var entry = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Trial, entry.Mode,
           "A paid organization overrides a user's trial");
         Assert.AreEqual(trialEndDate, entry.TrialEndDate);

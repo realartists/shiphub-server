@@ -39,7 +39,7 @@
         || changes.Users.Contains(_user.UserId);
     }
 
-    private async Task<SubscriptionEntry> GetSubscriptionEntry() {
+    private async Task<SubscriptionResponse> GetSubscriptionEntry() {
       using (var context = new ShipHubContext()) {
         var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
         var numOfSubscribedOrgs = await context.OrganizationAccounts
@@ -63,7 +63,7 @@
           mode = SubscriptionMode.Free;
         }
 
-        return new SubscriptionEntry() {
+        return new SubscriptionResponse() {
           Mode = mode,
           TrialEndDate = trialEndDate,
         };
@@ -73,8 +73,6 @@
     public async Task Sync() {
       var pageSize = 1000;
       var tasks = new List<Task>();
-
-      var subscriptionEntry = await GetSubscriptionEntry();
 
       using (var context = new ShipHubContext()) {
         var dsp = context.PrepareWhatsNew(
@@ -133,12 +131,6 @@
             });
             _versions.OrgVersions.Remove(orgId);
           }
-
-          entries.Add(new SyncLogEntry() {
-            Action = SyncLogAction.Set,
-            Entity = SyncEntityType.Subscription,
-            Data = subscriptionEntry,
-          });
 
           // Send
           if (entries.Any()) {
@@ -460,6 +452,9 @@
           }
         }
       }
+
+      var subscriptionEntry = await GetSubscriptionEntry();
+      tasks.Add(_connection.SendJsonAsync(subscriptionEntry));
 
       await Task.WhenAll(tasks);
     }

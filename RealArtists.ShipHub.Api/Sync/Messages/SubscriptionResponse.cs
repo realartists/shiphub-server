@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
+﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
   using System;
   using System.Runtime.Serialization;
 
@@ -16,7 +16,8 @@
     Free
   }
 
-  public class SubscriptionEntry : SyncEntity {
+  public class SubscriptionResponse : SyncMessageBase {
+    public override string MessageType { get; set; } = "subscription";
     public SubscriptionMode Mode { get; set; }
     public DateTimeOffset? TrialEndDate { get; set; }
   }

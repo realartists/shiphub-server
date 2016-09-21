@@ -211,8 +211,8 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionSummary.cs" />
-    <Compile Include="Sync\Messages\Entries\SubscriptionEntry.cs" />
     <Compile Include="Sync\Messages\HelloResponse.cs" />
+    <Compile Include="Sync\Messages\SubscriptionResponse.cs" />
     <Compile Include="Sync\Messages\ViewingRequest.cs" />
     <Compile Include="Sync\SyncConnection.cs" />
     <Compile Include="Sync\SyncContext.cs" />

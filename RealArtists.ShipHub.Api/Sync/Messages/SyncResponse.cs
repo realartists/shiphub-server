@@ -40,9 +40,6 @@
 
     [EnumMember(Value = "reaction")]
     Reaction,
-
-    [EnumMember(Value = "subscription")]
-    Subscription,
   }
 
   public abstract class SyncEntity {
