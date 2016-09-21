@@ -173,6 +173,7 @@
     <Compile Include="AutoRollbackAttribute.cs" />
     <Compile Include="BillingControllerTests.cs" />
     <Compile Include="BillingQueueTests.cs" />
+    <Compile Include="ChargeBeeTestUtil.cs" />
     <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SubscriptionEntrySyncTests.cs" />
     <Compile Include="SyncContextTests.cs" />
