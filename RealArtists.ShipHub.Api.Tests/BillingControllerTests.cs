@@ -48,14 +48,20 @@
         var controller = new BillingController();
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
-        var result = (OkNegotiatedContentResult<List<BillingController.Account>>)(await controller.Accounts());
+        var result = (OkNegotiatedContentResult<List<BillingController.AccountRow>>)(await controller.Accounts());
         Assert.AreEqual(2, result.Content.Count);
-        Assert.AreEqual(user.Id, result.Content[0].Id);
-        Assert.AreEqual(BillingController.AccountAction.Purchase, result.Content[0].Action,
-          "should be purchase since user is in trial");
-        Assert.AreEqual(org1.Id, result.Content[1].Id);
-        Assert.AreEqual(BillingController.AccountAction.Manage, result.Content[1].Action,
-          "should be manage since we have a subscription");
+        Assert.AreEqual(user.Id, result.Content[0].Account.Identifier);
+        Assert.AreEqual(user.Login, result.Content[0].Account.Login);
+        Assert.AreEqual("user", result.Content[0].Account.Type);
+        Assert.AreEqual(false, result.Content[0].Subscribed,
+          "not subscribed since user is in trial");
+        Assert.AreEqual(org1.Id, result.Content[1].Account.Identifier);
+        Assert.AreEqual(true, result.Content[1].Subscribed,
+          "should show subscribed since we're in a paid subscription");
+        Assert.AreEqual(true, result.Content[1].CanEdit,
+          "can edit since it has a subscription");
+        Assert.AreEqual(org1.Login, result.Content[1].Account.Login);
+        Assert.AreEqual("organization", result.Content[1].Account.Type);
       }
     }
 

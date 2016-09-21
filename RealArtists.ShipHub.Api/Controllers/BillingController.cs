@@ -3,7 +3,6 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
-  using System.Runtime.Serialization;
   using System.Threading.Tasks;
   using System.Web.Http;
   using Common.DataModel;
@@ -12,17 +11,33 @@
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
 
-    public enum AccountAction {
-      [EnumMember(Value = "manage")]
-      Manage,
-
-      [EnumMember(Value = "purchase")]
-      Purchase,
+    public class Account {
+      public long Identifier { get; set; }
+      public string Login { get; set; }
+      public string AvatarUrl { get; set; }
+      public string Type { get; set; }
     }
 
-    public class Account {
-      public long Id { get; set; }
-      public AccountAction Action { get; set; }
+    public class AccountRow {
+      public Account Account { get; set; }
+      public bool Subscribed { get; set; }
+      public bool CanEdit { get; set; }
+      public string ActionUrl { get; set; }
+      public string[] PricingLines { get; set; }
+    }
+
+    private static string[] GetActionLines(Common.DataModel.Account account) {
+      if (account.Subscription.State == SubscriptionState.Subscribed) {
+        // Should server send the "Already Subscribed" place holder text?
+        return null;
+      } else if (account is Organization) {
+        return new[] {
+          "$9 per active user / month",
+          "$25 per month for first 5 active users",
+        };
+      } else {
+        return new[] { "$9 per month" };
+      }
     }
 
     [HttpGet]
@@ -48,9 +63,19 @@
       combined.AddRange(orgs);
 
       var result = combined
-        .Select(x => new Account() {
-          Id = x.Id,
-          Action = x.Subscription.State == SubscriptionState.Subscribed ? AccountAction.Manage : AccountAction.Purchase,
+        .Select(x => new AccountRow() {
+          Account = new Account() {
+            Identifier = x.Id,
+            Login = x.Login,
+            // TODO: Sync avatars and return real values here.
+            AvatarUrl = "https://avatars.githubusercontent.com/u/335107?v=3",
+            Type = (x is User) ? "user" : "organization",
+          },
+          Subscribed = x.Subscription.State == SubscriptionState.Subscribed,
+          // TODO: Only allow edits for purchaser or admins.
+          CanEdit = x.Subscription.State == SubscriptionState.Subscribed,
+          ActionUrl = "https://www.realartists.com",
+          PricingLines = GetActionLines(x),
         })
         .ToList();
 
