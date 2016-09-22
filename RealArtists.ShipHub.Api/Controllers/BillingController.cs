@@ -73,7 +73,7 @@
           },
           Subscribed = x.Subscription.State == SubscriptionState.Subscribed,
           // TODO: Only allow edits for purchaser or admins.
-          CanEdit = x.Subscription.State == SubscriptionState.Subscribed,
+          CanEdit = true,
           ActionUrl = "https://www.realartists.com",
           PricingLines = GetActionLines(x),
         })
