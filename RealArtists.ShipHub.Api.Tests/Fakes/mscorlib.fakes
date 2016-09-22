@@ -1,8 +1,0 @@
-<Fakes xmlns="http://schemas.microsoft.com/fakes/2011/">
-  <Assembly Name="mscorlib" Version="4.0.0.0"/>
-  <StubGeneration>
-    <Remove FullName="System.Diagnostics.Tracing"/>
-    <Remove FullName="System.Text.Encoding"/>
-    <Remove FullName="System.Security.Cryptography" />
-  </StubGeneration>
-</Fakes>

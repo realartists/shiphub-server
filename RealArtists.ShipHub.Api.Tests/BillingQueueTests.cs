@@ -2,7 +2,9 @@
   using System;
   using System.Collections.Generic;
   using System.Collections.Specialized;
+  using System.Globalization;
   using System.IO;
+  using System.Linq;
   using System.Net;
   using System.Net.Fakes;
   using System.Threading;
@@ -10,18 +12,16 @@
   using System.Web;
   using ChargeBee.Api;
   using ChargeBee.Api.Fakes;
+  using Common.DataModel;
+  using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
-  using Common.DataModel;
-  using Common.GitHub;
   using QueueClient.Messages;
   using QueueProcessor;
   using QueueProcessor.Tracing;
-  using System.Linq;
-  using System.Globalization;
 
   [TestFixture]
   [AutoRollback]
@@ -599,7 +599,7 @@
               Type = Common.GitHub.Models.GitHubAccountType.User,
             }
           });
-        
+
         using (ShimsContext.Create()) {
           ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
             if (method.Equals("GET") && path.Equals("/api/v2/customers")) {

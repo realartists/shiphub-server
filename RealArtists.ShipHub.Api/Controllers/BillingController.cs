@@ -8,25 +8,25 @@
   using Common.DataModel;
   using Filters;
 
+  public class BillingAccount {
+    public long Identifier { get; set; }
+    public string Login { get; set; }
+    public string AvatarUrl { get; set; }
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
+    public string Type { get; set; }
+  }
+
+  public class BillingAccountRow {
+    public BillingAccount Account { get; set; }
+    public bool Subscribed { get; set; }
+    public bool CanEdit { get; set; }
+    public string ActionUrl { get; set; }
+    public IEnumerable<string> PricingLines { get; set; }
+  }
+
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
-
-    public class Account {
-      public long Identifier { get; set; }
-      public string Login { get; set; }
-      public string AvatarUrl { get; set; }
-      public string Type { get; set; }
-    }
-
-    public class AccountRow {
-      public Account Account { get; set; }
-      public bool Subscribed { get; set; }
-      public bool CanEdit { get; set; }
-      public string ActionUrl { get; set; }
-      public string[] PricingLines { get; set; }
-    }
-
-    private static string[] GetActionLines(Common.DataModel.Account account) {
+    private static IEnumerable<string> GetActionLines(Account account) {
       if (account.Subscription.State == SubscriptionState.Subscribed) {
         // Should server send the "Already Subscribed" place holder text?
         return null;
@@ -45,7 +45,7 @@
     public async Task<IHttpActionResult> Accounts() {
       var principal = RequestContext.Principal as ShipHubPrincipal;
 
-      var combined = new List<Common.DataModel.Account>();
+      var combined = new List<Account>();
 
       var user = await Context.Users
         .Include(x => x.Subscription)
@@ -63,8 +63,8 @@
       combined.AddRange(orgs);
 
       var result = combined
-        .Select(x => new AccountRow() {
-          Account = new Account() {
+        .Select(x => new BillingAccountRow() {
+          Account = new BillingAccount() {
             Identifier = x.Id,
             Login = x.Login,
             // TODO: Sync avatars and return real values here.

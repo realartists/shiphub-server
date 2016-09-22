@@ -17,13 +17,12 @@
 
   public class BillingQueueHandler : LoggingHandlerBase {
 
-    public BillingQueueHandler(IDetailedExceptionLogger logger) : base(logger) {
-    }
+    public BillingQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
 
     public async Task GetOrCreateSubscriptionHelper(
       UserIdMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
-      IGitHubClient ghc,
+      IGitHubClient gitHubClient,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Id == message.UserId);
@@ -45,8 +44,8 @@
         if (customerList.Count == 0) {
           // Cannot use cache because we need fields like Name + Email which
           // we don't currently save to the DB.
-          var githubUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
-          var emails = (await ghc.UserEmails(GitHubCacheDetails.Empty)).Result;
+          var githubUser = (await gitHubClient.User(GitHubCacheDetails.Empty)).Result;
+          var emails = (await gitHubClient.UserEmails(GitHubCacheDetails.Empty)).Result;
           var primaryEmail = emails.First(x => x.Primary);
 
           var createRequest = Customer.Create()
@@ -101,7 +100,7 @@
               AccountId = user.Id,
             });
           }
-          
+
           switch (sub.Status) {
             case ChargeBee.Models.Subscription.StatusEnum.Active:
             case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:

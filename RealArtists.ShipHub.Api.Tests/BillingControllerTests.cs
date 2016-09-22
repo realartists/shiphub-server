@@ -1,15 +1,8 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
-  using System.Linq;
-  using System.Net.Http;
-  using System.Text;
   using System.Threading.Tasks;
-  using System.Web.Http;
-  using System.Web.Http.Controllers;
-  using System.Web.Http.Hosting;
   using System.Web.Http.Results;
-  using System.Web.Http.Routing;
   using Common.DataModel;
   using Controllers;
   using Filters;
@@ -48,7 +41,7 @@
         var controller = new BillingController();
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
-        var result = (OkNegotiatedContentResult<List<BillingController.AccountRow>>)(await controller.Accounts());
+        var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
         Assert.AreEqual(2, result.Content.Count);
         Assert.AreEqual(user.Id, result.Content[0].Account.Identifier);
         Assert.AreEqual(user.Login, result.Content[0].Account.Login);
