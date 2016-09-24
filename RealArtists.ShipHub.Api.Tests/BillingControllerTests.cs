@@ -6,6 +6,7 @@
   using Common.DataModel;
   using Controllers;
   using Filters;
+  using Microsoft.QualityTools.Testing.Fakes;
   using NUnit.Framework;
 
   [TestFixture]
@@ -80,6 +81,114 @@
 
         var result = await controller.Accounts();
         Assert.IsInstanceOf<NegotiatedContentResult<Dictionary<string, string>>>(result);
+      }
+    }
+
+    [Test]
+    public Task BuyMakesChargeBeePageForCancelledUser() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "cancelled",
+        trialEndIfAny: null,
+        expectCoupon: null,
+        expectTrialToEndImmediately: false
+        );
+    }
+
+    [Test]
+    public Task CouponGivesCreditForRemainingTrialDays() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Pretend trial ends in 7 days, so we should get the 7 day coupon
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
+        expectCoupon: "trial_days_left_7",
+        expectTrialToEndImmediately: true
+        );
+    }
+
+    [Test]
+    public Task CouponAlwaysRoundsUpToAWholeDay() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Trial ends in only 6 hours, but we still want to give the user
+        // a 1 day coupon.
+        trialEndIfAny: DateTimeOffset.UtcNow.AddHours(6),
+        expectCoupon: "trial_days_left_1",
+        expectTrialToEndImmediately: true
+        );
+    }
+
+    [Test]
+    public Task CouponIsNeverForMoreThan30Days() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Even if you have more than 30 days left in your trial,
+        // just use the 30 day coupon.  It's good for 100% off.
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(31),
+        expectCoupon: "trial_days_left_30",
+        expectTrialToEndImmediately: true
+        );
+    }
+
+    public async Task BuyEndpointRedirectsToChargeBeeHelper(
+      string existingState,
+      DateTimeOffset? trialEndIfAny,
+      string expectCoupon,
+      bool expectTrialToEndImmediately
+      ) {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        user.Token = Guid.NewGuid().ToString();
+        await context.SaveChangesAsync();
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("personal", data["plan_id[is]"]);
+
+              // Pretend we find an existing subscription
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = existingState,
+                      trial_end = trialEndIfAny?.ToUnixTimeSeconds(),
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
+              if (expectCoupon != null) {
+                Assert.AreEqual(expectCoupon, data["subscription[coupon]"]);
+              } else {
+                Assert.IsFalse(data.ContainsKey("subscription[coupon]"));
+              }
+
+              if (expectTrialToEndImmediately) {
+                Assert.AreEqual("0", data["subscription[trial_end]"]);
+              } else {
+                Assert.IsFalse(data.ContainsKey("subscription[trial_end]"));
+              }
+
+              return new {
+                hosted_page = new {
+                  id = "hosted-page-id",
+                  url = "https://realartists-test.chargebee.com/some/path/123",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var controller = new BillingController();
+          var response = controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+        }
       }
     }
   }
