@@ -104,7 +104,7 @@
               break;
             case ChargeBee.Models.Subscription.StatusEnum.InTrial:
               accountSubscription.State = SubscriptionState.InTrial;
-              accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value);
+              accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
               break;
             default:
               accountSubscription.State = SubscriptionState.NotSubscribed;
