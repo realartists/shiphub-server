@@ -29,7 +29,7 @@
     private static IEnumerable<string> GetActionLines(Account account) {
       if (account.Subscription.State == SubscriptionState.Subscribed) {
         // Should server send the "Already Subscribed" place holder text?
-        return null;
+        return new string[0];
       } else if (account is Organization) {
         return new[] {
           "$9 per active user / month",
