@@ -28,8 +28,7 @@
     InTrial,
 
     /// <summary>
-    /// Customer is currently paying, or has provided payment info and is
-    /// scheduled to pay as soon as their trial ends.
+    /// Customer is currently paying.
     /// </summary>
     [EnumMember(Value = "subscribed")]
     Subscribed,

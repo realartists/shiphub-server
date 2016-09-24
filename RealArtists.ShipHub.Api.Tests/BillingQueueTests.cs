@@ -69,7 +69,6 @@
 
         bool createdAccount = false;
         bool createdSubscription = false;
-        bool setSubscriptionToCancel = false;
 
         using (ShimsContext.Create()) {
           ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
@@ -124,20 +123,6 @@
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/some-sub-id/cancel")) {
-              Assert.AreEqual(new Dictionary<string, string> { { "end_of_term", "true" } }, data);
-              setSubscriptionToCancel = true;
-              // Fake response for scheduling the trial to auto cancel at end of month.
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                  status = "in_trial",
-                  trial_end = DateTimeOffset.Parse(
-                        "10/1/2016 08:00:00 PM +00:00",
-                        null,
-                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
-                },
-              };
             } else {
               Assert.Fail($"Unexpected {method} to {path}");
               return null;
@@ -156,7 +141,6 @@
                         sub.TrialEndDate);
         Assert.IsTrue(createdAccount);
         Assert.IsTrue(createdSubscription);
-        Assert.IsTrue(setSubscriptionToCancel);
 
         Assert.AreEqual(
           new long[] { user.Id },
@@ -432,7 +416,6 @@
 
         bool createdAccount = false;
         bool createdSubscription = false;
-        bool setSubscriptionToCancel = false;
 
         using (ShimsContext.Create()) {
           ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
@@ -491,20 +474,6 @@
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
                 },
               };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/some-sub-id/cancel")) {
-              Assert.AreEqual(new Dictionary<string, string> { { "end_of_term", "true" } }, data);
-              setSubscriptionToCancel = true;
-              // Fake response for scheduling the trial to auto cancel at end of month.
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                  status = "in_trial",
-                  trial_end = DateTimeOffset.Parse(
-                        "10/1/2016 08:00:00 PM +00:00",
-                        null,
-                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
-                },
-              };
             } else {
               Assert.Fail($"Unexpected {method} to {path}");
               return null;
@@ -518,7 +487,6 @@
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
         Assert.IsFalse(createdAccount);
         Assert.IsTrue(createdSubscription);
-        Assert.IsTrue(setSubscriptionToCancel);
       }
     }
 
