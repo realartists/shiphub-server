@@ -1,4 +1,4 @@
-<Fakes xmlns="http://schemas.microsoft.com/fakes/2011/" Diagnostic="true">
+<Fakes xmlns="http://schemas.microsoft.com/fakes/2011/" Diagnostic="false">
   <Assembly Name="ChargeBee" Version="2.1.4.0"/>
   <StubGeneration>
     <Clear />
