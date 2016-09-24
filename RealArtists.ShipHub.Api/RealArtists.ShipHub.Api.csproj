@@ -198,6 +198,7 @@
     <Compile Include="Controllers\AuthenticationController.cs" />
     <Compile Include="Controllers\BillingController.cs" />
     <Compile Include="Controllers\GitHubProxyController.cs" />
+    <Compile Include="Controllers\ChargeBeeWebhookController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\SyncController.cs" />
