@@ -168,5 +168,26 @@
 
       return Redirect(result.Url);
     }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("manage/{actorId}/{targetId}/{signature}")]
+    public IHttpActionResult Manage(long actorId, long targetId, string signature) {
+
+      if (!CreateSignature(actorId, targetId).Equals(signature)) {
+        return BadRequest("Signature does not match.");
+      }
+
+      if (actorId != targetId) {
+        return BadRequest("Cannot manage organization subscriptions yet.");
+      }
+
+      var result = PortalSession.Create()
+        .RedirectUrl("https://www.realartists.com")
+        .CustomerId($"user-{targetId}")
+        .Request().PortalSession;
+
+      return Redirect(result.AccessUrl);
+    }
   }
 }
