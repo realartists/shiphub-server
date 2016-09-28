@@ -147,7 +147,8 @@
 
       var pageRequest = HostedPage.CheckoutExisting()
         .SubscriptionId(sub.Id)
-        .SubscriptionPlanId("personal");
+        .SubscriptionPlanId("personal")
+        .Embed(false);
 
       // Apply a coupon to make up for any unused free trial time that's
       // still remaining.  Don't want to penalize folks that decide to buy
