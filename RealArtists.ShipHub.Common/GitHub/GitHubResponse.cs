@@ -17,6 +17,7 @@
     public bool IsError { get; set; }
     public GitHubError Error { get; set; }
     public GitHubErrorSeverity ErrorSeverity { get; set; }
+    public DateTimeOffset? RetryAfter { get; set; }
 
     public GitHubCacheDetails CacheData { get; set; }
     public GitHubRateLimit RateLimit { get; set; }

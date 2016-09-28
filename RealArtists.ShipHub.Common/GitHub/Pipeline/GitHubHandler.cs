@@ -179,6 +179,16 @@
         };
       }
 
+      // Abuse
+      if (response.Headers.RetryAfter != null) {
+        var after = response.Headers.RetryAfter;
+        if (after.Date != null) {
+          result.RetryAfter = after.Date;
+        } else if (after.Delta != null) {
+          result.RetryAfter = DateTimeOffset.UtcNow.Add(after.Delta.Value);
+        }
+      }
+
       // Scopes
       var scopes = response.ParseHeader<IEnumerable<string>>("X-OAuth-Scopes", x => (x == null) ? null : x.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries));
       if (scopes != null) {
