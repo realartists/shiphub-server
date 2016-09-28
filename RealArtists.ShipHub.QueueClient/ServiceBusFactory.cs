@@ -127,32 +127,20 @@
 
       await Task.WhenAll(checks.Select(x => x.ExistsTask));
 
-      var duplicateDetectionQueues = new string[] {
-        ShipHubQueueNames.AddOrUpdateOrgWebhooks,
-        ShipHubQueueNames.AddOrUpdateRepoWebhooks,
-        ShipHubQueueNames.BillingGetOrCreateSubscription,
-      };
-
       var creations = checks
         .Where(x => !x.ExistsTask.Result)
-        .Select(x => {
-          var enableDuplicateDetection = duplicateDetectionQueues.Contains(x.QueueName);
-
-          return NamespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
-            DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
-            DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
-            // Express mode is not allowed with duplicate detection because
-            // it temporarily queues messages in memory.
-            EnableExpress = !enableDuplicateDetection,
-            EnableBatchedOperations = true,
-            EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
-            EnablePartitioning = true,
-            IsAnonymousAccessible = false,
-            MaxDeliveryCount = 2, // Prevent explosions of errors.
-            MaxSizeInMegabytes = 5120,
-            RequiresDuplicateDetection = enableDuplicateDetection,
-          });
-        });
+        .Select(x => NamespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
+          DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
+          DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
+          EnableExpress = true,
+          EnableBatchedOperations = true,
+          EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
+          EnablePartitioning = true,
+          IsAnonymousAccessible = false,
+          MaxDeliveryCount = 2, // Prevent explosions of errors.
+          MaxSizeInMegabytes = 5120,
+          RequiresDuplicateDetection = false,
+        }));
 
       await Task.WhenAll(creations);
     }

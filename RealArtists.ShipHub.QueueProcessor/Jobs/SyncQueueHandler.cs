@@ -32,7 +32,7 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<UserIdMessage> syncAccountRepos,
       [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<UserIdMessage> syncAccountOrgs,
-      [ServiceBus(ShipHubQueueNames.BillingGetOrCreateSubscription)] IAsyncCollector<BrokeredMessage> getOrCreateSubscription,
+      [ServiceBus(ShipHubQueueNames.BillingGetOrCreateSubscription)] IAsyncCollector<UserIdMessage> getOrCreateSubscription,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
@@ -72,7 +72,7 @@
           var am = new UserIdMessage(user.Id);
           tasks.Add(syncAccountRepos.AddAsync(am));
           tasks.Add(syncAccountOrgs.AddAsync(am));
-          tasks.Add(getOrCreateSubscription.AddAsync(WebJobInterop.CreateMessage(am, user.Id.ToString())));
+          tasks.Add(getOrCreateSubscription.AddAsync(am));
 
           await Task.WhenAll(tasks);
         }
@@ -82,7 +82,7 @@
     public async Task SyncAccountRepositories(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<TargetMessage> syncRepo,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateRepoWebhooks,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<TargetMessage> addOrUpdateRepoWebhooks,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
@@ -135,7 +135,7 @@
           await Task.WhenAll(repos.Select(x => syncRepo.AddAsync(new TargetMessage(x.RepositoryId, user.Id))));
           await Task.WhenAll(repos
             .Where(x => x.Admin)
-            .Select(x => addOrUpdateRepoWebhooks.AddAsync(WebJobInterop.CreateMessage(new TargetMessage(x.RepositoryId, user.Id), $"repo-{x.RepositoryId}"))));
+            .Select(x => addOrUpdateRepoWebhooks.AddAsync(new TargetMessage(x.RepositoryId, user.Id))));
         }
       });
     }
@@ -198,7 +198,7 @@
     public async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<BrokeredMessage> addOrUpdateOrgWebhooks,
+      [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<TargetMessage> addOrUpdateOrgWebhooks,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
         using (var context = new ShipHubContext()) {
@@ -247,7 +247,7 @@
           var membership = await context.OrganizationAccounts
             .SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId && x.UserId == message.ForUserId);
           if (membership != null && membership.Admin) {
-            await addOrUpdateOrgWebhooks.AddAsync(WebJobInterop.CreateMessage(message, $"org-{message.TargetId}"));
+            await addOrUpdateOrgWebhooks.AddAsync(message);
           }
         }
       });

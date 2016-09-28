@@ -125,6 +125,7 @@
       }
     }
 
+    [Singleton("{UserId}")]
     public async Task GetOrCreateSubscription(
       [ServiceBusTrigger(ShipHubQueueNames.BillingGetOrCreateSubscription)] UserIdMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,

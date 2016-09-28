@@ -20,6 +20,7 @@
   public class WebhookQueueHandler : LoggingHandlerBase {
     public WebhookQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
 
+    [Singleton("{TargetId}_{ForUserId}")]
     public async Task AddOrUpdateRepoWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -127,6 +128,7 @@
       }
     }
 
+    [Singleton("{TargetId}_{ForUserId}")]
     public async Task AddOrUpdateOrgWebhooks(
       [ServiceBusTrigger(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
