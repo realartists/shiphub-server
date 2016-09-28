@@ -14,7 +14,6 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
-  using Microsoft.ServiceBus.Messaging;
   using Newtonsoft.Json.Linq;
   using QueueClient;
   using QueueClient.Messages;
