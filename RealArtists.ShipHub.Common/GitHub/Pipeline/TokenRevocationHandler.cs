@@ -26,7 +26,9 @@
     }
 
     private async Task CheckResponse(GitHubResponse response) {
-      if (response.Status == HttpStatusCode.Unauthorized || response.Status == HttpStatusCode.Forbidden) {
+      // Only check for Unauthorized, Forbidden can be other things.
+      // Maybe actually check the token validity explicitly first.
+      if (response.Status == HttpStatusCode.Unauthorized) {
         await _revoked(response.CacheData.AccessToken);
       }
     }
