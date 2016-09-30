@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.IO;
   using System.Linq;
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
@@ -49,28 +50,32 @@
       byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       var deliveryId = Guid.Parse(deliveryIdHeader);
 
-      var payloadString = await Request.Content.ReadAsStringAsync();
-      var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
-      var payload = JsonConvert.DeserializeObject<WebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
-
       Hook hook = null;
 
       if (type.Equals("org")) {
         hook = Context.Hooks.SingleOrDefault(x => x.OrganizationId == id);
       } else if (type.Equals("repo")) {
         hook = Context.Hooks.SingleOrDefault(x => x.RepositoryId == id);
-      } else {
-        throw new ArgumentException("Unexpected type: " + type);
       }
 
       if (hook == null) {
-        throw new ArgumentException("Webhook does not match any known repository or organization.");
+        // I don't care anymore. This is GitHub's problem.
+        // They should support unsubscribing from a hook with a special response code or body.
+        // We may not even have credentials to remove the hook anymore.
+        return NotFound();
       }
 
-      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()))) {
-        byte[] hash = hmac.ComputeHash(payloadBytes);
+      WebhookPayload payload = null;
+
+      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString())))
+      using (var bodyStream = await Request.Content.ReadAsStreamAsync())
+      using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
+      using (var textReader = new StreamReader(hmacStream, Encoding.UTF8))
+      using (var jsonReader = new JsonTextReader(textReader) { CloseInput = true }) {
+        payload = GitHubSerialization.JsonSerializer.Deserialize<WebhookPayload>(jsonReader);
+        jsonReader.Close();
         // We're not worth launching a timing attack against.
-        if (!hash.SequenceEqual(signature)) {
+        if (!signature.SequenceEqual(hmac.Hash)) {
           return BadRequest("Invalid signature.");
         }
       }

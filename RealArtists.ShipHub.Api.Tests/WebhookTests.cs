@@ -274,7 +274,7 @@
     }
 
     [Test]
-    public async Task WillThrowExceptionWhenCallDoesNotMatchKnownRepoOrOrg() {
+    public async Task WillReturnNotFoundWhenCallDoesNotMatchKnownRepoOrOrg() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
@@ -291,9 +291,10 @@
         var controller = new GitHubWebhookController(null, AutoMapper);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
 
-        Assert.ThrowsAsync(typeof(ArgumentException), async () => {
-          await controller.HandleHook("repo", repo.Id);
-        }, "Webhook does not match any known repository or organization.");
+        Assert.IsInstanceOf<NotFoundResult>(
+          await controller.HandleHook("repo", repo.Id),
+          "Webhook does not match any known repository or organization."
+        );
       }
     }
 
