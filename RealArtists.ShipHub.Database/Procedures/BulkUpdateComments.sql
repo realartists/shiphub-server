@@ -1,7 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateComments]
   @RepositoryId BIGINT,
-  @Comments CommentTableType READONLY,
-  @Complete BIT = 0
+  @Comments CommentTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -10,35 +9,31 @@ BEGIN
 
   -- For tracking required updates to repo log
   DECLARE @Changes TABLE (
-    [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
-    [UserId] BIGINT       NOT NULL,
-    [Action] NVARCHAR(10) NOT NULL
+    [Id]     BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [UserId] BIGINT NOT NULL
   )
 
   MERGE INTO Comments WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT c.Id, i.Id as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
+    SELECT c.Id, ISNULL(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
     FROM @Comments as c
-      INNER JOIN [Issues] as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.[IssueNumber])
+      LEFT OUTER JOIN Issues as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.IssueNumber AND c.IssueId IS NULL)
   ) as [Source]
-  ON ([Target].[Id] = [Source].[Id])
+  ON ([Target].Id = [Source].Id)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
     VALUES (Id, IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
-  -- Delete
-  WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
   -- Update
   WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
     UPDATE SET
       [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
       [Body] = [Source].[Body],
       [UpdatedAt] = [Source].[UpdatedAt]
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes (Id, UserId, [Action]);
+  OUTPUT INSERTED.Id, INSERTED.UserId INTO @Changes (Id, UserId);
 
-  -- Deleted or edited comments
+  -- Edited comments
   UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
     [RowVersion] = DEFAULT
   FROM @Changes as c
     INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
@@ -51,7 +46,7 @@ BEGIN
 
   -- Add new account references to log
   MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (SELECT DISTINCT(UserId) FROM @Changes WHERE [Action] = 'INSERT') as [Source]
+  USING (SELECT DISTINCT(UserId) FROM @Changes) as [Source]
   ON ([Target].ItemId = [Source].UserId
     AND [Target].RepositoryId = @RepositoryId
     AND [Target].[Type] = 'account')

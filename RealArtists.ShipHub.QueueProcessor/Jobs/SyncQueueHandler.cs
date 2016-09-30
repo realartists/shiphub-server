@@ -541,7 +541,7 @@
               changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
               var issueComments = comments.Where(x => x.IssueNumber != null);
-              changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments), complete: true));
+              changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments)));
 
               tasks.Add(notifyChanges.Send(changes));
             } else {
@@ -650,11 +650,15 @@
                 .Distinct(x => x.Id);
               changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
-              changes.UnionWith(await context.BulkUpdateIssueComments(
-                issue.Repository.FullName,
-                issue.Number,
-                _mapper.Map<IEnumerable<CommentTableType>>(comments),
-                complete: true));
+              foreach (var comment in comments) {
+                if (comment.IssueNumber == null) {
+                  comment.IssueNumber = issue.Number;
+                }
+              }
+
+              changes.UnionWith(await context.BulkUpdateComments(
+                issue.Repository.Id,
+                _mapper.Map<IEnumerable<CommentTableType>>(comments)));
 
               tasks.Add(notifyChanges.Send(changes));
 
@@ -754,23 +758,32 @@
             var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
 
             var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var reactions = response.Result;
+            switch (response.Status) {
+              case HttpStatusCode.NotModified:
+                logger.WriteLine("Github: Not modified.");
+                break;
+              case HttpStatusCode.NotFound:
+                // Deleted
+                changes = await context.DeleteComments(new[] { comment.Id });
+                break;
+              default:
+                logger.WriteLine("Github: Changed. Saving changes.");
+                var reactions = response.Result;
 
-              var users = reactions
-                .Select(x => x.User)
-                .Distinct(x => x.Id);
-              changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
+                var users = reactions
+                  .Select(x => x.User)
+                  .Distinct(x => x.Id);
+                changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
-              changes.UnionWith(await context.BulkUpdateCommentReactions(
-                comment.RepositoryId,
-                comment.Id,
-                _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+                changes.UnionWith(await context.BulkUpdateCommentReactions(
+                  comment.RepositoryId,
+                  comment.Id,
+                  _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+                break;
+            }
 
+            if (!changes.Empty) {
               tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
             }
 
             tasks.Add(context.UpdateMetadata("Comments", "ReactionMetadataJson", comment.Id, response));

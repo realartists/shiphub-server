@@ -252,24 +252,12 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments, bool complete = false) {
+    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
       var tableParam = CreateCommentTable("Comments", comments);
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
         x.RepositoryId = repositoryId;
         x.Comments = tableParam;
-        x.Complete = complete;
-      });
-    }
-
-    public Task<ChangeSummary> BulkUpdateIssueComments(string repositoryFullName, int issueNumber, IEnumerable<CommentTableType> comments, bool complete = false) {
-      var tableParam = CreateCommentTable("Comments", comments);
-
-      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueComments]", x => {
-        x.RepositoryFullName = repositoryFullName;
-        x.IssueNumber = issueNumber;
-        x.Comments = tableParam;
-        x.Complete = complete;
       });
     }
 
@@ -491,6 +479,12 @@
       });
     }
 
+    public Task<ChangeSummary> DeleteComments(IEnumerable<long> commentIds) {
+      return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
+        x.Comments = CreateItemListTable("Comments", commentIds);
+      });
+    }
+
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Whats")]
     public DynamicStoredProcedure PrepareWhatsNew(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
@@ -562,6 +556,7 @@
         "[dbo].[CommentTableType]",
         new[] {
           Tuple.Create("Id", typeof(long)),
+          Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("IssueNumber", typeof(int)),
           Tuple.Create("UserId", typeof(long)),
           Tuple.Create("Body", typeof(string)),
@@ -570,6 +565,7 @@
         },
         x => new object[] {
           x.Id,
+          x.IssueId,
           x.IssueNumber,
           x.UserId,
           x.Body,

@@ -121,7 +121,6 @@
     <Build Include="Procedures\WhatsNew.sql" />
     <Build Include="User Defined Types\VersionTableType.sql" />
     <Build Include="Tables\OrganizationLog.sql" />
-    <Build Include="Procedures\BulkUpdateIssueComments.sql" />
     <Build Include="Tables\IssueEventAccess.sql" />
     <Build Include="Tables\Reactions.sql" />
     <Build Include="User Defined Types\ReactionTableType.sql" />
@@ -133,6 +132,7 @@
     <Build Include="Procedures\UpdateCacheMetadata.sql" />
     <Build Include="Procedures\DeleteRepositories.sql" />
     <Build Include="Tables\Subscriptions.sql" />
+    <Build Include="Procedures\DeleteComments.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

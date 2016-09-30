@@ -27,6 +27,6 @@
     }
 
     [JsonIgnore]
-    public int? IssueNumber { get; private set; }
+    public int? IssueNumber { get; set; }
   }
 }

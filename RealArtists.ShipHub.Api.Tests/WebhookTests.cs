@@ -1317,26 +1317,27 @@
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
         issue = MakeTestIssue(context, user.Id, repo.Id);
 
-        var comment1 = context.Comments.Add(new Common.DataModel.Comment() {
-          Id = 9001,
-          Body = "comment body #1",
-          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
-          UserId = user.Id,
-          IssueId = issue.Id,
-          RepositoryId = repo.Id,
-        });
-        var comment2 = context.Comments.Add(new Common.DataModel.Comment() {
-          Id = 9002,
-          Body = "comment body #2",
-          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
-          UserId = user.Id,
-          IssueId = issue.Id,
-          RepositoryId = repo.Id,
-        });
-
         await context.SaveChangesAsync();
+
+        // Have to use official channels if you actually want correct change notifications.
+        await context.BulkUpdateComments(repo.Id, new[] {
+          new CommentTableType() {
+            Id = 9001,
+            Body = "comment body #1",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UserId = user.Id,
+            IssueId = issue.Id,
+          },
+          new CommentTableType() {
+            Id = 9002,
+            Body = "comment body #2",
+            CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+            UserId = user.Id,
+            IssueId = issue.Id,
+          },
+        });
 
         var obj = IssueCommentPayload(
           "deleted",

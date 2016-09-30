@@ -135,23 +135,15 @@
       await HandleIssues(payload, changeSummary);
 
       using (var context = new ShipHubContext()) {
-        changeSummary.UnionWith(await context.BulkUpdateAccounts(
+        if (payload.Action.Equals("deleted")) {
+          changeSummary.UnionWith(await context.DeleteComments(new[] { payload.Comment.Id }));
+        } else {
+          changeSummary.UnionWith(await context.BulkUpdateAccounts(
           DateTimeOffset.UtcNow,
           _mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
-        if (payload.Action.Equals("deleted")) {
-          var commentsExcludingDeletion = Context.Comments
-            .Where(x => x.IssueId == payload.Issue.Id && x.Id != payload.Comment.Id);
-          var commentsExcludingDeletionMapped = _mapper.Map<IEnumerable<CommentTableType>>(commentsExcludingDeletion);
-          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
-            payload.Repository.FullName,
-            (int)payload.Comment.IssueNumber,
-            commentsExcludingDeletionMapped,
-            complete: true));
-        } else {
-          changeSummary.UnionWith(await context.BulkUpdateIssueComments(
-            payload.Repository.FullName,
-            (int)payload.Comment.IssueNumber,
+          changeSummary.UnionWith(await context.BulkUpdateComments(
+            payload.Repository.Id,
             _mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
         }
       }
