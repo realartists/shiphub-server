@@ -79,8 +79,26 @@
         context.Entry(sub).Reload();
         Assert.AreEqual(expectedState, sub.State);
         Assert.AreEqual(expectedTrialEndDate, sub.TrialEndDate);
-        Assert.AreEqual(new long[] { user.Id }, changeSummary?.Users.ToArray());
+
+        if (notifyExpected) {
+          Assert.AreEqual(new long[] { user.Id }, changeSummary?.Users.ToArray());
+        } else {
+          Assert.IsNull(changeSummary);
+        }
       };
+    }
+
+    [Test]
+    public async Task ShouldNotNotifyIfNothingChanged() {
+      await TestSubscriptionStateChangeHelper(
+        eventType: "subscription_changed",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.Subscribed,
+        beginTrialEndDate: null,
+        expectedState: SubscriptionState.Subscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: false);
     }
 
     [Test]
