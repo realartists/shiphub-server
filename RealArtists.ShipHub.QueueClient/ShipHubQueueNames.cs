@@ -39,6 +39,6 @@
     public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
     public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";
 
-    public const string BillingGetOrCreateSubscription = "billing-get-or-create-subscription";
+    public const string BillingGetOrCreatePersonalSubscription = "billing-get-or-create-personal-subscription";
   }
 }

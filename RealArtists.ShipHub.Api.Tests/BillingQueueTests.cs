@@ -129,7 +129,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
@@ -216,7 +216,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         context.Entry(subscription).Reload();
@@ -297,7 +297,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         Assert.AreEqual(0, changeMessages.Count(),
@@ -375,7 +375,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         context.Entry(subscription).Reload();
@@ -480,7 +480,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
@@ -552,7 +552,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);

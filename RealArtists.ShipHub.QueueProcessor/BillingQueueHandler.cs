@@ -19,7 +19,7 @@
 
     public BillingQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
 
-    public async Task GetOrCreateSubscriptionHelper(
+    public async Task GetOrCreatePersonalSubscriptionHelper(
       UserIdMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
       IGitHubClient gitHubClient,
@@ -126,8 +126,8 @@
     }
 
     [Singleton("{UserId}")]
-    public async Task GetOrCreateSubscription(
-      [ServiceBusTrigger(ShipHubQueueNames.BillingGetOrCreateSubscription)] UserIdMessage message,
+    public async Task GetOrCreatePersonalSubscription(
+      [ServiceBusTrigger(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription)] UserIdMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger,
       ExecutionContext executionContext) {
@@ -141,7 +141,7 @@
           ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
         }
 
-        await GetOrCreateSubscriptionHelper(message, notifyChanges, ghc, logger);
+        await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, ghc, logger);
       });
     }
   }
