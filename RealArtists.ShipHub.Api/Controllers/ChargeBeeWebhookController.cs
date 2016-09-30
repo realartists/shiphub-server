@@ -70,7 +70,15 @@
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       using (var context = new ShipHubContext()) {
-        var sub = await context.Subscriptions.SingleAsync(x => x.AccountId == accountId);
+        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
+
+        if (sub == null) {
+          // We only care to update subscriptions we've already sync'ed.  This case often happens
+          // in development - e.g., you might be testing subscriptions on your local machine, and
+          // chargebee delivers webhook calls to shiphub-dev about subscriptions it doesn't know
+          // about yet.
+          return;
+        }
 
         if (payload.EventType.Equals("subscription_deleted")) {
           sub.State = SubscriptionState.NotSubscribed;
