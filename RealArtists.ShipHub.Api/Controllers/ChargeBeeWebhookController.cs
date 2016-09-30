@@ -55,6 +55,8 @@
         case "subscription_changed":
         case "subscription_deleted":
         case "subscription_scheduled_cancellation_removed":
+        case "subscription_created":
+        case "customer_deleted":
           await HandleSubscriptionStateChange(payload);
           break;
         default:
@@ -80,7 +82,8 @@
           return;
         }
 
-        if (payload.EventType.Equals("subscription_deleted")) {
+        if (payload.EventType.Equals("subscription_deleted") ||
+            payload.EventType.Equals("customer_deleted")) {
           sub.State = SubscriptionState.NotSubscribed;
           sub.TrialEndDate = null;
         } else {

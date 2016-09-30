@@ -186,5 +186,33 @@
         expectedTrialEndDate: null,
         notifyExpected: true);
     }
+
+    [Test]
+    public async Task SubscriptionCreated() {
+      // Triggered when a subscription is created and is active from the start.
+      // e.g., when someone purchases an org subscription which has no trial.
+      await TestSubscriptionStateChangeHelper(
+        eventType: "subscription_created",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.NotSubscribed,
+        beginTrialEndDate: null,
+        expectedState: SubscriptionState.Subscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: true);
+    }
+
+    [Test]
+    public async Task CustomerDeleted() {
+      await TestSubscriptionStateChangeHelper(
+        eventType: "customer_deleted",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.Subscribed,
+        beginTrialEndDate: null,
+        expectedState: SubscriptionState.NotSubscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: true);
+    }
   }
 }
