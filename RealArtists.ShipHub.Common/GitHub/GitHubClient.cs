@@ -149,6 +149,11 @@
       return FetchPaged(request, (Milestone x) => x.Id);
     }
 
+    public Task<GitHubResponse<Account>> Organization(string orgName, IGitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"/orgs/{orgName}", cacheOptions);
+      return Fetch<Account>(request);
+    }
+
     public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted:true);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
