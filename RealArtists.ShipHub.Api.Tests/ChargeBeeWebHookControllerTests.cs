@@ -35,6 +35,7 @@
     }
 
     private static async Task TestSubscriptionStateChangeHelper(
+      string userOrOrg,
       string eventType,
       string chargeBeeState,
       DateTimeOffset? chargeBeeTrialEndDate,
@@ -45,12 +46,26 @@
       bool notifyExpected
       ) {
       using (var context = new ShipHubContext()) {
-        var user = TestUtil.MakeTestUser(context);
-        var sub = context.Subscriptions.Add(new Subscription() {
-          AccountId = user.Id,
-          State = beginState,
-          TrialEndDate = beginTrialEndDate,
-        });
+        User user = null;
+        Organization org = null;
+        Subscription sub = null;
+
+        if (userOrOrg == "user") {
+          user = TestUtil.MakeTestUser(context);
+          sub = context.Subscriptions.Add(new Subscription() {
+            AccountId = user.Id,
+            State = beginState,
+            TrialEndDate = beginTrialEndDate,
+          });
+        } else {
+          org = TestUtil.MakeTestOrg(context);
+          sub = context.Subscriptions.Add(new Subscription() {
+            AccountId = org.Id,
+            State = beginState,
+            TrialEndDate = beginTrialEndDate,
+          });
+        }
+
         await context.SaveChangesAsync();
 
         IChangeSummary changeSummary = null;
@@ -66,7 +81,7 @@
             EventType = eventType,
             Content = new ChargeBeeWebhookContent() {
               Customer = new ChargeBeeWebhookCustomer() {
-                Id = "user-" + user.Id,
+                Id = $"{userOrOrg}-{sub.AccountId}",
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
@@ -81,7 +96,13 @@
         Assert.AreEqual(expectedTrialEndDate, sub.TrialEndDate);
 
         if (notifyExpected) {
-          Assert.AreEqual(new long[] { user.Id }, changeSummary?.Users.ToArray());
+          if (userOrOrg == "org") {
+            Assert.AreEqual(new long[] { org.Id }, changeSummary?.Organizations.ToArray());
+            Assert.AreEqual(new long[] { }, changeSummary?.Users.ToArray());
+          } else {
+            Assert.AreEqual(new long[] { user.Id }, changeSummary?.Users.ToArray());
+            Assert.AreEqual(new long[] { }, changeSummary?.Organizations.ToArray());
+          }          
         } else {
           Assert.IsNull(changeSummary);
         }
@@ -91,6 +112,7 @@
     [Test]
     public async Task ShouldNotNotifyIfNothingChanged() {
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_changed",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -105,6 +127,7 @@
     public async Task SubscriptionActivated() {
       await TestSubscriptionStateChangeHelper(
         // Triggered after the subscription has been moved from "Trial" to "Active" state 
+        userOrOrg: "user",
         eventType: "subscription_activated",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -121,6 +144,7 @@
         // ChargeBee says "Triggered when the subscription's recurring items are changed",
         // but in my experience this comes when a user transitions from trial to active via
         // the checkout page.
+        userOrOrg: "user",
         eventType: "subscription_changed",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -135,6 +159,7 @@
     public async Task SubscriptionReactivatedToActive() {
       // Triggered when the subscription is moved from cancelled state to "Active" or "Trial" state
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_reactivated",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -149,6 +174,7 @@
     public async Task SubscriptionReactivatedToTrial() {
       // Triggered when the subscription is moved from cancelled state to "Active" or "Trial" state
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_reactivated",
         chargeBeeState: "in_trial",
         chargeBeeTrialEndDate: DateTimeOffset.Parse("2020-09-22T00:00:00+00:00"),
@@ -163,6 +189,7 @@
     public async Task SubscriptionStarted() {
       // Triggered when a 'future' subscription gets started
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_started",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -179,6 +206,7 @@
       // to non payment or because the card details are not present, the
       // subscription will have the possible reason as 'cancel_reason'. 
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_cancelled",
         chargeBeeState: "cancelled",
         chargeBeeTrialEndDate: null,
@@ -195,6 +223,7 @@
       // to non payment or because the card details are not present, the
       // subscription will have the possible reason as 'cancel_reason'. 
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_deleted",
         chargeBeeState: "cancelled",
         chargeBeeTrialEndDate: null,
@@ -210,6 +239,7 @@
       // Triggered when a subscription is created and is active from the start.
       // e.g., when someone purchases an org subscription which has no trial.
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "subscription_created",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -223,12 +253,29 @@
     [Test]
     public async Task CustomerDeleted() {
       await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
         eventType: "customer_deleted",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
         beginState: SubscriptionState.Subscribed,
         beginTrialEndDate: null,
         expectedState: SubscriptionState.NotSubscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: true);
+    }
+
+    [Test]
+    public async Task SubscriptionCreatedForOrgShouldNotifyOrg() {
+      // Triggered when a subscription is created and is active from the start.
+      // e.g., when someone purchases an org subscription which has no trial.
+      await TestSubscriptionStateChangeHelper(
+        userOrOrg: "org",
+        eventType: "subscription_created",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.NotSubscribed,
+        beginTrialEndDate: null,
+        expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
         notifyExpected: true);
     }

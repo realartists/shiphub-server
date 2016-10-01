@@ -72,7 +72,9 @@
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       using (var context = new ShipHubContext()) {
-        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
+        var sub = await context.Subscriptions
+          .Include(x => x.Account)
+          .SingleOrDefaultAsync(x => x.AccountId == accountId);
 
         if (sub == null) {
           // We only care to update subscriptions we've already sync'ed.  This case often happens
@@ -109,7 +111,13 @@
 
         if (recordsUpdated > 0) {
           var changes = new ChangeSummary();
-          changes.Users.Add(accountId);
+
+          if (sub.Account is Organization) {
+            changes.Organizations.Add(accountId);
+          } else {
+            changes.Users.Add(accountId);
+          }
+
           await _queueClient.NotifyChanges(changes);
         }
       }
