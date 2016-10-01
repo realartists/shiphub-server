@@ -560,5 +560,74 @@
       }
     }
 
+    [Test]
+    public async Task WillSyncOrgSubscriptionState() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = org.Id,
+              Login = "aroon",
+              Name = "Aroon Pahwa",
+              Type = Common.GitHub.Models.GitHubAccountType.User,
+            }
+          });
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("organization", data["plan_id[is]"]);
+
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = "active",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          await CreateHandler().SyncOrgSubscriptionStateHelper(
+            new TargetMessage() {
+              TargetId = org.Id,
+              ForUserId = user.Id,
+            },
+            collectorMock.Object, mockClient.Object, Console.Out);
+        }
+
+        var subscription = context.Subscriptions.Single(x => x.AccountId == org.Id);
+        Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
+          "should show as subscribed");
+        Assert.IsNull(subscription.TrialEndDate);
+
+        Assert.AreEqual(
+          new long[] { org.Id },
+          changeMessages.FirstOrDefault()?.Organizations.OrderBy(x => x).ToArray(),
+          "should notify that this org changed.");
+      }
+    }
   }
 }

@@ -144,5 +144,80 @@
         await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, ghc, logger);
       });
     }
+
+    public async Task SyncOrgSubscriptionStateHelper(
+      TargetMessage message,
+      IAsyncCollector<ChangeMessage> notifyChanges,
+      IGitHubClient gitHubClient,
+      TextWriter logger) {
+
+      using (var context = new ShipHubContext()) {
+        var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
+
+        var customerId = $"org-{message.TargetId}";
+        var sub = ChargeBee.Models.Subscription.List()
+          .CustomerId().Is(customerId)
+          .PlanId().Is("organization")
+          .Status().Is(ChargeBee.Models.Subscription.StatusEnum.Active)
+          .Limit(1)
+          .Request().List.SingleOrDefault()?.Subscription;
+
+        using (var transaction = context.Database.BeginTransaction()) {
+          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.TargetId);
+
+          if (accountSubscription == null) {
+            accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+              AccountId = message.TargetId,
+            });
+          }
+
+          if (sub != null) {
+            switch (sub.Status) {
+              case ChargeBee.Models.Subscription.StatusEnum.Active:
+              case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
+              case ChargeBee.Models.Subscription.StatusEnum.Future:
+                accountSubscription.State = SubscriptionState.Subscribed;
+                break;
+              default:
+                accountSubscription.State = SubscriptionState.NotSubscribed;
+                break;
+            }
+          } else {
+            accountSubscription.State = SubscriptionState.NotSubscribed;
+          }
+
+          int recordsSaved = await context.SaveChangesAsync();
+
+          transaction.Commit();
+
+          if (recordsSaved > 0) {
+            var changes = new ChangeSummary();
+            changes.Organizations.Add(message.TargetId);
+            await notifyChanges.AddAsync(new ChangeMessage(changes));
+          }
+        }
+      }
+    }
+
+    public async Task SyncOrgSubscriptionState(
+      [ServiceBusTrigger(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] TargetMessage message,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      TextWriter logger,
+      ExecutionContext executionContext) {
+
+      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
+        IGitHubClient ghc;
+        using (var context = new ShipHubContext()) {
+          var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
+          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+            return;
+          }
+          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+        }
+
+        await SyncOrgSubscriptionStateHelper(message, notifyChanges, ghc, logger);
+      });
+    }
+
   }
 }

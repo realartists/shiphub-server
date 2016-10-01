@@ -144,6 +144,7 @@
     public async Task SyncAccountOrganizations(
       [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] UserIdMessage message,
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<TargetMessage> syncOrgMembers,
+      [ServiceBus(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] IAsyncCollector<TargetMessage> syncOrgSubscriptionState,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
@@ -188,7 +189,9 @@
 
           // Refresh member list as well
           if (allOrgIds.Any()) {
-            await Task.WhenAll(allOrgIds.Select(x => syncOrgMembers.AddAsync(new TargetMessage(x, user.Id))));
+            var syncOrgMembersTasks = allOrgIds.Select(x => syncOrgMembers.AddAsync(new TargetMessage(x, user.Id)));
+            var syncOrgSubscriptionStateTasks = allOrgIds.Select(x => syncOrgSubscriptionState.AddAsync(new TargetMessage(x, user.Id)));
+            await Task.WhenAll(syncOrgMembersTasks.Concat(syncOrgSubscriptionStateTasks));
           }
         }
       });
