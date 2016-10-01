@@ -160,6 +160,7 @@
 
         pageRequest
           .SubscriptionCoupon($"trial_days_left_{daysLeftOnTrial}")
+
             // Setting trial end to 0 makes the checkout page run the charge
             // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0);
@@ -173,19 +174,18 @@
     [AllowAnonymous]
     [HttpGet]
     [Route("manage/{actorId}/{targetId}/{signature}")]
-    public IHttpActionResult Manage(long actorId, long targetId, string signature) {
+    public async Task<IHttpActionResult> Manage(long actorId, long targetId, string signature) {
 
       if (!CreateSignature(actorId, targetId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
-      if (actorId != targetId) {
-        return BadRequest("Cannot manage organization subscriptions yet.");
-      }
+      var account = await Context.Accounts.SingleAsync(x => x.Id == targetId);
+      var customerIdPrefix = (account is Organization) ? "org" : "user";
 
       var result = PortalSession.Create()
         .RedirectUrl("https://www.realartists.com")
-        .CustomerId($"user-{targetId}")
+        .CustomerId($"{customerIdPrefix}-{targetId}")
         .Request().PortalSession;
 
       return Redirect(result.AccessUrl);
