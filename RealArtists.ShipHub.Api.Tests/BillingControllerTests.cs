@@ -193,7 +193,7 @@
     }
 
     [Test]
-    public async Task ManageEndpointRedirectsToChargeBeePage() {
+    public async Task ManageEndpointRedirectsToChargeBeePageForPersonal() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         user.Token = Guid.NewGuid().ToString();
@@ -216,7 +216,38 @@
           });
 
           var controller = new BillingController();
-          var response = controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+          var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+        }
+      }
+    }
+
+    [Test]
+    public async Task ManageEndpointRedirectsToChargeBeePageForOrganization() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("POST") && path.Equals("/api/v2/portal_sessions")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
+
+              return new {
+                portal_session = new {
+                  access_url = "https://realartists-test.chargebee.com/some/portal/path/123",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var controller = new BillingController();
+          var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
         }
