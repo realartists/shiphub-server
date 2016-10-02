@@ -71,55 +71,53 @@
       var matches = regex.Match(payload.Content.Customer.Id);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      using (var context = new ShipHubContext()) {
-        var sub = await context.Subscriptions
-          .Include(x => x.Account)
-          .SingleOrDefaultAsync(x => x.AccountId == accountId);
+      var sub = await Context.Subscriptions
+        .Include(x => x.Account)
+        .SingleOrDefaultAsync(x => x.AccountId == accountId);
 
-        if (sub == null) {
-          // We only care to update subscriptions we've already sync'ed.  This case often happens
-          // in development - e.g., you might be testing subscriptions on your local machine, and
-          // chargebee delivers webhook calls to shiphub-dev about subscriptions it doesn't know
-          // about yet.
-          return;
+      if (sub == null) {
+        // We only care to update subscriptions we've already sync'ed.  This case often happens
+        // in development - e.g., you might be testing subscriptions on your local machine, and
+        // chargebee delivers webhook calls to shiphub-dev about subscriptions it doesn't know
+        // about yet.
+        return;
+      }
+
+      if (payload.EventType.Equals("subscription_deleted") ||
+          payload.EventType.Equals("customer_deleted")) {
+        sub.State = SubscriptionState.NotSubscribed;
+        sub.TrialEndDate = null;
+      } else {
+        switch (payload.Content.Subscription.Status) {
+          case "in_trial":
+            sub.State = SubscriptionState.InTrial;
+            sub.TrialEndDate = DateTimeOffset.FromUnixTimeSeconds((long)payload.Content.Subscription.TrialEnd);
+            break;
+          case "active":
+          case "non_renewing":
+          case "future":
+            sub.State = SubscriptionState.Subscribed;
+            sub.TrialEndDate = null;
+            break;
+          case "cancelled":
+            sub.State = SubscriptionState.NotSubscribed;
+            sub.TrialEndDate = null;
+            break;
         }
+      }
 
-        if (payload.EventType.Equals("subscription_deleted") ||
-            payload.EventType.Equals("customer_deleted")) {
-          sub.State = SubscriptionState.NotSubscribed;
-          sub.TrialEndDate = null;
+      var recordsUpdated = await Context.SaveChangesAsync();
+
+      if (recordsUpdated > 0) {
+        var changes = new ChangeSummary();
+
+        if (sub.Account is Organization) {
+          changes.Organizations.Add(accountId);
         } else {
-          switch (payload.Content.Subscription.Status) {
-            case "in_trial":
-              sub.State = SubscriptionState.InTrial;
-              sub.TrialEndDate = DateTimeOffset.FromUnixTimeSeconds((long)payload.Content.Subscription.TrialEnd);
-              break;
-            case "active":
-            case "non_renewing":
-            case "future":
-              sub.State = SubscriptionState.Subscribed;
-              sub.TrialEndDate = null;
-              break;
-            case "cancelled":
-              sub.State = SubscriptionState.NotSubscribed;
-              sub.TrialEndDate = null;
-              break;
-          }
+          changes.Users.Add(accountId);
         }
 
-        var recordsUpdated = await context.SaveChangesAsync();
-
-        if (recordsUpdated > 0) {
-          var changes = new ChangeSummary();
-
-          if (sub.Account is Organization) {
-            changes.Organizations.Add(accountId);
-          } else {
-            changes.Users.Add(accountId);
-          }
-
-          await _queueClient.NotifyChanges(changes);
-        }
+        await _queueClient.NotifyChanges(changes);
       }
     }
   }
