@@ -4,9 +4,11 @@
   using System.Threading.Tasks;
   using System.Web.Http.Results;
   using Common.DataModel;
+  using Common.GitHub;
   using Controllers;
   using Filters;
   using Microsoft.QualityTools.Testing.Fakes;
+  using Moq;
   using NUnit.Framework;
 
   [TestFixture]
@@ -185,7 +187,7 @@
           });
 
           var controller = new BillingController();
-          var response = controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+          var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
         }
@@ -250,6 +252,248 @@
           var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+        }
+      }
+    }
+
+    [Test]
+    public async Task BuyForOrganizationDoesCheckoutNewForNewCustomer() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        user.Token = Guid.NewGuid().ToString();
+        var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
+        await context.SaveChangesAsync();
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = user.Id,
+              Name = "Aroon Pahwa",
+              Login = "aroon",
+            },
+          });
+        mockClient
+          .Setup(x => x.UserEmails(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Common.GitHub.Models.UserEmail>>(null) {
+            Result = new[] {
+              new Common.GitHub.Models.UserEmail() {
+                Email = "aroon@pureimaginary.com",
+                Primary = true,
+                Verified = true,
+              },
+            }
+          });
+        mockClient
+          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = 6001,
+              Login = "pureimaginary",
+              Name = "Pure Imaginary LLC",
+            },
+          });
+
+        var mock = new Mock<BillingController>() { CallBase = true };
+        mock
+          .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
+          .Returns((User forUser) => {
+            Assert.AreEqual(user.Id, forUser.Id);
+            return mockClient.Object;
+          });
+
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("organization", data["plan_id[is]"]);
+
+              // Pretend no past subscriptions.
+              return new {
+                list = new object[0] {
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_new")) {
+              Assert.AreEqual("organization", data["subscription[plan_id]"]);
+              Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
+              Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
+              Assert.AreEqual("pureimaginary", data["cf_github_username"]);
+
+              return new {
+                hosted_page = new {
+                  id = "hosted-page-id",
+                  url = "https://realartists-test.chargebee.com/some/path/123",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+        }
+      }
+    }
+
+    [Test]
+    public async Task BuyForOrganizationDoesCheckoutExistingForOldCustomer() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        user.Token = Guid.NewGuid().ToString();
+        var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
+        await context.SaveChangesAsync();
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = user.Id,
+              Name = "Aroon Pahwa",
+              Login = "aroon",
+            },
+          });
+        mockClient
+          .Setup(x => x.UserEmails(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Common.GitHub.Models.UserEmail>>(null) {
+            Result = new[] {
+              new Common.GitHub.Models.UserEmail() {
+                Email = "aroon@pureimaginary.com",
+                Primary = true,
+                Verified = true,
+              },
+            }
+          });
+        mockClient
+          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = 6001,
+              Login = "pureimaginary",
+              Name = "Pure Imaginary LLC",
+            },
+          });
+
+        var mock = new Mock<BillingController>() { CallBase = true };
+        mock
+          .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
+          .Returns((User forUser) => {
+            Assert.AreEqual(user.Id, forUser.Id);
+            return mockClient.Object;
+          });
+
+
+        using (ShimsContext.Create()) {
+          bool doesCustomerUpdate = false;
+          bool doesCheckoutExisting = false;
+
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("organization", data["plan_id[is]"]);
+
+              // Pretend we have an expired subscription.
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = "cancelled",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/org-{org.Id}")) {
+              doesCustomerUpdate = true;
+              Assert.AreEqual("Aroon", data["first_name"]);
+              Assert.AreEqual("Pahwa", data["last_name"]);
+              Assert.AreEqual("Pure Imaginary LLC", data["company"]);
+              Assert.AreEqual("pureimaginary", data["cf_github_username"]);
+
+              return new {
+                customer = new {
+                  id = $"org-{org.Id}",
+                },
+              };
+            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
+              doesCheckoutExisting = true;
+              Assert.AreEqual("existing-sub-id", data["subscription[id]"]);
+              Assert.AreEqual("organization", data["subscription[plan_id]"]);
+              Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
+
+              return new {
+                hosted_page = new {
+                  id = "hosted-page-id",
+                  url = "https://realartists-test.chargebee.com/some/path/123",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+
+          Assert.IsTrue(doesCustomerUpdate);
+          Assert.IsTrue(doesCheckoutExisting);
+        }
+      }
+    }
+
+    [Test]
+    public async Task ReactivateEndpointReactivatesAndSaysThankYou() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        user.Token = Guid.NewGuid().ToString();
+        var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
+        await context.SaveChangesAsync();
+
+        using (ShimsContext.Create()) {
+          bool doesReactivate = false;
+
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
+              return new {
+                hosted_page = new {
+                  state = "succeeded",
+                  url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
+                  content = new {
+                    subscription = new {
+                      id = "someSubId",
+                    }
+                  }
+                },
+              };
+            } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/someSubId/reactivate")) {
+              doesReactivate = true;
+
+              return new {
+                subscription = new {
+                  id = "someSubId",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var controller = new BillingController();
+          var response = controller.Reactivate("someHostedPageId", "succeeded");
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/pages/v2/someHostedPageId/thank_you", ((RedirectResult)response).Location.AbsoluteUri);
+
+          Assert.IsTrue(doesReactivate);
         }
       }
     }
