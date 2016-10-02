@@ -33,6 +33,16 @@
 
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
+    private string ApiHostname {
+      get {
+        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
+        if (apiHostname == null) {
+          throw new ApplicationException("ApiHostname not specified in configuration.");
+        }
+        return apiHostname;
+      }
+    }
+
     private static IEnumerable<string> GetActionLines(Account account) {
       if (account.Subscription.State == SubscriptionState.Subscribed) {
         // Should server send the "Already Subscribed" place holder text?
@@ -69,16 +79,11 @@
         .ToArrayAsync();
       combined.AddRange(orgs);
 
-      var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-      if (apiHostname == null) {
-        throw new ApplicationException("ApiHostname not specified in configuration.");
-      }
-
       var result = combined
        .Select(x => {
           var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
           var signature = CreateSignature(principal.UserId, x.Id);
-          var actionUrl = $"https://{apiHostname}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
+          var actionUrl = $"https://{ApiHostname}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
 
           return new BillingAccountRow() {
             Account = new BillingAccount() {
@@ -211,11 +216,6 @@
 
       if (sub != null) {
         // Customers with past subscriptions have to use the checkout existing flow.
-        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-        if (apiHostname == null) {
-          throw new ApplicationException("ApiHostname not specified in configuration.");
-        }
-
         var updateRequest = Customer.Update($"org-{targetId}")
           .Param("cf_github_username", targetAccount.Login);
 
@@ -242,7 +242,7 @@
           // bummer because it means the customer's card won't get run as part of checkout.
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
-          .RedirectUrl($"https://{apiHostname}/billing/reactivate")
+          .RedirectUrl($"https://{ApiHostname}/billing/reactivate")
           .Request().HostedPage;
 
         return Redirect(result.Url);
