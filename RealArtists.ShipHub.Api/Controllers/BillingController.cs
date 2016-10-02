@@ -137,6 +137,141 @@
       return GitHubSettings.CreateUserClient(user, Guid.NewGuid());
     }
 
+    private IHttpActionResult BuyPersonal(long actorId, long targetId) {
+      var subList = ChargeBee.Models.Subscription.List()
+        .CustomerId().Is($"user-{targetId}")
+        .PlanId().Is("personal")
+        .Limit(1)
+        .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
+        .Request().List;
+
+      if (subList.Count == 0) {
+        throw new ArgumentException("Could not find existing subscription");
+      }
+
+      var sub = subList.First().Subscription;
+
+      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Active) {
+        throw new ArgumentException("Existing subscription is already active");
+      }
+
+      var pageRequest = HostedPage.CheckoutExisting()
+        .SubscriptionId(sub.Id)
+        .SubscriptionPlanId("personal")
+        .Embed(false);
+
+      // Apply a coupon to make up for any unused free trial time that's
+      // still remaining.  Don't want to penalize folks that decide to buy
+      // before the free trial is up.
+      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
+        var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
+        // Always round up to the nearest whole day.
+        var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
+
+        pageRequest
+          .SubscriptionCoupon($"trial_days_left_{daysLeftOnTrial}")
+
+          // Setting trial end to 0 makes the checkout page run the charge
+          // immediately rather than waiting for the trial period to end.
+          .SubscriptionTrialEnd(0);
+      }
+
+      var result = pageRequest.Request().HostedPage;
+
+      return Redirect(result.Url);
+    }
+
+    private async Task<IHttpActionResult> BuyOrganization(long actorId, long targetId, Account targetAccount) {
+      var user = await Context.Users.SingleAsync(x => x.Id == actorId);
+
+      var ghc = CreateGitHubClient(user);
+      var ghcUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
+      var ghcOrg = (await ghc.Organization(targetAccount.Login, GitHubCacheDetails.Empty)).Result;
+
+      var emails = (await ghc.UserEmails(GitHubCacheDetails.Empty)).Result;
+      var primaryEmail = emails.First(x => x.Primary);
+
+      string firstName = null;
+      string lastName = null;
+      string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? null : ghcOrg.Name;
+
+      // Name is optional for Github.
+      if (!ghcUser.Name.IsNullOrWhiteSpace()) {
+        var nameParts = ghcUser.Name.Trim().Split(' ');
+        firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
+        lastName = nameParts.Last();
+      }
+
+      var sub = ChargeBee.Models.Subscription.List()
+        .CustomerId().Is($"org-{targetId}")
+        .PlanId().Is("organization")
+        .Limit(1)
+        .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
+        .Request().List.FirstOrDefault()?.Subscription;
+
+      if (sub != null) {
+        // Customers with past subscriptions have to use the checkout existing flow.
+        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
+        if (apiHostname == null) {
+          throw new ApplicationException("ApiHostname not specified in configuration.");
+        }
+
+        var updateRequest = Customer.Update($"org-{targetId}")
+          .Param("cf_github_username", targetAccount.Login);
+
+        if (firstName != null) {
+          updateRequest.FirstName(firstName);
+        }
+
+        if (lastName != null) {
+          updateRequest.LastName(lastName);
+        }
+
+        if (companyName != null) {
+          updateRequest.Company(companyName);
+        }
+
+        updateRequest.Request();
+
+        var result = HostedPage.CheckoutExisting()
+          .SubscriptionId(sub.Id)
+          .SubscriptionPlanId("organization")
+          .Embed(false)
+          // ChargeBee's CheckoutExisting flow will not re-activate a cancelled subscription
+          // on its own, so we'll have to do that ourselves in the return handler.  It's a
+          // bummer because it means the customer's card won't get run as part of checkout.
+          // If they provide invalid CC info, they won't know it until after they've completed
+          // the checkout page; the failure info will have to come in an email.
+          .RedirectUrl($"https://{apiHostname}/billing/reactivate")
+          .Request().HostedPage;
+
+        return Redirect(result.Url);
+      } else {
+        var checkoutRequest = HostedPage.CheckoutNew()
+       .CustomerId($"org-{targetId}")
+       .CustomerEmail(primaryEmail.Email)
+       .SubscriptionPlanId("organization")
+       .Param("cf_github_username", ghcOrg.Login)
+       .Embed(false);
+
+        if (!ghcOrg.Name.IsNullOrWhiteSpace()) {
+          checkoutRequest.CustomerCompany(ghcOrg.Name);
+        }
+
+        if (!firstName.IsNullOrWhiteSpace()) {
+          checkoutRequest.CustomerFirstName(firstName);
+        }
+
+        if (!lastName.IsNullOrWhiteSpace()) {
+          checkoutRequest.CustomerLastName(lastName);
+        }
+
+        var checkoutResult = checkoutRequest.Request().HostedPage;
+
+        return Redirect(checkoutResult.Url);
+      }
+    }
+
     [AllowAnonymous]
     [HttpGet]
     [Route("buy/{actorId}/{targetId}/{signature}")]
@@ -149,136 +284,9 @@
       var targetAccount = await Context.Accounts.SingleAsync(x => x.Id == targetId);
 
       if (targetAccount is Organization) {
-        var user = await Context.Users.SingleAsync(x => x.Id == actorId);
-
-        var ghc = CreateGitHubClient(user);
-        var ghcUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
-        var ghcOrg = (await ghc.Organization(targetAccount.Login, GitHubCacheDetails.Empty)).Result;
-
-        var emails = (await ghc.UserEmails(GitHubCacheDetails.Empty)).Result;
-        var primaryEmail = emails.First(x => x.Primary);
-
-        string firstName = null;
-        string lastName = null;
-        string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? null : ghcOrg.Name;
-
-        // Name is optional for Github.
-        if (!ghcUser.Name.IsNullOrWhiteSpace()) {
-          var nameParts = ghcUser.Name.Trim().Split(' ');
-          firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
-          lastName = nameParts.Last();
-        }
-
-        var sub = ChargeBee.Models.Subscription.List()
-          .CustomerId().Is($"org-{targetId}")
-          .PlanId().Is("organization")
-          .Limit(1)
-          .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
-          .Request().List.FirstOrDefault()?.Subscription;
-
-        if (sub != null) {
-          var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-          if (apiHostname == null) {
-            throw new ApplicationException("ApiHostname not specified in configuration.");
-          }
-
-          var updateRequest = Customer.Update($"org-{targetId}")
-            .Param("cf_github_username", targetAccount.Login);
-
-          if (firstName != null) {
-            updateRequest.FirstName(firstName);
-          }
-
-          if (lastName != null) {
-            updateRequest.LastName(lastName);
-          }
-
-          if (companyName != null) {
-            updateRequest.Company(companyName);
-          }
-
-          updateRequest.Request();
-
-          var result = HostedPage.CheckoutExisting()
-            .SubscriptionId(sub.Id)
-            .SubscriptionPlanId("organization")
-            .Embed(false)
-            // ChargeBee's CheckoutExisting flow will not re-activate a cancelled subscription
-            // on its own, so we'll have to do that ourselves in the return handler.  It's a
-            // bummer because it means the customer's card won't get run as part of checkout.
-            // If they provide invalid CC info, they won't know it until after they've completed
-            // the checkout page; the failure info will have to come in an email.
-            .RedirectUrl($"https://{apiHostname}/billing/reactivate")
-            .Request().HostedPage;
-          
-          return Redirect(result.Url);
-        } else {
-          var checkoutRequest = HostedPage.CheckoutNew()
-         .CustomerId($"org-{targetId}")
-         .CustomerEmail(primaryEmail.Email)
-         .SubscriptionPlanId("organization")
-         .Param("cf_github_username", ghcOrg.Login)
-         .Embed(false);
-
-          if (!ghcOrg.Name.IsNullOrWhiteSpace()) {
-            checkoutRequest.CustomerCompany(ghcOrg.Name);
-          }
-
-          if (!firstName.IsNullOrWhiteSpace()) {
-            checkoutRequest.CustomerFirstName(firstName);
-          }
-
-          if (!lastName.IsNullOrWhiteSpace()) {
-            checkoutRequest.CustomerLastName(lastName);
-          }
-
-          var checkoutResult = checkoutRequest.Request().HostedPage;
-
-          return Redirect(checkoutResult.Url);
-        }
+        return await BuyOrganization(actorId, targetId, targetAccount);
       } else {
-        var subList = ChargeBee.Models.Subscription.List()
-          .CustomerId().Is($"user-{targetId}")
-          .PlanId().Is("personal")
-          .Limit(1)
-          .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
-          .Request().List;
-
-        if (subList.Count == 0) {
-          throw new ArgumentException("Could not find existing subscription");
-        }
-
-        var sub = subList.First().Subscription;
-
-        if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Active) {
-          throw new ArgumentException("Existing subscription is already active");
-        }
-
-        var pageRequest = HostedPage.CheckoutExisting()
-          .SubscriptionId(sub.Id)
-          .SubscriptionPlanId("personal")
-          .Embed(false);
-
-        // Apply a coupon to make up for any unused free trial time that's
-        // still remaining.  Don't want to penalize folks that decide to buy
-        // before the free trial is up.
-        if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
-          var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
-          // Always round up to the nearest whole day.
-          var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
-
-          pageRequest
-            .SubscriptionCoupon($"trial_days_left_{daysLeftOnTrial}")
-
-            // Setting trial end to 0 makes the checkout page run the charge
-            // immediately rather than waiting for the trial period to end.
-            .SubscriptionTrialEnd(0);
-        }
-
-        var result = pageRequest.Request().HostedPage;
-
-        return Redirect(result.Url);
-
+        return BuyPersonal(actorId, targetId);
       }
     }
 
