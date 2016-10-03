@@ -47,6 +47,7 @@
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<Usage> Usage { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -539,6 +540,26 @@
         x.RepositoryId = repositoryId;
         x.AssignableAccountIds = CreateItemListTable("AssignableAccountIds", assignableAccountIds);
       });
+    }
+
+    public Task RecordUsage(long accountId, DateTimeOffset date) {
+      if (date.Offset != TimeSpan.Zero) {
+        throw new ArgumentException("date must be in UTC");
+      }
+
+      date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
+
+      return Database.ExecuteSqlCommandAsync(
+       TransactionalBehavior.DoNotEnsureTransaction,
+       @"
+MERGE INTO Usage
+USING (SELECT @AccountId as AccountId, @Date as Date) NewUsage
+ON Usage.AccountId = NewUsage.AccountId AND Usage.Date = NewUsage.Date
+WHEN NOT MATCHED THEN
+  INSERT (AccountId, Date) VALUES (@AccountId, @Date);
+",
+       new SqlParameter("AccountId", SqlDbType.BigInt) { Value = accountId },
+       new SqlParameter("Date", SqlDbType.DateTimeOffset) { Value = date });
     }
 
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
