@@ -133,6 +133,8 @@
     <Build Include="Procedures\DeleteRepositories.sql" />
     <Build Include="Tables\Subscriptions.sql" />
     <Build Include="Procedures\DeleteComments.sql" />
+    <Build Include="Tables\Usage.sql" />
+    <Build Include="Procedures\RecordUsage.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

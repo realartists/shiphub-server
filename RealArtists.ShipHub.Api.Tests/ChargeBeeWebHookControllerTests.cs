@@ -300,6 +300,14 @@
             Content = new ChargeBeeWebhookContent() {
               Invoice = new ChargeBeeWebhookInvoice() {
                 Id = "draft_inv_123",
+                CustomerId = $"user-{user.Id}",
+                LineItems = new[] {
+                  new ChargeBeeWebhookInvoiceLineItem() {
+                    EntityType = "plan",
+                    EntityId = "personal",
+                    DateFrom = new DateTimeOffset(2016, 2, 1, 10, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+                  },
+                },
               }
             },
           });
@@ -322,6 +330,142 @@
         }
 
         Assert.IsTrue(didCloseInvoice);
+      };
+    }
+
+    private static async Task<List<Tuple<string, int>>> PendingInvoiceCreatedHelper(long orgId, DateTimeOffset dateFrom) {
+      var payload = new ChargeBeeWebhookPayload() {
+        EventType = "pending_invoice_created",
+        Content = new ChargeBeeWebhookContent() {
+          Invoice = new ChargeBeeWebhookInvoice() {
+            Id = "draft_inv_123",
+            CustomerId = $"org-{orgId}",
+            LineItems = new[] {
+                  new ChargeBeeWebhookInvoiceLineItem() {
+                    EntityType = "plan",
+                    EntityId = "organization",
+                    DateFrom = dateFrom.ToUnixTimeSeconds(),
+                  },
+                },
+          }
+        }
+      };
+
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+      ConfigureController(controller, payload);
+
+      bool didCloseInvoice = false;
+      var addons = new List<Tuple<string, int>>();
+
+      using (ShimsContext.Create()) {
+        ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+          if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
+            didCloseInvoice = true;
+
+            // don't care about return values.
+            return new {
+              invoice = new { },
+            };
+          } else if (method == "POST" && path == $"/api/v2/invoices/{payload.Content.Invoice.Id}/add_addon_charge") {
+            addons.Add(Tuple.Create(data["addon_id"], int.Parse(data["addon_quantity"])));
+
+            // don't care about return values.
+            return new {
+              invoice = new { },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+        await controller.HandleHook();
+      }
+
+      Assert.IsTrue(didCloseInvoice);
+
+      return addons;
+    }
+
+    [Test]
+    public async Task PendingInvoiceCreatedAddsActiveUsersCharge() {
+      using (var context = new ShipHubContext()) {
+
+        var invoiceDateFrom = new DateTimeOffset(2016, 2, 1, 12, 0, 0, TimeSpan.Zero);
+
+        var org1 = TestUtil.MakeTestOrg(context);
+
+        var users = new List<User>();
+        for (int i = 0; i < 20; i++) {
+          var user = TestUtil.MakeTestUser(context, 3001 + i, "aroo" + "".PadLeft(i, 'o') + "n");
+          users.Add(user);
+        }
+
+        var otherOrg = TestUtil.MakeTestOrg(context, 6002, "otherOrrg");
+        var otherOrgUser = TestUtil.MakeTestUser(context, 4001, "otherOrgUser");
+        await context.SetOrganizationUsers(otherOrg.Id,
+          new[] { new Tuple<long, bool>(otherOrgUser.Id, true) });
+
+        // Pretend all 20 people use Ship in January
+        foreach (var user in users) {
+          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        }
+        // Add some usage in another org - this should get filtered out when we calculate
+        // active users.
+        await context.RecordUsage(otherOrgUser.Id, new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero));
+
+
+        // Only 5 people use it in February
+        foreach (var user in users.Take(5)) {
+          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 2, 1, 0, 0, 0, TimeSpan.Zero));
+        }
+
+        // Only 5 people use it in February
+        foreach (var user in users.Take(5)) {
+          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero));
+        }
+
+        // Pretend all 20 people use Ship on March 1
+        foreach (var user in users) {
+          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero));
+        }
+
+        // Pretend that for the billing period from March 2 - April 1 [inclusive], 8 people use the
+        // product at various times.
+        await context.RecordUsage(users[0].Id, new DateTimeOffset(2016, 3, 2, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[0].Id, new DateTimeOffset(2016, 3, 3, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[1].Id, new DateTimeOffset(2016, 3, 5, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[2].Id, new DateTimeOffset(2016, 3, 9, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[3].Id, new DateTimeOffset(2016, 3, 15, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[4].Id, new DateTimeOffset(2016, 3, 20, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[5].Id, new DateTimeOffset(2016, 3, 26, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[6].Id, new DateTimeOffset(2016, 3, 29, 0, 0, 0, TimeSpan.Zero));
+        await context.RecordUsage(users[7].Id, new DateTimeOffset(2016, 4, 1, 0, 0, 0, TimeSpan.Zero));
+
+        // Pretend all 20 people use Ship on April 2
+        foreach (var user in users) {
+          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero));
+        }
+
+        await context.SetOrganizationUsers(org1.Id,
+          users.Select(x => new Tuple<long, bool>(x.Id, true)));
+        
+        await context.SaveChangesAsync();
+
+        Assert.AreEqual(
+          new[] { Tuple.Create("additional-seats", 15) },
+          await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 2, 1, 0, 0, 0, TimeSpan.Zero)),
+          "For billing period [1/1 - 1/31], we should get billed for 15 extra seats.");
+
+        Assert.AreEqual(
+          new Tuple<string, int>[0],
+          await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero)),
+          "For billing period [2/1 - 2/31], we should not see any extra charge - only 5 people were active.");
+
+        Assert.AreEqual(
+          new[] { Tuple.Create("additional-seats", 3) },
+          await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero)),
+          "For billing period [3/2 - 4/1], there were only 8 active users.");
       };
     }
   }

@@ -1,10 +1,12 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Collections.Generic;
   using System.Data.Entity;
   using System.Text;
   using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using System.Linq;
   using ChargeBee.Models;
   using Common.DataModel;
   using Common.DataModel.Types;
@@ -21,8 +23,17 @@
     public long? TrialEnd { get; set; }
   }
 
+  public class ChargeBeeWebhookInvoiceLineItem {
+    public string EntityType { get; set; }
+    public string EntityId { get; set; }
+    public long DateFrom { get; set; }
+  }
+
   public class ChargeBeeWebhookInvoice {
     public string Id { get; set; }
+    public string CustomerId { get; set; }
+    public string Status { get; set; }
+    public IEnumerable<ChargeBeeWebhookInvoiceLineItem> LineItems { get; set; }
   }
 
   public class ChargeBeeWebhookContent {
@@ -66,7 +77,7 @@
           await HandleSubscriptionStateChange(payload);
           break;
         case "pending_invoice_created":
-          HandlePendingInvoiceCreated(payload);
+          await HandlePendingInvoiceCreated(payload);
           break;
         default:
           break;
@@ -130,7 +141,45 @@
       }
     }
 
-    public void HandlePendingInvoiceCreated(ChargeBeeWebhookPayload payload) {
+    private static DateTimeOffset DateTimeOffsetFloor(DateTimeOffset date) {
+      return new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
+    }
+
+    public async Task HandlePendingInvoiceCreated(ChargeBeeWebhookPayload payload) {
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(payload.Content.Invoice.CustomerId);
+      var accountId = long.Parse(matches.Groups[2].ToString());
+      var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
+
+      if (planLineItem.EntityId == "organization") {
+        // Calculate the number of active users during the previous month, and then
+        // attach extra charges to this month's invoice.  So, for organizations, the
+        // base charge on every invoice is for the coming month, but the metered
+        // component is always for the trailing month.
+        var newInvoiceStartDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateFrom);
+        var previousMonthStart = DateTimeOffsetFloor(newInvoiceStartDate.AddMonths(-1));
+        var previousMonthEnd = DateTimeOffsetFloor(newInvoiceStartDate.AddDays(-1));
+
+        var activeUsers = await Context.Usage
+          .Where(x => (
+            x.Date >= previousMonthStart &&
+            x.Date <= previousMonthEnd &&
+            Context.OrganizationAccounts
+              .Where(y => y.OrganizationId == accountId)
+              .Select(y => y.UserId)
+              .Contains(x.AccountId)))
+          .Select(x => x.AccountId)
+          .Distinct()
+          .CountAsync();
+
+        if (activeUsers > 5) {
+          Invoice.AddAddonCharge(payload.Content.Invoice.Id)
+            .AddonId("additional-seats")
+            .AddonQuantity(Math.Max(activeUsers - 5, 0))
+            .Request();
+        }
+      }
+
       Invoice.Close(payload.Content.Invoice.Id).Request();
     }
   }
