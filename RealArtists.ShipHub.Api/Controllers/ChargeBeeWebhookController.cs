@@ -5,6 +5,7 @@
   using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ChargeBee.Models;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
@@ -20,9 +21,14 @@
     public long? TrialEnd { get; set; }
   }
 
+  public class ChargeBeeWebhookInvoice {
+    public string Id { get; set; }
+  }
+
   public class ChargeBeeWebhookContent {
     public ChargeBeeWebhookCustomer Customer { get; set; }
     public ChargeBeeWebhookSubscription Subscription { get; set; }
+    public ChargeBeeWebhookInvoice Invoice { get; set; }
   }
 
   public class ChargeBeeWebhookPayload {
@@ -58,6 +64,9 @@
         case "subscription_created":
         case "customer_deleted":
           await HandleSubscriptionStateChange(payload);
+          break;
+        case "pending_invoice_created":
+          HandlePendingInvoiceCreated(payload);
           break;
         default:
           break;
@@ -119,6 +128,10 @@
 
         await _queueClient.NotifyChanges(changes);
       }
+    }
+
+    public void HandlePendingInvoiceCreated(ChargeBeeWebhookPayload payload) {
+      Invoice.Close(payload.Content.Invoice.Id).Request();
     }
   }
 }
