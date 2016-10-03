@@ -13,6 +13,7 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Controllers;
+  using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json;
   using NUnit.Framework;
@@ -278,6 +279,50 @@
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
         notifyExpected: true);
+    }
+
+    [Test]
+    public async Task ShouldCloseInvoicesForPersonalSubscriptions() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var sub = context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.Subscribed,
+        });
+        await context.SaveChangesAsync();
+
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+        ConfigureController(
+          controller,
+          new ChargeBeeWebhookPayload() {
+            EventType = "pending_invoice_created",
+            Content = new ChargeBeeWebhookContent() {
+              Invoice = new ChargeBeeWebhookInvoice() {
+                Id = "draft_inv_123",
+              }
+            },
+          });
+
+        bool didCloseInvoice = false;
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
+              didCloseInvoice = true;
+              return new {
+                invoice = new { },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+          await controller.HandleHook();
+        }
+
+        Assert.IsTrue(didCloseInvoice);
+      };
     }
   }
 }
