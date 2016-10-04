@@ -92,7 +92,8 @@
         existingState: "cancelled",
         trialEndIfAny: null,
         expectCoupon: null,
-        expectTrialToEndImmediately: false
+        expectTrialToEndImmediately: false,
+        expectRedirectToReactivation: true
         );
     }
 
@@ -135,7 +136,8 @@
       string existingState,
       DateTimeOffset? trialEndIfAny,
       string expectCoupon,
-      bool expectTrialToEndImmediately
+      bool expectTrialToEndImmediately,
+      bool expectRedirectToReactivation = false
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -172,6 +174,12 @@
                 Assert.AreEqual("0", data["subscription[trial_end]"]);
               } else {
                 Assert.IsFalse(data.ContainsKey("subscription[trial_end]"));
+              }
+
+              if (expectRedirectToReactivation) {
+                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
+              } else {
+                Assert.IsFalse(data.ContainsKey("redirect_url"));
               }
 
               return new {

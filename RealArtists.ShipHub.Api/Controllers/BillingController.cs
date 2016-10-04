@@ -179,6 +179,16 @@
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0);
+      } else if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Cancelled) {
+        // This case would happen if the customer was a subscriber in the past, cancelled,
+        // and is now returning to signup again.
+        //
+        // ChargeBee's CheckoutExisting flow will not re-activate a cancelled subscription
+        // on its own, so we'll have to do that ourselves in the return handler.  It's a
+        // bummer because it means the customer's card won't get run as part of checkout.
+        // If they provide invalid CC info, they won't know it until after they've completed
+        // the checkout page; the failure info will have to come in an email.
+        pageRequest.RedirectUrl($"https://{ApiHostname}/billing/reactivate");
       }
 
       var result = pageRequest.Request().HostedPage;
