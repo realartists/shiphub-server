@@ -33,10 +33,12 @@
         context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.InTrial,
+          Version = 0,
         });
         context.Subscriptions.Add(new Subscription() {
           AccountId = org1.Id,
           State = SubscriptionState.Subscribed,
+          Version = 0,
         });
 
         await context.SaveChangesAsync();

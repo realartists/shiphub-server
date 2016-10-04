@@ -16,11 +16,13 @@
 
   public class ChargeBeeWebhookCustomer {
     public string Id { get; set; }
+    public long ResourceVersion { get; set; }
   }
 
   public class ChargeBeeWebhookSubscription {
     public string Status { get; set; }
     public long? TrialEnd { get; set; }
+    public long ResourceVersion { get; set; }
   }
 
   public class ChargeBeeWebhookInvoiceLineItem {
@@ -102,6 +104,19 @@
         // about yet.
         return;
       }
+
+      var incomingVersion =
+        (payload.EventType == "customer_deleted") ?
+        payload.Content.Customer.ResourceVersion :
+        payload.Content.Subscription.ResourceVersion;
+
+      if (incomingVersion < sub.Version) {
+        // We're receiving webhook events out-of-order (which can happen due to re-delivery),
+        // so ignore.
+        return;
+      }
+
+      sub.Version = incomingVersion;
 
       if (payload.EventType.Equals("subscription_deleted") ||
           payload.EventType.Equals("customer_deleted")) {
