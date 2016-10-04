@@ -121,6 +121,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                  resource_version = 1234,
                 },
               };
             } else {
@@ -157,6 +158,7 @@
           AccountId = user.Id,
           State = SubscriptionState.InTrial,
           TrialEndDate = DateTimeOffset.Parse("1/1/2017"),
+          Version = 0,
         });
         await context.SaveChangesAsync();
 
@@ -205,6 +207,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -223,6 +226,7 @@
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
           "should change to subscribed because chargebee says subscription is active.");
         Assert.IsNull(subscription.TrialEndDate);
+        Assert.AreEqual(1234, subscription.Version);
 
         Assert.AreEqual(
           new long[] { user.Id },
@@ -238,6 +242,7 @@
         var subscription = context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.Subscribed,
+          Version = 1234,
         });
         await context.SaveChangesAsync();
 
@@ -286,6 +291,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -364,6 +370,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -472,6 +479,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                  resource_version = 1234,
                 },
               };
             } else {
@@ -541,6 +549,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },

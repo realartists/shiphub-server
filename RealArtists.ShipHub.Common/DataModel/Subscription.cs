@@ -53,5 +53,7 @@
     }
 
     public DateTimeOffset? TrialEndDate { get; set; }
+
+    public long Version { get; set; }
   }
 }

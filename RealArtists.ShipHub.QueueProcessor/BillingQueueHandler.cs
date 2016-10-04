@@ -112,6 +112,8 @@
               break;
           }
 
+          accountSubscription.Version = sub.GetValue<long>("resource_version");
+
           int recordsSaved = await context.SaveChangesAsync();
 
           transaction.Commit();

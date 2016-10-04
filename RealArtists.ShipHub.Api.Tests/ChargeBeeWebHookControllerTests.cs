@@ -57,6 +57,7 @@
             AccountId = user.Id,
             State = beginState,
             TrialEndDate = beginTrialEndDate,
+            Version = 0,
           });
         } else {
           org = TestUtil.MakeTestOrg(context);
@@ -64,6 +65,7 @@
             AccountId = org.Id,
             State = beginState,
             TrialEndDate = beginTrialEndDate,
+            Version = 0,
           });
         }
 
@@ -288,6 +290,7 @@
         var sub = context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.Subscribed,
+          Version = 0,
         });
         await context.SaveChangesAsync();
 
@@ -466,6 +469,89 @@
           new[] { Tuple.Create("additional-seats", 3) },
           await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero)),
           "For billing period [3/2 - 4/1], there were only 8 active users.");
+      };
+    }
+
+    [Test]
+    public async Task ShouldIgnoreEventsWithOldResourceVersion() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var sub = context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.Subscribed,
+          TrialEndDate = null,
+          Version = 0,
+        });
+
+        await context.SaveChangesAsync();
+
+        Func<string, long, ChargeBeeWebhookPayload> makeSubscriptionEvent = (string status, long resourceVersion) =>
+          new ChargeBeeWebhookPayload() {
+            EventType = "subscription_changed",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                Id = $"user-{sub.AccountId}",
+              },
+              Subscription = new ChargeBeeWebhookSubscription() {
+                Status = status,
+                ResourceVersion = resourceVersion,
+              },
+            },
+          };
+
+        Func<long, ChargeBeeWebhookPayload> makeCustomerDeletedEvent = (long resourceVersion) =>
+          new ChargeBeeWebhookPayload() {
+            EventType = "customer_deleted",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                Id = $"user-{sub.AccountId}",
+                ResourceVersion = resourceVersion,
+              },
+            },
+          };
+
+        Func<ChargeBeeWebhookPayload, Task> fireEvent = (ChargeBeeWebhookPayload payload) => {
+          var mockBusClient = new Mock<IShipHubQueueClient>();
+          var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+          ConfigureController(controller, payload);
+          return controller.HandleHook();
+        };
+
+        // should see version advance.
+        await fireEvent(makeSubscriptionEvent("active", 1000));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(1000, sub.Version);
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+
+        // should accept because version advances.
+        await fireEvent(makeSubscriptionEvent("cancelled", 1001));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(1001, sub.Version);
+        Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
+
+        // should ignore since version is older.
+        await fireEvent(makeSubscriptionEvent("active", 900));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(1001, sub.Version);
+        Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
+
+        // should accept since version advances.
+        await fireEvent(makeSubscriptionEvent("active", 2000));
+        context.Entry(sub).Reload() ;
+        Assert.AreEqual(2000, sub.Version);
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+
+        // should ignore customer deleted since version is older
+        await fireEvent(makeCustomerDeletedEvent(1999));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(2000, sub.Version);
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+
+        // should accept deletion since version advanced.
+        await fireEvent(makeCustomerDeletedEvent(2001));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(2001, sub.Version);
+        Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
       };
     }
   }
