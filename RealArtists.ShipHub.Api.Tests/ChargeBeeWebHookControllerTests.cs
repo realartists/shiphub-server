@@ -485,7 +485,7 @@
 
         await context.SaveChangesAsync();
 
-        Func<string, long, ChargeBeeWebhookPayload> makeSubscriptionEvent = (string status, long resourceVersion) =>
+        Func<string, long, ChargeBeeWebhookPayload> makeSubscriptionChangedEvent = (string status, long resourceVersion) =>
           new ChargeBeeWebhookPayload() {
             EventType = "subscription_changed",
             Content = new ChargeBeeWebhookContent() {
@@ -495,6 +495,21 @@
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = status,
                 ResourceVersion = resourceVersion,
+              },
+            },
+          };
+
+        Func<string, long, long, ChargeBeeWebhookPayload> makeSubscriptionReactivatedEvent = (string status, long resourceVersion, long activatedAt) =>
+          new ChargeBeeWebhookPayload() {
+            EventType = "subscription_reactivated",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                Id = $"user-{sub.AccountId}",
+              },
+              Subscription = new ChargeBeeWebhookSubscription() {
+                Status = status,
+                ResourceVersion = resourceVersion,
+                ActivatedAt = activatedAt,
               },
             },
           };
@@ -518,25 +533,25 @@
         };
 
         // should see version advance.
-        await fireEvent(makeSubscriptionEvent("active", 1000));
+        await fireEvent(makeSubscriptionChangedEvent("active", 1000));
         context.Entry(sub).Reload();
         Assert.AreEqual(1000, sub.Version);
         Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
 
         // should accept because version advances.
-        await fireEvent(makeSubscriptionEvent("cancelled", 1001));
+        await fireEvent(makeSubscriptionChangedEvent("cancelled", 1001));
         context.Entry(sub).Reload();
         Assert.AreEqual(1001, sub.Version);
         Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
 
         // should ignore since version is older.
-        await fireEvent(makeSubscriptionEvent("active", 900));
+        await fireEvent(makeSubscriptionChangedEvent("active", 900));
         context.Entry(sub).Reload();
         Assert.AreEqual(1001, sub.Version);
         Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
 
         // should accept since version advances.
-        await fireEvent(makeSubscriptionEvent("active", 2000));
+        await fireEvent(makeSubscriptionChangedEvent("active", 2000));
         context.Entry(sub).Reload() ;
         Assert.AreEqual(2000, sub.Version);
         Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
@@ -552,6 +567,20 @@
         context.Entry(sub).Reload();
         Assert.AreEqual(2001, sub.Version);
         Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
+
+        // should not accept because resource_version is ignored for
+        // "subscription_reactivated" events.
+        await fireEvent(makeSubscriptionReactivatedEvent("active", 3000, 2));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(2001, sub.Version);
+        Assert.AreEqual(SubscriptionState.NotSubscribed, sub.State);
+
+        // should accept because we look at "activated_at" field for
+        // "subscription_reactivated" events.
+        await fireEvent(makeSubscriptionReactivatedEvent("active", 3000, 3));
+        context.Entry(sub).Reload();
+        Assert.AreEqual(3000, sub.Version);
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
       };
     }
   }
