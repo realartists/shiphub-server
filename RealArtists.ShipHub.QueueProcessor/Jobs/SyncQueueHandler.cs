@@ -146,6 +146,7 @@
       [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<TargetMessage> syncOrgMembers,
       [ServiceBus(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] IAsyncCollector<TargetMessage> syncOrgSubscriptionState,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
+      [ServiceBus(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] IAsyncCollector<UserIdMessage> updateComplimentarySubscription,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
         using (var context = new ShipHubContext()) {
@@ -168,7 +169,15 @@
               var orgs = orgResponse.Result;
 
               changes = await context.BulkUpdateAccounts(orgResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
-              changes.UnionWith(await context.SetUserOrganizations(user.Id, orgs.Select(x => x.Organization.Id)));
+
+              var userOrgChanges = await context.SetUserOrganizations(user.Id, orgs.Select(x => x.Organization.Id));
+              if (!userOrgChanges.Empty) {
+                // When this user's org membership changes, re-evaluate whether or not they
+                // should have a complimentary personal subscription.
+                tasks.Add(updateComplimentarySubscription.AddAsync(new UserIdMessage(user.Id)));
+              }
+
+              changes.UnionWith(userOrgChanges);
               tasks.Add(notifyChanges.Send(changes));
             } else {
               // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
@@ -201,6 +210,7 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       [ServiceBus(ShipHubQueueNames.AddOrUpdateOrgWebhooks)] IAsyncCollector<TargetMessage> addOrUpdateOrgWebhooks,
+      [ServiceBus(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] IAsyncCollector<UserIdMessage> updateComplimentarySubscription,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
         using (var context = new ShipHubContext()) {
@@ -213,7 +223,9 @@
             return;
           }
 
-          var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
+          var org = await context.Organizations
+            .Include(x => x.Subscription)
+            .SingleAsync(x => x.Id == message.TargetId);
 
           logger.WriteLine($"Organization members for {org.Login} cached until {org.OrganizationMetadata?.Expires}");
           if (org.OrganizationMetadata == null || org.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
@@ -233,10 +245,20 @@
             changes = await context.BulkUpdateAccounts(
               membersTask.Result.Date,
               _mapper.Map<IEnumerable<AccountTableType>>(members.Concat(admins)));
-            changes.UnionWith(await context.SetOrganizationUsers(
+
+            var orgUserChanges = await context.SetOrganizationUsers(
               org.Id,
               members.Select(x => Tuple.Create(x.Id, false))
-              .Concat(admins.Select(x => Tuple.Create(x.Id, true)))));
+              .Concat(admins.Select(x => Tuple.Create(x.Id, true))));
+
+            if (org.Subscription?.State == SubscriptionState.Subscribed) {
+              // If you belong to a paid organization, your personal subscription
+              // is complimentary.  We need to add or remove the coupon for this
+              // as membership changes.
+              tasks.AddRange(orgUserChanges.Users.Select(x => updateComplimentarySubscription.AddAsync(new UserIdMessage(x))));
+            }
+
+            changes.UnionWith(orgUserChanges);
 
             tasks.Add(notifyChanges.Send(changes));
             tasks.Add(context.UpdateMetadata("Accounts", "OrgMetadataJson", org.Id, membersTask.Result));
