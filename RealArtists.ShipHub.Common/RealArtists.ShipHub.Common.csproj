@@ -149,6 +149,7 @@
     <Compile Include="DataModel\Types\RepositoryTableType.cs" />
     <Compile Include="DataModel\Types\ChangeSummary.cs" />
     <Compile Include="DataModel\Types\VersionTableType.cs" />
+    <Compile Include="DataModel\Usage.cs" />
     <Compile Include="DataModel\User.cs" />
     <Compile Include="AutoMapperExtensions.cs" />
     <Compile Include="DbContextExtensions.cs" />

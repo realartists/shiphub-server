@@ -16,6 +16,7 @@
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
     private SyncVersions _versions;
+    private DateTimeOffset? _lastRecordedUsage;
 
     private VersionDetails VersionDetails {
       get {
@@ -67,6 +68,18 @@
           Mode = mode,
           TrialEndDate = trialEndDate,
         };
+      }
+    }
+
+    private async Task RecordUsage() {
+      DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+
+      // We only have to record usage once per calendar day.
+      if (_lastRecordedUsage == null || _lastRecordedUsage?.DayOfYear != utcNow.DayOfYear) {
+        using (var context = new ShipHubContext()) {
+          await context.RecordUsage(_user.UserId, utcNow);
+        }
+        _lastRecordedUsage = utcNow;
       }
     }
 
@@ -455,6 +468,7 @@
 
       var subscriptionEntry = await GetSubscriptionEntry();
       tasks.Add(_connection.SendJsonAsync(subscriptionEntry));
+      tasks.Add(RecordUsage());
 
       await Task.WhenAll(tasks);
     }

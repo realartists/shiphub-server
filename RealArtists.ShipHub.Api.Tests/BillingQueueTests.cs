@@ -121,6 +121,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                  resource_version = 1234,
                 },
               };
             } else {
@@ -129,7 +130,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
@@ -157,6 +158,7 @@
           AccountId = user.Id,
           State = SubscriptionState.InTrial,
           TrialEndDate = DateTimeOffset.Parse("1/1/2017"),
+          Version = 0,
         });
         await context.SaveChangesAsync();
 
@@ -205,6 +207,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -216,13 +219,14 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         context.Entry(subscription).Reload();
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
           "should change to subscribed because chargebee says subscription is active.");
         Assert.IsNull(subscription.TrialEndDate);
+        Assert.AreEqual(1234, subscription.Version);
 
         Assert.AreEqual(
           new long[] { user.Id },
@@ -238,6 +242,7 @@
         var subscription = context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.Subscribed,
+          Version = 1234,
         });
         await context.SaveChangesAsync();
 
@@ -286,6 +291,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -297,7 +303,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         Assert.AreEqual(0, changeMessages.Count(),
@@ -364,6 +370,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -375,7 +382,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         context.Entry(subscription).Reload();
@@ -472,6 +479,7 @@
                         "10/1/2016 08:00:00 PM +00:00",
                         null,
                         DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                  resource_version = 1234,
                 },
               };
             } else {
@@ -480,7 +488,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
@@ -541,6 +549,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -552,7 +561,7 @@
             }
           });
 
-          await CreateHandler().GetOrCreateSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
         }
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
@@ -560,5 +569,74 @@
       }
     }
 
+    [Test]
+    public async Task WillSyncOrgSubscriptionState() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        var changeMessages = new List<ChangeMessage>();
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage msg, CancellationToken token) => {
+            changeMessages.Add(msg);
+            return Task.CompletedTask;
+          });
+
+        var mockClient = new Mock<IGitHubClient>();
+        mockClient
+          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
+            Result = new Common.GitHub.Models.Account() {
+              Id = org.Id,
+              Login = "aroon",
+              Name = "Aroon Pahwa",
+              Type = Common.GitHub.Models.GitHubAccountType.User,
+            }
+          });
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("organization", data["plan_id[is]"]);
+
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id",
+                      status = "active",
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          await CreateHandler().SyncOrgSubscriptionStateHelper(
+            new TargetMessage() {
+              TargetId = org.Id,
+              ForUserId = user.Id,
+            },
+            collectorMock.Object, mockClient.Object, Console.Out);
+        }
+
+        var subscription = context.Subscriptions.Single(x => x.AccountId == org.Id);
+        Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
+          "should show as subscribed");
+        Assert.IsNull(subscription.TrialEndDate);
+
+        Assert.AreEqual(
+          new long[] { org.Id },
+          changeMessages.FirstOrDefault()?.Organizations.OrderBy(x => x).ToArray(),
+          "should notify that this org changed.");
+      }
+    }
   }
 }

@@ -47,6 +47,7 @@
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<Usage> Usage { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
     public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
@@ -539,6 +540,18 @@
         x.RepositoryId = repositoryId;
         x.AssignableAccountIds = CreateItemListTable("AssignableAccountIds", assignableAccountIds);
       });
+    }
+
+    public async Task RecordUsage(long accountId, DateTimeOffset date) {
+      if (date.Offset != TimeSpan.Zero) {
+        throw new ArgumentException("date must be in UTC");
+      }
+
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[RecordUsage]", ConnectionFactory)) {
+        dsp.AccountId = accountId;
+        dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
+        await dsp.ExecuteNonQueryAsync();
+      }
     }
 
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
