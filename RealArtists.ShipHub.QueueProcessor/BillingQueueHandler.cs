@@ -184,6 +184,7 @@
                 accountSubscription.State = SubscriptionState.NotSubscribed;
                 break;
             }
+            accountSubscription.Version = sub.GetValue<long>("resource_version");
           } else {
             accountSubscription.State = SubscriptionState.NotSubscribed;
           }

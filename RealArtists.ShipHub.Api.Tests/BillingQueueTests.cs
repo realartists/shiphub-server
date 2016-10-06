@@ -608,6 +608,7 @@
                     subscription = new {
                       id = "existing-sub-id",
                       status = "active",
+                      resource_version = 1234,
                     },
                   },
                 },
@@ -631,6 +632,7 @@
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
           "should show as subscribed");
         Assert.IsNull(subscription.TrialEndDate);
+        Assert.AreEqual(1234, subscription.Version);
 
         Assert.AreEqual(
           new long[] { org.Id },
