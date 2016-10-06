@@ -8,6 +8,7 @@
     Task SyncAccount(long userId);
     Task SyncAccountRepositories(long userId);
     Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId);
+    Task UpdateComplimentarySubscription(long userId);
   }
 
   public class ShipHubQueueClient : IShipHubQueueClient {
@@ -49,6 +50,13 @@
       var message = new IssueViewMessage(repositoryFullName, issueNumber, forUserId);
 
       using (var bm = WebJobInterop.CreateMessage(message)) {
+        await queue.SendAsync(bm);
+      }
+    }
+
+    public async Task UpdateComplimentarySubscription(long userId) {
+      var queue = _factory.QueueClientForName(ShipHubQueueNames.BillingUpdateComplimentarySubscription);
+      using (var bm = WebJobInterop.CreateMessage(new UserIdMessage(userId))) {
         await queue.SendAsync(bm);
       }
     }

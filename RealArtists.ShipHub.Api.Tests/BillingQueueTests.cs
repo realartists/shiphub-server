@@ -640,5 +640,126 @@
           "should notify that this org changed.");
       }
     }
+
+    private static async Task UpdateComplimentarySubscriptionHelper(
+      bool isMemberOfPaidOrg,
+      bool subHasCoupon,
+      bool expectCouponAddition,
+      bool expectCouponRemoval
+      ) {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user.Id, true),
+        });
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.Subscribed,
+        });
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = org.Id,
+          State = isMemberOfPaidOrg ? SubscriptionState.Subscribed : SubscriptionState.NotSubscribed,
+        });
+        await context.SaveChangesAsync();
+        
+        using (ShimsContext.Create()) {
+          bool didAddCoupon = false;
+          bool didRemoveCoupon = false;
+
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method == "GET" && path == "/api/v2/subscriptions") {
+              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+              Assert.AreEqual("personal", data["plan_id[is]"]);
+
+              return new {
+                list = new object[] {
+                  new {
+                    subscription = new {
+                      id = "some-sub-id",
+                      status = "active",
+                      coupons = !subHasCoupon ?
+                        new object[0] :
+                        new[] {
+                          new {
+                            coupon_id = "member_of_paid_org",
+                          },
+                        },
+                    },
+                  },
+                },
+                next_offset = null as string,
+              };
+            } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id") {
+              didAddCoupon = true;
+              Assert.AreEqual("member_of_paid_org", data["coupon"]);
+
+              return new {
+                subscription = new {
+                  id = "some-sub-id",
+                },
+              };
+            } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id/remove_coupons") {
+              didRemoveCoupon = true;
+              Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
+
+              return new {
+                subscription = new {
+                  id = "some-sub-id",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var handler = new BillingQueueHandler(new DetailedExceptionLogger());
+          var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() {
+            InvocationId = Guid.NewGuid()
+          };
+          await handler.UpdateComplimentarySubscription(new UserIdMessage(user.Id), Console.Out, executionContext);
+
+          Assert.AreEqual(expectCouponAddition, didAddCoupon);
+          Assert.AreEqual(expectCouponRemoval, didRemoveCoupon);
+        }
+      }
+    }
+
+    [Test]
+    public Task WillAddCouponWhenOrgIsPaidAndCouponIsMissing() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: true,
+        subHasCoupon: false,
+        expectCouponAddition: true,
+        expectCouponRemoval: false);
+    }
+
+    [Test]
+    public Task WillRemoveCouponWhenOrgIsNotPaidAndCouponIsPresent() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: false,
+        subHasCoupon: true,
+        expectCouponAddition: false,
+        expectCouponRemoval: true);
+    }
+
+    [Test]
+    public Task WillDoNothingWhenWhenOrgIsPaidAndCouponIsPresent() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: true,
+        subHasCoupon: true,
+        expectCouponAddition: false,
+        expectCouponRemoval: false);
+    }
+
+    [Test]
+    public Task WillDoNothingWhenWhenOrgIsNotPaidAndCouponIsNotPresent() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: false,
+        subHasCoupon: false,
+        expectCouponAddition: false,
+        expectCouponRemoval: false);
+    }
   }
 }

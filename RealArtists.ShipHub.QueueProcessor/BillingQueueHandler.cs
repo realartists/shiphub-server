@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor {
   using System;
+  using System.Collections.Generic;
   using System.Data.Entity;
   using System.IO;
   using System.Linq;
@@ -222,5 +223,43 @@
       });
     }
 
+    [Singleton("{UserId}")]
+    public async Task UpdateComplimentarySubscription(
+      [ServiceBusTrigger(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] UserIdMessage message,
+      TextWriter logger,
+      ExecutionContext executionContext) {
+      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
+        using (var context = new ShipHubContext()) {
+          var couponId = "member_of_paid_org";
+
+          var isMemberOfPaidOrg = await context.OrganizationAccounts
+            .CountAsync(x =>
+              x.UserId == message.UserId &&
+              x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
+
+          var sub = ChargeBee.Models.Subscription.List()
+            .CustomerId().Is($"user-{message.UserId}")
+            .PlanId().Is("personal")
+            .Limit(1)
+            .Request().List.First()?.Subscription;
+
+          var hasCoupon = false;
+
+          if (sub.Coupons != null) {
+            hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
+          }
+
+          if (isMemberOfPaidOrg && !hasCoupon) {
+            ChargeBee.Models.Subscription.Update(sub.Id)
+              .Coupon(couponId)
+              .Request();
+          } else if (!isMemberOfPaidOrg && hasCoupon) {
+            ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
+              .CouponIds(new List<string>() { couponId })
+              .Request();
+          }
+        }
+      });
+    }
   }
 }
