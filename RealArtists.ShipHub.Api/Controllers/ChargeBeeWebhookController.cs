@@ -127,6 +127,7 @@
       }
 
       sub.Version = incomingVersion;
+      var beforeState = sub.State;
 
       if (payload.EventType.Equals("subscription_deleted") ||
           payload.EventType.Equals("customer_deleted")) {
@@ -151,6 +152,8 @@
         }
       }
 
+      var afterState = sub.State;
+
       var recordsUpdated = await Context.SaveChangesAsync();
 
       if (recordsUpdated > 0) {
@@ -163,6 +166,17 @@
         }
 
         await _queueClient.NotifyChanges(changes);
+      }
+
+      if (afterState != beforeState && sub.Account is Organization) {
+        // For all users associated with this org and that have logged into Ship
+        // (i.e., they have a Subscription record), go re-evaluate whether the
+        // user should have a complimentary personal subscription.
+        var orgAccountIds = Context.OrganizationAccounts
+          .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
+          .Select(x => x.UserId)
+          .ToArray();
+        await Task.WhenAll(orgAccountIds.Select(x => _queueClient.UpdateComplimentarySubscription(x)));
       }
     }
 

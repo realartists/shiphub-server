@@ -18,6 +18,7 @@
   using Newtonsoft.Json;
   using NUnit.Framework;
   using QueueClient;
+  using QueueClient.Messages;
 
   [TestFixture]
   [AutoRollback]
@@ -581,6 +582,64 @@
         context.Entry(sub).Reload();
         Assert.AreEqual(3000, sub.Version);
         Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+      };
+    }
+
+    [Test]
+    public async Task WillScheduleUpdateComplimentarySubscriptionOnStateChange() {
+      using (var context = new ShipHubContext()) {
+        var user1 = TestUtil.MakeTestUser(context, 3001, "aroon");
+        var user2 = TestUtil.MakeTestUser(context, 3002, "alok");
+        var org = TestUtil.MakeTestOrg(context);
+
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = org.Id,
+          State = SubscriptionState.Subscribed,
+          Version = 0,
+        });
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user1.Id,
+          State = SubscriptionState.Subscribed,
+          Version = 0,
+        });
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user2.Id,
+          State = SubscriptionState.Subscribed,
+          Version = 0,
+        });
+
+        await context.SetOrganizationUsers(org.Id, new[] {
+          Tuple.Create(user1.Id, true),
+          Tuple.Create(user2.Id, true),
+        });
+
+        await context.SaveChangesAsync();
+
+        var scheduledUserIds = new List<long>();
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        mockBusClient
+          .Setup(x => x.UpdateComplimentarySubscription(It.IsAny<long>()))
+          .Returns(Task.CompletedTask)
+          .Callback((long userId) => { scheduledUserIds.Add(userId); });
+
+        var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+        ConfigureController(
+          controller,
+          new ChargeBeeWebhookPayload() {
+            EventType = "subscription_cancelled",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                Id = $"org-{org.Id}",
+              },
+              Subscription = new ChargeBeeWebhookSubscription() {
+                Status = "cancelled",
+                ResourceVersion = 1234,
+              }
+            },
+          });
+        await controller.HandleHook();
+
+        Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
       };
     }
   }
