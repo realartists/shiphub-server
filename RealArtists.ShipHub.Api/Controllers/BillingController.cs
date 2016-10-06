@@ -185,13 +185,13 @@
           x.UserId == targetId &&
           x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
 
-      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
-        string couponId;
+      string couponToAdd = null;
 
+      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
         if (isMemberOfPaidOrg) {
           // If you belong to a paid organization, your personal subscription
           // is complimentary.
-          couponId = "member_of_paid_org";
+          couponToAdd = "member_of_paid_org";
         } else {
           // Apply a coupon to make up for any unused free trial time that's
           // still remaining.  Don't want to penalize folks that decide to buy
@@ -199,11 +199,10 @@
           var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
           // Always round up to the nearest whole day.
           var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
-          couponId = $"trial_days_left_{daysLeftOnTrial}";
+          couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
         }
 
         pageRequest
-          .SubscriptionCoupon(couponId)
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0);
@@ -219,8 +218,14 @@
         pageRequest.RedirectUrl($"https://{ApiHostname}/billing/reactivate");
 
         if (isMemberOfPaidOrg) {
-          pageRequest.SubscriptionCoupon("member_of_paid_org");
+          couponToAdd = "member_of_paid_org";
         }
+      }
+
+      // ChargeBee's hosted page will throw an error if we request to add a coupon
+      // that's already been applied to this subscription.
+      if (couponToAdd != null && sub.Coupons?.SingleOrDefault(x => x.CouponId() == couponToAdd) == null) {
+        pageRequest.SubscriptionCoupon(couponToAdd);
       }
 
       var result = pageRequest.Request().HostedPage;

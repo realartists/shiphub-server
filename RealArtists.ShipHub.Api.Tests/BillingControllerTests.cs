@@ -147,11 +147,37 @@
     }
 
     [Test]
+    public Task WillNotSetComplimentaryCouponIfSubscriptionAlreadyHasTheCouponWhenInTrial() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        existingCouponId: "member_of_paid_org",
+        // Pretend trial ends in 7 days, so we should get the 7 day coupon
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
+        expectCoupon: null,
+        expectTrialToEndImmediately: true,
+        orgIsPaid: true
+        );
+    }
+
+    [Test]
     public Task PersonalPlanIsComplimentaryIfMemberOfPaidOrgWhenCancelled() {
       return BuyEndpointRedirectsToChargeBeeHelper(
         existingState: "cancelled",
         trialEndIfAny: null,
         expectCoupon: "member_of_paid_org",
+        expectTrialToEndImmediately: false,
+        expectRedirectToReactivation: true,
+        orgIsPaid: true
+        );
+    }
+
+    [Test]
+    public Task WillNotSetComplimentaryCouponIfSubscriptionAlreadyHasTheCouponWhenCancelled() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "cancelled",
+        existingCouponId: "member_of_paid_org",
+        trialEndIfAny: null,
+        expectCoupon: null,
         expectTrialToEndImmediately: false,
         expectRedirectToReactivation: true,
         orgIsPaid: true
@@ -164,7 +190,8 @@
       string expectCoupon,
       bool expectTrialToEndImmediately,
       bool expectRedirectToReactivation = false,
-      bool orgIsPaid = false
+      bool orgIsPaid = false,
+      string existingCouponId = null
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -193,6 +220,13 @@
                       id = "existing-sub-id",
                       status = existingState,
                       trial_end = trialEndIfAny?.ToUnixTimeSeconds(),
+                      coupons = (existingCouponId == null) ?
+                        null :
+                        new[] {
+                          new {
+                            coupon_id = existingCouponId,
+                          },
+                        },
                     },
                   },
                 },
@@ -200,21 +234,21 @@
               };
             } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
               if (expectCoupon != null) {
-                Assert.AreEqual(expectCoupon, data["subscription[coupon]"]);
+                Assert.AreEqual(expectCoupon, data["subscription[coupon]"], "should have set coupon");
               } else {
-                Assert.IsFalse(data.ContainsKey("subscription[coupon]"));
+                Assert.IsFalse(data.ContainsKey("subscription[coupon]"), "should not have applied coupon");
               }
 
               if (expectTrialToEndImmediately) {
-                Assert.AreEqual("0", data["subscription[trial_end]"]);
+                Assert.AreEqual("0", data["subscription[trial_end]"], "should have set trial to end");
               } else {
-                Assert.IsFalse(data.ContainsKey("subscription[trial_end]"));
+                Assert.IsFalse(data.ContainsKey("subscription[trial_end]"), "should not have set trial to end");
               }
 
               if (expectRedirectToReactivation) {
-                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
+                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should have set redirect url");
               } else {
-                Assert.IsFalse(data.ContainsKey("redirect_url"));
+                Assert.IsFalse(data.ContainsKey("redirect_url"), "should not have set redirect url");
               }
 
               return new {
