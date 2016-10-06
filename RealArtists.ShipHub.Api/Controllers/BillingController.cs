@@ -157,7 +157,7 @@
       return GitHubSettings.CreateUserClient(user, Guid.NewGuid());
     }
 
-    private IHttpActionResult BuyPersonal(long actorId, long targetId) {
+    private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {
       var subList = ChargeBee.Models.Subscription.List()
         .CustomerId().Is($"user-{targetId}")
         .PlanId().Is("personal")
@@ -180,17 +180,30 @@
         .SubscriptionPlanId("personal")
         .Embed(false);
 
-      // Apply a coupon to make up for any unused free trial time that's
-      // still remaining.  Don't want to penalize folks that decide to buy
-      // before the free trial is up.
+      var isMemberOfPaidOrg = await Context.OrganizationAccounts
+        .CountAsync(x =>
+          x.UserId == targetId &&
+          x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
+
       if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
-        var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
-        // Always round up to the nearest whole day.
-        var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
+        string couponId;
+
+        if (isMemberOfPaidOrg) {
+          // If you belong to a paid organization, your personal subscription
+          // is complimentary.
+          couponId = "member_of_paid_org";
+        } else {
+          // Apply a coupon to make up for any unused free trial time that's
+          // still remaining.  Don't want to penalize folks that decide to buy
+          // before the free trial is up.
+          var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
+          // Always round up to the nearest whole day.
+          var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
+          couponId = $"trial_days_left_{daysLeftOnTrial}";
+        }
 
         pageRequest
-          .SubscriptionCoupon($"trial_days_left_{daysLeftOnTrial}")
-
+          .SubscriptionCoupon(couponId)
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0);
@@ -204,6 +217,10 @@
         // If they provide invalid CC info, they won't know it until after they've completed
         // the checkout page; the failure info will have to come in an email.
         pageRequest.RedirectUrl($"https://{ApiHostname}/billing/reactivate");
+
+        if (isMemberOfPaidOrg) {
+          pageRequest.SubscriptionCoupon("member_of_paid_org");
+        }
       }
 
       var result = pageRequest.Request().HostedPage;
@@ -311,7 +328,7 @@
       if (targetAccount is Organization) {
         return await BuyOrganization(actorId, targetId, targetAccount);
       } else {
-        return BuyPersonal(actorId, targetId);
+        return await BuyPersonal(actorId, targetId);
       }
     }
 
