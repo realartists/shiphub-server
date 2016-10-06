@@ -134,16 +134,49 @@
         );
     }
 
+    [Test]
+    public Task PersonalPlanIsComplimentaryIfMemberOfPaidOrgWhenInTrial() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Pretend trial ends in 7 days, so we should get the 7 day coupon
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
+        expectCoupon: "member_of_paid_org",
+        expectTrialToEndImmediately: true,
+        orgIsPaid: true
+        );
+    }
+
+    [Test]
+    public Task PersonalPlanIsComplimentaryIfMemberOfPaidOrgWhenCancelled() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "cancelled",
+        trialEndIfAny: null,
+        expectCoupon: "member_of_paid_org",
+        expectTrialToEndImmediately: false,
+        expectRedirectToReactivation: true,
+        orgIsPaid: true
+        );
+    }
+
     public async Task BuyEndpointRedirectsToChargeBeeHelper(
       string existingState,
       DateTimeOffset? trialEndIfAny,
       string expectCoupon,
       bool expectTrialToEndImmediately,
-      bool expectRedirectToReactivation = false
+      bool expectRedirectToReactivation = false,
+      bool orgIsPaid = false
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         user.Token = Guid.NewGuid().ToString();
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SetOrganizationUsers(org.Id, new[] { Tuple.Create(user.Id, true) });
+
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = org.Id,
+          State = orgIsPaid ? SubscriptionState.Subscribed : SubscriptionState.NotSubscribed,
+        });
+
         await context.SaveChangesAsync();
 
         using (ShimsContext.Create()) {
