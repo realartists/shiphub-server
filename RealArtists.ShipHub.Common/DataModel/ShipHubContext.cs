@@ -58,7 +58,13 @@
       throw new NotImplementedException("Please use asynchronous methods instead.");
     }
 
+    [SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "instance", Justification = "See comment.")]
     protected override void OnModelCreating(DbModelBuilder modelBuilder) {
+      // This gross hack ensure the right DLL gets copied as a dependency of our project.
+      // If you must know: http://stackoverflow.com/a/23329890
+      var instance = System.Data.Entity.SqlServer.SqlProviderServices.Instance;
+      // End Hack
+
       modelBuilder.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
