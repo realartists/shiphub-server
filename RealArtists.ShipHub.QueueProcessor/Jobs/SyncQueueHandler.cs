@@ -162,7 +162,7 @@
           if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Organization membership.");
             var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
-            var orgResponse = await ghc.OrganizationMemberships(user.OrganizationMetadata.IfValidFor(user));
+            var orgResponse = await ghc.OrganizationMemberships(cacheOptions: user.OrganizationMetadata.IfValidFor(user));
 
             if (orgResponse.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
