@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceDefinition name="RealArtists.ShipHub.CloudServices"
+                   xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition"
+                   schemaVersion="2015-04.2.6">
+  <WorkerRole name="RealArtists.ShipHub.CloudServices.OrleansSilos"
+              vmsize="Small">
+    <ConfigurationSettings>
+      <Setting name="DeploymentId" />
+      <Setting name="DataConnectionString" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" />
+    </ConfigurationSettings>
+    <Endpoints>
+      <InternalEndpoint name="OrleansSiloEndpoint"
+                        protocol="tcp"
+                        port="11111" />
+      <InternalEndpoint name="OrleansProxyEndpoint"
+                        protocol="tcp"
+                        port="30000" />
+    </Endpoints>
+    <!-- Yes, really, we have to install the latest .NET on Azure. -->
+    <LocalResources>
+      <LocalStorage name="NETFXInstall"
+                    sizeInMB="1024"
+                    cleanOnRoleRecycle="false" />
+    </LocalResources>
+    <Startup>
+      <Task commandLine="install.cmd"
+            executionContext="elevated"
+            taskType="simple">
+        <Environment>
+          <Variable name="PathToNETFXInstall">
+            <RoleInstanceValue xpath="/RoleEnvironment/CurrentInstance/LocalResources/LocalResource[@name='NETFXInstall']/@path" />
+          </Variable>
+          <Variable name="ComputeEmulatorRunning">
+            <RoleInstanceValue xpath="/RoleEnvironment/Deployment/@emulated" />
+          </Variable>
+        </Environment>
+      </Task>
+    </Startup>
+  </WorkerRole>
+</ServiceDefinition>
