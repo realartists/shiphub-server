@@ -23,9 +23,9 @@
       return new WebhookQueueHandler(new DetailedExceptionLogger());
     }
 
-    static string ApiHostname {
+    static string ApiHostName {
       get {
-        var hostname = CloudConfigurationManager.GetSetting("ApiHostname");
+        var hostname = CloudConfigurationManager.GetSetting("ApiHostName");
         Assert.NotNull(hostname);
         return hostname;
       }
@@ -63,7 +63,7 @@
                   ContentType = "json",
                   InsecureSsl = false,
                   Secret = "*******",
-                  Url = $"https://{ApiHostname}/webhook/repo/1234",
+                  Url = $"https://{ApiHostName}/webhook/repo/1234",
                 },
                 Events = new string[] {
                   "event1",
@@ -85,7 +85,7 @@
                   ContentType = "json",
                   InsecureSsl = false,
                   Secret = "*******",
-                  Url = $"https://{ApiHostname}/webhook/repo/1234",
+                  Url = $"https://{ApiHostName}/webhook/repo/1234",
                 },
                 Events = new string[] {
                 "issues",
@@ -132,7 +132,7 @@
                       ContentType = "json",
                       InsecureSsl = false,
                       Secret = "*******",
-                      Url = $"https://{ApiHostname}/webhook/repo/1",
+                      Url = $"https://{ApiHostName}/webhook/repo/1",
                     },
                     Events = new string[] {
                     },
@@ -145,7 +145,7 @@
                       ContentType = "json",
                       InsecureSsl = false,
                       Secret = "*******",
-                      Url = $"https://{ApiHostname}/webhook/repo/2",
+                      Url = $"https://{ApiHostName}/webhook/repo/2",
                     },
                     Events = new string[] {
                     },
@@ -411,7 +411,7 @@
                       ContentType = "json",
                       InsecureSsl = false,
                       Secret = "*******",
-                      Url = $"https://{ApiHostname}/webhook/org/1",
+                      Url = $"https://{ApiHostName}/webhook/org/1",
                     },
                     Events = new string[] {
                     },
@@ -424,7 +424,7 @@
                       ContentType = "json",
                       InsecureSsl = false,
                       Secret = "*******",
-                      Url = $"https://{ApiHostname}/webhook/repo/2",
+                      Url = $"https://{ApiHostName}/webhook/repo/2",
                     },
                     Events = new string[] {
                     },
@@ -496,7 +496,7 @@
                   ContentType = "json",
                   InsecureSsl = false,
                   Secret = "*******",
-                  Url = $"https://{ApiHostname}/webhook/repo/1234",
+                  Url = $"https://{ApiHostName}/webhook/repo/1234",
                 },
                 Events = new string[] {
                   "event1",
@@ -518,7 +518,7 @@
                   ContentType = "json",
                   InsecureSsl = false,
                   Secret = "*******",
-                  Url = $"https://{ApiHostname}/webhook/org/1234",
+                  Url = $"https://{ApiHostName}/webhook/org/1234",
                 },
                 Events = eventList,
                 Name = "web",

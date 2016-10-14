@@ -37,7 +37,7 @@
     static async Task DoAsync() {
       using (var ws = new ClientWebSocket()) {
         var token = ConfigurationManager.AppSettings["GitHubTestToken"];
-        var apiHost = ConfigurationManager.AppSettings["ApiHostname"];
+        var apiHost = ConfigurationManager.AppSettings["ApiHostName"];
 
         ws.Options.AddSubProtocol("V1");
         ws.Options.SetRequestHeader("Authorization", $"token {token}");

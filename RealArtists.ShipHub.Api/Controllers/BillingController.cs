@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Configuration;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -33,13 +34,13 @@
 
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
-    private string ApiHostname {
+    private string ApiHostName {
       get {
-        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-        if (apiHostname == null) {
-          throw new ApplicationException("ApiHostname not specified in configuration.");
+        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
+        if (apiHostName == null) {
+          throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
         }
-        return apiHostname;
+        return apiHostName;
       }
     }
 
@@ -81,25 +82,25 @@
 
       var result = combined
        .Select(x => {
-          var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
-          var signature = CreateSignature(principal.UserId, x.Id);
-          var actionUrl = $"https://{ApiHostname}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
+         var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
+         var signature = CreateSignature(principal.UserId, x.Id);
+         var actionUrl = $"https://{ApiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
 
-          return new BillingAccountRow() {
-            Account = new BillingAccount() {
-              Identifier = x.Id,
-              Login = x.Login,
-              // TODO: Sync avatars and return real values here.
-              AvatarUrl = "https://avatars.githubusercontent.com/u/335107?v=3",
-              Type = (x is User) ? "user" : "organization",
-            },
-            Subscribed = hasSubscription,
-            // TODO: Only allow edits for purchaser or admins.
-            CanEdit = true,
-            ActionUrl = actionUrl,
-            PricingLines = GetActionLines(x),
-          };
-        })
+         return new BillingAccountRow() {
+           Account = new BillingAccount() {
+             Identifier = x.Id,
+             Login = x.Login,
+             // TODO: Sync avatars and return real values here.
+             AvatarUrl = "https://avatars.githubusercontent.com/u/335107?v=3",
+             Type = (x is User) ? "user" : "organization",
+           },
+           Subscribed = hasSubscription,
+           // TODO: Only allow edits for purchaser or admins.
+           CanEdit = true,
+           ActionUrl = actionUrl,
+           PricingLines = GetActionLines(x),
+         };
+       })
         .ToList();
 
       if (result.Count > 0) {
@@ -215,7 +216,7 @@
         // bummer because it means the customer's card won't get run as part of checkout.
         // If they provide invalid CC info, they won't know it until after they've completed
         // the checkout page; the failure info will have to come in an email.
-        pageRequest.RedirectUrl($"https://{ApiHostname}/billing/reactivate");
+        pageRequest.RedirectUrl($"https://{ApiHostName}/billing/reactivate");
 
         if (isMemberOfPaidOrg) {
           couponToAdd = "member_of_paid_org";
@@ -289,7 +290,7 @@
           // bummer because it means the customer's card won't get run as part of checkout.
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
-          .RedirectUrl($"https://{ApiHostname}/billing/reactivate")
+          .RedirectUrl($"https://{ApiHostName}/billing/reactivate")
           .Request().HostedPage;
 
         return Redirect(result.Url);

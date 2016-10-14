@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
   using System;
   using System.Collections.Generic;
+  using System.Configuration;
   using System.Data.Entity;
   using System.Diagnostics;
   using System.IO;
@@ -48,9 +49,9 @@
           "issues",
           "issue_comment",
         };
-        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-        if (apiHostname == null) {
-          throw new ApplicationException("ApiHostname not specified in configuration.");
+        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
+        if (apiHostName == null) {
+          throw new ConfigurationErrorsException("ApiHostName not specified in configuration.");
         }
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
@@ -66,7 +67,7 @@
         if (hook == null) {
           var existingHooks = (await client.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))
-            .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/"));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
@@ -94,7 +95,7 @@
               Active = true,
               Events = requiredEvents,
               Config = new gm.WebhookConfiguration() {
-                Url = $"https://{apiHostname}/webhook/repo/{repo.Id}",
+                Url = $"https://{apiHostName}/webhook/repo/{repo.Id}",
                 ContentType = "json",
                 Secret = hook.Secret.ToString(),
               },
@@ -156,9 +157,9 @@
         var requiredEvents = new string[] {
           "repository",
         };
-        var apiHostname = CloudConfigurationManager.GetSetting("ApiHostname");
-        if (apiHostname == null) {
-          throw new ApplicationException("ApiHostname not specified in configuration.");
+        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
+        if (apiHostName == null) {
+          throw new ApplicationException("ApiHostName not specified in configuration.");
         }
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
@@ -174,7 +175,7 @@
         if (hook == null) {
           var existingHooks = (await client.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))
-            .Where(x => x.Config.Url.StartsWith($"https://{apiHostname}/"));
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/"));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
@@ -202,7 +203,7 @@
               Active = true,
               Events = requiredEvents,
               Config = new gm.WebhookConfiguration() {
-                Url = $"https://{apiHostname}/webhook/org/{org.Id}",
+                Url = $"https://{apiHostName}/webhook/org/{org.Id}",
                 ContentType = "json",
                 Secret = hook.Secret.ToString(),
               },
