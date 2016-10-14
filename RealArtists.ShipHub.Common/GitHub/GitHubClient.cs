@@ -154,8 +154,9 @@
       return Fetch<Account>(request);
     }
 
-    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheDetails cacheOptions = null) {
+    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", IGitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted:true);
+      request.AddParameter(nameof(state), state);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
 
       if (!result.IsError) {

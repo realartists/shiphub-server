@@ -7,12 +7,12 @@
 
   public interface IGitHubClient {
     Uri ApiRoot { get; }
+    Guid CorrelationId { get; }
     string DefaultToken { get; set; }
     IGitHubHandler Handler { get; set; }
     GitHubRateLimit RateLimit { get; }
     ProductInfoHeaderValue UserAgent { get; }
     string UserInfo { get; }
-    Guid CorrelationId { get; }
 
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);
@@ -32,12 +32,13 @@
     Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubCacheDetails cacheOptions = null);
+    int NextRequestId();
     Task<GitHubResponse<Account>> Organization(string orgName, IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null);
-    Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(IGitHubCacheDetails cacheOptions = null);
+    Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, IGitHubCacheDetails cacheOptions = null);
-    Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId);
     Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId);
+    Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId);
     Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, IGitHubCacheDetails cacheOptions = null);
@@ -45,6 +46,5 @@
     void UpdateInternalRateLimit(GitHubRateLimit rateLimit);
     Task<GitHubResponse<Account>> User(IGitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(IGitHubCacheDetails cacheOptions = null);
-    int NextRequestId();
   }
 }
