@@ -9,6 +9,7 @@
     TimeSpan PollInterval { get; }
   }
 
+  [Serializable]
   public class GitHubCacheDetails : IGitHubCacheDetails {
     public static IGitHubCacheDetails Empty { get; } = new EmptyGitHubCacheDetails();
 
@@ -19,6 +20,7 @@
     public TimeSpan PollInterval { get; set; }
 
     // Hidden from public view...
+    [Serializable]
     private class EmptyGitHubCacheDetails : IGitHubCacheDetails {
       public string AccessToken { get { return null; } }
       public string ETag { get { return null; } }

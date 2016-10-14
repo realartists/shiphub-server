@@ -5,11 +5,15 @@
   using System.Net;
 
   public class GitHubResponse {
+    protected GitHubResponse() { }
     public GitHubResponse(GitHubRequest request) {
-      Request = request;
+      _request = request;
     }
 
-    public GitHubRequest Request { get; }
+    [NonSerialized]
+    private GitHubRequest _request;
+
+    public GitHubRequest Request { get { return _request; } }
     public HttpStatusCode Status { get; set; }
     public DateTimeOffset Date { get; set; }
     public HashSet<string> Scopes { get; } = new HashSet<string>();

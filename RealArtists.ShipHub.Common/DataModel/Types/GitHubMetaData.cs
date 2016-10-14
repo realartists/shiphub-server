@@ -2,13 +2,23 @@
   using System;
   using GitHub;
 
-  public class GitHubMetadata : IGitHubCacheDetails {
+  public class GitHubMetadata {
     public string AccessToken { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? Expires { get; set; }
     public DateTimeOffset? LastModified { get; set; }
     public DateTimeOffset? LastRefresh { get; set; }
     public TimeSpan PollInterval { get; set; }
+
+    public IGitHubCacheDetails AsCacheDetails() {
+      return new GitHubCacheDetails() {
+        AccessToken = AccessToken,
+        ETag = ETag,
+        Expires = Expires,
+        LastModified = LastModified,
+        PollInterval = PollInterval,
+      };
+    }
 
     // Helper
     public static GitHubMetadata FromResponse(GitHubResponse response) {

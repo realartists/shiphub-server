@@ -8,6 +8,7 @@
   using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -15,6 +16,7 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Newtonsoft.Json.Linq;
+  using Orleans;
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
@@ -22,9 +24,11 @@
 
   public class SyncQueueHandler : LoggingHandlerBase {
     private IMapper _mapper;
+    private IGrainFactory _grainFactory;
 
-    public SyncQueueHandler(IDetailedExceptionLogger logger, IMapper mapper) : base(logger) {
+    public SyncQueueHandler(IDetailedExceptionLogger logger, IMapper mapper, IGrainFactory grainFactory) : base(logger) {
       _mapper = mapper;
+      _grainFactory = grainFactory;
     }
 
     public async Task SyncAccount(
@@ -47,8 +51,8 @@
           logger.WriteLine($"User details for {user.Login} cached until {user.Metadata?.Expires:o}");
           if (user.Metadata == null || user.Metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine($"Polling: User");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
-            var userResponse = await ghc.User(user.Metadata.IfValidFor(user));
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var userResponse = await ghc.User(user.Metadata.IfValidFor(user)?.AsCacheDetails());
 
             if (userResponse.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("GitHub: Changed. Saving changes.");
@@ -97,8 +101,8 @@
           logger.WriteLine($"Account repositories for {user.Login} cached until {user.RepositoryMetadata?.Expires:o}");
           if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Account repositories.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
-            var repoResponse = await ghc.Repositories(user.RepositoryMetadata.IfValidFor(user));
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var repoResponse = await ghc.Repositories(user.RepositoryMetadata.IfValidFor(user)?.AsCacheDetails());
 
             if (repoResponse.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
@@ -161,8 +165,8 @@
           logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
           if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Organization membership.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
-            var orgResponse = await ghc.OrganizationMemberships(cacheOptions: user.OrganizationMetadata.IfValidFor(user));
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var orgResponse = await ghc.OrganizationMemberships(cacheOptions: user.OrganizationMetadata.IfValidFor(user)?.AsCacheDetails());
 
             if (orgResponse.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
@@ -230,7 +234,7 @@
           logger.WriteLine($"Organization members for {org.Login} cached until {org.OrganizationMetadata?.Expires}");
           if (org.OrganizationMetadata == null || org.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Organization membership.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
             // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
             // each member.  To workaround, we make two requests and use the filter option
@@ -327,9 +331,9 @@
           logger.WriteLine($"Assignees for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository assignees.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Assignable(repo.FullName, metadata);
+            var response = await ghc.Assignable(repo.FullName, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var assignees = response.Result;
@@ -378,9 +382,9 @@
           logger.WriteLine($"Milestones for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository milestones.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Milestones(repo.FullName, metadata);
+            var response = await ghc.Milestones(repo.FullName, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var milestones = response.Result;
@@ -430,9 +434,9 @@
           logger.WriteLine($"Labels for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository labels.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Labels(repo.FullName, metadata);
+            var response = await ghc.Labels(repo.FullName, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var labels = response.Result;
@@ -488,9 +492,9 @@
           logger.WriteLine($"Issues for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository issues.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Issues(repo.FullName, null, metadata);
+            var response = await ghc.Issues(repo.FullName, null, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var issues = response.Result;
@@ -556,9 +560,9 @@
           logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository comments.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Comments(repo.FullName, null, metadata);
+            var response = await ghc.Comments(repo.FullName, null, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var comments = response.Result;
@@ -607,10 +611,10 @@
           logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository events.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
             // TODO: Cute pagination trick to detect latest only.
-            var response = await ghc.Events(repo.FullName, metadata);
+            var response = await ghc.Events(repo.FullName, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var events = response.Result;
@@ -665,10 +669,10 @@
           logger.WriteLine($"Comments for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue comments.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
             // TODO: Cute pagination trick to detect latest only.
-            var response = await ghc.Comments(issue.Repository.FullName, null, metadata);
+            var response = await ghc.Comments(issue.Repository.FullName, null, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var comments = response.Result;
@@ -728,9 +732,9 @@
           logger.WriteLine($"Reactions for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata);
+            var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata?.AsCacheDetails());
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var reactions = response.Result;
@@ -783,9 +787,9 @@
           logger.WriteLine($"Reactions for comment {comment.Id} in {comment.Repository.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata);
+            var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata?.AsCacheDetails());
             switch (response.Status) {
               case HttpStatusCode.NotModified:
                 logger.WriteLine("Github: Not modified.");
@@ -851,7 +855,7 @@
             return;
           }
 
-          var ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+          var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
           // Client doesn't send repoId :(
           var repoId = await context.Repositories
@@ -870,7 +874,7 @@
           // Even hooks aren't fast enough to completely prevent this.
           // The intercepting proxy should alleviate most but not all cases.
           // In the meantime, always discover/refresh the issue on view
-          var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number, issueInfo?.Metadata);
+          var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number, issueInfo?.Metadata?.AsCacheDetails());
           if (issueResponse.Status != HttpStatusCode.NotModified) {
             var update = issueResponse.Result;
 
