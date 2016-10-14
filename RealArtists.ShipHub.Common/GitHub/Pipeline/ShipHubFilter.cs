@@ -44,7 +44,7 @@
           .Where(x => x.AccessToken == client.DefaultToken)
           .Where(x => x.Key == key)
           .SingleOrDefaultAsync();
-        request.CacheOptions = cacheOptions?.Metadata;
+        request.CacheOptions = cacheOptions?.Metadata?.AsCacheDetails();
       }
     }
 

@@ -2,6 +2,7 @@
   using System;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
+  using System.Threading;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -11,6 +12,9 @@
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
   using Mindscape.Raygun4Net;
+  using Orleans;
+  using Orleans.Runtime;
+  using Orleans.Runtime.Configuration;
   using QueueClient;
   using SimpleInjector;
   using Tracing;
@@ -40,9 +44,26 @@
         telemetryClient = new TelemetryClient();
       }
 
+      // Connect to Orleans Silo
+      Console.WriteLine("Connecting to Orleans");
+      var siloConfig = ClientConfiguration.LocalhostSilo();
+      for (int attempts = 0; ; ++attempts) {
+        try {
+          GrainClient.Initialize(siloConfig);
+          break;
+        } catch (SiloUnavailableException) {
+          if (attempts > 5) {
+            throw;
+          }
+          Console.WriteLine("  Failed. Trying again.");
+          Thread.Sleep(TimeSpan.FromSeconds(2));
+        }
+      }
+      Console.WriteLine("Connected to Orleans");
+
       var detailedLogger = new DetailedExceptionLogger(telemetryClient, raygunClient);
 
-      var container = CreateContainer(detailedLogger);
+      var container = CreateContainer(detailedLogger, GrainClient.GrainFactory);
 
       // Job Host Configuration
       var config = new JobHostConfiguration() {
@@ -83,7 +104,7 @@
 
 #if DEBUG
       var timer = new Stopwatch();
-      Console.WriteLine($"Initializing Service Bus.");
+      Console.WriteLine($"Initializing Service Bus");
       timer.Start();
 #endif
 
@@ -130,7 +151,7 @@
       }
     }
 
-    static Container CreateContainer(IDetailedExceptionLogger detailedLogger) {
+    static Container CreateContainer(IDetailedExceptionLogger detailedLogger, IGrainFactory grainFactory) {
       Container container = null;
 
       try {
@@ -157,6 +178,9 @@
 
         // IDetailedExceptionLogger
         container.Register(() => detailedLogger, Lifestyle.Singleton);
+
+        // Orleans grain factory
+        container.Register(() => grainFactory, Lifestyle.Singleton);
 
         container.Verify();
       } catch {
