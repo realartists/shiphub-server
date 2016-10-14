@@ -55,12 +55,15 @@
         // This might be too cute?
         if ((result.Status == HttpStatusCode.Unauthorized
             || result.Status == HttpStatusCode.NotFound)
+          && request.CacheOptions != null
           && client.DefaultToken != request.CacheOptions?.AccessToken) {
           // Try again with default credentials
           // HACK: Better to clear expired/stale metadata, but that's hard.
           request.CacheOptions = null;
           continue;
-        } else if (result.ErrorSeverity == GitHubErrorSeverity.RateLimited && client.DefaultToken != request.CacheOptions?.AccessToken) {
+        } else if (result.ErrorSeverity == GitHubErrorSeverity.RateLimited 
+          && request.CacheOptions != null
+          && client.DefaultToken != request.CacheOptions?.AccessToken) {
           // HACK: really need to load balance tokens instead
           request.CacheOptions = null;
           continue;
