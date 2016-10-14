@@ -1,4 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- See https://msdn.microsoft.com/en-us/library/bb514188.aspx -->
 <Dictionary>
   <!--<Words>
     <Unrecognized>
@@ -33,6 +34,8 @@
       <Word>raygun</Word>
       <Word>webhook</Word>
       <Word>webhooks</Word>
+      <!-- Misc non-words -->
+      <Word>ApiHostName</Word>
     </Recognized>
   </Words>
 </Dictionary>
