@@ -48,7 +48,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       base.OnStop();
     }
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
     private async Task RunAsync(CancellationToken cancellationToken) {
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
       while (!cancellationToken.IsCancellationRequested) {
         Trace.TraceInformation("Working");
 
