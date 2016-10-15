@@ -692,7 +692,7 @@
               };
             } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id") {
               didAddCoupon = true;
-              Assert.AreEqual("member_of_paid_org", data["coupon"]);
+              Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
 
               return new {
                 subscription = new {

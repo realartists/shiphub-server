@@ -251,7 +251,7 @@
 
           if (isMemberOfPaidOrg && !hasCoupon) {
             ChargeBee.Models.Subscription.Update(sub.Id)
-              .Coupon(couponId)
+              .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
               .Request();
           } else if (!isMemberOfPaidOrg && hasCoupon) {
             ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
