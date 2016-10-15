@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Orleans {
   using System;
+  using System.Configuration;
   using System.Diagnostics;
   using System.IO;
   using System.Threading;
@@ -129,6 +130,7 @@
       return CloudConfigurationManager.GetSetting(AppServiceConstants.DataConnectionSettingsKey);
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "It's a retry loop.")]
     private static void InitializeImpl_FromConfig(ClientConfiguration config) {
       if (GrainClient.IsInitialized) {
         Trace.TraceInformation("Connection to Orleans gateway silo already initialized.");
@@ -140,10 +142,10 @@
       var deploymentId = config.DeploymentId;
       var connectionString = config.DataConnectionString;
       if (string.IsNullOrEmpty(deploymentId))
-        throw new ArgumentException("Cannot connect to Azure silos with null deploymentId", "config.DeploymentId");
+        throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null deploymentId. config.DeploymentId = {config.DeploymentId}");
 
       if (string.IsNullOrEmpty(connectionString))
-        throw new ArgumentException("Cannot connect to Azure silos with null connectionString", "config.DataConnectionString");
+        throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null connectionString. config.DataConnectionString = {config.DataConnectionString}");
 
       bool initSucceeded = false;
       Exception lastException = null;

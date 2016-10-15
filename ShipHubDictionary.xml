@@ -24,6 +24,10 @@
     </CasingExceptions>
   </Acronyms>-->
   <Words>
+    <DiscreteExceptions>
+      <Term>ConnectionString</Term>
+      <Term>DeploymentId</Term>
+    </DiscreteExceptions>
     <Recognized>
       <Word>api</Word>
       <Word>deaggregate</Word>
@@ -36,6 +40,10 @@
       <Word>webhooks</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
+      <Word>AzureClient</Word>
+      <Word>ConnectionString</Word>
+      <Word>DataConnectionString</Word>
+      <Word>DeploymentId</Word>
     </Recognized>
   </Words>
 </Dictionary>
