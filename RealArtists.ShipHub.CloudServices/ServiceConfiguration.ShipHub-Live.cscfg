@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ServiceConfiguration serviceName="RealArtists.ShipHub.CloudServices"
+                      xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration"
+                      osFamily="4"
+                      osVersion="*"
+                      schemaVersion="2015-04.2.6">
+  <Role name="RealArtists.ShipHub.CloudServices.OrleansSilos">
+    <Instances count="5" />
+    <ConfigurationSettings>
+      <Setting name="DeploymentId"
+               value="unicorns" />
+      <Setting name="DataConnectionString"
+               value="UseDevelopmentStorage=true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
+               value="UseDevelopmentStorage=true" />
+    </ConfigurationSettings>
+  </Role>
+  <NetworkConfiguration>
+    <VirtualNetworkSite name="Group ShipHub-Dev shiphub-live-net" />
+    <AddressAssignments>
+      <InstanceAddress roleName="RealArtists.ShipHub.CloudServices.OrleansSilos">
+        <Subnets>
+          <Subnet name="Orleans" />
+        </Subnets>
+      </InstanceAddress>
+    </AddressAssignments>
+  </NetworkConfiguration>
+</ServiceConfiguration>

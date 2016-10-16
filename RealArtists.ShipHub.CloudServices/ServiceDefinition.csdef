@@ -24,7 +24,20 @@
                     cleanOnRoleRecycle="false" />
     </LocalResources>
     <Startup>
-      <Task commandLine="install.cmd"
+      <!-- Enable Server GC for Orleans -->
+      <!-- See https://blogs.msdn.microsoft.com/cclayton/2014/06/05/server-garbage-collection-mode-in-microsoft-azure/ -->
+      <Task commandLine="ServerGC.cmd"
+            executionContext="elevated"
+            taskType="simple">
+        <Environment>
+          <Variable name="ServerGCEnabled"
+                    value="true" />
+          <Variable name="ConcurrentGCEnabled"
+                    value="false" />
+        </Environment>
+      </Task>
+      <!-- Install .NET 4.6.2 if not already present. -->
+      <Task commandLine="install-netfx.cmd"
             executionContext="elevated"
             taskType="simple">
         <Environment>
