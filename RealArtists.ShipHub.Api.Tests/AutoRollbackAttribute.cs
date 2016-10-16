@@ -3,7 +3,6 @@
 /// </summary>
 namespace RealArtists.ShipHub.Api.Tests {
   using System;
-  using System.Reflection;
   using System.Transactions;
   using NUnit.Framework;
   using NUnit.Framework.Interfaces;

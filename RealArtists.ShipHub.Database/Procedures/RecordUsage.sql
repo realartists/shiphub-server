@@ -3,9 +3,7 @@
   @Date DATETIMEOFFSET
 AS
 BEGIN
-  MERGE INTO Usage
-  USING (SELECT @AccountId as AccountId, @Date as Date) NewUsage
-  ON Usage.AccountId = NewUsage.AccountId AND Usage.Date = NewUsage.Date
-  WHEN NOT MATCHED THEN
-    INSERT (AccountId, Date) VALUES (@AccountId, @Date);
+  INSERT INTO Usage WITH (SERIALIZABLE) (AccountId, [Date])
+  SELECT @AccountId, @Date
+  WHERE NOT EXISTS (SELECT 1 FROM Usage WITH (UPDLOCK) WHERE AccountId = @AccountId AND [Date] = @Date)
 END

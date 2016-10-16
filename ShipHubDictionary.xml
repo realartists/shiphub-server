@@ -25,6 +25,7 @@
   </Acronyms>-->
   <Words>
     <DiscreteExceptions>
+      <Term>AzureClient</Term>
       <Term>ConnectionString</Term>
       <Term>DeploymentId</Term>
     </DiscreteExceptions>

@@ -1,23 +1,15 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
-  using System.Collections.Specialized;
   using System.Globalization;
-  using System.IO;
   using System.Linq;
-  using System.Net;
-  using System.Net.Fakes;
   using System.Threading;
   using System.Threading.Tasks;
-  using System.Web;
-  using ChargeBee.Api;
-  using ChargeBee.Api.Fakes;
   using Common.DataModel;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
-  using Newtonsoft.Json.Linq;
   using NUnit.Framework;
   using QueueClient.Messages;
   using QueueProcessor;
@@ -662,7 +654,7 @@
           State = isMemberOfPaidOrg ? SubscriptionState.Subscribed : SubscriptionState.NotSubscribed,
         });
         await context.SaveChangesAsync();
-        
+
         using (ShimsContext.Create()) {
           bool didAddCoupon = false;
           bool didRemoveCoupon = false;
