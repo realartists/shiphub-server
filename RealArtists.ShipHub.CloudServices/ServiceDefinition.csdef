@@ -3,11 +3,12 @@
                    xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition"
                    schemaVersion="2015-04.2.6">
   <WorkerRole name="RealArtists.ShipHub.CloudServices.OrleansSilos"
-              vmsize="Small">
+              vmsize="Standard_D2_v2">
     <ConfigurationSettings>
       <Setting name="DeploymentId" />
       <Setting name="DataConnectionString" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" />
+      <Setting name="ShipHubContext" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

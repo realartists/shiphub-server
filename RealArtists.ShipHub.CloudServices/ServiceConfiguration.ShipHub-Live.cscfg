@@ -13,6 +13,8 @@
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
                value="UseDevelopmentStorage=true" />
+      <Setting name="ShipHubContext"
+               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true"/>
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

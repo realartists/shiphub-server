@@ -5,7 +5,7 @@
                       osVersion="*"
                       schemaVersion="2015-04.2.6">
   <Role name="RealArtists.ShipHub.CloudServices.OrleansSilos">
-    <Instances count="5" />
+    <Instances count="3" />
     <ConfigurationSettings>
       <Setting name="DeploymentId"
                value="unicorns" />
@@ -13,6 +13,8 @@
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
                value="UseDevelopmentStorage=true" />
+      <Setting name="ShipHubContext"
+               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
