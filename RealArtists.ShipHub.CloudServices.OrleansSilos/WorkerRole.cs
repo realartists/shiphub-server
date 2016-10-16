@@ -59,6 +59,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // This allows App Services and Cloud Services to agree on a deploymentId.
         config.Globals.DeploymentId = CloudConfigurationManager.GetSetting("DeploymentId");
 
+        // Dependency Injection
+        config.UseStartupType<SimpleInjectorProvider>();
+
         config.AddMemoryStorageProvider();
         config.AddAzureTableStorageProvider("AzureStore", CloudConfigurationManager.GetSetting("DataConnectionString"));
 

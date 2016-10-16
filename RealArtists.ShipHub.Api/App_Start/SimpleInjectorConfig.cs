@@ -1,7 +1,9 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System.Web.Http;
   using AutoMapper;
+  using Common;
   using Common.DataModel;
+  using Orleans;
   using QueueClient;
   using SimpleInjector;
   using SimpleInjector.Integration.WebApi;
@@ -26,6 +28,13 @@
         var sbf = new ServiceBusFactory();
         sbf.Initialize().GetAwaiter().GetResult();
         return sbf;
+      }, Lifestyle.Singleton);
+
+      // Orleans
+      container.Register(() => {
+        var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+        OrleansAzureClient.Initialize(orleansConfig);
+        return GrainClient.GrainFactory;
       }, Lifestyle.Singleton);
 
       // Queue Client

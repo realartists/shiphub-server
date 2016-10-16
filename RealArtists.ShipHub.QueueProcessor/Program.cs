@@ -2,7 +2,6 @@
   using System;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
-  using System.Threading;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -13,8 +12,6 @@
   using Microsoft.Azure.WebJobs.ServiceBus;
   using Mindscape.Raygun4Net;
   using Orleans;
-  using Orleans.Runtime;
-  using Orleans.Runtime.Configuration;
   using QueueClient;
   using SimpleInjector;
   using Tracing;
@@ -44,26 +41,9 @@
         telemetryClient = new TelemetryClient();
       }
 
-      // Connect to Orleans Silo
-      Console.WriteLine("Connecting to Orleans");
-      var siloConfig = ClientConfiguration.LocalhostSilo();
-      for (int attempts = 0; ; ++attempts) {
-        try {
-          GrainClient.Initialize(siloConfig);
-          break;
-        } catch (SiloUnavailableException) {
-          if (attempts > 5) {
-            throw;
-          }
-          Console.WriteLine("  Failed. Trying again.");
-          Thread.Sleep(TimeSpan.FromSeconds(2));
-        }
-      }
-      Console.WriteLine("Connected to Orleans");
-
       var detailedLogger = new DetailedExceptionLogger(telemetryClient, raygunClient);
 
-      var container = CreateContainer(detailedLogger, GrainClient.GrainFactory);
+      var container = CreateContainer(detailedLogger);
 
       // Job Host Configuration
       var config = new JobHostConfiguration() {
@@ -151,7 +131,7 @@
       }
     }
 
-    static Container CreateContainer(IDetailedExceptionLogger detailedLogger, IGrainFactory grainFactory) {
+    static Container CreateContainer(IDetailedExceptionLogger detailedLogger) {
       Container container = null;
 
       try {
@@ -173,14 +153,18 @@
           return sbf;
         }, Lifestyle.Singleton);
 
+        // Orleans
+        container.Register(() => {
+          var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+          OrleansAzureClient.Initialize(orleansConfig);
+          return GrainClient.GrainFactory;
+        }, Lifestyle.Singleton);
+
         // Queue Client
         container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);
 
         // IDetailedExceptionLogger
         container.Register(() => detailedLogger, Lifestyle.Singleton);
-
-        // Orleans grain factory
-        container.Register(() => grainFactory, Lifestyle.Singleton);
 
         container.Verify();
       } catch {
