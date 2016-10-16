@@ -10,7 +10,6 @@
   using NUnit.Framework;
   using Sync;
   using Sync.Messages;
-  using Sync.Messages.Entries;
 
   [TestFixture]
   [AutoRollback]

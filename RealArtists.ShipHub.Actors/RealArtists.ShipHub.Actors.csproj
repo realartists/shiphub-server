@@ -119,11 +119,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EchoActor.cs" />
-    <Compile Include="OrganizationSyncActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RepositorySyncActor.cs" />
     <Compile Include="GitHub\GitHubActor.cs" />
-    <Compile Include="UserSyncActor.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">

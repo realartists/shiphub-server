@@ -64,7 +64,6 @@
     <Compile Include="IChangeObserver.cs" />
     <Compile Include="GitHub\IGitHubActor.cs" />
     <Compile Include="IEchoActor.cs" />
-    <Compile Include="IUserSyncActor.cs" />
     <Compile Include="ISyncStatusObserver.cs" />
     <Compile Include="Models\SyncStatus.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -18,7 +18,6 @@
   using Newtonsoft.Json;
   using NUnit.Framework;
   using QueueClient;
-  using QueueClient.Messages;
 
   [TestFixture]
   [AutoRollback]
@@ -106,7 +105,7 @@
           } else {
             Assert.AreEqual(new long[] { user.Id }, changeSummary?.Users.ToArray());
             Assert.AreEqual(new long[] { }, changeSummary?.Organizations.ToArray());
-          }          
+          }
         } else {
           Assert.IsNull(changeSummary);
         }
@@ -139,7 +138,7 @@
         beginTrialEndDate: DateTimeOffset.Parse("2020-09-22T00:00:00+00:00"),
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
-        notifyExpected: true);        
+        notifyExpected: true);
     }
 
     [Test]
@@ -453,7 +452,7 @@
 
         await context.SetOrganizationUsers(org1.Id,
           users.Select(x => new Tuple<long, bool>(x.Id, true)));
-        
+
         await context.SaveChangesAsync();
 
         Assert.AreEqual(
@@ -553,7 +552,7 @@
 
         // should accept since version advances.
         await fireEvent(makeSubscriptionChangedEvent("active", 2000));
-        context.Entry(sub).Reload() ;
+        context.Entry(sub).Reload();
         Assert.AreEqual(2000, sub.Version);
         Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
 
