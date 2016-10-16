@@ -2,21 +2,21 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces;
-  using global::Orleans;
   using Orleans;
 
   [RoutePrefix("orleans")]
   public class OrleansTestController : ApiController {
+    private IGrainFactory _grainFactory;
+
+    public OrleansTestController(IGrainFactory grainFactory) {
+      _grainFactory = grainFactory;
+    }
+
     [HttpGet]
     [Route("test")]
     [AllowAnonymous]
     public Task<string> Test() {
-      if (!OrleansAppServiceClient.IsInitialized) {
-        var config = OrleansAppServiceClient.DefaultConfiguration();
-        OrleansAppServiceClient.Initialize(config);
-      }
-
-      var echoGrain = GrainClient.GrainFactory.GetGrain<IEchoActor>(0);
+      var echoGrain = _grainFactory.GetGrain<IEchoActor>(0);
 
       return echoGrain.Echo("Hello!");
     }

@@ -6,6 +6,7 @@
   using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
+  using Common;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
@@ -18,6 +19,8 @@
     private IGitHubClient _github;
     private string _accessToken;
 
+    private IFactory<dm.ShipHubContext> _shipContextFactory;
+
     // This is gross
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
@@ -25,11 +28,15 @@
     // This is nasty
     private static IGitHubHandler HandlerPipeline { get; } = new PaginationHandler(new GitHubHandler());
 
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory) {
+      _shipContextFactory = shipContextFactory;
+    }
+
     public override async Task OnActivateAsync() {
       _accessToken = this.GetPrimaryKeyString();
 
       // Load state from DB
-      using (var context = new dm.ShipHubContext()) {
+      using (var context = _shipContextFactory.CreateInstance()) {
         // For now, require user and token to already exist in database.
         var user = await context.Users.SingleAsync(x => x.Token == _accessToken);
 

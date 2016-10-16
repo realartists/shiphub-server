@@ -1,23 +1,31 @@
-﻿namespace RealArtists.ShipHub.Api.Orleans {
+﻿namespace RealArtists.ShipHub.Common {
   using System;
   using System.Configuration;
-  using System.Diagnostics;
   using System.IO;
   using System.Threading;
-  using global::Orleans;
-  using global::Orleans.Runtime;
-  using global::Orleans.Runtime.Configuration;
   using Microsoft.Azure;
+  using Orleans;
+  using Orleans.Runtime;
+  using Orleans.Runtime.Configuration;
+  using Orleans.Runtime.Host;
 
   /// <summary>
   /// Utility class for initializing an Orleans client running inside Azure App Services.
   /// Based off of https://github.com/dotnet/orleans/blob/master/src/OrleansAzureUtils/Hosting/AzureClient.cs
   /// </summary>
-  public static class OrleansAppServiceClient {
+  public static class OrleansAzureClient {
     /// <summary>Number of retry attempts to make when searching for gateway silos to connect to.</summary>
-    public static readonly int MaxRetries = AppServiceConstants.StartupMaxAttempts;  // 120 x 5s = Total: 10 minutes
-                                                                         /// <summary>Amount of time to pause before each retry attempt.</summary>
-    public static readonly TimeSpan StartupRetryPause = AppServiceConstants.StartupRetryDelay; // 5 seconds
+    public const int MaxRetries = 120;  // 120 x 5s = Total: 10 minutes
+
+    /// <summary>Amount of time to pause before each retry attempt.</summary>
+    public static readonly TimeSpan StartupRetryPause = TimeSpan.FromSeconds(5);
+
+    public const string DataConnectionSettingsKey = "DataConnectionString";
+    public const string DeploymentIdSettingsKey = "DeploymentId";
+
+    // HACK: Ensure required DLLs get detected as dependencies and copied
+    [Obsolete("Don't use this.")]
+    public static readonly bool AzureClientReference = AzureClient.IsInitialized;
 
     /// <summary>
     /// Whether the Orleans Azure client runtime has already been initialized
@@ -63,10 +71,10 @@
     /// Uninitializes the Orleans client runtime in this Azure process. 
     /// </summary>
     public static void Uninitialize() {
-      if (!GrainClient.IsInitialized)
+      if (!GrainClient.IsInitialized) {
         return;
+      }
 
-      Trace.TraceInformation("Uninitializing connection to Orleans gateway silo.");
       GrainClient.Uninitialize();
     }
 
@@ -84,38 +92,30 @@
       return config;
     }
 
-    #region Internal implementation of client initialization processing
-
     private static void InitializeImpl_FromFile(FileInfo configFile) {
       if (GrainClient.IsInitialized) {
-        Trace.TraceInformation("Connection to Orleans gateway silo already initialized.");
         return;
       }
 
       ClientConfiguration config;
       try {
         if (configFile == null) {
-          Trace.TraceInformation("Looking for standard Orleans client config file");
           config = ClientConfiguration.StandardLoad();
         } else {
           var configFileLocation = configFile.FullName;
-          Trace.TraceInformation("Loading Orleans client config file {0}", configFileLocation);
           config = ClientConfiguration.LoadFromFile(configFileLocation);
         }
       } catch (Exception ex) {
         var msg = $"Error loading Orleans client configuration file {configFile} {ex.Message} -- unable to continue. {LogFormatter.PrintException(ex)}";
-        Trace.TraceError(msg);
         throw new AggregateException(msg, ex);
       }
 
-      Trace.TraceInformation("Overriding Orleans client config from App Service runtime environment.");
       try {
         config.DeploymentId = GetDeploymentId();
         config.DataConnectionString = GetDataConnectionString();
         config.GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable;
       } catch (Exception ex) {
-        var msg = $"ERROR: No AzureClient role setting value '{AppServiceConstants.DataConnectionSettingsKey}' specified for this role -- unable to continue";
-        Trace.TraceError(msg);
+        var msg = $"ERROR: No AzureClient role setting value '{DataConnectionSettingsKey}' specified for this role -- unable to continue";
         throw new AggregateException(msg, ex);
       }
 
@@ -123,17 +123,16 @@
     }
 
     internal static string GetDeploymentId() {
-      return CloudConfigurationManager.GetSetting(AppServiceConstants.DeploymentIdSettingsKey);
+      return CloudConfigurationManager.GetSetting(DeploymentIdSettingsKey);
     }
 
     internal static string GetDataConnectionString() {
-      return CloudConfigurationManager.GetSetting(AppServiceConstants.DataConnectionSettingsKey);
+      return CloudConfigurationManager.GetSetting(DataConnectionSettingsKey);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "It's a retry loop.")]
     private static void InitializeImpl_FromConfig(ClientConfiguration config) {
       if (GrainClient.IsInitialized) {
-        Trace.TraceInformation("Connection to Orleans gateway silo already initialized.");
         return;
       }
 
@@ -141,39 +140,31 @@
       //Trace.WriteLine("Searching for Orleans gateway silo via Orleans instance table...");
       var deploymentId = config.DeploymentId;
       var connectionString = config.DataConnectionString;
-      if (string.IsNullOrEmpty(deploymentId))
+      if (string.IsNullOrEmpty(deploymentId)) {
         throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null deploymentId. config.DeploymentId = {config.DeploymentId}");
+      }
 
-      if (string.IsNullOrEmpty(connectionString))
+      if (string.IsNullOrEmpty(connectionString)) {
         throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null connectionString. config.DataConnectionString = {config.DataConnectionString}");
+      }
 
-      bool initSucceeded = false;
       Exception lastException = null;
       for (int i = 0; i < MaxRetries; i++) {
         try {
           // Initialize will throw if cannot find Gateways
           GrainClient.Initialize(config);
-          initSucceeded = true;
-          break;
+          return;
         } catch (Exception exc) {
           lastException = exc;
-          Trace.TraceError("Client.Initialize failed with exc -- {0}. Will try again", exc.Message);
         }
         // Pause to let Primary silo start up and register
-        Trace.TraceInformation("Pausing {0} awaiting silo and gateways registration for Deployment={1}", StartupRetryPause, deploymentId);
         Thread.Sleep(StartupRetryPause);
       }
-
-      if (initSucceeded)
-        return;
 
       OrleansException err;
       err = lastException != null ? new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}. Last exception={lastException.Message}",
         lastException) : new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}.");
-      Trace.TraceError("Error starting Orleans Azure client application -- {0} -- bailing. {1}", err.Message, LogFormatter.PrintException(err));
       throw err;
     }
-
-    #endregion
   }
 }
