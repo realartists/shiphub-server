@@ -33,8 +33,9 @@
   <!-- Items for the project -->
   <ItemGroup>
     <ServiceDefinition Include="ServiceDefinition.csdef" />
+    <ServiceConfiguration Include="ServiceConfiguration.ShipHub-Live.cscfg" />
     <ServiceConfiguration Include="ServiceConfiguration.Local.cscfg" />
-    <ServiceConfiguration Include="ServiceConfiguration.Cloud.cscfg" />
+    <ServiceConfiguration Include="ServiceConfiguration.ShipHub-Dev.cscfg" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RealArtists.ShipHub.CloudServices.OrleansSilos\RealArtists.ShipHub.CloudServices.OrleansSilos.csproj">
@@ -54,15 +55,21 @@
     <DiagnosticsConfiguration Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\diagnostics.wadcfgx" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\install.cmd">
+    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\GCSettingsManagement.ps1">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\install-netfx.cmd">
       <SubType>Content</SubType>
     </Content>
     <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\NDP462-KB3120737-Web.exe">
       <SubType>Content</SubType>
     </Content>
+    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\ServerGC.cmd">
+      <SubType>Content</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
-    <PublishProfile Include="Profiles\nscstestProduction.azurePubxml" />
+    <PublishProfile Include="Profiles\ShipHub-Dev.azurePubxml" />
   </ItemGroup>
   <!-- Import the target files for this project template -->
   <PropertyGroup>
