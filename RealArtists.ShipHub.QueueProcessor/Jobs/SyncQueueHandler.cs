@@ -814,7 +814,7 @@
                 break;
             }
 
-            if (!changes.Empty) {
+            if (changes!= null && !changes.Empty) {
               tasks.Add(notifyChanges.Send(changes));
             }
 
