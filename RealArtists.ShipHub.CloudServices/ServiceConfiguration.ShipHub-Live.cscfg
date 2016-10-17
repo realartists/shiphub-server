@@ -14,7 +14,9 @@
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="ShipHubContext"
-               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true"/>
+               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
+      <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
+               value="" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

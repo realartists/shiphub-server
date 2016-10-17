@@ -8,13 +8,15 @@
     <Instances count="3" />
     <ConfigurationSettings>
       <Setting name="DeploymentId"
-               value="unicorns" />
+               value="shiphub-dev-20161017" />
       <Setting name="DataConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="ShipHubContext"
                value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
+      <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
+               value="6299522e-2b2d-4ebd-bb78-e0968eca82f6" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
