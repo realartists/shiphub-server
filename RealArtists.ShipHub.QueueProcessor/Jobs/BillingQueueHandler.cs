@@ -5,24 +5,30 @@
   using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using ChargeBee.Models;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
+  using Orleans;
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
 
   public class BillingQueueHandler : LoggingHandlerBase {
+    private IGrainFactory _grainFactory;
 
-    public BillingQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
+    public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+      : base(logger) {
+      _grainFactory = grainFactory;
+    }
 
     public async Task GetOrCreatePersonalSubscriptionHelper(
       UserIdMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
-      IGitHubClient gitHubClient,
+      IGitHubActor gitHubClient,
       TextWriter logger) {
       using (var context = new ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Id == message.UserId);
@@ -134,23 +140,23 @@
       TextWriter logger,
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        IGitHubClient ghc;
+        IGitHubActor gh;
         using (var context = new ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
         }
 
-        await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, ghc, logger);
+        await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, gh, logger);
       });
     }
 
     public async Task SyncOrgSubscriptionStateHelper(
       TargetMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
-      IGitHubClient gitHubClient,
+      IGitHubActor gitHubClient,
       TextWriter logger) {
 
       using (var context = new ShipHubContext()) {
@@ -209,16 +215,16 @@
       ExecutionContext executionContext) {
 
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        IGitHubClient ghc;
+        IGitHubActor gh;
         using (var context = new ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
         }
 
-        await SyncOrgSubscriptionStateHelper(message, notifyChanges, ghc, logger);
+        await SyncOrgSubscriptionStateHelper(message, notifyChanges, gh, logger);
       });
     }
 

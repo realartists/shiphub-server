@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Threading.Tasks;
   using System.Web.Http.Results;
+  using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
   using Controllers;
@@ -43,7 +44,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController();
+        var controller = new BillingController(null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
@@ -80,7 +81,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController();
+        var controller = new BillingController(null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = await controller.Accounts();
@@ -263,7 +264,7 @@
             }
           });
 
-          var controller = new BillingController();
+          var controller = new BillingController(null);
           var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -294,7 +295,7 @@
             }
           });
 
-          var controller = new BillingController();
+          var controller = new BillingController(null);
           var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -325,7 +326,7 @@
             }
           });
 
-          var controller = new BillingController();
+          var controller = new BillingController(null);
           var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -341,7 +342,7 @@
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -372,9 +373,9 @@
             },
           });
 
-        var mock = new Mock<BillingController>() { CallBase = true };
+        var mock = new Mock<BillingController>(null) { CallBase = true };
         mock
-          .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
+          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
           .Returns((User forUser) => {
             Assert.AreEqual(user.Id, forUser.Id);
             return mockClient.Object;
@@ -426,7 +427,7 @@
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -457,9 +458,9 @@
             },
           });
 
-        var mock = new Mock<BillingController>() { CallBase = true };
+        var mock = new Mock<BillingController>(null) { CallBase = true };
         mock
-          .Setup(x => x.CreateGitHubClient(It.IsAny<User>()))
+          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
           .Returns((User forUser) => {
             Assert.AreEqual(user.Id, forUser.Id);
             return mockClient.Object;
@@ -565,7 +566,7 @@
             }
           });
 
-          var controller = new BillingController();
+          var controller = new BillingController(null);
           var response = await controller.Reactivate("someHostedPageId", "succeeded");
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/pages/v2/someHostedPageId/thank_you", ((RedirectResult)response).Location.AbsoluteUri);

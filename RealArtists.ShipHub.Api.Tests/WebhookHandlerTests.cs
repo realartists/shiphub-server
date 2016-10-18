@@ -4,6 +4,7 @@
   using System.Linq;
   using System.Threading;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
   using Common.GitHub.Models;
@@ -20,7 +21,7 @@
   public class WebhookHandlerTests {
 
     public static WebhookQueueHandler CreateHandler() {
-      return new WebhookQueueHandler(new DetailedExceptionLogger());
+      return new WebhookQueueHandler(null, new DetailedExceptionLogger());
     }
 
     static string ApiHostName {
@@ -50,7 +51,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
@@ -119,7 +120,7 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
@@ -192,7 +193,7 @@
         var repoLogItem = context.RepositoryLog.Single(x => x.Type.Equals("repository") && x.ItemId == repo.Id);
         var repoLogItemRowVersion = repoLogItem.RowVersion;
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
@@ -261,7 +262,7 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
@@ -291,7 +292,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
@@ -324,7 +325,7 @@
         var orgLogItem = context.OrganizationLog.Single(x => x.OrganizationId == org.Id && x.AccountId == org.Id);
         var orgLogItemRowVersion = orgLogItem.RowVersion;
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
@@ -398,7 +399,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
@@ -483,7 +484,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, null))
@@ -554,7 +555,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
 
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
@@ -596,7 +597,7 @@
         });
         await context.SaveChangesAsync();
 
-        var mock = new Mock<IGitHubClient>();
+        var mock = new Mock<IGitHubActor>();
         mock
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {

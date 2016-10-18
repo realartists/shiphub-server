@@ -14,13 +14,14 @@
   using QueueClient.Messages;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
+  using ActorInterfaces.GitHub;
 
   [TestFixture]
   [AutoRollback]
   public class BillingQueueTests {
 
     private static BillingQueueHandler CreateHandler() {
-      return new BillingQueueHandler(new DetailedExceptionLogger());
+      return new BillingQueueHandler(null, new DetailedExceptionLogger());
     }
 
     [Test]
@@ -36,7 +37,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -162,7 +163,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -246,7 +247,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -320,7 +321,7 @@
             changeMessages.Add(msg);
             return Task.CompletedTask;
           });
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
 
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
@@ -401,7 +402,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -503,7 +504,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -576,7 +577,7 @@
             return Task.CompletedTask;
           });
 
-        var mockClient = new Mock<IGitHubClient>();
+        var mockClient = new Mock<IGitHubActor>();
         mockClient
           .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
@@ -714,7 +715,7 @@
             }
           });
 
-          var handler = new BillingQueueHandler(new DetailedExceptionLogger());
+          var handler = new BillingQueueHandler(null, new DetailedExceptionLogger());
           var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() {
             InvocationId = Guid.NewGuid()
           };

@@ -6,17 +6,23 @@
   using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
-  using Common;
+  using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
+  using Orleans;
   using Tracing;
 
   public class WebhookReaperTimer : LoggingHandlerBase {
-    public WebhookReaperTimer(IDetailedExceptionLogger logger) : base(logger) { }
+    private IGrainFactory _grainFactory;
 
-    public virtual IGitHubClient CreateGitHubClient(User user, Guid correlationId) {
-      return GitHubSettings.CreateUserClient(user, correlationId);
+    public WebhookReaperTimer(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+      : base(logger) {
+      _grainFactory = grainFactory;
+    }
+
+    public virtual IGitHubActor CreateGitHubClient(User user, Guid correlationId) {
+      return _grainFactory.GetGrain<IGitHubActor>(user.Token);
     }
 
     public virtual DateTimeOffset UtcNow {

@@ -16,7 +16,7 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor {
-    private IGitHubClient _github;
+    private GitHubClient _github;
     private string _accessToken;
 
     private IFactory<dm.ShipHubContext> _shipContextFactory;
@@ -154,6 +154,10 @@
 
     public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
       return _github.Milestones(repoFullName, cacheOptions);
+    }
+
+    public Task<GitHubResponse<Account>> Organization(string orgName, IGitHubCacheDetails cacheOptions = null) {
+      return _github.Organization(orgName, cacheOptions);
     }
 
     public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null) {

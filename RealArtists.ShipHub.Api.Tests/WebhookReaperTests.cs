@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Linq;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
   using Moq;
@@ -15,7 +16,7 @@
   public class WebhookReaperTests {
     private static Mock<WebhookReaperTimer> MockReaper(
       Dictionary<string, List<Tuple<string, string, long>>> pings) {
-      var mock = new Mock<WebhookReaperTimer>(new DetailedExceptionLogger()) { CallBase = true };
+      var mock = new Mock<WebhookReaperTimer>(null, new DetailedExceptionLogger()) { CallBase = true };
       mock
         .Setup(x => x.CreateGitHubClient(It.IsAny<User>(), It.IsAny<Guid>()))
         .Returns((User user, Guid correlationId) => {
@@ -23,7 +24,7 @@
             pings[user.Token] = new List<Tuple<string, string, long>>();
           }
 
-          var mockClient = new Mock<IGitHubClient>();
+          var mockClient = new Mock<IGitHubActor>();
 
           mockClient
             .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>()))
