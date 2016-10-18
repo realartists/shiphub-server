@@ -127,7 +127,7 @@
     }
 
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions, restricted:true);
+      var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions, restricted: true);
       return Fetch<Commit>(request);
     }
 
@@ -155,7 +155,7 @@
     }
 
     public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", IGitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted:true);
+      var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted: true);
       request.AddParameter(nameof(state), state);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
 
@@ -263,7 +263,7 @@
     }
 
     public Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId) {
-      var request = new GitHubRequest(HttpMethod.Post,$"repos/{repoFullName}/hooks/{hookId}/pings");
+      var request = new GitHubRequest(HttpMethod.Post, $"repos/{repoFullName}/hooks/{hookId}/pings");
       return Fetch<bool>(request);
     }
 
