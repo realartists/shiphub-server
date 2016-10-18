@@ -146,10 +146,19 @@
       <HintPath>..\packages\NUnit3TestAdapter.3.4.1\lib\NUnit3.TestAdapter.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Orleans, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.Core.1.3.0\lib\net451\Orleans.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.4.0.0.0.Fakes">
       <HintPath>FakesAssemblies\System.4.0.0.0.Fakes.dll</HintPath>
     </Reference>
+    <Reference Include="System.Collections.Immutable, Version=1.2.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Collections.Immutable.1.2.0\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net" />
@@ -204,6 +213,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">
+      <Project>{A23A5314-A785-4D1E-9405-969E0B6D1979}</Project>
+      <Name>RealArtists.ShipHub.ActorInterfaces</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.Api\RealArtists.ShipHub.Api.csproj">
       <Project>{10212ac5-34f5-4bac-aad6-8865183575bc}</Project>
       <Name>RealArtists.ShipHub.Api</Name>

@@ -9,12 +9,14 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces.GitHub;
   using ChargeBee.Models;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Filters;
   using Microsoft.Azure;
+  using Orleans;
 
   public class BillingAccount {
     public long Identifier { get; set; }
@@ -34,6 +36,8 @@
 
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
+    private IGrainFactory _grainFactory;
+
     private string ApiHostName {
       get {
         var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
@@ -42,6 +46,10 @@
         }
         return apiHostName;
       }
+    }
+
+    public BillingController(IGrainFactory grainFactory) {
+      _grainFactory = grainFactory;
     }
 
     private static IEnumerable<string> GetActionLines(Account account) {
@@ -154,8 +162,8 @@
       return Redirect($"https://{host}/pages/v2/{id}/thank_you");
     }
 
-    public virtual IGitHubClient CreateGitHubClient(User user) {
-      return GitHubSettings.CreateUserClient(user, Guid.NewGuid());
+    public virtual IGitHubActor CreateGitHubActor(User user) {
+      return _grainFactory.GetGrain<IGitHubActor>(user.Token);
     }
 
     private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {
@@ -237,7 +245,7 @@
     private async Task<IHttpActionResult> BuyOrganization(long actorId, long targetId, Account targetAccount) {
       var user = await Context.Users.SingleAsync(x => x.Id == actorId);
 
-      var ghc = CreateGitHubClient(user);
+      var ghc = CreateGitHubActor(user);
       var ghcUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
       var ghcOrg = (await ghc.Organization(targetAccount.Login, GitHubCacheDetails.Empty)).Result;
 

@@ -7,19 +7,26 @@
   using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
+  using Orleans;
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
   using gm = Common.GitHub.Models;
 
   public class WebhookQueueHandler : LoggingHandlerBase {
-    public WebhookQueueHandler(IDetailedExceptionLogger logger) : base(logger) { }
+    private IGrainFactory _grainFactory;
+
+    public WebhookQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+      : base(logger) {
+      _grainFactory = grainFactory;
+    }
 
     [Singleton("{TargetId}")]
     public async Task AddOrUpdateRepoWebhooks(
@@ -27,21 +34,21 @@
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        IGitHubClient ghc;
+        IGitHubActor gh;
         using (var context = new ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
         }
-        await AddOrUpdateRepoWebhooksWithClient(message, ghc, notifyChanges);
+        await AddOrUpdateRepoWebhooksWithClient(message, gh, notifyChanges);
       });
     }
 
     public async Task AddOrUpdateRepoWebhooksWithClient(
       TargetMessage message,
-      IGitHubClient client,
+      IGitHubActor client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
@@ -135,22 +142,22 @@
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        IGitHubClient ghc;
+        IGitHubActor gh;
         using (var context = new ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          ghc = GitHubSettings.CreateUserClient(user, executionContext.InvocationId);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
         }
 
-        await AddOrUpdateOrgWebhooksWithClient(message, ghc, notifyChanges);
+        await AddOrUpdateOrgWebhooksWithClient(message, gh, notifyChanges);
       });
     }
 
     public async Task AddOrUpdateOrgWebhooksWithClient(
       TargetMessage message,
-      IGitHubClient client,
+      IGitHubActor client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
