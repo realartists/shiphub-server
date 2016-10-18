@@ -240,7 +240,7 @@
   <ItemGroup>
     <Compile Include="Jobs\LoggingHandlerBase.cs" />
     <Compile Include="Tracing\DetailedExceptionLogger.cs" />
-    <Compile Include="BillingQueueHandler.cs" />
+    <Compile Include="Jobs\BillingQueueHandler.cs" />
     <Compile Include="PairedMessagingProvider.cs" />
     <Compile Include="SimpleInjectorJobActivator.cs" />
     <Compile Include="Jobs\WebhookReaperTimer.cs" />
