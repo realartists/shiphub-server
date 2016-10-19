@@ -12,7 +12,7 @@
   using Moq;
   using NUnit.Framework;
   using QueueClient.Messages;
-  using QueueProcessor;
+  using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
 
   [TestFixture]
