@@ -1,0 +1,492 @@
+﻿<!--
+  Original template borrowed from:
+  https://github.com/leemunroe/responsive-html-email-template
+-->
+<!doctype html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <style>
+/* -------------------------------------
+CONFIGURE YOUR VARIABLES
+------------------------------------- */
+/* -------------------------------------
+GLOBAL RESETS
+------------------------------------- */
+table,
+td,
+div,
+a {
+  box-sizing: border-box;
+}
+
+img {
+  -ms-interpolation-mode: bicubic;
+  max-width: 100%;
+}
+
+body {
+  font-family: "Helvetica Neue", "Helvetica", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  height: 100% !important;
+  line-height: 1.6em;
+  margin: 0;
+  padding: 0;
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  width: 100% !important;
+}
+
+table {
+  border-collapse: separate !important;
+  mso-table-lspace: 0pt;
+  mso-table-rspace: 0pt;
+  width: 100%;
+}
+table td {
+  font-family: "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.ExternalClass {
+  width: 100%;
+}
+
+.ExternalClass,
+.ExternalClass p,
+.ExternalClass span,
+.ExternalClass font,
+.ExternalClass td,
+.ExternalClass div {
+  line-height: 100%;
+}
+
+/* -------------------------------------
+BODY & CONTAINER
+------------------------------------- */
+body {
+  background-color: #fff;
+}
+
+.body {
+  color: #333;
+  width: 100%;
+}
+
+/* Set a max-width, and make it display as block so it will automatically stretch to that width, but will also shrink down on a phone or something */
+.container {
+  display: block;
+  margin: 0 auto !important;
+  /* makes it centered */
+  max-width: 580px;
+  padding: 10px;
+  width: 100%;
+}
+
+/* This should also be a block element, so that it will fill 100% of the .container */
+.content {
+  display: block;
+  margin: 0 auto;
+  max-width: 580px;
+  padding: 10px;
+}
+
+/* -------------------------------------
+HEADER, FOOTER, MAIN
+------------------------------------- */
+.main {
+  background: #ffffff;
+  width: 100%;
+}
+
+.wrapper-horiz-padding {
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.wrapper-vert-padding {
+  padding-bottom: 30px;
+  padding-top: 30px;
+}
+
+.content-block {
+  padding: 0 0 30px;
+}
+
+.header {
+  margin-bottom: 15px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.footer {
+  clear: both;
+  width: 100%;
+}
+.footer * {
+  color: #999999;
+  font-size: 12px;
+}
+
+/* -------------------------------------
+TYPOGRAPHY
+------------------------------------- */
+h1,
+h2,
+h3,
+h4 {
+  color: #222 !important;
+  font-family: "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+  font-weight: bold;
+  line-height: 1.4em;
+  margin: 0;
+  padding-bottom: 8px;
+}
+
+h1 {
+  font-size: 38px;
+  text-transform: capitalize;
+  font-weight: bolder;
+}
+
+h2 {
+  font-size: 24px;
+}
+
+h3 {
+  font-size: 18px;
+}
+
+h4 {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+p,
+ul,
+ol {
+  font-family: "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+  font-size: 14px;
+  font-weight: normal;
+  margin: 0;
+  margin-bottom: 15px;
+}
+p li,
+ul li,
+ol li {
+  list-style-position: inside;
+  margin-left: 5px;
+}
+
+a {
+  color: #348eda;
+  text-decoration: underline;
+}
+
+code,
+pre,
+.word-wrap {
+  word-break: break-word;
+  word-wrap: break-word;
+  -webkit-hyphens: auto;
+  -moz-hyphens: auto;
+  hyphens: auto;
+}
+
+/* -------------------------------------
+BUTTONS
+------------------------------------- */
+.btn {
+  width: 100%;
+}
+.btn > tr > td {
+  padding-bottom: 15px;
+}
+.btn table {
+  width: auto;
+}
+.btn table td {
+  background-color: #ffffff;
+  border-radius: 5px;
+  text-align: center;
+}
+.btn a {
+  background-color: #ffffff;
+  border: solid 1px #348eda;
+  border-radius: 5px;
+  color: #348eda;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: bold;
+  margin: 0;
+  padding: 12px 25px;
+  text-decoration: none;
+  text-transform: capitalize;
+}
+
+.btn-primary table td {
+  background-color: #348eda;
+}
+
+.btn-primary a {
+  background-color: #348eda;
+  border-color: #348eda;
+  color: #ffffff;
+}
+
+.btn-secondary table td {
+  background-color: transparent;
+}
+
+.btn-secondary a {
+  background-color: transparent;
+  border-color: #348eda;
+  color: #348eda;
+}
+
+/* -------------------------------------
+NOTICES
+------------------------------------- */
+.notice {
+  border-collapse: separate;
+}
+.notice-spacer {
+  padding: 10px 0;
+}
+.notice td {
+  line-height: 1.6;
+  font-size: 14px;
+  font-weight: normal;
+}
+.notice-info td {
+  background: #f0f6fb;
+  border: 1px solid #b7d3ed;
+  border-radius: 6px;
+  color: #2c6eac;
+  padding: 8px 12px;
+}
+.notice-success td {
+  background: #e1f2bd;
+  border: 1px solid #c6e682;
+  border-radius: 6px;
+  color: #61821a;
+  padding: 8px 12px;
+}
+.notice-warning td {
+  background: #f7eed0;
+  border: 1px solid #edd993;
+  border-radius: 6px;
+  color: #9a7d1a;
+  padding: 8px 12px;
+}
+.notice-danger td {
+  background: #f5d5d5;
+  border: 1px solid #e89b9b;
+  border-radius: 6px;
+  color: #952222;
+  padding: 8px 12px;
+}
+.notice-lg td {
+  font-size: 16.8px;
+  line-height: 1.6;
+}
+
+/* -------------------------------------
+DIVIDERS
+------------------------------------- */
+.divider {
+  border-collapse: separate;
+}
+.divider-spacer {
+  padding: 20px 0;
+}
+.divider td {
+  border-top: 1px solid #ccc;
+  line-height: 0;
+  font-size: 0;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+}
+
+/* -------------------------------------
+OTHER STYLES THAT MIGHT BE USEFUL
+------------------------------------- */
+.last {
+  margin-bottom: 0;
+}
+
+.first {
+  margin-top: 0;
+}
+
+.align-center {
+  text-align: center;
+}
+
+.align-right {
+  text-align: right;
+}
+
+.align-left {
+  text-align: left;
+}
+
+.clear {
+  clear: both;
+}
+
+.mt0 {
+  margin-top: 0;
+}
+
+.mb0 {
+  margin-bottom: 0;
+}
+
+.preheader {
+  color: transparent;
+  display: none;
+  height: 0;
+  max-height: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  mso-hide: all;
+  visibility: hidden;
+  width: 0;
+}
+
+div.hero {
+  font-size: 22px;
+  color: #999 !important;
+  font-weight: bold;
+  padding-top: 8px;
+}
+
+hr {
+  margin-top: 5px;
+  margin-bottom: 8px;
+  height: 1px;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 1px solid #ccc;
+}
+
+p.reply-burb {
+  text-align: center;
+}
+
+img.ship-logo {
+  width: 54px;
+  height: 54px;
+}
+
+/* -------------------------------------
+RESPONSIVE AND MOBILE FRIENDLY STYLES
+------------------------------------- */
+@@media only screen and (max-width: 667px) {
+  table[class=body] h1,
+  table[class=body] h2,
+  table[class=body] h3,
+  table[class=body] h4 {
+    font-weight: bolder !important;
+  }
+  table[class=body] h1 {
+    font-size: 22px !important;
+  }
+  table[class=body] h2 {
+    font-size: 18px !important;
+  }
+  table[class=body] h3 {
+    font-size: 16px !important;
+  }
+  table[class=body] .content,
+  table[class=body] .wrapper-horiz-padding {
+    padding: 7px !important;
+  }
+  table[class=body] .wrapper-vert-padding {
+    padding: 5px !important;
+  }
+  table[class=body] .content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table[class=body] .container {
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table[class=body] .btn table,
+  table[class=body] .btn a {
+    width: 100% !important;
+  }
+}
+    </style>
+</head>
+<body>
+    <div class="preheader">
+        @ViewBag.PreHeader
+        <br />
+    </div>
+    <table class="body">
+        <tr>
+            <td></td>
+            <td class="container">
+                <div class="content">
+                    <div class="header">
+                        <table>
+                            <tr>
+                                <td class="align-center">
+                                    <a href="https://www.realartists.com"><img src="cid:ShipLogo.png" height="54" width="54" alt="Ship" class="ship-logo"></a>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <table class="main">
+                        <tr>
+                            <td class="wrapper-horiz-padding wrapper-vert-padding">
+                                <table>
+                                    <tr>
+                                        <td>
+                                            <p>
+                                                Hi @Model.FirstName,
+                                            </p>
+                                            @RenderBody()
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="footer">
+                        <tr>
+                            <td>
+                                <table class="wrapper-horiz-padding">
+                                    <tr>
+                                        <td>
+                                            <p>
+                                                Reply to this email if you have any questions - we're happy to help.
+                                            </p>
+                                            <p>
+                                                Real Artists, Inc.<br>
+                                                <a href="mailto:support@realartists.com">support@realartists.com</a>
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td></td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -13,8 +13,13 @@
   using Common.GitHub;
   using Newtonsoft.Json;
   using QueueClient;
+  using System.Net;
+  using Mail;
 
   public class ChargeBeeWebhookCustomer {
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public string Email { get; set; }
     public string Id { get; set; }
     public long ResourceVersion { get; set; }
   }
@@ -32,11 +37,17 @@
     public long DateFrom { get; set; }
   }
 
+  public class ChargeBeeWebhookInvoiceDiscount {
+    public string EntityType { get; set; }
+    public string EntityId { get; set; }
+  }
+
   public class ChargeBeeWebhookInvoice {
     public string Id { get; set; }
     public string CustomerId { get; set; }
-    public string Status { get; set; }
+    public long Date { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceLineItem> LineItems { get; set; }
+    public IEnumerable<ChargeBeeWebhookInvoiceDiscount> Discounts { get; set; }
   }
 
   public class ChargeBeeWebhookContent {
@@ -54,9 +65,23 @@
   public class ChargeBeeWebhookController : ShipHubController {
 
     private IShipHubQueueClient _queueClient;
+    private IShipHubMailer _mailer;
 
-    public ChargeBeeWebhookController(IShipHubQueueClient queueClient) {
+    public ChargeBeeWebhookController(IShipHubQueueClient queueClient, IShipHubMailer mailer) {
       _queueClient = queueClient;
+      _mailer = mailer;
+    }
+
+    public virtual byte[] GetInvoicePdfBytes(string invoiceId) {
+      var downloadUrl = Invoice.Pdf(invoiceId).Request().Download.DownloadUrl;
+
+      byte[] invoiceBytes;
+
+      using (var client = new WebClient()) {
+        invoiceBytes = client.DownloadData(downloadUrl);
+      }
+        
+      return invoiceBytes;
     }
 
     [HttpPost]
@@ -86,7 +111,68 @@
           break;
       }
 
+      if (payload.EventType == "subscription_activated") {
+        await SendPurchasePersonalMessage(payload);
+      } else if (payload.EventType == "subscription_created") {
+        await SendPurchaseOrganizationMessage(payload);
+      }
+
       return Ok();
+    }
+
+    public async Task SendPurchasePersonalMessage(ChargeBeeWebhookPayload payload) {
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(payload.Content.Customer.Id);
+
+      if (matches.Groups[1].ToString() != "user") {
+        // "activated" only happens on transition from trial -> active, and we only do trials
+        // for personal subscriptions.
+        throw new Exception("subscription_activated should only happen on personal/user subscriptions");
+      }
+
+      var accountId = long.Parse(matches.Groups[2].ToString());
+
+      bool belongsToOrganization = false;
+
+      using (var context = new ShipHubContext()) {
+        belongsToOrganization = (await context.OrganizationAccounts.CountAsync(x => x.UserId == accountId)) > 0;
+      }
+
+      bool wasGivenTrialCredit = payload.Content.Invoice.Discounts?
+        .Count(x => x.EntityType == "document_level_coupon" && x.EntityId.StartsWith("trial_days_left")) > 0;
+
+      await _mailer.PurchasePersonal(
+        new Mail.Models.PurchasePersonalMailMessage() {
+          ToAddress = payload.Content.Customer.Email,
+          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          FirstName = payload.Content.Customer.FirstName,
+          BelongsToOrganization = belongsToOrganization,
+          WasGivenTrialCredit = wasGivenTrialCredit,
+          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+          InvoicePdfBytes = GetInvoicePdfBytes(payload.Content.Invoice.Id),
+        });
+    }
+
+    public async Task SendPurchaseOrganizationMessage(ChargeBeeWebhookPayload payload) {
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(payload.Content.Customer.Id);
+
+      if (matches.Groups[1].ToString() != "org") {
+        // "activated" only happens on transition from trial -> active, and we only do trials
+        // for personal subscriptions.
+        throw new Exception("subscription_created should only happen on org subscriptions");
+      }
+
+      var accountId = long.Parse(matches.Groups[2].ToString());
+
+      await _mailer.PurchaseOrganization(
+        new Mail.Models.PurchaseOrganizationMailMessage() {
+          ToAddress = payload.Content.Customer.Email,
+          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          FirstName = payload.Content.Customer.FirstName,
+          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+          InvoicePdfBytes = GetInvoicePdfBytes(payload.Content.Invoice.Id),
+        });
     }
 
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
