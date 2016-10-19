@@ -18,6 +18,9 @@
   using Newtonsoft.Json;
   using NUnit.Framework;
   using QueueClient;
+  using QueueClient.Messages;
+  using Mail;
+  using Mail.Models;
 
   [TestFixture]
   [AutoRollback]
@@ -44,7 +47,10 @@
       DateTimeOffset? beginTrialEndDate,
       SubscriptionState expectedState,
       DateTimeOffset? expectedTrialEndDate,
-      bool notifyExpected
+      bool notifyExpected,
+      ChargeBeeWebhookInvoice invoicePayload = null,
+      List<MailMessageBase> outgoingMessages = null,
+      bool userBelongsToOrganization = false
       ) {
       using (var context = new ShipHubContext()) {
         User user = null;
@@ -59,6 +65,13 @@
             TrialEndDate = beginTrialEndDate,
             Version = 0,
           });
+
+          if (userBelongsToOrganization) {
+            org = TestUtil.MakeTestOrg(context);
+            await context.SetOrganizationUsers(org.Id, new[] {
+              Tuple.Create(user.Id, true),
+            });
+          }
         } else {
           org = TestUtil.MakeTestOrg(context);
           sub = context.Subscriptions.Add(new Subscription() {
@@ -77,22 +90,40 @@
           .Returns(Task.CompletedTask)
           .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
-        var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+        var mockMailer = new Mock<IShipHubMailer>();
+        mockMailer
+          .Setup(x => x.PurchasePersonal(It.IsAny<PurchasePersonalMailMessage>()))
+          .Returns(Task.CompletedTask)
+          .Callback((PurchasePersonalMailMessage message) => outgoingMessages?.Add(message));
+        mockMailer
+          .Setup(x => x.PurchaseOrganization(It.IsAny<PurchaseOrganizationMailMessage>()))
+          .Returns(Task.CompletedTask)
+          .Callback((PurchaseOrganizationMailMessage message) => outgoingMessages?.Add(message));
+
+        var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+        controller.CallBase = true;
+        controller
+          .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
+          .Returns(Task.FromResult(new byte[0]));
+
         ConfigureController(
-          controller,
+          controller.Object,
           new ChargeBeeWebhookPayload() {
             EventType = eventType,
             Content = new ChargeBeeWebhookContent() {
               Customer = new ChargeBeeWebhookCustomer() {
                 Id = $"{userOrOrg}-{sub.AccountId}",
+                FirstName = "Aroon",
+                LastName = "Pahwa",
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
                 TrialEnd = chargeBeeTrialEndDate?.ToUnixTimeSeconds(),
-              }
+              },
+              Invoice = invoicePayload,
             },
           });
-        await controller.HandleHook();
+        await controller.Object.HandleHook();
 
         context.Entry(sub).Reload();
         Assert.AreEqual(expectedState, sub.State);
@@ -138,7 +169,44 @@
         beginTrialEndDate: DateTimeOffset.Parse("2020-09-22T00:00:00+00:00"),
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
-        notifyExpected: true);
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 08, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        });
+    }
+
+    [Test]
+    public async Task SubscriptionActivatedSendsPurchasePersonalMessage() {
+      var messages = new List<MailMessageBase>();
+      await TestSubscriptionStateChangeHelper(
+        userOrOrg: "user",
+        eventType: "subscription_activated",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.InTrial,
+        beginTrialEndDate: DateTimeOffset.Parse("2016-11-30T00:00:00+00:00"),
+        expectedState: SubscriptionState.Subscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+          Discounts = new[] {
+                  new ChargeBeeWebhookInvoiceDiscount() {
+                    EntityType = "document_level_coupon",
+                    EntityId = "trial_days_left_15",
+                  },
+                },
+        },
+        outgoingMessages: messages,
+        userBelongsToOrganization: true);
+
+      Assert.AreEqual(1, messages.Count);
+      var message = (PurchasePersonalMailMessage)messages.First();
+      Assert.AreEqual("Aroon", message.FirstName);
+      Assert.AreEqual(true, message.BelongsToOrganization);
+      Assert.AreEqual(true, message.WasGivenTrialCredit);
     }
 
     [Test]
@@ -242,7 +310,7 @@
       // Triggered when a subscription is created and is active from the start.
       // e.g., when someone purchases an org subscription which has no trial.
       await TestSubscriptionStateChangeHelper(
-        userOrOrg: "user",
+        userOrOrg: "org",
         eventType: "subscription_created",
         chargeBeeState: "active",
         chargeBeeTrialEndDate: null,
@@ -250,7 +318,35 @@
         beginTrialEndDate: null,
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
-        notifyExpected: true);
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        });
+    }
+
+    [Test]
+    public async Task SubscriptionCreatedSendsPurchaseOrganizationMessage() {
+      var messages = new List<MailMessageBase>();
+      await TestSubscriptionStateChangeHelper(
+        userOrOrg: "org",
+        eventType: "subscription_created",
+        chargeBeeState: "active",
+        chargeBeeTrialEndDate: null,
+        beginState: SubscriptionState.NotSubscribed,
+        beginTrialEndDate: null,
+        expectedState: SubscriptionState.Subscribed,
+        expectedTrialEndDate: null,
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        },
+        outgoingMessages: messages);
+
+      Assert.AreEqual(1, messages.Count);
+      var message = (PurchaseOrganizationMailMessage)messages.First();
+      Assert.AreEqual("Aroon", message.FirstName);
     }
 
     [Test]
@@ -280,7 +376,11 @@
         beginTrialEndDate: null,
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
-        notifyExpected: true);
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        });
     }
 
     [Test]
@@ -295,7 +395,8 @@
         await context.SaveChangesAsync();
 
         var mockBusClient = new Mock<IShipHubQueueClient>();
-        var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+        var mockMailer = new Mock<IShipHubMailer>();
+        var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
         ConfigureController(
           controller,
           new ChargeBeeWebhookPayload() {
@@ -355,7 +456,8 @@
       };
 
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+      var mockMailer = new Mock<IShipHubMailer>();
+      var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
       ConfigureController(controller, payload);
 
       bool didCloseInvoice = false;
@@ -527,7 +629,8 @@
 
         Func<ChargeBeeWebhookPayload, Task> fireEvent = (ChargeBeeWebhookPayload payload) => {
           var mockBusClient = new Mock<IShipHubQueueClient>();
-          var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+          var mockMailer = new Mock<IShipHubMailer>();
+          var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
           ConfigureController(controller, payload);
           return controller.HandleHook();
         };
@@ -620,8 +723,8 @@
           .Setup(x => x.BillingUpdateComplimentarySubscription(It.IsAny<long>()))
           .Returns(Task.CompletedTask)
           .Callback((long userId) => { scheduledUserIds.Add(userId); });
-
-        var controller = new ChargeBeeWebhookController(mockBusClient.Object);
+        var mockMailer = new Mock<IShipHubMailer>();
+        var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
         ConfigureController(
           controller,
           new ChargeBeeWebhookPayload() {

@@ -4,6 +4,7 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Mail;
   using Orleans;
   using QueueClient;
   using SimpleInjector;
@@ -43,6 +44,8 @@
 
       // Sync Manager
       container.Register<ISyncManager, SyncManager>(Lifestyle.Singleton);
+
+      container.Register<IShipHubMailer, ShipHubMailer>(Lifestyle.Singleton);
 
       // This is an extension method from the integration package.
       container.RegisterWebApiControllers(GlobalConfiguration.Configuration);
