@@ -240,22 +240,24 @@
             .CustomerId().Is($"user-{message.UserId}")
             .PlanId().Is("personal")
             .Limit(1)
-            .Request().List.First()?.Subscription;
+            .Request().List.FirstOrDefault()?.Subscription;
 
-          var hasCoupon = false;
+          if (sub != null) {
+            var hasCoupon = false;
 
-          if (sub.Coupons != null) {
-            hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
-          }
+            if (sub.Coupons != null) {
+              hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
+            }
 
-          if (isMemberOfPaidOrg && !hasCoupon) {
-            ChargeBee.Models.Subscription.Update(sub.Id)
-              .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
-              .Request();
-          } else if (!isMemberOfPaidOrg && hasCoupon) {
-            ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
-              .CouponIds(new List<string>() { couponId })
-              .Request();
+            if (isMemberOfPaidOrg && !hasCoupon) {
+              ChargeBee.Models.Subscription.Update(sub.Id)
+                .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
+                .Request();
+            } else if (!isMemberOfPaidOrg && hasCoupon) {
+              ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
+                .CouponIds(new List<string>() { couponId })
+                .Request();
+            }
           }
         }
       });

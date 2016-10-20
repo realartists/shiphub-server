@@ -635,6 +635,7 @@
 
     private static async Task UpdateComplimentarySubscriptionHelper(
       bool isMemberOfPaidOrg,
+      bool memberHasSub,
       bool subHasCoupon,
       bool expectCouponAddition,
       bool expectCouponRemoval
@@ -664,24 +665,31 @@
               Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
               Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              return new {
-                list = new object[] {
-                  new {
-                    subscription = new {
-                      id = "some-sub-id",
-                      status = "active",
-                      coupons = !subHasCoupon ?
-                        new object[0] :
-                        new[] {
-                          new {
-                            coupon_id = "member_of_paid_org",
+              if (memberHasSub) {
+                return new {
+                  list = new object[] {
+                    new {
+                      subscription = new {
+                        id = "some-sub-id",
+                        status = "active",
+                        coupons = !subHasCoupon ?
+                          new object[0] :
+                          new[] {
+                            new {
+                              coupon_id = "member_of_paid_org",
+                            },
                           },
-                        },
+                      },
                     },
                   },
-                },
-                next_offset = null as string,
-              };
+                  next_offset = null as string,
+                };
+              } else {
+                return new {
+                  list = new object[0],
+                  next_offset = null as string,
+                };
+              }
             } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id") {
               didAddCoupon = true;
               Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
@@ -722,6 +730,7 @@
     public Task WillAddCouponWhenOrgIsPaidAndCouponIsMissing() {
       return UpdateComplimentarySubscriptionHelper(
         isMemberOfPaidOrg: true,
+        memberHasSub: true,
         subHasCoupon: false,
         expectCouponAddition: true,
         expectCouponRemoval: false);
@@ -731,6 +740,7 @@
     public Task WillRemoveCouponWhenOrgIsNotPaidAndCouponIsPresent() {
       return UpdateComplimentarySubscriptionHelper(
         isMemberOfPaidOrg: false,
+        memberHasSub: true,
         subHasCoupon: true,
         expectCouponAddition: false,
         expectCouponRemoval: true);
@@ -740,6 +750,7 @@
     public Task WillDoNothingWhenWhenOrgIsPaidAndCouponIsPresent() {
       return UpdateComplimentarySubscriptionHelper(
         isMemberOfPaidOrg: true,
+        memberHasSub: true,
         subHasCoupon: true,
         expectCouponAddition: false,
         expectCouponRemoval: false);
@@ -749,6 +760,17 @@
     public Task WillDoNothingWhenWhenOrgIsNotPaidAndCouponIsNotPresent() {
       return UpdateComplimentarySubscriptionHelper(
         isMemberOfPaidOrg: false,
+        memberHasSub: true,
+        subHasCoupon: false,
+        expectCouponAddition: false,
+        expectCouponRemoval: false);
+    }
+
+    [Test]
+    public Task WillDoNothingWhenWhenOrgIsPaidButMemberHasNoSubscription() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: true,
+        memberHasSub: false,
         subHasCoupon: false,
         expectCouponAddition: false,
         expectCouponRemoval: false);
