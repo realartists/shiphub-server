@@ -344,7 +344,7 @@
 
         var mockClient = new Mock<IGitHubActor>();
         mockClient
-          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.User(It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
             Result = new Common.GitHub.Models.Account() {
               Id = user.Id,
@@ -353,7 +353,7 @@
             },
           });
         mockClient
-          .Setup(x => x.UserEmails(It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.UserEmails(It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Common.GitHub.Models.UserEmail>>(null) {
             Result = new[] {
               new Common.GitHub.Models.UserEmail() {
@@ -364,7 +364,7 @@
             }
           });
         mockClient
-          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
             Result = new Common.GitHub.Models.Account() {
               Id = 6001,
@@ -429,7 +429,7 @@
 
         var mockClient = new Mock<IGitHubActor>();
         mockClient
-          .Setup(x => x.User(It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.User(It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
             Result = new Common.GitHub.Models.Account() {
               Id = user.Id,
@@ -438,7 +438,7 @@
             },
           });
         mockClient
-          .Setup(x => x.UserEmails(It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.UserEmails(It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Common.GitHub.Models.UserEmail>>(null) {
             Result = new[] {
               new Common.GitHub.Models.UserEmail() {
@@ -449,7 +449,7 @@
             }
           });
         mockClient
-          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<IGitHubCacheDetails>()))
+          .Setup(x => x.Organization(It.IsAny<string>(), It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
             Result = new Common.GitHub.Models.Account() {
               Id = 6001,

@@ -31,185 +31,6 @@
       _grainFactory = grainFactory;
     }
 
-    public async Task SyncAccount(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccount)] UserIdMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncAccountRepositories)] IAsyncCollector<UserIdMessage> syncAccountRepos,
-      [ServiceBus(ShipHubQueueNames.SyncAccountOrganizations)] IAsyncCollector<UserIdMessage> syncAccountOrgs,
-      [ServiceBus(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription)] IAsyncCollector<UserIdMessage> getOrCreatePersonalSubscription,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          logger.WriteLine($"User details for {user.Login} cached until {user.Metadata?.Expires:o}");
-          if (user.Metadata == null || user.Metadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine($"Polling: User");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-            var userResponse = await ghc.User(user.Metadata.IfValidFor(user)?.AsCacheDetails());
-
-            if (userResponse.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("GitHub: Changed. Saving changes.");
-              changes = await context.UpdateAccount(
-                userResponse.Date,
-                _mapper.Map<AccountTableType>(userResponse.Result));
-            } else {
-              logger.WriteLine($"GitHub: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Accounts", user.Id, userResponse));
-            tasks.Add(notifyChanges.Send(changes));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {user.Metadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-
-          // Now that the user is saved in the DB, safe to sync all repos and user's orgs
-          var am = new UserIdMessage(user.Id);
-          tasks.Add(syncAccountRepos.AddAsync(am));
-          tasks.Add(syncAccountOrgs.AddAsync(am));
-          tasks.Add(getOrCreatePersonalSubscription.AddAsync(am));
-
-          await Task.WhenAll(tasks);
-        }
-      });
-    }
-
-    public async Task SyncAccountRepositories(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountRepositories)] UserIdMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepository)] IAsyncCollector<TargetMessage> syncRepo,
-      [ServiceBus(ShipHubQueueNames.AddOrUpdateRepoWebhooks)] IAsyncCollector<TargetMessage> addOrUpdateRepoWebhooks,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          logger.WriteLine($"Account repositories for {user.Login} cached until {user.RepositoryMetadata?.Expires:o}");
-          if (user.RepositoryMetadata == null || user.RepositoryMetadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Account repositories.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-            var repoResponse = await ghc.Repositories(user.RepositoryMetadata.IfValidFor(user)?.AsCacheDetails());
-
-            if (repoResponse.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var reposWithIssues = repoResponse.Result.Where(x => x.HasIssues);
-              var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => ghc.IsAssignable(x.FullName, user.Login));
-              await Task.WhenAll(assignableRepos.Values);
-              var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
-
-              var owners = keepRepos
-                .Select(x => x.Owner)
-                .Distinct(x => x.Login);
-              changes = await context.BulkUpdateAccounts(repoResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(owners));
-              changes.UnionWith(await context.BulkUpdateRepositories(repoResponse.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
-              changes.UnionWith(await context.SetAccountLinkedRepositories(user.Id, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
-
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Accounts", "RepoMetadataJson", user.Id, repoResponse));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-
-          var repos = await context.AccountRepositories
-            .Where(x => x.AccountId == user.Id)
-            .ToArrayAsync();
-
-          // Now that owners, repos, and links are saved, safe to sync the repos themselves.
-          await Task.WhenAll(repos.Select(x => syncRepo.AddAsync(new TargetMessage(x.RepositoryId, user.Id))));
-          await Task.WhenAll(repos
-            .Where(x => x.Admin)
-            .Select(x => addOrUpdateRepoWebhooks.AddAsync(new TargetMessage(x.RepositoryId, user.Id))));
-        }
-      });
-    }
-
-    /// NOTE WELL: We sync only sync orgs for which the user is a member. If they can see a repo in an org
-    /// but aren't a member, too bad for them. The permissions are too painful otherwise.
-    public async Task SyncAccountOrganizations(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncAccountOrganizations)] UserIdMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncOrganizationMembers)] IAsyncCollector<TargetMessage> syncOrgMembers,
-      [ServiceBus(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] IAsyncCollector<TargetMessage> syncOrgSubscriptionState,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      [ServiceBus(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] IAsyncCollector<UserIdMessage> updateComplimentarySubscription,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.UserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          logger.WriteLine($"Organization memberships for {user.Login} cached until {user.OrganizationMetadata?.Expires}");
-          if (user.OrganizationMetadata == null || user.OrganizationMetadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Organization membership.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-            var orgResponse = await ghc.OrganizationMemberships(cacheOptions: user.OrganizationMetadata.IfValidFor(user)?.AsCacheDetails());
-
-            if (orgResponse.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var orgs = orgResponse.Result;
-
-              changes = await context.BulkUpdateAccounts(orgResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(orgs.Select(x => x.Organization)));
-
-              var userOrgChanges = await context.SetUserOrganizations(user.Id, orgs.Select(x => x.Organization.Id));
-              if (!userOrgChanges.Empty) {
-                // When this user's org membership changes, re-evaluate whether or not they
-                // should have a complimentary personal subscription.
-                tasks.Add(updateComplimentarySubscription.AddAsync(new UserIdMessage(user.Id)));
-              }
-
-              changes.UnionWith(userOrgChanges);
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              // TODO: Even if the org memberships have not changed, do I want to refresh the orgs? Perhaps?
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Accounts", "OrgMetadataJson", user.Id, orgResponse));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {user.OrganizationMetadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-
-          var allOrgIds = await context.OrganizationAccounts
-            .Where(x => x.UserId == user.Id)
-            .Select(x => x.OrganizationId)
-            .ToArrayAsync();
-
-          // Refresh member list as well
-          if (allOrgIds.Any()) {
-            var syncOrgMembersTasks = allOrgIds.Select(x => syncOrgMembers.AddAsync(new TargetMessage(x, user.Id)));
-            var syncOrgSubscriptionStateTasks = allOrgIds.Select(x => syncOrgSubscriptionState.AddAsync(new TargetMessage(x, user.Id)));
-            await Task.WhenAll(syncOrgMembersTasks.Concat(syncOrgSubscriptionStateTasks));
-          }
-        }
-      });
-    }
-
     public async Task SyncOrganizationMembers(
       [ServiceBusTrigger(ShipHubQueueNames.SyncOrganizationMembers)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -333,7 +154,7 @@
             logger.WriteLine("Polling: Repository assignees.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Assignable(repo.FullName, metadata?.AsCacheDetails());
+            var response = await ghc.Assignable(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var assignees = response.Result;
@@ -384,7 +205,7 @@
             logger.WriteLine("Polling: Repository milestones.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Milestones(repo.FullName, metadata?.AsCacheDetails());
+            var response = await ghc.Milestones(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var milestones = response.Result;
@@ -436,7 +257,7 @@
             logger.WriteLine("Polling: Repository labels.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Labels(repo.FullName, metadata?.AsCacheDetails());
+            var response = await ghc.Labels(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var labels = response.Result;
@@ -494,7 +315,7 @@
             logger.WriteLine("Polling: Repository issues.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Issues(repo.FullName, null, metadata?.AsCacheDetails());
+            var response = await ghc.Issues(repo.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var issues = response.Result;
@@ -562,7 +383,7 @@
             logger.WriteLine("Polling: Repository comments.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.Comments(repo.FullName, null, metadata?.AsCacheDetails());
+            var response = await ghc.Comments(repo.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var comments = response.Result;
@@ -614,7 +435,7 @@
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
             // TODO: Cute pagination trick to detect latest only.
-            var response = await ghc.Events(repo.FullName, metadata?.AsCacheDetails());
+            var response = await ghc.Events(repo.FullName, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var events = response.Result;
@@ -672,7 +493,7 @@
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
             // TODO: Cute pagination trick to detect latest only.
-            var response = await ghc.Comments(issue.Repository.FullName, null, metadata?.AsCacheDetails());
+            var response = await ghc.Comments(issue.Repository.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var comments = response.Result;
@@ -734,7 +555,7 @@
             logger.WriteLine("Polling: Issue reactions.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata?.AsCacheDetails());
+            var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var reactions = response.Result;
@@ -789,7 +610,7 @@
             logger.WriteLine("Polling: Issue reactions.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
 
-            var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata?.AsCacheDetails());
+            var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata);
             switch (response.Status) {
               case HttpStatusCode.NotModified:
                 logger.WriteLine("Github: Not modified.");
@@ -874,7 +695,7 @@
           // Even hooks aren't fast enough to completely prevent this.
           // The intercepting proxy should alleviate most but not all cases.
           // In the meantime, always discover/refresh the issue on view
-          var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number, issueInfo?.Metadata?.AsCacheDetails());
+          var issueResponse = await ghc.Issue(message.RepositoryFullName, message.Number, issueInfo?.Metadata);
           if (issueResponse.Status != HttpStatusCode.NotModified) {
             var update = issueResponse.Result;
 

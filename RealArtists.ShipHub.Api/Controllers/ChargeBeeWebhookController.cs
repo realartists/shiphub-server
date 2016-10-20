@@ -176,7 +176,7 @@
           .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
           .Select(x => x.UserId)
           .ToArray();
-        await Task.WhenAll(orgAccountIds.Select(x => _queueClient.UpdateComplimentarySubscription(x)));
+        await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
       }
     }
 

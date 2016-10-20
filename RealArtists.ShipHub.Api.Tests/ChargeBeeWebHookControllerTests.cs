@@ -617,7 +617,7 @@
         var scheduledUserIds = new List<long>();
         var mockBusClient = new Mock<IShipHubQueueClient>();
         mockBusClient
-          .Setup(x => x.UpdateComplimentarySubscription(It.IsAny<long>()))
+          .Setup(x => x.BillingUpdateComplimentarySubscription(It.IsAny<long>()))
           .Returns(Task.CompletedTask)
           .Callback((long userId) => { scheduledUserIds.Add(userId); });
 

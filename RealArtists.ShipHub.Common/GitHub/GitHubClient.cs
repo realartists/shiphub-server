@@ -51,22 +51,22 @@
 
     /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    public Task<GitHubResponse<Account>> User(IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user", cacheOptions, restricted: true);
       return Fetch<Account>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/emails", cacheOptions);
       return FetchPaged(request, (UserEmail x) => x.Email);
     }
 
-    public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/repos", cacheOptions, restricted: true);
       return FetchPaged(request, (Repository x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/timeline", cacheOptions, restricted: true) {
         // Timeline support (application/vnd.github.mockingbird-preview+json)
         // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
@@ -76,12 +76,12 @@
       return FetchPaged(request, (IssueEvent x) => Tuple.Create(x.Event, x.Id, x.ExtensionDataDictionary.Val("url")));
     }
 
-    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{number}", cacheOptions);
       return Fetch<Issue>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions);
       if (since != null) {
         request.AddParameter("since", since);
@@ -92,7 +92,7 @@
       return FetchPaged(request, (Issue x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/reactions", cacheOptions) {
         // Reactions are in beta
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
@@ -100,7 +100,7 @@
       return FetchPaged(request, (Reaction x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/comments/{commentId}/reactions", cacheOptions) {
         // Reactions are in beta
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
@@ -108,7 +108,7 @@
       return FetchPaged(request, (Reaction x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = null, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions);
       if (since != null) {
         request.AddParameter("since", since);
@@ -116,7 +116,7 @@
       return FetchPaged(request, (Comment x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = null, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions);
       if (since != null) {
         request.AddParameter("since", since);
@@ -126,35 +126,35 @@
       return FetchPaged(request, (Comment x) => x.Id);
     }
 
-    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions, restricted: true);
       return Fetch<Commit>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/events", cacheOptions);
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
       return FetchPaged(request, (IssueEvent x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/labels", cacheOptions);
       return FetchPaged(request, (Label x) => Tuple.Create(x.Name, x.Color));
     }
 
-    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/milestones", cacheOptions);
       request.AddParameter("state", "all");
       return FetchPaged(request, (Milestone x) => x.Id);
     }
 
-    public Task<GitHubResponse<Account>> Organization(string orgName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"orgs/{orgName}", cacheOptions);
       return Fetch<Account>(request);
     }
 
-    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", IGitHubCacheDetails cacheOptions = null) {
+    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted: true);
       request.AddParameter(nameof(state), state);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
@@ -169,19 +169,19 @@
       return result;
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null) {
       // defaults: filter=all, role=all
       var request = new GitHubRequest($"orgs/{orgLogin}/members", cacheOptions);
       request.AddParameter("role", role);
       return FetchPaged(request, (Account x) => x.Id);
     }
 
-    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions);
       return Fetch<PullRequest>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions);
       return FetchPaged(request, (Account x) => x.Id);
     }
@@ -205,12 +205,12 @@
       return response;
     }
 
-    public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"orgs/{name}/hooks", cacheOptions);
       return FetchPaged(request, (Webhook x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, IGitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/hooks", cacheOptions);
       return FetchPaged(request, (Webhook x) => x.Id);
     }
