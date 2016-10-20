@@ -10,6 +10,7 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -17,6 +18,7 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Newtonsoft.Json;
+  using Orleans;
   using QueueClient;
 
   [AllowAnonymous]
@@ -26,10 +28,12 @@
     public const string DeliveryIdHeaderName = "X-GitHub-Delivery";
     public const string SignatureHeaderName = "X-Hub-Signature";
 
+    private IGrainFactory _grainFactory;
     private IShipHubQueueClient _queueClient;
     private IMapper _mapper;
 
-    public GitHubWebhookController(IShipHubQueueClient queueClient, IMapper mapper) {
+    public GitHubWebhookController(IShipHubQueueClient queueClient, IMapper mapper, IGrainFactory grainFactory) {
+      _grainFactory = grainFactory;
       _queueClient = queueClient;
       _mapper = mapper;
     }
@@ -52,9 +56,9 @@
 
       Hook hook = null;
 
-      if (type.Equals("org")) {
+      if (type == "org") {
         hook = Context.Hooks.SingleOrDefault(x => x.OrganizationId == id);
-      } else if (type.Equals("repo")) {
+      } else if (type == "repo") {
         hook = Context.Hooks.SingleOrDefault(x => x.RepositoryId == id);
       }
 
@@ -115,10 +119,10 @@
         case "repository":
           if (
             // Created events can only come from the org-level hook.
-            payload.Action.Equals("created") ||
+            payload.Action == "created" ||
             // We'll get deletion events from both the repo and org, but
             // we'll ignore the org one.
-            (type.Equals("repo") && payload.Action.Equals("deleted"))) {
+            (type == "repo" && payload.Action == "deleted")) {
             await HandleRepository(payload);
           }
           break;
@@ -136,11 +140,11 @@
     }
 
     private async Task HandleIssueComment(WebhookPayload payload, ChangeSummary changeSummary) {
-      // Ensure the issue that owns this comment exists locally efore we add the comment.
+      // Ensure the issue that owns this comment exists locally before we add the comment.
       await HandleIssues(payload, changeSummary);
 
       using (var context = new ShipHubContext()) {
-        if (payload.Action.Equals("deleted")) {
+        if (payload.Action == "deleted") {
           changeSummary.UnionWith(await context.DeleteComments(new[] { payload.Comment.Id }));
         } else {
           changeSummary.UnionWith(await context.BulkUpdateAccounts(
@@ -158,18 +162,23 @@
       if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
         var users = await Context.OrganizationAccounts
           .Where(x => x.OrganizationId == payload.Repository.Owner.Id)
-          .Include(x => x.User)
           .Where(x => x.User.Token != null)
           .Select(x => x.User)
           .ToListAsync();
-        var syncTasks = users.Select(x => _queueClient?.SyncAccountRepositories(x.Id));
-        await Task.WhenAll(syncTasks);
+
+        await Task.WhenAll(
+          users.Select(x => {
+            var userActor = _grainFactory.GetGrain<IUserActor>(x.Id);
+            return userActor.ForceSyncRepositories();
+          })
+        );
       } else {
         // TODO: This should also trigger a sync for contributors of a repo, but at
         // least this is more correct than what we have now.
         var owner = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
         if (owner.Token != null) {
-          await _queueClient?.SyncAccountRepositories(owner.Id);
+          var userActor = _grainFactory.GetGrain<IUserActor>(owner.Id);
+          await userActor.ForceSyncRepositories();
         }
       }
     }
@@ -193,7 +202,6 @@
       }
 
       if (referencedAccounts.Count > 0) {
-
         var accountsMapped = _mapper.Map<IEnumerable<AccountTableType>>(referencedAccounts.Distinct(x => x.Id));
         summary.UnionWith(await Context.BulkUpdateAccounts(DateTimeOffset.UtcNow, accountsMapped));
       }

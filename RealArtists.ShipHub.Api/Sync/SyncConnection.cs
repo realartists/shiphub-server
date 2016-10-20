@@ -13,6 +13,7 @@
   using System.Text;
   using System.Threading;
   using System.Threading.Tasks;
+  using ActorInterfaces;
   using Common;
   using Common.WebSockets;
   using Filters;
@@ -20,6 +21,7 @@
   using Microsoft.ApplicationInsights;
   using Mindscape.Raygun4Net.WebApi;
   using Newtonsoft.Json.Linq;
+  using Orleans;
   using QueueClient;
 
   public interface ISyncConnection {
@@ -41,16 +43,18 @@
     private SyncContext _syncContext;
     private ISyncManager _syncManager;
     private IShipHubQueueClient _queueClient;
+    private IGrainFactory _grainFactory;
 
     private IDisposable _syncSubscription;
     private IDisposable _pollSubscription;
 
 
-    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IShipHubQueueClient queueClient)
+    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IShipHubQueueClient queueClient, IGrainFactory grainFactory)
       : base(_MaxMessageSize) {
       _user = user;
       _syncManager = syncManager;
       _queueClient = queueClient;
+      _grainFactory = grainFactory;
     }
 
     public override Task OnError(Exception exception) {
@@ -179,11 +183,12 @@
         .Subscribe();
 
       // Polling for updates
+      var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);
       _pollSubscription = _PollInterval
         .ObserveOn(TaskPoolScheduler.Default)
         .StartWith(0)
         .Select(_ =>
-          Observable.FromAsync(() => _queueClient.SyncAccount(_user.UserId))
+          Observable.FromAsync(() => userActor.Sync())
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequential evaluation
         .Subscribe();

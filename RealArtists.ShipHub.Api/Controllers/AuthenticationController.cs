@@ -6,11 +6,12 @@
   using System.Net;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces;
   using AutoMapper;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
-  using QueueClient;
+  using Orleans;
 
   public class HelloRequest {
     public string AccessToken { get; set; }
@@ -20,7 +21,7 @@
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
-    private IShipHubQueueClient _queueClient;
+    private IGrainFactory _grainFactory;
     private IMapper _mapper;
 
     private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
@@ -31,8 +32,8 @@
       "admin:org_hook",
     }.AsReadOnly();
 
-    public AuthenticationController(IShipHubQueueClient queueClient, IMapper mapper) {
-      _queueClient = queueClient;
+    public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
+      _grainFactory = grainFactory;
       _mapper = mapper;
     }
 
@@ -85,7 +86,8 @@
       // Be sure to save the account *before* syncing it!
       await Context.SaveChangesAsync();
 
-      await _queueClient.SyncAccount(user.Id);
+      var userGrain = _grainFactory.GetGrain<IUserActor>(user.Id);
+      await userGrain.Sync();
 
       return Ok(userInfo);
     }

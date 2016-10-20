@@ -8,6 +8,7 @@
   using System.Web.Http;
   using System.Web.WebSockets;
   using Filters;
+  using Orleans;
   using QueueClient;
   using Sync;
 
@@ -15,10 +16,12 @@
   public class SyncController : ApiController {
     private ISyncManager _syncManager;
     private IShipHubQueueClient _queueClient;
+    private IGrainFactory _grainFactory;
 
-    public SyncController(ISyncManager syncManager, IShipHubQueueClient queueClient) {
+    public SyncController(ISyncManager syncManager, IShipHubQueueClient queueClient, IGrainFactory grainFactory) {
       _syncManager = syncManager;
       _queueClient = queueClient;
+      _grainFactory = grainFactory;
     }
 
     [Route("")]
@@ -28,7 +31,7 @@
       var context = HttpContext.Current;
       if (context.IsWebSocketRequest) {
         var user = RequestContext.Principal as ShipHubPrincipal;
-        var handler = new SyncConnection(user, _syncManager, _queueClient);
+        var handler = new SyncConnection(user, _syncManager, _queueClient, _grainFactory);
         context.AcceptWebSocketRequest(handler.AcceptWebSocketRequest, new AspNetWebSocketOptions() { SubProtocol = "V1" });
         return new HttpResponseMessage(HttpStatusCode.SwitchingProtocols);
       }

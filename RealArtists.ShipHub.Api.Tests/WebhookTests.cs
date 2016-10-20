@@ -13,6 +13,7 @@
   using System.Web.Http.Hosting;
   using System.Web.Http.Results;
   using System.Web.Http.Routing;
+  using ActorInterfaces;
   using AutoMapper;
   using Common;
   using Common.DataModel.Types;
@@ -23,6 +24,7 @@
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
+  using Orleans;
   using QueueClient;
 
   [TestFixture]
@@ -93,7 +95,7 @@
         .Returns(Task.CompletedTask)
         .Callback((IChangeSummary arg) => { changeSummary = arg; });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper, null);
       ConfigureController(controller, eventName, obj, secret);
 
       IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
@@ -170,7 +172,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -201,7 +203,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("org", org.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -230,7 +232,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(BadRequestErrorMessageResult), result);
@@ -260,7 +262,7 @@
           new JProperty("id", repo.Id)
           )));
 
-        var controller = new GitHubWebhookController(null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, hook.Secret.ToString());
         var result = await controller.HandleHook("repo", repo.Id);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -288,7 +290,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
 
         Assert.IsInstanceOf<NotFoundResult>(
@@ -964,17 +966,20 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<long>();
-
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
-        .Returns(Task.CompletedTask)
-        .Callback((long accountId) => {
-          syncAccountRepositoryCalls.Add(accountId);
+      var forceRepoSyncCalls = new List<long>();
+      var mockGrainFactory = new Mock<IGrainFactory>();
+      mockGrainFactory
+        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long userId, string _) => {
+          var userMock = new Mock<IUserActor>();
+          userMock
+            .Setup(x => x.ForceSyncRepositories())
+            .Returns(Task.CompletedTask)
+            .Callback(() => forceRepoSyncCalls.Add(userId));
+          return userMock.Object;
         });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
       ConfigureController(controller, "repository", obj, hook.Secret.ToString());
       var result = await controller.HandleHook("org", org.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -985,7 +990,7 @@
           user1.Id,
           user2.Id,
         },
-        syncAccountRepositoryCalls);
+        forceRepoSyncCalls);
     }
 
     [Test]
@@ -1049,14 +1054,17 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<long>();
-
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
-        .Returns(Task.CompletedTask)
-        .Callback((long accountId) => {
-          syncAccountRepositoryCalls.Add(accountId);
+      var forceRepoSyncCalls = new List<long>();
+      var mockGrainFactory = new Mock<IGrainFactory>();
+      mockGrainFactory
+        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long userId, string _) => {
+          var userMock = new Mock<IUserActor>();
+          userMock
+            .Setup(x => x.ForceSyncRepositories())
+            .Returns(Task.CompletedTask)
+            .Callback(() => forceRepoSyncCalls.Add(userId));
+          return userMock.Object;
         });
 
       // We register for the "repository" event on both the org and repo levels.
@@ -1068,21 +1076,21 @@
       };
 
       foreach (var test in tests) {
-        var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
+        var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
         ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
         var result = await controller.HandleHook(test.Item1, test.Item2);
         Assert.IsInstanceOf(typeof(StatusCodeResult), result);
         Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
       }
 
-      Assert.AreEqual(2, syncAccountRepositoryCalls.Count,
+      Assert.AreEqual(2, forceRepoSyncCalls.Count,
         "should have only 1 call for each user in the org");
       Assert.AreEqual(
         new List<long> {
           user1.Id,
           user2.Id,
         },
-        syncAccountRepositoryCalls);
+        forceRepoSyncCalls);
     }
 
     [Test]
@@ -1115,17 +1123,20 @@
         },
       }, GitHubSerialization.JsonSerializer);
 
-      var syncAccountRepositoryCalls = new List<long>();
-
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient
-        .Setup(x => x.SyncAccountRepositories(It.IsAny<long>()))
-        .Returns(Task.CompletedTask)
-        .Callback((long accountId) => {
-          syncAccountRepositoryCalls.Add(accountId);
+      var forceRepoSyncCalls = new List<long>();
+      var mockGrainFactory = new Mock<IGrainFactory>();
+      mockGrainFactory
+        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long userId, string _) => {
+          var userMock = new Mock<IUserActor>();
+          userMock
+            .Setup(x => x.ForceSyncRepositories())
+            .Returns(Task.CompletedTask)
+            .Callback(() => forceRepoSyncCalls.Add(userId));
+          return userMock.Object;
         });
 
-      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper);
+      var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
       ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
       var result = await controller.HandleHook("repo", repo.Id);
       Assert.IsInstanceOf(typeof(StatusCodeResult), result);
@@ -1135,7 +1146,7 @@
         new List<long> {
           user.Id,
         },
-        syncAccountRepositoryCalls,
+        forceRepoSyncCalls,
         "should only trigger sync for repo owner");
     }
 

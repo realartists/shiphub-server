@@ -18,10 +18,6 @@
     }
 
     // Queue Names
-    public const string SyncAccount = "sync-account";
-    public const string SyncAccountRepositories = SyncAccount + "-repositories";
-    public const string SyncAccountOrganizations = SyncAccount + "-organizations";
-
     public const string SyncOrganizationMembers = "sync-organization-members";
 
     public const string SyncRepository = "sync-repository";

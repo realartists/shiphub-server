@@ -10,18 +10,25 @@
     public DateTimeOffset? LastRefresh { get; set; }
     public TimeSpan PollInterval { get; set; }
 
-    public IGitHubCacheDetails AsCacheDetails() {
+    public static implicit operator GitHubCacheDetails(GitHubMetadata metadata) {
+      if (metadata == null) {
+        return null;
+      }
+
       return new GitHubCacheDetails() {
-        AccessToken = AccessToken,
-        ETag = ETag,
-        Expires = Expires,
-        LastModified = LastModified,
-        PollInterval = PollInterval,
+        AccessToken = metadata.AccessToken,
+        ETag = metadata.ETag,
+        Expires = metadata.Expires,
+        LastModified = metadata.LastModified,
+        PollInterval = metadata.PollInterval,
       };
     }
 
-    // Helper
     public static GitHubMetadata FromResponse(GitHubResponse response) {
+      if (response == null || response.IsError) {
+        return null;
+      }
+
       var cacheData = response.CacheData;
       return new GitHubMetadata() {
         AccessToken = cacheData.AccessToken,

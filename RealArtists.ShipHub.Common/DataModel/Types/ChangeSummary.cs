@@ -38,10 +38,12 @@
       }
     }
 
-    public void UnionWith(IChangeSummary other) {
-      Organizations.UnionWith(other.Organizations);
-      Repositories.UnionWith(other.Repositories);
-      Users.UnionWith(other.Users);
+    public void UnionWith(params IChangeSummary[] others) {
+      foreach (var other in others) {
+        Organizations.UnionWith(other.Organizations);
+        Repositories.UnionWith(other.Repositories);
+        Users.UnionWith(other.Users);
+      }
     }
 
     public static ChangeSummary UnionAll(IEnumerable<IChangeSummary> changes) {

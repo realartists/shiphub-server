@@ -9,10 +9,10 @@
     public GitHubRequest(HttpMethod method, string path)
       : this(method, path, null, true) { }
 
-    public GitHubRequest(string path, IGitHubCacheDetails opts = null, bool restricted = false)
+    public GitHubRequest(string path, GitHubCacheDetails opts = null, bool restricted = false)
       : this(HttpMethod.Get, path, opts, restricted) { }
 
-    private GitHubRequest(HttpMethod method, string path, IGitHubCacheDetails opts, bool restricted) {
+    private GitHubRequest(HttpMethod method, string path, GitHubCacheDetails opts, bool restricted) {
       if (path.IsNullOrWhiteSpace() || path.Contains('?')) {
         throw new ArgumentException($"path must be non null and cannot contain query parameters. provided: {path}", nameof(path));
       }
@@ -32,8 +32,8 @@
     /// </summary>
     public bool Restricted { get; }
 
-    private IGitHubCacheDetails _cacheOptions;
-    public IGitHubCacheDetails CacheOptions {
+    private GitHubCacheDetails _cacheOptions;
+    public GitHubCacheDetails CacheOptions {
       get { return _cacheOptions; }
       set {
         if (Restricted && _cacheOptions != null && value != null) {
@@ -70,7 +70,7 @@
       }
 
       // TODO: Retain cache options? I think it's important to preserve credentials at least.
-      IGitHubCacheDetails cache = null;
+      GitHubCacheDetails cache = null;
       if (preserveCache || CacheOptions == GitHubCacheDetails.Empty) {
         cache = _cacheOptions;
       }

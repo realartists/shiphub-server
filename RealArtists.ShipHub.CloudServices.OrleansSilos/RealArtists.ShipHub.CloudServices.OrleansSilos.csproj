@@ -33,6 +33,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="AutoMapper, Version=5.1.1.0, Culture=neutral, PublicKeyToken=be96cd2c38ef1005, processorArchitecture=MSIL">
+      <HintPath>..\packages\AutoMapper.5.1.1\lib\net45\AutoMapper.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Azure.KeyVault.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Azure.KeyVault.Core.1.0.0\lib\net40\Microsoft.Azure.KeyVault.Core.dll</HintPath>
       <Private>True</Private>
@@ -207,7 +211,9 @@
     <Compile Include="WorkerRole.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config" />
+    <None Include="app.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
@@ -223,9 +229,17 @@
       <Project>{eaa1a282-233e-495c-9210-6307cd8da6a0}</Project>
       <Name>RealArtists.ShipHub.Actors</Name>
     </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Api\RealArtists.ShipHub.Api.csproj">
+      <Project>{10212AC5-34F5-4BAC-AAD6-8865183575BC}</Project>
+      <Name>RealArtists.ShipHub.Api</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
       <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
       <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
+      <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
+      <Name>RealArtists.ShipHub.QueueClient</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
