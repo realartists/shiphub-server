@@ -77,4 +77,27 @@
     <CloudExtensionsDir Condition=" '$(CloudExtensionsDir)' == '' ">$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Windows Azure Tools\2.9\</CloudExtensionsDir>
   </PropertyGroup>
   <Import Project="$(CloudExtensionsDir)Microsoft.WindowsAzure.targets" />
+  <!-- Silence Target Framework warning when building. -->
+  <Target Name="ValidateRoleTargetFramework"
+          Outputs="%(RoleReference.Identity)"
+          Condition="'@(RoleReference)' != ''">
+
+    <PropertyGroup>
+      <_RoleTargetFramework>%(RoleReference.RoleTargetFramework)</_RoleTargetFramework>
+      <_IsValidRoleTargetFramework>False</_IsValidRoleTargetFramework>
+      <_IsValidRoleTargetFramework
+        Condition="$(_RoleTargetFramework.StartsWith('v4.0')) Or $(_RoleTargetFramework.StartsWith('v4.5')) Or $(_RoleTargetFramework.StartsWith('v4.6'))">True</_IsValidRoleTargetFramework>
+    </PropertyGroup>
+
+    <WATMessage Condition=" '$(_IsValidRoleTargetFramework)' != 'True' "
+                Type="Warning"
+                Code="WAT210"
+                File="%(RoleReference.Identity)"
+                Arguments="%(RoleReference.RoleName)" />
+
+  </Target>
+  <!-- Silence .NET version warning. -->
+  <PropertyGroup>
+    <IgnoreValidationIssueCodes>WAT190;WAT210</IgnoreValidationIssueCodes>
+  </PropertyGroup>
 </Project>
