@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System.Web.Http;
+  using ActorInterfaces.Injection;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -31,11 +32,11 @@
       }, Lifestyle.Singleton);
 
       // Orleans
-      container.Register(() => {
+      container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
         var orleansConfig = OrleansAzureClient.DefaultConfiguration();
         OrleansAzureClient.Initialize(orleansConfig);
         return GrainClient.GrainFactory;
-      }, Lifestyle.Singleton);
+      }));
 
       // Queue Client
       container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);
