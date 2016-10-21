@@ -32,10 +32,9 @@
     public IServiceProvider ConfigureServices(IServiceCollection services) {
       var container = new Container();
 
-      container.Register<IFactory<ShipHubContext>>(() => {
-        var connectionString = CloudConfigurationManager.GetSetting("ShipHubContext");
-        return new GenericFactory<ShipHubContext>(() => new ShipHubContext(connectionString));
-      }, Lifestyle.Singleton);
+      var connectionString = CloudConfigurationManager.GetSetting("ShipHubContext");
+      container.RegisterSingleton<IFactory<ShipHubContext>>(
+        new GenericFactory<ShipHubContext>(() => new ShipHubContext(connectionString)));
 
       // AutoMapper
       container.Register(() => new MapperConfiguration(cfg => {
