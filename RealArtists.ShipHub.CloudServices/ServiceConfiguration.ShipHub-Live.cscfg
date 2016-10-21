@@ -17,6 +17,10 @@
                value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
       <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
                value="" />
+      <Setting name="AzureWebJobsServiceBus"
+               value="" />
+      <Setting name="AzureWebJobsServiceBusPair"
+               value="" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
