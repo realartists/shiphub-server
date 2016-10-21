@@ -49,10 +49,10 @@
         _userId = this.GetPrimaryKeyLong();
 
         // Ensure this user actually exists, and lookup their token.
-        var user = await context.Users.SingleAsync(x => x.Id == _userId);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == _userId);
 
         if (user == null) {
-          throw new InvalidOperationException($"User {_userId} does not exists and cannot be activated.");
+          throw new InvalidOperationException($"User {_userId} does not exist and cannot be activated.");
         }
 
         if (user.Token.IsNullOrWhiteSpace()) {
@@ -70,17 +70,20 @@
       await base.OnActivateAsync();
     }
 
-    public override Task OnDeactivateAsync() {
-      // TODO: Persist anything stored in memory we want to reload later.
-      // Ex: Metadata, sync progress, etc.
+    public override async Task OnDeactivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
-        //context.UpdateMetadata("", _userId, 
+        // I think all we need to persist is the metadata.
+        await Task.WhenAll(
+          context.UpdateMetadata("Accounts", _userId, _metadata),
+          context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata),
+          context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata)
+        );
       }
 
       // TODO: Look into how agressively Orleans deactivates "inactive" grains.
       // We may need to delay deactivation based on sync interest.
 
-      return base.OnDeactivateAsync();
+      await base.OnDeactivateAsync();
     }
 
     public Task Sync() {
