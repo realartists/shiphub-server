@@ -21,38 +21,34 @@
       _factory = serviceBusFactory;
     }
 
-    public Task NotifyChanges(IChangeSummary changeSummary) {
-      var topic = _factory.TopicClientForName(ShipHubTopicNames.Changes);
-      using (var bm = WebJobInterop.CreateMessage(new ChangeMessage(changeSummary))) {
-        return topic.SendAsync(bm);
-      }
-    }
-
     public Task AddOrUpdateRepoWebhooks(long targetId, long forUserId)
-      => QueueIt(ShipHubQueueNames.AddOrUpdateRepoWebhooks, new TargetMessage(targetId, forUserId));
+      => SendIt(ShipHubQueueNames.AddOrUpdateRepoWebhooks, new TargetMessage(targetId, forUserId));
 
     public Task BillingGetOrCreatePersonalSubscription(long userId)
-      => QueueIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
+      => SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
 
     public Task BillingSyncOrgSubscriptionState(long targetId, long forUserId)
-      => QueueIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new TargetMessage(targetId, forUserId));
+      => SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new TargetMessage(targetId, forUserId));
 
     public Task BillingUpdateComplimentarySubscription(long userId)
-      => QueueIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
+      => SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
+
+    public Task NotifyChanges(IChangeSummary changeSummary)
+      => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
 
     public Task SyncOrganizationMembers(long targetId, long forUserId)
-      => QueueIt(ShipHubQueueNames.SyncOrganizationMembers, new TargetMessage(targetId, forUserId));
+      => SendIt(ShipHubQueueNames.SyncOrganizationMembers, new TargetMessage(targetId, forUserId));
 
     public Task SyncRepository(long targetId, long forUserId)
-      => QueueIt(ShipHubQueueNames.SyncRepository, new TargetMessage(targetId, forUserId));
+      => SendIt(ShipHubQueueNames.SyncRepository, new TargetMessage(targetId, forUserId));
 
     public Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId)
-      => QueueIt(ShipHubQueueNames.SyncRepositoryIssueTimeline, new IssueViewMessage(repositoryFullName, issueNumber, forUserId));
+      => SendIt(ShipHubQueueNames.SyncRepositoryIssueTimeline, new IssueViewMessage(repositoryFullName, issueNumber, forUserId));
 
-    private Task QueueIt<T>(string queueName, T message) {
-      var queue = _factory.QueueClientForName(queueName);
+    private async Task SendIt<T>(string queueName, T message) {
+      var sender = await _factory.MessageSenderForName(queueName);
       using (var bm = WebJobInterop.CreateMessage(message)) {
-        return queue.SendAsync(bm);
+        await sender.SendAsync(bm);
       }
     }
   }
