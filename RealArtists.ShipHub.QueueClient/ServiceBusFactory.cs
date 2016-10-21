@@ -13,9 +13,8 @@
     NamespaceManager NamespaceManager { get; }
     bool Paired { get; }
 
-    QueueClient QueueClientForName(string queueName);
+    Task<MessageSender> MessageSenderForName(string queueName);
     Task<SubscriptionClient> SubscriptionClientForName(string topicName, string subscriptionName = null);
-    TopicClient TopicClientForName(string topicName);
   }
 
   public class ServiceBusFactory : IServiceBusFactory {
@@ -73,25 +72,20 @@
     // Client creation and caching
     //
 
-    ConcurrentDictionary<string, QueueClient> _queueClients = new ConcurrentDictionary<string, QueueClient>();
-    ConcurrentDictionary<string, TopicClient> _topicClients = new ConcurrentDictionary<string, TopicClient>();
+    ConcurrentDictionary<string, MessageSender> _messageSenders = new ConcurrentDictionary<string, MessageSender>();
 
-    static T CacheLookup<T>(ConcurrentDictionary<string, T> cache, string key, Func<T> valueCreator)
+    static async Task<T> CacheLookup<T>(ConcurrentDictionary<string, T> cache, string key, Func<Task<T>> valueCreator)
       where T : class {
       T client = null;
       if (!cache.TryGetValue(key, out client)) {
-        client = valueCreator();
+        client = await valueCreator();
         cache.TryAdd(key, client);
       }
       return client;
     }
 
-    public QueueClient QueueClientForName(string queueName) {
-      return CacheLookup(_queueClients, queueName, () => MessagingFactory.CreateQueueClient(queueName));
-    }
-
-    public TopicClient TopicClientForName(string topicName) {
-      return CacheLookup(_topicClients, topicName, () => MessagingFactory.CreateTopicClient(topicName));
+    public async Task<MessageSender> MessageSenderForName(string queueName) {
+      return await CacheLookup(_messageSenders, queueName, () => MessagingFactory.CreateMessageSenderAsync(queueName));
     }
 
     public async Task<SubscriptionClient> SubscriptionClientForName(string topicName, string subscriptionName = null) {
