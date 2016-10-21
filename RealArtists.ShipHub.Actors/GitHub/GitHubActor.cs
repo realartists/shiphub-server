@@ -38,7 +38,11 @@
       // Load state from DB
       using (var context = _shipContextFactory.CreateInstance()) {
         // For now, require user and token to already exist in database.
-        var user = await context.Users.SingleAsync(x => x.Token == _accessToken);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Token == _accessToken);
+
+        if (user == null) {
+          throw new InvalidOperationException($"No user with the specified token exists.");
+        }
 
         // Ew
         GitHubRateLimit rateLimit = null;
@@ -59,12 +63,16 @@
       await base.OnActivateAsync();
     }
 
-    public override Task OnDeactivateAsync() {
+    public override async Task OnDeactivateAsync() {
       _maxConcurrentRequests.Dispose();
       _maxConcurrentRequests = null;
-      // Save state to DB
 
-      return base.OnDeactivateAsync();
+      // Save state
+      using (var context = _shipContextFactory.CreateInstance()) {
+        await context.UpdateRateLimit(_github.RateLimit);
+      }
+
+      await base.OnDeactivateAsync();
     }
 
     ////////////////////////////////////////////////////////////

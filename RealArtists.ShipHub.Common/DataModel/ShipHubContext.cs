@@ -177,6 +177,10 @@
       return UpdateMetadata(table, column, id, GitHubMetadata.FromResponse(response));
     }
 
+    public Task UpdateMetadata(string table, long id, GitHubMetadata metadata) {
+      return UpdateMetadata(table, "MetadataJson", id, metadata);
+    }
+
     public Task UpdateMetadata(string table, string column, long id, GitHubMetadata metadata) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
