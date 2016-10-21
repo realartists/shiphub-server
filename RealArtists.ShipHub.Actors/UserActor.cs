@@ -96,7 +96,7 @@
     }
 
     public Task ForceSyncRepositories() {
-      return TimerSync(forceRepos: false);
+      return TimerSync(forceRepos: true);
     }
 
     public async Task InvalidateToken(string token) {
