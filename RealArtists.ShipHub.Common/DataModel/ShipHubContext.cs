@@ -208,12 +208,18 @@
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
-    public Task UpdateCache(string cacheKey, GitHubMetadata cacheData) {
+    public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
+      // This can happen sometimes and doesn't make sense to handle until here.
+      // Obviously, don't update.
+      if (metadata == null) {
+        return Task.CompletedTask;
+      }
+
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
         new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
-        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
+        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
