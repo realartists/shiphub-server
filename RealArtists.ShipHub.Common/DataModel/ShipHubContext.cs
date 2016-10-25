@@ -208,25 +208,12 @@
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
-    public Task UpdateRateAndCache(GitHubRateLimit limit, string cacheKey, GitHubMetadata cacheData) {
-      if (limit == null) {
-        return Database.ExecuteSqlCommandAsync(
+    public Task UpdateCache(string cacheKey, GitHubMetadata cacheData) {
+      return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
         new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
         new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
-      } else {
-        return Database.ExecuteSqlCommandAsync(
-          TransactionalBehavior.DoNotEnsureTransaction,
-            "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset"
-          + "\n\nEXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
-          new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
-          new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
-          new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
-          new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset },
-          new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
-          new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
-      }
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {

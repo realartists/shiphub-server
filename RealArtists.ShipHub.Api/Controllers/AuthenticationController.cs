@@ -87,6 +87,7 @@
       await Context.SaveChangesAsync();
 
       var userGrain = _grainFactory.GetGrain<IUserActor>(user.Id);
+      await userGrain.UpdateToken(user.Token); // Just in case it has changed since the grain was loaded.
       await userGrain.Sync();
 
       return Ok(userInfo);

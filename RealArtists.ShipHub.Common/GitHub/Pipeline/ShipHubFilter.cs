@@ -10,13 +10,17 @@
   using DataModel.Types;
 
   /// <summary>
-  /// This is a gross place to stuff a bunch of cache and rate limit logic.
+  /// This is a gross place to stuff hacky cache logic.
+  /// Rate limit tracking has already moved to Orleans.
+  /// It needs to go, and will with the Orleans spider transition.
   /// </summary>
   public class ShipHubFilter : IGitHubHandler {
     private IGitHubHandler _next;
+    private IFactory<ShipHubContext> _shipContextFactory;
 
-    public ShipHubFilter(IGitHubHandler next) {
+    public ShipHubFilter(IGitHubHandler next, IFactory<ShipHubContext> shipContextFactory) {
       _next = next;
+      _shipContextFactory = shipContextFactory;
     }
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
@@ -36,7 +40,7 @@
         return;
       }
 
-      using (var context = new ShipHubContext()) {
+      using (var context = _shipContextFactory.CreateInstance()) {
         // TODO: Fancy cute logic to re-use other matching cache entries.
         var key = request.Uri.ToString();
         var cacheOptions = await context.CacheMetadata
@@ -49,15 +53,11 @@
     }
 
     private async Task HandleResponse(GitHubResponse response) {
-      using (var context = new ShipHubContext()) {
-        if (response.Status == HttpStatusCode.OK
-          && response.Request.Method == HttpMethod.Get
-          && response.Request.CacheOptions != GitHubCacheDetails.Empty) {
-          // Update rate and cache
-          await context.UpdateRateAndCache(response.RateLimit, response.Request.Uri.ToString(), GitHubMetadata.FromResponse(response));
-        } else if (response.RateLimit != null) {
-          // Rate only
-          await context.UpdateRateLimit(response.RateLimit);
+      if (response.Status == HttpStatusCode.OK
+         && response.Request.Method == HttpMethod.Get
+         && response.Request.CacheOptions?.AccessToken != null) {
+        using (var context = _shipContextFactory.CreateInstance()) {
+          await context.UpdateCache(response.Request.Uri.ToString(), GitHubMetadata.FromResponse(response));
         }
       }
     }

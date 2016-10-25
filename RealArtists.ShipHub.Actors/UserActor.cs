@@ -220,6 +220,7 @@
 
           if (repos.Status != HttpStatusCode.NotModified) {
             var reposWithIssues = repos.Result.Where(x => x.HasIssues);
+            // The next batch of calls is not cached. Maybe we should, but it's complicated because we need the results.
             var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => _github.IsAssignable(x.FullName, _login));
             await Task.WhenAll(assignableRepos.Values);
             var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
