@@ -26,6 +26,7 @@
 
   public class ChargeBeeWebhookSubscription {
     public long ActivatedAt { get; set; }
+    public string PlanId { get; set; }
     public string Status { get; set; }
     public long? TrialEnd { get; set; }
     public long ResourceVersion { get; set; }
@@ -113,7 +114,9 @@
 
       if (payload.EventType == "subscription_activated") {
         await SendPurchasePersonalMessage(payload);
-      } else if (payload.EventType == "subscription_created") {
+      } else if (
+        payload.EventType == "subscription_created" &&
+        payload.Content.Subscription.PlanId == "organization") {
         await SendPurchaseOrganizationMessage(payload);
       }
 
@@ -157,12 +160,6 @@
     public async Task SendPurchaseOrganizationMessage(ChargeBeeWebhookPayload payload) {
       var regex = new Regex(@"^(user|org)-(\d+)$");
       var matches = regex.Match(payload.Content.Customer.Id);
-
-      if (matches.Groups[1].ToString() != "org") {
-        // "activated" only happens on transition from trial -> active, and we only do trials
-        // for personal subscriptions.
-        throw new Exception("subscription_created should only happen on org subscriptions");
-      }
 
       var accountId = long.Parse(matches.Groups[2].ToString());
       var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);

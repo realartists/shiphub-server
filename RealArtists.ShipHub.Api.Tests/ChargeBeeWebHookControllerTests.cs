@@ -118,6 +118,7 @@
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
                 TrialEnd = chargeBeeTrialEndDate?.ToUnixTimeSeconds(),
+                PlanId = (userOrOrg == "user") ? "personal" : "organization",
               },
               Invoice = invoicePayload,
             },
