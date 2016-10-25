@@ -13,14 +13,13 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Controllers;
+  using Mail;
+  using Mail.Models;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json;
   using NUnit.Framework;
   using QueueClient;
-  using QueueClient.Messages;
-  using Mail;
-  using Mail.Models;
 
   [TestFixture]
   [AutoRollback]
