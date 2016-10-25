@@ -34,11 +34,11 @@ BEGIN
       INNER JOIN OrganizationLog as ol ON (ol.OrganizationId = c.OrganizationId AND ol.AccountId = c.OrganizationId)
 
     -- New org memberships
-    INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId)
+    INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId)
     SELECT c.OrganizationId, @UserId
     FROM @Changes as c
     WHERE c.[Action] = 'INSERT'
-      AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = c.OrganizationId AND AccountId = @UserId)
+      AND NOT EXISTS (SELECT * FROM OrganizationLog WITH (UPDLOCK) WHERE OrganizationId = c.OrganizationId AND AccountId = @UserId)
   END
 
   -- Return updated organizations and users

@@ -37,11 +37,11 @@ BEGIN
     WHERE OrganizationId = @OrganizationId AND AccountId = @OrganizationId
 
     -- New users
-    INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId)
+    INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId)
     SELECT @OrganizationId, c.UserId
     FROM @Changes as c
     WHERE c.[Action] = 'INSERT'
-      AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = @OrganizationId AND AccountId = UserId)
+      AND NOT EXISTS (SELECT * FROM OrganizationLog WITH (UPDLOCK) WHERE OrganizationId = @OrganizationId AND AccountId = UserId)
   END
 
   -- Return updated organizations and users
