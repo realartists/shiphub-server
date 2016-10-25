@@ -44,12 +44,12 @@ BEGIN
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
 
   -- New Organizations reference themselves
-  INSERT INTO OrganizationLog WITH (UPDLOCK SERIALIZABLE) (OrganizationId, AccountId)
+  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId)
   OUTPUT INSERTED.OrganizationId INTO @Updates (OrganizationId)
   SELECT c.Id, c.Id
   FROM @Changes as c
   WHERE c.[Type] = 'org'
-    AND NOT EXISTS (SELECT * FROM OrganizationLog WHERE OrganizationId = c.Id AND AccountId = c.Id)
+    AND NOT EXISTS (SELECT * FROM OrganizationLog WITH (UPDLOCK) WHERE OrganizationId = c.Id AND AccountId = c.Id)
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.

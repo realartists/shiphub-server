@@ -39,10 +39,10 @@ BEGIN
     INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
 
   -- New comments
-  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
+  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
   SELECT @RepositoryId, 'comment', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WITH (UPDLOCK) WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
 
   -- Add new account references to log
   MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
