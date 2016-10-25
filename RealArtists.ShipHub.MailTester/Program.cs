@@ -18,7 +18,6 @@ namespace RealArtists.ShipHub.EmailTester {
           new Mail.Models.PurchasePersonalMailMessage() {
             ToAddress = toAddress,
             ToName = toName,
-            FirstName = "Fred",
             BelongsToOrganization = true,
             WasGivenTrialCredit = true,
             InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -29,7 +28,6 @@ namespace RealArtists.ShipHub.EmailTester {
           new Mail.Models.PurchaseOrganizationMailMessage() {
             ToAddress = toAddress,
             ToName = toName,
-            FirstName = "Fred",
             InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
             InvoicePdfBytes = dummyInvoicePdfBytes,
           }).Wait();

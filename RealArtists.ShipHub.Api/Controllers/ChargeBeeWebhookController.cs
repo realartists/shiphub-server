@@ -149,7 +149,6 @@
         new Mail.Models.PurchasePersonalMailMessage() {
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          FirstName = payload.Content.Customer.FirstName,
           BelongsToOrganization = belongsToOrganization,
           WasGivenTrialCredit = wasGivenTrialCredit,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
@@ -168,7 +167,6 @@
         new Mail.Models.PurchaseOrganizationMailMessage() {
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          FirstName = payload.Content.Customer.FirstName,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
           InvoicePdfBytes = invoicePdfBytes,
         });
