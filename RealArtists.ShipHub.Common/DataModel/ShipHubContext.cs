@@ -182,6 +182,12 @@
     }
 
     public Task UpdateMetadata(string table, string column, long id, GitHubMetadata metadata) {
+      // This can happen sometimes and doesn't make sense to handle until here.
+      // Obviously, don't update.
+      if (metadata == null) {
+        return Task.CompletedTask;
+      }
+
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         $@"UPDATE [{table}] SET
