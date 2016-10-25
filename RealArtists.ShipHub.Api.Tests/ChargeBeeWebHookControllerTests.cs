@@ -114,6 +114,7 @@
                 Id = $"{userOrOrg}-{sub.AccountId}",
                 FirstName = "Aroon",
                 LastName = "Pahwa",
+                GitHubUsername = "aroon",
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
@@ -205,6 +206,7 @@
       Assert.AreEqual(1, messages.Count);
       var message = (PurchasePersonalMailMessage)messages.First();
       Assert.AreEqual("Aroon", message.FirstName);
+      Assert.AreEqual("aroon", message.GitHubUsername);
       Assert.AreEqual(true, message.BelongsToOrganization);
       Assert.AreEqual(true, message.WasGivenTrialCredit);
     }
@@ -347,6 +349,7 @@
       Assert.AreEqual(1, messages.Count);
       var message = (PurchaseOrganizationMailMessage)messages.First();
       Assert.AreEqual("Aroon", message.FirstName);
+      Assert.AreEqual("aroon", message.GitHubUsername);
     }
 
     [Test]

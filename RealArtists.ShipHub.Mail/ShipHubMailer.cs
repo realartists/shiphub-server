@@ -93,7 +93,7 @@
     }
 
     public Task PurchasePersonal(PurchasePersonalMailMessage model) {
-      var message = CreateMailMessage(model, "Ship Subscription", "PurchasePersonal");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchasePersonal");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -104,7 +104,7 @@
     }
 
     public Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, "Ship Subscription", "PurchaseOrganization");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchaseOrganization");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),

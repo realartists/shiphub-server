@@ -18,6 +18,8 @@
 
   public class ChargeBeeWebhookCustomer {
     public string FirstName { get; set; }
+    [JsonProperty(PropertyName = "cf_github_username")]
+    public string GitHubUsername { get; set; }
     public string LastName { get; set; }
     public string Email { get; set; }
     public string Id { get; set; }
@@ -147,6 +149,7 @@
 
       await _mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {
+          GitHubUsername = payload.Content.Customer.GitHubUsername,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           BelongsToOrganization = belongsToOrganization,
@@ -165,6 +168,7 @@
 
       await _mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
+          GitHubUsername = payload.Content.Customer.GitHubUsername,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
