@@ -187,7 +187,6 @@
     <Compile Include="EnumerableExtensions.cs" />
     <Compile Include="ExceptionUtilities.cs" />
     <Compile Include="GenericFactory.cs" />
-    <Compile Include="GitHubSettings.cs" />
     <Compile Include="GitHub\GitHubCacheDetails.cs" />
     <Compile Include="GitHub\GitHubErrorSeverity.cs" />
     <Compile Include="GitHub\GitHubRateLimit.cs" />
