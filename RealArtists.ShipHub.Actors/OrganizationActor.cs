@@ -97,7 +97,7 @@
 
     private async Task<IGitHubActor> GetRandomGitHubActor() {
       using (var context = _contextFactory.CreateInstance()) {
-        while (_interestedUserIds.Count == 0) {
+        while (_interestedUserIds.Count > 0) {
           // The way the current caching code works, it will try to re-use an existing token
           // no matter which grain I pick. Pick one at random to use as a fallback.
           var userId = _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
@@ -126,11 +126,14 @@
         return;
       }
 
+      var github = await GetRandomGitHubActor();
+      if (github == null) {
+        return;
+      }
+
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRandomGitHubActor();
-
         // Org itself
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var org = await github.Organization(_login, _metadata);
