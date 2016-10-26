@@ -156,6 +156,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <PropertyGroup>
-    <PostBuildEvent>copy "$(ProjectDir)$(OutputPath)*" "$(SolutionDir)RealArtists.ShipHub.Database.Deployment\$(OutputPath)"</PostBuildEvent>
+    <PostBuildEvent>REM copy "$(ProjectDir)$(OutputPath)*" "$(SolutionDir)RealArtists.ShipHub.Database.Deployment\$(OutputPath)"</PostBuildEvent>
   </PropertyGroup>
 </Project>
