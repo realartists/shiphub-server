@@ -204,13 +204,14 @@
         }
 
         // TODO: Actually and load and maintain the list of orgs inside the object
+        // Maintain the grain references too.
         var allOrgIds = await context.OrganizationAccounts
           .Where(x => x.UserId == _userId)
           .Select(x => x.OrganizationId)
           .ToArrayAsync();
 
         if (allOrgIds.Any()) {
-          tasks.AddRange(allOrgIds.Select(x => _queueClient.SyncOrganizationMembers(x, _userId)));
+          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync(_userId)));
           tasks.AddRange(allOrgIds.Select(x => _queueClient.BillingSyncOrgSubscriptionState(x, _userId)));
         }
 
