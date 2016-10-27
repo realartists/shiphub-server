@@ -22,6 +22,10 @@
   using Tracing;
   using gm = Common.GitHub.Models;
 
+#if DEBUG
+  using System.Diagnostics;
+#endif
+
   public class SyncQueueHandler : LoggingHandlerBase {
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
