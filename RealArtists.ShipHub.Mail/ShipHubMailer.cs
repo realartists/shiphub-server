@@ -63,14 +63,13 @@
       message.Subject = subject;
       message.Body = text;
 
-      var shipLogo = File.ReadAllBytes(Path.Combine(GetBaseDirectory(), "ShipLogo.png"));
       var htmlView = new AlternateView(
         new MemoryStream(UTF8Encoding.Default.GetBytes(htmlProcessed)),
         new ContentType("text/html"));
-      htmlView.LinkedResources.Add(new LinkedResource(new MemoryStream(shipLogo)) {
-        ContentType = new ContentType("image/png"),
-        ContentId = "ShipLogo.png",
-      });
+
+      var linkedResource = new LinkedResource(Path.Combine(GetBaseDirectory(), "ShipLogo.png"), "image/png");
+      linkedResource.ContentId = "ShipLogo.png";
+      htmlView.LinkedResources.Add(linkedResource);
       message.AlternateViews.Add(htmlView);
 
       return message;
