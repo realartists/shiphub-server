@@ -64,6 +64,7 @@
     <Compile Include="GitHub\IGitHubActor.cs" />
     <Compile Include="IEchoActor.cs" />
     <Compile Include="Injection\LazyGrainFactory.cs" />
+    <Compile Include="IOrganizationActor.cs" />
     <Compile Include="IUserActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Serialization\OrleansJTokenSerializer.cs" />

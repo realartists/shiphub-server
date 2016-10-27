@@ -5,11 +5,11 @@
 
   public interface IShipHubQueueClient {
     Task NotifyChanges(IChangeSummary changeSummary);
+    Task AddOrUpdateOrgWebhooks(long targetId, long forUserId);
     Task AddOrUpdateRepoWebhooks(long targetId, long forUserId);
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(long targetId, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
-    Task SyncOrganizationMembers(long targetId, long forUserId);
     Task SyncRepository(long targetId, long forUserId);
     Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId);
   }
@@ -20,6 +20,9 @@
     public ShipHubQueueClient(IServiceBusFactory serviceBusFactory) {
       _factory = serviceBusFactory;
     }
+
+    public Task AddOrUpdateOrgWebhooks(long targetId, long forUserId)
+      => SendIt(ShipHubQueueNames.AddOrUpdateOrgWebhooks, new TargetMessage(targetId, forUserId));
 
     public Task AddOrUpdateRepoWebhooks(long targetId, long forUserId)
       => SendIt(ShipHubQueueNames.AddOrUpdateRepoWebhooks, new TargetMessage(targetId, forUserId));
@@ -35,9 +38,6 @@
 
     public Task NotifyChanges(IChangeSummary changeSummary)
       => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
-
-    public Task SyncOrganizationMembers(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.SyncOrganizationMembers, new TargetMessage(targetId, forUserId));
 
     public Task SyncRepository(long targetId, long forUserId)
       => SendIt(ShipHubQueueNames.SyncRepository, new TargetMessage(targetId, forUserId));

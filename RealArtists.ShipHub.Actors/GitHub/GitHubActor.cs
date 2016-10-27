@@ -19,16 +19,48 @@
     private GitHubClient _github;
     private string _accessToken;
 
+    private IGrainFactory _grainFactory;
     private IFactory<dm.ShipHubContext> _shipContextFactory;
 
-    // This is gross
+    // TODO: Overhaul this code and trim/eliminate the pipeline
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-    // This is nasty
-    private static IGitHubHandler HandlerPipeline { get; } = new PaginationHandler(new GitHubHandler());
+    private static IGitHubHandler _handler;
+    private static IGitHubHandler GetOrCreateHandlerPipeline(IGrainFactory grainFactory, IFactory<dm.ShipHubContext> shipContextFactory) {
+      if (_handler != null) {
+        return _handler;
+      }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory) {
+      IGitHubHandler handler = new GitHubHandler();
+      handler = new ShipHubFilter(handler, shipContextFactory);
+      handler = new PaginationHandler(handler);
+
+      // Revoke expired and invalid tokens
+      handler = new TokenRevocationHandler(handler, async token => {
+        using (var context = shipContextFactory.CreateInstance()) {
+          // WARN: Can't do this until the UserActor is reentrant.
+          //// Find the user
+          //var userId = await context.Accounts
+          //  .Where(x => x.Token == token)
+          //  .Select(x => x.Id)
+          //  .SingleOrDefaultAsync();
+
+          //if (userId != default(long)) {
+          //  var _user = grainFactory.GetGrain<IUserActor>(userId);
+          //  await _user.InvalidateToken(token);
+          //}
+
+          // Instead, do next best thing.
+          await context.RevokeAccessToken(token);
+        }
+      });
+
+      return (_handler = handler);
+    }
+
+    public GitHubActor(IGrainFactory grainFactory, IFactory<dm.ShipHubContext> shipContextFactory) {
+      _grainFactory = grainFactory;
       _shipContextFactory = shipContextFactory;
     }
 
@@ -57,7 +89,8 @@
 
         // TODO: Orleans has a concept of state/correlation that we can use
         // instead of this hack or adding parameters to every call.
-        _github = new GitHubClient(HandlerPipeline, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
+        var pipeline = GetOrCreateHandlerPipeline(_grainFactory, _shipContextFactory);
+        _github = new GitHubClient(pipeline, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
       }
 
       await base.OnActivateAsync();

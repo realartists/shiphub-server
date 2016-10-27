@@ -204,13 +204,14 @@
         }
 
         // TODO: Actually and load and maintain the list of orgs inside the object
+        // Maintain the grain references too.
         var allOrgIds = await context.OrganizationAccounts
           .Where(x => x.UserId == _userId)
           .Select(x => x.OrganizationId)
           .ToArrayAsync();
 
         if (allOrgIds.Any()) {
-          tasks.AddRange(allOrgIds.Select(x => _queueClient.SyncOrganizationMembers(x, _userId)));
+          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync(_userId)));
           tasks.AddRange(allOrgIds.Select(x => _queueClient.BillingSyncOrgSubscriptionState(x, _userId)));
         }
 
@@ -220,6 +221,7 @@
 
           if (repos.Status != HttpStatusCode.NotModified) {
             var reposWithIssues = repos.Result.Where(x => x.HasIssues);
+            // The next batch of calls is not cached. Maybe we should, but it's complicated because we need the results.
             var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => _github.IsAssignable(x.FullName, _login));
             await Task.WhenAll(assignableRepos.Values);
             var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();

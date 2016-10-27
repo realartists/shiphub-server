@@ -7,9 +7,9 @@
   using System.Threading.Tasks;
 
   public class PaginationHandler : IGitHubHandler {
-    public const int PerFetchConcurrencyLimit = 16;
+    public const int PerFetchConcurrencyLimit = 4;
     public const int PageSize = 100;
-    public const bool InterpolationEnabled = false;
+    public const bool InterpolationEnabled = true;
 
     private IGitHubHandler _next;
 

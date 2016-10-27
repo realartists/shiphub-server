@@ -208,25 +208,18 @@
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
-    public Task UpdateRateAndCache(GitHubRateLimit limit, string cacheKey, GitHubMetadata cacheData) {
-      if (limit == null) {
-        return Database.ExecuteSqlCommandAsync(
+    public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
+      // This can happen sometimes and doesn't make sense to handle until here.
+      // Obviously, don't update.
+      if (metadata == null) {
+        return Task.CompletedTask;
+      }
+
+      return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
         "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
         new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
-        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
-      } else {
-        return Database.ExecuteSqlCommandAsync(
-          TransactionalBehavior.DoNotEnsureTransaction,
-            "EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset"
-          + "\n\nEXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
-          new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
-          new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
-          new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
-          new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset },
-          new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
-          new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = cacheData.SerializeObject() });
-      }
+        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
