@@ -34,80 +34,6 @@
       _grainFactory = grainFactory;
     }
 
-    /// <summary>
-    /// Precondition: Repository and Milestones exist
-    /// Postcondition: Issues exist
-    /// </summary>
-    public async Task SyncRepositoryIssues(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssues)] TargetMessage message,
-      //[ServiceBus(ShipHubQueueNames.SyncRepositoryComments)] IAsyncCollector<TargetMessage> syncRepoComments,
-      //[ServiceBus(ShipHubQueueNames.SyncRepositoryIssueEvents)] IAsyncCollector<TargetMessage> syncRepoIssueEvents,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-          var metadata = repo.IssueMetadata;
-
-          logger.WriteLine($"Issues for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Repository issues.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-
-            var response = await ghc.Issues(repo.FullName, null, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var issues = response.Result;
-
-              var accounts = issues
-                .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
-                .Where(x => x != null)
-                .Distinct(x => x.Id);
-              changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
-
-              var milestones = issues
-                .Select(x => x.Milestone)
-                .Where(x => x != null)
-                .Distinct(x => x.Id);
-              changes.UnionWith(await context.BulkUpdateMilestones(repo.Id, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
-
-              changes.UnionWith(await context.BulkUpdateIssues(
-                repo.Id,
-                _mapper.Map<IEnumerable<IssueTableType>>(issues),
-                issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
-                issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
-              ));
-
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Repositories", "IssueMetadataJson", repo.Id, response));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-
-          // Do these unconditionally
-          //await Task.WhenAll(
-          //  syncRepoComments.AddAsync(message),
-          //  syncRepoIssueEvents.AddAsync(message)
-          //);
-        }
-      });
-    }
-
     public async Task SyncRepositoryComments(
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryComments)] TargetMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
@@ -402,7 +328,6 @@
       [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryIssueTimeline)] IssueViewMessage message,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueComments)] IAsyncCollector<TargetMessage> syncIssueComments,
       [ServiceBus(ShipHubQueueNames.SyncRepositoryIssueReactions)] IAsyncCollector<TargetMessage> syncRepoIssueReactions,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<TargetMessage> syncRepoIssues,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       ///////////////////////////////////////////

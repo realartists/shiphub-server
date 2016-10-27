@@ -29,6 +29,7 @@
     // Metadata
     private GitHubMetadata _metadata;
     private GitHubMetadata _assignableMetadata;
+    private GitHubMetadata _issueMetadata;
     private GitHubMetadata _labelMetadata;
     private GitHubMetadata _milestoneMetadata;
 
@@ -59,6 +60,7 @@
         _fullName = repo.FullName;
         _metadata = repo.Metadata;
         _assignableMetadata = repo.AssignableMetadata;
+        _issueMetadata = repo.IssueMetadata;
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
       }
@@ -71,6 +73,7 @@
         // I think all we need to persist is the metadata.
         await context.UpdateMetadata("Repositories", _repoId, _metadata);
         await context.UpdateMetadata("Repositories", "AssignableMetadataJson", _repoId, _assignableMetadata);
+        await context.UpdateMetadata("Repositories", "IssueMetadataJson", _repoId, _issueMetadata);
         await context.UpdateMetadata("Repositories", "LabelMetadataJson", _repoId, _labelMetadata);
         await context.UpdateMetadata("Repositories", "MilestoneMetadataJson", _repoId, _milestoneMetadata);
       }
@@ -202,10 +205,43 @@
 
           _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
         }
+
+        // Update Issues
+        // TODO: Do this incrementally (since, or skipping to last page, etc)
+        if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
+          var issueResponse = await github.Issues(_fullName, null, _issueMetadata);
+          if (issueResponse.Status != HttpStatusCode.NotModified) {
+            var issues = issueResponse.Result;
+
+            var accounts = issues
+              .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
+              .Where(x => x != null)
+              .Distinct(x => x.Id);
+
+            // TODO: Store (hashes? modified date?) in this object and only apply changes.
+            var milestones = issues
+              .Select(x => x.Milestone)
+              .Where(x => x != null)
+              .Distinct(x => x.Id);
+
+            changes.UnionWith(
+              await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)),
+              await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)),
+              await context.BulkUpdateIssues(
+                _repoId,
+                _mapper.Map<IEnumerable<IssueTableType>>(issues),
+                issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
+                issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
+            ));
+          }
+
+          _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
+        }
       }
 
-      // Trigger issue sync
-      tasks.Add(_queueClient.SyncRepositoryIssues(_repoId, randomUserId.Value));
+      // Comments?
+
+      // Issue Events?
 
       // Send Changes.
       if (!changes.Empty) {
