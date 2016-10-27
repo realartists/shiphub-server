@@ -4,33 +4,20 @@
 @{
   Layout = "LayoutPlain";
 }
-
 We received payment for your organization Ship subscription.
 
-@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in "@Model.LastCardDigits" and covers
-service through @Model.ServiceThroughDate.ToString("MMM d, yyyy"). Attached is an invoice receipt for your records.
+@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in "@Model.LastCardDigits" and covers service through @Model.ServiceThroughDate.ToString("MMM d, yyyy"). Attached is an invoice receipt for your records.
 
 @if (Model.PreviousMonthActiveUsersCount <= 5) {
-<text>
-The base monthly fee of your subscription covers the first 5 active
-Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in
-the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.
-</text>
+<text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.</text>
 } else {
-<text>
-The base monthly fee of your subscription covers the first 5 active
-Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in
-the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for @(Model.PreviousMonthActiveUsersCount - 5) additional active users.
-</text>
+<text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for @(Model.PreviousMonthActiveUsersCount - 5) additional active users.</text>
 }
+
 @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
-<text>
-Active Ship users in your organization in the prior month were @(string.Join(", ", Model.PreviousMonthActiveUsersSample))).
-</text>
+<text>Active Ship users in your organization in the prior month were @(string.Join(", ", Model.PreviousMonthActiveUsersSample))).</text>
 } else {
-<text>
-Active Ship users in your organization in the prior month included: @(string.Join(", ", Model.PreviousMonthActiveUsersSample))), and @(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others.
-</text>
+<text>Active Ship users in your organization in the prior month included: @(string.Join(", ", Model.PreviousMonthActiveUsersSample))), and @(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others.</text>
 }
 
 We appreciate your business!
