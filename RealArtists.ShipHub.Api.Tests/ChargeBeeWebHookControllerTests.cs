@@ -114,7 +114,7 @@
                 Id = $"{userOrOrg}-{sub.AccountId}",
                 FirstName = "Aroon",
                 LastName = "Pahwa",
-                GitHubUsername = "aroon",
+                GitHubUserName = "aroon",
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
@@ -795,7 +795,7 @@
                 Email = "aroon@pureimaginary.com",
                 FirstName = "Aroon",
                 LastName = "Pahwa",
-                GitHubUsername = org.Login,
+                GitHubUserName = org.Login,
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = "active",
@@ -877,7 +877,7 @@
               Email = "aroon@pureimaginary.com",
               FirstName = "Aroon",
               LastName = "Pahwa",
-              GitHubUsername = "aroon",
+              GitHubUserName = "aroon",
             },
             Subscription = new ChargeBeeWebhookSubscription() {
               Status = "active",
