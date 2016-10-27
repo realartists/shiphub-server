@@ -13,6 +13,8 @@
   using RealArtists.ShipHub.Mail.Models;
 
   public interface IShipHubMailer {
+    Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
+    Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model);
     Task PurchasePersonal(PurchasePersonalMailMessage model);
     Task PurchaseOrganization(PurchaseOrganizationMailMessage model);
   }
@@ -113,6 +115,27 @@
 
       return SendMessage(message);
     }
+
+    public Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededPersonal");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
+    }
+
+    public Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededOrganization");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
+    }
   }
 }
-

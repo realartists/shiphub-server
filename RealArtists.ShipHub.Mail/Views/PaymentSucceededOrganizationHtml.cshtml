@@ -1,0 +1,40 @@
+﻿@using RealArtists.ShipHub.Mail;
+@using RealArtists.ShipHub.Mail.Models;
+@using RazorEngine.Text;
+@inherits ShipHubTemplateBase<PaymentSucceededOrganizationMailMessage>
+@{
+  Layout = "LayoutHtml";
+}
+<p>
+    We received payment for your organization Ship subscription.
+</p>
+<p>
+    <strong>@string.Format("{0:C}", Model.AmountPaid)</strong> was charged to your card ending
+    in <strong>@Model.LastCardDigits</strong> and covers service through <strong>@Model.ServiceThroughDate.ToString("MMM d, yyyy")</strong>.
+    Attached is an invoice receipt for your records.
+</p>
+@if (Model.PreviousMonthActiveUsersCount <= 5) {
+<p>
+    The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization
+    had <strong>@Model.PreviousMonthActiveUsersCount active Ship users</strong> in the prior month beginning on
+    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.
+</p>
+} else {
+<p>
+    The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization
+    had <strong>@Model.PreviousMonthActiveUsersCount active Ship users</strong> in the prior month beginning on
+    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for <strong>@(Model.PreviousMonthActiveUsersCount - 5) additional active users.</strong>
+</p>
+}
+@if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
+<p>
+    Active Ship users in your organization in the prior month were @(new RawString(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>")))).
+</p>
+} else {
+<p>
+    Active Ship users in your organization in the prior month included: @(new RawString(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>")))), and <strong>@(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others</strong>.
+</p>
+}
+<p class="last">
+    We appreciate your business!
+</p>

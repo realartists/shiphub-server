@@ -161,6 +161,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\MailMessageBase.cs" />
+    <Compile Include="Models\PaymentSucceededOrganizationMailMessage.cs" />
+    <Compile Include="Models\PaymentSucceededPersonalMailMessage.cs" />
     <Compile Include="Models\PurchaseOrganizationMailMessage.cs" />
     <Compile Include="Models\PersonalPurchaseMailMessage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -169,6 +171,26 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Views\LayoutPlain.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Views\PaymentSucceededPersonalHtml.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Views\PaymentSucceededPersonalPlain.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\PaymentSucceededOrganizationHtml.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\PaymentSucceededOrganizationPlain.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

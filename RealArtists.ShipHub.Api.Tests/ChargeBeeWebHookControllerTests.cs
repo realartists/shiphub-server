@@ -747,5 +747,173 @@
         Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
       };
     }
+
+    [Test]
+    public async Task PaymentSucceededForOrganizationSendsMessage() {
+      var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      using (var context = new ShipHubContext()) {
+        var org = TestUtil.MakeTestOrg(context);
+
+        var users = new List<User>();
+        for (int i = 0; i < 7; i++) {
+          var user = TestUtil.MakeTestUser(context, 3001 + i, "aroo" + "".PadLeft(i, 'o') + "n");
+          users.Add(user);
+        }
+        await context.SaveChangesAsync();
+
+        await context.SetOrganizationUsers(org.Id, users.Select(x => Tuple.Create(x.Id, false)));
+        foreach (var user in users) {
+          await context.RecordUsage(user.Id, invoiceDate.AddDays(-15));
+        }
+
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+          .Returns(Task.CompletedTask);
+
+        var outgoingMessages = new List<MailMessageBase>();
+        var mockMailer = new Mock<IShipHubMailer>();
+        mockMailer
+          .Setup(x => x.PaymentSucceededOrganization(It.IsAny<PaymentSucceededOrganizationMailMessage>()))
+          .Returns(Task.CompletedTask)
+          .Callback((PaymentSucceededOrganizationMailMessage message) => outgoingMessages?.Add(message));
+
+        var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+        controller.CallBase = true;
+        controller
+          .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
+          .Returns(Task.FromResult(new byte[0]));
+
+
+        ConfigureController(
+          controller.Object,
+          new ChargeBeeWebhookPayload() {
+            EventType = "payment_succeeded",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                Id = $"org-{org.Id}",
+                Email = "aroon@pureimaginary.com",
+                FirstName = "Aroon",
+                LastName = "Pahwa",
+                GitHubUsername = org.Login,
+              },
+              Subscription = new ChargeBeeWebhookSubscription() {
+                Status = "active",
+                PlanId = "organization",
+              },
+              Invoice = new ChargeBeeWebhookInvoice() {
+                Id = "inv_1234",
+                Date = invoiceDate.ToUnixTimeSeconds(),
+                LineItems = new[] {
+                  new ChargeBeeWebhookInvoiceLineItem() {
+                    EntityType = "plan",
+                    EntityId = "organization",
+                    DateFrom = invoiceDate.ToUnixTimeSeconds(),
+                    DateTo = invoiceDate.AddMonths(1).ToUnixTimeSeconds(),
+                  },
+                },
+                AmountPaid = 2500 + (900 * 2),
+                FirstInvoice = false,
+              },
+              Transaction = new ChargeBeeWebhookTransaction() {
+                MaskedCardNumber = "************4567",
+              },
+            },
+          });
+        await controller.Object.HandleHook();
+
+        Assert.AreEqual(1, outgoingMessages.Count);
+        var outgoingMessage = (PaymentSucceededOrganizationMailMessage)outgoingMessages.First();
+        Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+        Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+        Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+        Assert.AreEqual(43.00, outgoingMessage.AmountPaid);
+        Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+        Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
+        Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+        Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
+        Assert.AreEqual(invoiceDate.AddMonths(-1), outgoingMessage.PreviousMonthStart);
+        Assert.AreEqual(7, outgoingMessage.PreviousMonthActiveUsersCount);
+        Assert.AreEqual(new[] {
+          "aroon",
+          "arooon",
+          "aroooon",
+          "arooooon",
+          "aroooooon",
+          "arooooooon",
+          "aroooooooon",
+        }, outgoingMessage.PreviousMonthActiveUsersSample);
+      }
+}
+
+    [Test]
+    public async Task PaymentSucceededForPersonalSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.PaymentSucceededPersonal(It.IsAny<PaymentSucceededPersonalMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((PaymentSucceededPersonalMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+      controller
+        .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
+        .Returns(Task.FromResult(new byte[0]));
+
+      var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "payment_succeeded",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUsername = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            Invoice = new ChargeBeeWebhookInvoice() {
+              Id = "inv_1234",
+              Date = invoiceDate.ToUnixTimeSeconds(),
+              LineItems = new[] {
+                new ChargeBeeWebhookInvoiceLineItem() {
+                  EntityType = "plan",
+                  EntityId = "personal",
+                  DateFrom = invoiceDate.ToUnixTimeSeconds(),
+                  DateTo = invoiceDate.AddMonths(1).ToUnixTimeSeconds(),
+                },
+              },
+              AmountPaid = 900,
+              FirstInvoice = false,
+            },
+            Transaction = new ChargeBeeWebhookTransaction() {
+              MaskedCardNumber = "************4567",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
+      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
+      Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+      Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
+    }
   }
 }

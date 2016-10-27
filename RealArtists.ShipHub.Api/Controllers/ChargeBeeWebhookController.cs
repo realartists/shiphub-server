@@ -38,6 +38,7 @@
     public string EntityType { get; set; }
     public string EntityId { get; set; }
     public long DateFrom { get; set; }
+    public long DateTo { get; set; }
   }
 
   public class ChargeBeeWebhookInvoiceDiscount {
@@ -46,17 +47,24 @@
   }
 
   public class ChargeBeeWebhookInvoice {
+    public int AmountPaid { get; set; }
     public string Id { get; set; }
     public string CustomerId { get; set; }
     public long Date { get; set; }
+    public bool FirstInvoice { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceLineItem> LineItems { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceDiscount> Discounts { get; set; }
+  }
+
+  public class ChargeBeeWebhookTransaction {
+    public string MaskedCardNumber { get; set; }
   }
 
   public class ChargeBeeWebhookContent {
     public ChargeBeeWebhookCustomer Customer { get; set; }
     public ChargeBeeWebhookSubscription Subscription { get; set; }
     public ChargeBeeWebhookInvoice Invoice { get; set; }
+    public ChargeBeeWebhookTransaction Transaction { get; set; }
   }
 
   public class ChargeBeeWebhookPayload {
@@ -120,9 +128,92 @@
         payload.EventType == "subscription_created" &&
         payload.Content.Subscription.PlanId == "organization") {
         await SendPurchaseOrganizationMessage(payload);
+      } else if (
+        payload.EventType == "payment_succeeded" &&
+        !payload.Content.Invoice.FirstInvoice &&
+        payload.Content.Subscription.PlanId == "personal") {
+        await SendPaymentSucceededPersonalMessage(payload);
+      } else if (
+        payload.EventType == "payment_succeeded" &&
+        !payload.Content.Invoice.FirstInvoice &&
+        payload.Content.Subscription.PlanId == "organization") {
+        await SendPaymentSucceededOrganizationMessage(payload);
       }
 
       return Ok();
+    }
+
+    public async Task SendPaymentSucceededPersonalMessage(ChargeBeeWebhookPayload payload) {
+      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
+
+      var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
+
+      await _mailer.PaymentSucceededPersonal(
+        new Mail.Models.PaymentSucceededPersonalMailMessage() {
+          GitHubUsername = payload.Content.Customer.GitHubUsername,
+          ToAddress = payload.Content.Customer.Email,
+          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+          InvoicePdfBytes = invoicePdfBytes,
+          AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
+          ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
+          LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        });
+    }
+
+    public async Task SendPaymentSucceededOrganizationMessage(ChargeBeeWebhookPayload payload) {
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(payload.Content.Customer.Id);
+      var accountId = long.Parse(matches.Groups[2].ToString());
+
+      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
+      var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
+
+      var newInvoiceStartDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateFrom);
+      var previousMonthStart = DateTimeOffsetFloor(newInvoiceStartDate.AddMonths(-1));
+      var previousMonthEnd = DateTimeOffsetFloor(newInvoiceStartDate.AddDays(-1));
+
+      var activeUsersCount = await Context.Usage
+        .Where(x => (
+          x.Date >= previousMonthStart &&
+          x.Date <= previousMonthEnd &&
+          Context.OrganizationAccounts
+            .Where(y => y.OrganizationId == accountId)
+            .Select(y => y.UserId)
+            .Contains(x.AccountId)))
+        .Select(x => x.AccountId)
+        .Distinct()
+        .CountAsync();
+
+      var activeUsersSample = await Context.Usage
+        .Include(x => x.Account)
+        .Where(x => (
+          x.Date >= previousMonthStart &&
+          x.Date <= previousMonthEnd &&
+          Context.OrganizationAccounts
+            .Where(y => y.OrganizationId == accountId)
+            .Select(y => y.UserId)
+            .Contains(x.AccountId)))
+        .Select(x => x.Account.Login)
+        .OrderBy(x => x)
+        .Distinct()
+        .Take(20)
+        .ToArrayAsync();
+
+      await _mailer.PaymentSucceededOrganization(
+        new Mail.Models.PaymentSucceededOrganizationMailMessage() {
+          GitHubUsername = payload.Content.Customer.GitHubUsername,
+          ToAddress = payload.Content.Customer.Email,
+          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+          InvoicePdfBytes = invoicePdfBytes,
+          ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
+          PreviousMonthActiveUsersCount = activeUsersCount,
+          PreviousMonthActiveUsersSample = activeUsersSample,
+          PreviousMonthStart = previousMonthStart,
+          AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
+          LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        });
     }
 
     public async Task SendPurchasePersonalMessage(ChargeBeeWebhookPayload payload) {
