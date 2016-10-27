@@ -29,6 +29,7 @@
     // Metadata
     private GitHubMetadata _metadata;
     private GitHubMetadata _assignableMetadata;
+    private GitHubMetadata _labelMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -57,6 +58,7 @@
         _fullName = repo.FullName;
         _metadata = repo.Metadata;
         _assignableMetadata = repo.AssignableMetadata;
+        _labelMetadata = repo.LabelMetadata;
       }
 
       await base.OnActivateAsync();
@@ -67,6 +69,7 @@
         // I think all we need to persist is the metadata.
         await context.UpdateMetadata("Repositories", _repoId, _metadata);
         await context.UpdateMetadata("Repositories", "AssignableMetadataJson", _repoId, _assignableMetadata);
+        await context.UpdateMetadata("Repositories", "LabelMetadataJson", _repoId, _labelMetadata);
       }
 
       // TODO: Look into how agressively Orleans deactivates "inactive" grains.
@@ -168,7 +171,22 @@
         }
 
         // Update Labels
-        tasks.Add(_queueClient.SyncRepositoryLabels(_repoId, randomUserId.Value));
+        if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
+          var labels = await github.Labels(_fullName, _labelMetadata);
+          if (labels.Status != HttpStatusCode.NotModified) {
+            changes.UnionWith(
+              await context.SetRepositoryLabels(
+                _repoId,
+                labels.Result.Select(x => new LabelTableType() {
+                  ItemId = _repoId,
+                  Color = x.Color,
+                  Name = x.Name
+                }))
+            );
+          }
+
+          _labelMetadata = GitHubMetadata.FromResponse(labels);
+        }
 
         // Update Milestones
         tasks.Add(_queueClient.SyncRepositoryMilestones(_repoId, randomUserId.Value));

@@ -88,62 +88,6 @@
     }
 
     /// <summary>
-    /// Precondition: Repository exists
-    /// Postcondition: Labels exist
-    /// </summary>
-    public async Task SyncRepositoryLabels(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryLabels)] TargetMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-          var metadata = repo.LabelMetadata;
-
-          logger.WriteLine($"Labels for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Repository labels.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-
-            var response = await ghc.Labels(repo.FullName, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var labels = response.Result;
-
-              changes = await context.SetRepositoryLabels(
-                repo.Id,
-                labels.Select(x => new LabelTableType() {
-                  ItemId = repo.Id,
-                  Color = x.Color,
-                  Name = x.Name
-                })
-              );
-
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Repositories", "LabelMetadataJson", repo.Id, response));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-        }
-      });
-    }
-
-    /// <summary>
     /// Precondition: Repository and Milestones exist
     /// Postcondition: Issues exist
     /// </summary>

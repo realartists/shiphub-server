@@ -10,9 +10,7 @@
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(long targetId, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
-    Task SyncRepositoryAssignees(long targetId, long forUserId);
     Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId);
-    Task SyncRepositoryLabels(long targetId, long forUserId);
     Task SyncRepositoryMilestones(long targetId, long forUserId);
   }
 
@@ -41,14 +39,8 @@
     public Task NotifyChanges(IChangeSummary changeSummary)
       => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
 
-    public Task SyncRepositoryAssignees(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.SyncRepositoryAssignees, new TargetMessage(targetId, forUserId));
-
     public Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId)
       => SendIt(ShipHubQueueNames.SyncRepositoryIssueTimeline, new IssueViewMessage(repositoryFullName, issueNumber, forUserId));
-
-    public Task SyncRepositoryLabels(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.SyncRepositoryLabels, new TargetMessage(targetId, forUserId));
 
     public Task SyncRepositoryMilestones(long targetId, long forUserId)
       => SendIt(ShipHubQueueNames.SyncRepositoryMilestones, new TargetMessage(targetId, forUserId));

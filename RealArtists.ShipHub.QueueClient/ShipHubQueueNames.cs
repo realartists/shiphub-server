@@ -19,7 +19,6 @@
 
     // Queue Names
     private const string SyncRepository = "sync-repository";
-    public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
     public const string SyncRepositoryComments = SyncRepository + "-comments";
     public const string SyncRepositoryIssueCommentReactions = SyncRepository + "-issue-comment-reactions";
     public const string SyncRepositoryIssueComments = SyncRepository + "-issue-comments";
@@ -27,7 +26,6 @@
     public const string SyncRepositoryIssueTimeline = SyncRepository + "-issue-timeline";
     public const string SyncRepositoryIssueReactions = SyncRepository + "-issue-reactions";
     public const string SyncRepositoryIssues = SyncRepository + "-issues";
-    public const string SyncRepositoryLabels = SyncRepository + "-labels";
     public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
 
     public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
