@@ -36,56 +36,6 @@
 
     /// <summary>
     /// Precondition: Repository exists
-    /// Postcondition: Repository assignees exist and are linked.
-    /// </summary>
-    public async Task SyncRepositoryAssignees(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryAssignees)] TargetMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-          var metadata = repo.AssignableMetadata;
-
-          logger.WriteLine($"Assignees for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Repository assignees.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-
-            var response = await ghc.Assignable(repo.FullName, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var assignees = response.Result;
-
-              changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees));
-              changes.UnionWith(await context.SetRepositoryAssignableAccounts(repo.Id, assignees.Select(x => x.Id)));
-
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Repositories", "AssignableMetadataJson", repo.Id, response));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-        }
-      });
-    }
-
-    /// <summary>
-    /// Precondition: Repository exists
     /// Postcondition: Milestones exist
     /// </summary>
     public async Task SyncRepositoryMilestones(
