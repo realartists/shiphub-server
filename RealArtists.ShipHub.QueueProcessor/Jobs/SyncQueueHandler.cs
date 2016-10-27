@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
-  using System.Diagnostics;
   using System.IO;
   using System.Linq;
   using System.Net;
@@ -33,28 +32,6 @@
     public SyncQueueHandler(IDetailedExceptionLogger logger, IMapper mapper, IGrainFactory grainFactory) : base(logger) {
       _mapper = mapper;
       _grainFactory = grainFactory;
-    }
-
-    /// <summary>
-    /// Precondition: Repos saved in DB
-    /// Postcondition: None.
-    /// </summary>
-    /// TODO: Should this be inlined?
-    public async Task SyncRepository(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepository)] TargetMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryAssignees)] IAsyncCollector<TargetMessage> syncRepoAssignees,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryMilestones)] IAsyncCollector<TargetMessage> syncRepoMilestones,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryLabels)] IAsyncCollector<TargetMessage> syncRepoLabels,
-      ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        // TODO: Refresh the repository itself.
-
-        await Task.WhenAll(
-          syncRepoAssignees.AddAsync(message),
-          syncRepoMilestones.AddAsync(message),
-          syncRepoLabels.AddAsync(message)
-        );
-      });
     }
 
     /// <summary>
@@ -565,7 +542,7 @@
                 break;
             }
 
-            if (changes!= null && !changes.Empty) {
+            if (changes != null && !changes.Empty) {
               tasks.Add(notifyChanges.Send(changes));
             }
 

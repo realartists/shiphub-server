@@ -225,6 +225,10 @@
       return _github.PullRequest(repoFullName, pullRequestNumber, cacheOptions);
     }
 
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      return _github.Repository(repoFullName, cacheOptions);
+    }
+
     public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
       return _github.Repositories(cacheOptions);
     }

@@ -246,7 +246,7 @@
           .Where(x => x.AccountId == _userId)
           .ToArrayAsync();
 
-        tasks.AddRange(allRepos.Select(x => _queueClient.SyncRepository(x.RepositoryId, _userId)));
+        tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync(_userId)));
         tasks.AddRange(allRepos
           .Where(x => x.Admin)
           .Select(x => _queueClient.AddOrUpdateRepoWebhooks(x.RepositoryId, _userId)));

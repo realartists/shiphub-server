@@ -126,6 +126,7 @@
     <Compile Include="OrganizationActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GitHub\GitHubActor.cs" />
+    <Compile Include="RepositoryActor.cs" />
     <Compile Include="UserActor.cs" />
   </ItemGroup>
   <ItemGroup>

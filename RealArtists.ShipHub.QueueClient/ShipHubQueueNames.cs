@@ -18,9 +18,7 @@
     }
 
     // Queue Names
-    public const string SyncOrganizationMembers = "sync-organization-members";
-
-    public const string SyncRepository = "sync-repository";
+    private const string SyncRepository = "sync-repository";
     public const string SyncRepositoryAssignees = SyncRepository + "-assignees";
     public const string SyncRepositoryComments = SyncRepository + "-comments";
     public const string SyncRepositoryIssueCommentReactions = SyncRepository + "-issue-comment-reactions";
