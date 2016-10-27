@@ -35,59 +35,6 @@
     }
 
     /// <summary>
-    /// Precondition: Repository exists
-    /// Postcondition: Milestones exist
-    /// </summary>
-    public async Task SyncRepositoryMilestones(
-      [ServiceBusTrigger(ShipHubQueueNames.SyncRepositoryMilestones)] TargetMessage message,
-      [ServiceBus(ShipHubQueueNames.SyncRepositoryIssues)] IAsyncCollector<TargetMessage> syncRepoIssues,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger, ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        using (var context = new ShipHubContext()) {
-          var tasks = new List<Task>();
-          ChangeSummary changes = null;
-
-          // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-
-          var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-          var metadata = repo.MilestoneMetadata;
-
-          logger.WriteLine($"Milestones for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
-            logger.WriteLine("Polling: Repository milestones.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
-
-            var response = await ghc.Milestones(repo.FullName, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
-              logger.WriteLine("Github: Changed. Saving changes.");
-              var milestones = response.Result;
-
-              changes = await context.BulkUpdateMilestones(repo.Id, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones));
-
-              tasks.Add(notifyChanges.Send(changes));
-            } else {
-              logger.WriteLine("Github: Not modified.");
-            }
-
-            tasks.Add(context.UpdateMetadata("Repositories", "MilestoneMetadataJson", repo.Id, response));
-          } else {
-            logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-          }
-
-          await Task.WhenAll(tasks);
-
-          // Sync Issues regardless
-          await syncRepoIssues.AddAsync(message);
-        }
-      });
-    }
-
-    /// <summary>
     /// Precondition: Repository and Milestones exist
     /// Postcondition: Issues exist
     /// </summary>

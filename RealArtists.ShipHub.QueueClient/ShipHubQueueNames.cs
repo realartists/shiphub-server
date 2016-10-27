@@ -26,7 +26,6 @@
     public const string SyncRepositoryIssueTimeline = SyncRepository + "-issue-timeline";
     public const string SyncRepositoryIssueReactions = SyncRepository + "-issue-reactions";
     public const string SyncRepositoryIssues = SyncRepository + "-issues";
-    public const string SyncRepositoryMilestones = SyncRepository + "-milestones";
 
     public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
     public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";

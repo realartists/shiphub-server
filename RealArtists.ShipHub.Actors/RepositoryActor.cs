@@ -30,6 +30,7 @@
     private GitHubMetadata _metadata;
     private GitHubMetadata _assignableMetadata;
     private GitHubMetadata _labelMetadata;
+    private GitHubMetadata _milestoneMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -59,6 +60,7 @@
         _metadata = repo.Metadata;
         _assignableMetadata = repo.AssignableMetadata;
         _labelMetadata = repo.LabelMetadata;
+        _milestoneMetadata = repo.MilestoneMetadata;
       }
 
       await base.OnActivateAsync();
@@ -70,6 +72,7 @@
         await context.UpdateMetadata("Repositories", _repoId, _metadata);
         await context.UpdateMetadata("Repositories", "AssignableMetadataJson", _repoId, _assignableMetadata);
         await context.UpdateMetadata("Repositories", "LabelMetadataJson", _repoId, _labelMetadata);
+        await context.UpdateMetadata("Repositories", "MilestoneMetadataJson", _repoId, _milestoneMetadata);
       }
 
       // TODO: Look into how agressively Orleans deactivates "inactive" grains.
@@ -189,8 +192,20 @@
         }
 
         // Update Milestones
-        tasks.Add(_queueClient.SyncRepositoryMilestones(_repoId, randomUserId.Value));
+        if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
+          var milestones = await github.Milestones(_fullName, _milestoneMetadata);
+          if (milestones.Status != HttpStatusCode.NotModified) {
+            changes.UnionWith(
+              await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result))
+            );
+          }
+
+          _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
+        }
       }
+
+      // Trigger issue sync
+      tasks.Add(_queueClient.SyncRepositoryIssues(_repoId, randomUserId.Value));
 
       // Send Changes.
       if (!changes.Empty) {

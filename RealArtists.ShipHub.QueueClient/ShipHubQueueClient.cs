@@ -10,8 +10,8 @@
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(long targetId, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
+    Task SyncRepositoryIssues(long targetId, long forUserId);
     Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId);
-    Task SyncRepositoryMilestones(long targetId, long forUserId);
   }
 
   public class ShipHubQueueClient : IShipHubQueueClient {
@@ -39,11 +39,11 @@
     public Task NotifyChanges(IChangeSummary changeSummary)
       => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
 
+    public Task SyncRepositoryIssues(long targetId, long forUserId)
+      => SendIt(ShipHubQueueNames.SyncRepositoryIssues, new TargetMessage(targetId, forUserId));
+
     public Task SyncRepositoryIssueTimeline(string repositoryFullName, int issueNumber, long forUserId)
       => SendIt(ShipHubQueueNames.SyncRepositoryIssueTimeline, new IssueViewMessage(repositoryFullName, issueNumber, forUserId));
-
-    public Task SyncRepositoryMilestones(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.SyncRepositoryMilestones, new TargetMessage(targetId, forUserId));
 
     private async Task SendIt<T>(string queueName, T message) {
       var sender = await _factory.MessageSenderForName(queueName);
