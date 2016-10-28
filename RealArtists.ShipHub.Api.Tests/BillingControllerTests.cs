@@ -398,7 +398,7 @@
               Assert.AreEqual("organization", data["subscription[plan_id]"]);
               Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
               Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
-              Assert.AreEqual("pureimaginary", data["cf_github_username"]);
+              Assert.AreEqual("pureimaginary", data["customer[cf_github_username]"]);
 
               return new {
                 hosted_page = new {

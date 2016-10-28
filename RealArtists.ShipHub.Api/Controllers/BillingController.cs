@@ -307,7 +307,7 @@
        .CustomerId($"org-{targetId}")
        .CustomerEmail(primaryEmail.Email)
        .SubscriptionPlanId("organization")
-       .Param("cf_github_username", ghcOrg.Login)
+       .Param("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false);
 
         if (!ghcOrg.Name.IsNullOrWhiteSpace()) {
