@@ -10,9 +10,10 @@
   using Microsoft.Azure;
   using RazorEngine.Configuration;
   using RazorEngine.Templating;
-  using RealArtists.ShipHub.Mail.Models;
+  using Models;
 
   public interface IShipHubMailer {
+    Task PaymentRefunded(PaymentRefundedMailMessage model);
     Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
     Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model);
     Task PurchasePersonal(PurchasePersonalMailMessage model);
@@ -95,6 +96,17 @@
       } else {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       }
+    }
+
+    public Task PaymentRefunded(PaymentRefundedMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUsername}", "PaymentRefunded");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.CreditNotePdfBytes),
+        $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
     }
 
     public Task PurchasePersonal(PurchasePersonalMailMessage model) {

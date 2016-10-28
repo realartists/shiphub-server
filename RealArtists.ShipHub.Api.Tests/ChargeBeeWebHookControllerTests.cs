@@ -844,7 +844,7 @@
           "aroooooooon",
         }, outgoingMessage.PreviousMonthActiveUsersSample);
       }
-}
+    }
 
     [Test]
     public async Task PaymentSucceededForPersonalSendsMessage() {
@@ -914,6 +914,65 @@
       Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
       Assert.NotNull(outgoingMessage.InvoicePdfBytes);
       Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
+    }
+
+    [Test]
+    public async Task PaymentRefundedSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.PaymentRefunded(It.IsAny<PaymentRefundedMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((PaymentRefundedMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+      controller
+        .Setup(x => x.GetCreditNotePdfBytes(It.IsAny<string>()))
+        .Returns(Task.FromResult(new byte[0]));
+
+      var creditNotDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "payment_refunded",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            CreditNote = new ChargeBeeWebhookCreditNote() {
+              Id = "cn-1234",
+              Date = creditNotDate.ToUnixTimeSeconds(),
+              AmountRefunded = 900,
+            },
+            Transaction = new ChargeBeeWebhookTransaction() {
+              MaskedCardNumber = "************4567",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual(9.00, outgoingMessage.AmountRefunded);
+      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
     }
   }
 }

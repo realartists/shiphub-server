@@ -26,6 +26,12 @@
     public long ResourceVersion { get; set; }
   }
 
+  public class ChargeBeeWebhookCreditNote {
+    public int AmountRefunded { get; set; }
+    public string Id { get; set; }
+    public long Date { get; set; }
+  }
+
   public class ChargeBeeWebhookSubscription {
     public long ActivatedAt { get; set; }
     public string PlanId { get; set; }
@@ -65,6 +71,7 @@
     public ChargeBeeWebhookSubscription Subscription { get; set; }
     public ChargeBeeWebhookInvoice Invoice { get; set; }
     public ChargeBeeWebhookTransaction Transaction { get; set; }
+    public ChargeBeeWebhookCreditNote CreditNote { get; set; }
   }
 
   public class ChargeBeeWebhookPayload {
@@ -91,7 +98,19 @@
       using (var client = new WebClient()) {
         invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
       }
-        
+
+      return invoiceBytes;
+    }
+
+    public async virtual Task<byte[]> GetCreditNotePdfBytes(string creditNoteId) {
+      var downloadUrl = CreditNote.Pdf(creditNoteId).Request().Download.DownloadUrl;
+
+      byte[] invoiceBytes;
+
+      using (var client = new WebClient()) {
+        invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
+      }
+
       return invoiceBytes;
     }
 
@@ -138,9 +157,25 @@
         !payload.Content.Invoice.FirstInvoice &&
         payload.Content.Subscription.PlanId == "organization") {
         await SendPaymentSucceededOrganizationMessage(payload);
+      } else if (payload.EventType == "payment_refunded") {
+        await SendPaymentRefundedMessage(payload);
       }
 
       return Ok();
+    }
+
+    public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {
+      var pdfBytes = await GetCreditNotePdfBytes(payload.Content.CreditNote.Id);
+
+      await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
+        CreditNoteDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date),
+        CreditNotePdfBytes = pdfBytes,
+        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+      });
     }
 
     public async Task SendPaymentSucceededPersonalMessage(ChargeBeeWebhookPayload payload) {

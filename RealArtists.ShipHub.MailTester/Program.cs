@@ -72,6 +72,16 @@
           PreviousMonthActiveUsersCount = 25,
           PreviousMonthActiveUsersSample = Enumerable.Range(1, 20).Select(x => "user_" + x).ToArray(),
         }).Wait();
+
+      mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        CreditNoteDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        CreditNotePdfBytes = dummyInvoicePdfBytes,
+        AmountRefunded = 9.00,
+        LastCardDigits = "5678",
+      }).Wait();
     }
 
     static void Main(string[] args) {

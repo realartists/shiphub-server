@@ -161,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\MailMessageBase.cs" />
+    <Compile Include="Models\PaymentRefundedMailMessage.cs" />
     <Compile Include="Models\PaymentSucceededOrganizationMailMessage.cs" />
     <Compile Include="Models\PaymentSucceededPersonalMailMessage.cs" />
     <Compile Include="Models\PurchaseOrganizationMailMessage.cs" />
@@ -193,6 +194,14 @@
     <Content Include="Views\PaymentSucceededOrganizationPlain.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Views\PaymentRefundedHtml.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\PaymentRefundedPlain.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
