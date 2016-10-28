@@ -11,5 +11,7 @@
 
     [Column(Order = 1), Key]
     public DateTimeOffset Date { get; set; }
+
+    public virtual User Account { get; set; }
   }
 }

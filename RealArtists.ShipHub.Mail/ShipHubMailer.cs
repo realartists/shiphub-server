@@ -13,11 +13,15 @@
   using RealArtists.ShipHub.Mail.Models;
 
   public interface IShipHubMailer {
+    Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
+    Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model);
     Task PurchasePersonal(PurchasePersonalMailMessage model);
     Task PurchaseOrganization(PurchaseOrganizationMailMessage model);
   }
 
   public class ShipHubMailer : IShipHubMailer {
+    public bool IncludeHtmlView { get; set; } = true;
+
     private string GetBaseDirectory() {
       if (HostingEnvironment.IsHosted) {
         return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin");
@@ -41,35 +45,36 @@
       var razor = GetRazorEngineService();
       var text = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model);
 
-      var bag = new DynamicViewBag();
-      // Let's just use the entire plain text version as the pre-header for now.
-      // We don't need to do anything more clever.  Also, it's important that
-      // pre-header text be sufficiently long so that the <img> tag's alt text and
-      // the href URL don't leak into the pre-header.  The plain text version is long
-      // enough for this.
-      bag.AddValue("PreHeader", text);
-      var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
-
-      var premailer = new PreMailer.Net.PreMailer(html);
-      var htmlProcessed = premailer.MoveCssInline(
-        removeComments: true
-        ).Html;
-
       var message = new MailMessage(
         new MailAddress("support@realartists.com", "Ship"),
         new MailAddress(model.ToAddress, model.ToName));
       message.Subject = subject;
       message.Body = text;
 
-      var shipLogo = File.ReadAllBytes(Path.Combine(GetBaseDirectory(), "ShipLogo.png"));
-      var htmlView = new AlternateView(
-        new MemoryStream(UTF8Encoding.Default.GetBytes(htmlProcessed)),
-        new ContentType("text/html"));
-      htmlView.LinkedResources.Add(new LinkedResource(new MemoryStream(shipLogo)) {
-        ContentType = new ContentType("image/png"),
-        ContentId = "ShipLogo.png",
-      });
-      message.AlternateViews.Add(htmlView);
+      if (IncludeHtmlView) {
+        var bag = new DynamicViewBag();
+        // Let's just use the entire plain text version as the pre-header for now.
+        // We don't need to do anything more clever.  Also, it's important that
+        // pre-header text be sufficiently long so that the <img> tag's alt text and
+        // the href URL don't leak into the pre-header.  The plain text version is long
+        // enough for this.
+        bag.AddValue("PreHeader", text);
+        var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
+
+        var premailer = new PreMailer.Net.PreMailer(html);
+        var htmlProcessed = premailer.MoveCssInline(
+          removeComments: true
+          ).Html;
+
+        var htmlView = new AlternateView(
+          new MemoryStream(UTF8Encoding.Default.GetBytes(htmlProcessed)),
+          new ContentType("text/html"));
+
+        var linkedResource = new LinkedResource(Path.Combine(GetBaseDirectory(), "ShipLogo.png"), "image/png");
+        linkedResource.ContentId = "ShipLogo.png";
+        htmlView.LinkedResources.Add(linkedResource);
+        message.AlternateViews.Add(htmlView);
+      }
 
       return message;
     }
@@ -93,7 +98,7 @@
     }
 
     public Task PurchasePersonal(PurchasePersonalMailMessage model) {
-      var message = CreateMailMessage(model, "Ship Subscription", "PurchasePersonal");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchasePersonal");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -104,7 +109,29 @@
     }
 
     public Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, "Ship Subscription", "PurchaseOrganization");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchaseOrganization");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
+    }
+
+    public Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededPersonal");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
+    }
+
+    public Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededOrganization");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -115,4 +142,3 @@
     }
   }
 }
-
