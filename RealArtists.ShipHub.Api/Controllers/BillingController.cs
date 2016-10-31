@@ -365,5 +365,25 @@
 
       return Redirect(result.AccessUrl);
     }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("update/{accountId}/{signature}")]
+    public async Task<IHttpActionResult> UpdatePaymentMethod(long accountId, string signature) {
+
+      if (!CreateSignature(accountId, accountId).Equals(signature)) {
+        return BadRequest("Signature does not match.");
+      }
+
+      var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
+      var customerIdPrefix = (account is Organization) ? "org" : "user";
+
+      var result = HostedPage.UpdatePaymentMethod()
+        .CustomerId($"{customerIdPrefix}-{accountId}")
+        .Embed(false)
+        .Request();
+      
+      return Redirect(result.HostedPage.Url);
+    }
   }
 }

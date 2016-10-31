@@ -13,6 +13,7 @@
   using Models;
 
   public interface IShipHubMailer {
+    Task PaymentFailed(PaymentFailedMailMessage model);
     Task PaymentRefunded(PaymentRefundedMailMessage model);
     Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
     Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model);
@@ -96,6 +97,17 @@
       } else {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       }
+    }
+
+    public Task PaymentFailed(PaymentFailedMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUsername}", "PaymentFailed");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
     }
 
     public Task PaymentRefunded(PaymentRefundedMailMessage model) {

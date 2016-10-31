@@ -15,6 +15,9 @@
   using QueueClient;
   using System.Net;
   using Mail;
+  using ChargeBee.Api;
+  using Microsoft.Azure;
+  using System.Configuration;
 
   public class ChargeBeeWebhookCustomer {
     public string FirstName { get; set; }
@@ -60,9 +63,12 @@
     public bool FirstInvoice { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceLineItem> LineItems { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceDiscount> Discounts { get; set; }
+    public long? NextRetryAt { get; set; }
   }
 
   public class ChargeBeeWebhookTransaction {
+    public long Amount { get; set; }
+    public string ErrorText { get; set; }
     public string MaskedCardNumber { get; set; }
   }
 
@@ -159,9 +165,45 @@
         await SendPaymentSucceededOrganizationMessage(payload);
       } else if (payload.EventType == "payment_refunded") {
         await SendPaymentRefundedMessage(payload);
+      } else if (payload.EventType == "payment_failed") {
+        await SendPaymentFailedMessage(payload);
       }
 
       return Ok();
+    }
+
+    public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
+      var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
+
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(payload.Content.Customer.Id);
+      var accountId = long.Parse(matches.Groups[2].ToString());
+
+      var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
+      if (apiHostName == null) {
+        throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
+      }
+
+      var signature = BillingController.CreateSignature(accountId, accountId);
+      var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";
+
+      var message = new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        Amount = payload.Content.Transaction.Amount / 100.0,
+        InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+        InvoicePdfBytes = pdfBytes,
+        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        ErrorText = payload.Content.Transaction.ErrorText,
+        UpdatePaymentMethodUrl = updateUrl,
+      };
+
+      if (payload.Content.Invoice.NextRetryAt != null) {
+        message.NextRetryDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.NextRetryAt.Value);
+      }
+
+      await _mailer.PaymentFailed(message);
     }
 
     public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {

@@ -974,5 +974,69 @@
       Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
     }
+
+
+    [Test]
+    public async Task PaymentFailedSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.PaymentFailed(It.IsAny<PaymentFailedMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((PaymentFailedMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+      controller
+        .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
+        .Returns(Task.FromResult(new byte[0]));
+
+      var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "payment_failed",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            Invoice = new ChargeBeeWebhookInvoice() {
+              Id = "cn-1234",
+              Date = invoiceDate.ToUnixTimeSeconds(),
+              NextRetryAt = invoiceDate.AddDays(3).ToUnixTimeSeconds(),
+            },
+            Transaction = new ChargeBeeWebhookTransaction() {
+              Amount = 900,
+              MaskedCardNumber = "************4567",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(9.00, outgoingMessage.Amount);
+      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
+      Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+      Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
+      Assert.AreEqual(invoiceDate.AddDays(3), outgoingMessage.NextRetryDate);
+    }
   }
 }

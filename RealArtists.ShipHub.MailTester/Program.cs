@@ -82,6 +82,33 @@
         AmountRefunded = 9.00,
         LastCardDigits = "5678",
       }).Wait();
+
+      // Payment failed, but we'll try to retry later.
+      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        InvoicePdfBytes = dummyInvoicePdfBytes,
+        Amount = 9.00,
+        LastCardDigits = "5678",
+        ErrorText = "Insufficient funds",
+        NextRetryDate = new DateTimeOffset(2016, 05, 05, 0, 0, 0, TimeSpan.Zero),
+        UpdatePaymentMethodUrl = "https://www.chargebee.com",
+      }).Wait();
+
+      // Payment failed, no more retries, and service is cancelled.
+      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        InvoicePdfBytes = dummyInvoicePdfBytes,
+        Amount = 9.00,
+        LastCardDigits = "5678",
+        ErrorText = "Insufficient funds",
+        NextRetryDate = null,
+      }).Wait();
     }
 
     static void Main(string[] args) {

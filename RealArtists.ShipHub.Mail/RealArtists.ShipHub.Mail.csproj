@@ -161,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\MailMessageBase.cs" />
+    <Compile Include="Models\PaymentFailedMailMessage.cs" />
     <Compile Include="Models\PaymentRefundedMailMessage.cs" />
     <Compile Include="Models\PaymentSucceededOrganizationMailMessage.cs" />
     <Compile Include="Models\PaymentSucceededPersonalMailMessage.cs" />
@@ -202,6 +203,16 @@
     <EmbeddedResource Include="Views\PaymentRefundedPlain.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\PaymentFailedHtml.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\PaymentFailedPlain.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
