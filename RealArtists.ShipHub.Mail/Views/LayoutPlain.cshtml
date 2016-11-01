@@ -1,6 +1,11 @@
-﻿Hi @Model.FirstName,
+﻿@if (ViewBag.SkipHeaderFooter == null) {
+<text>Hi @Model.FirstName,</text>
+}
 @RenderBody()
-Reply to this email if you have any questions - we're happy to help.
+@if (ViewBag.SkipHeaderFooter == null) {
+<text>Reply to this email if you have any questions - we're happy to help.
 
 Real Artists, Inc.
 support@realartists.com
+</text>
+}

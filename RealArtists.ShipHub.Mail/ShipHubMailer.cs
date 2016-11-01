@@ -11,6 +11,7 @@
   using RazorEngine.Configuration;
   using RazorEngine.Templating;
   using Models;
+  using System.Collections.Generic;
 
   public interface IShipHubMailer {
     Task PaymentFailed(PaymentFailedMailMessage model);
@@ -60,7 +61,11 @@
         // pre-header text be sufficiently long so that the <img> tag's alt text and
         // the href URL don't leak into the pre-header.  The plain text version is long
         // enough for this.
-        bag.AddValue("PreHeader", text);
+        var preheader = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
+          { "SkipHeaderFooter", true }
+        })).Trim();
+        bag.AddValue("PreHeader", preheader);
+
         var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
 
         var premailer = new PreMailer.Net.PreMailer(html);
