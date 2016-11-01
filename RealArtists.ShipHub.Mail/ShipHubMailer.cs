@@ -14,6 +14,7 @@
   using System.Collections.Generic;
 
   public interface IShipHubMailer {
+    Task CancellationScheduled(CancellationScheduledMailMessage model);
     Task CardExpiryReminder(CardExpiryRemdinderMailMessage model);
     Task PaymentFailed(PaymentFailedMailMessage model);
     Task PaymentRefunded(PaymentRefundedMailMessage model);
@@ -103,6 +104,11 @@
       } else {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       }
+    }
+
+    public Task CancellationScheduled(CancellationScheduledMailMessage model) {
+      var message = CreateMailMessage(model, $"Cancellation for {model.GitHubUsername}", "CancellationScheduled");
+      return SendMessage(message);
     }
 
     public Task CardExpiryReminder(CardExpiryRemdinderMailMessage model) {

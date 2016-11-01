@@ -1148,5 +1148,52 @@
       Assert.AreEqual(9, outgoingMessage.ExpiryMonth);
       Assert.AreEqual(2016, outgoingMessage.ExpiryYear);
     }
+
+    [Test]
+    public async Task CancellationScheduledSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.CancellationScheduled(It.IsAny<CancellationScheduledMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((CancellationScheduledMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+
+      var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "subscription_cancellation_scheduled",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+              CurrentTermEnd = termEndDate.ToUnixTimeSeconds(),
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
+    }
   }
 }

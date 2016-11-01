@@ -43,6 +43,7 @@
 
   public class ChargeBeeWebhookSubscription {
     public long ActivatedAt { get; set; }
+    public long CurrentTermEnd { get; set; }
     public string PlanId { get; set; }
     public string Status { get; set; }
     public long? TrialEnd { get; set; }
@@ -176,6 +177,8 @@
         await SendPaymentFailedMessage(payload);
       } else if (payload.EventType == "card_expired" || payload.EventType == "card_expiry_reminder") {
         await SendCardExpiryReminderMessage(payload);
+      } else if (payload.EventType == "subscription_cancellation_scheduled") {
+        await SendCancellationScheduled(payload);
       }
 
       return Ok();
@@ -195,6 +198,17 @@
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";
 
       return updateUrl;
+    }
+
+    public async Task SendCancellationScheduled(ChargeBeeWebhookPayload payload) {
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+
+      await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CurrentTermEnd = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Subscription.CurrentTermEnd),
+      });
     }
 
     public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {

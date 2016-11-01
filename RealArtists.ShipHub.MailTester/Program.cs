@@ -133,6 +133,13 @@
         ExpiryYear = 2016,
         UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
       }).Wait();
+
+      mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        CurrentTermEnd = new DateTimeOffset(2016, 12, 01, 0, 0, 0, TimeSpan.Zero),
+      }).Wait();
     }
 
     static void Main(string[] args) {
