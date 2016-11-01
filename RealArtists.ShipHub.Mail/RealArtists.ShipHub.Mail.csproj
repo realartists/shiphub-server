@@ -161,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\MailMessageBase.cs" />
+    <Compile Include="Models\CardExpiryReminderMailMessage.cs" />
     <Compile Include="Models\PaymentFailedMailMessage.cs" />
     <Compile Include="Models\PaymentRefundedMailMessage.cs" />
     <Compile Include="Models\PaymentSucceededOrganizationMailMessage.cs" />
@@ -213,6 +214,16 @@
     <Content Include="Views\PaymentFailedPlain.cshtml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Views\CardExpiryReminderHtml.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Views\CardExpiryReminderPlain.cshtml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

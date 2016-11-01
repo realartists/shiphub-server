@@ -109,6 +109,30 @@
         ErrorText = "Insufficient funds",
         NextRetryDate = null,
       }).Wait();
+
+      // Card has already expired.
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        LastCardDigits = "5678",
+        AlreadyExpired = true,
+        ExpiryMonth = 9,
+        ExpiryYear = 2016,
+        UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
+      }).Wait();
+
+      // Card will expire.
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        LastCardDigits = "5678",
+        AlreadyExpired = false,
+        ExpiryMonth = 9,
+        ExpiryYear = 2016,
+        UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
+      }).Wait();
     }
 
     static void Main(string[] args) {

@@ -14,6 +14,7 @@
   using System.Collections.Generic;
 
   public interface IShipHubMailer {
+    Task CardExpiryReminder(CardExpiryRemdinderMailMessage model);
     Task PaymentFailed(PaymentFailedMailMessage model);
     Task PaymentRefunded(PaymentRefundedMailMessage model);
     Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
@@ -102,6 +103,11 @@
       } else {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       }
+    }
+
+    public Task CardExpiryReminder(CardExpiryRemdinderMailMessage model) {
+      var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUsername}", "CardExpiryReminder");
+      return SendMessage(message);
     }
 
     public Task PaymentFailed(PaymentFailedMailMessage model) {

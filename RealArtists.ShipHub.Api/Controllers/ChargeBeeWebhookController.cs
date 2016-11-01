@@ -19,6 +19,12 @@
   using Microsoft.Azure;
   using System.Configuration;
 
+  public class ChargeBeeWebhookCard {
+    public long ExpiryMonth { get; set; }
+    public long ExpiryYear { get; set; }
+    public string Last4 { get; set; }
+  }
+
   public class ChargeBeeWebhookCustomer {
     public string FirstName { get; set; }
     [JsonProperty(PropertyName = "cf_github_username")]
@@ -73,6 +79,7 @@
   }
 
   public class ChargeBeeWebhookContent {
+    public ChargeBeeWebhookCard Card { get; set; }
     public ChargeBeeWebhookCustomer Customer { get; set; }
     public ChargeBeeWebhookSubscription Subscription { get; set; }
     public ChargeBeeWebhookInvoice Invoice { get; set; }
@@ -167,16 +174,16 @@
         await SendPaymentRefundedMessage(payload);
       } else if (payload.EventType == "payment_failed") {
         await SendPaymentFailedMessage(payload);
+      } else if (payload.EventType == "card_expired" || payload.EventType == "card_expiry_reminder") {
+        await SendCardExpiryReminderMessage(payload);
       }
 
       return Ok();
     }
 
-    public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
-      var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
-
+    private static string GetPaymentMethodUpdateUrl(string customerId) {
       var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Customer.Id);
+      var matches = regex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
@@ -186,6 +193,28 @@
 
       var signature = BillingController.CreateSignature(accountId, accountId);
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";
+
+      return updateUrl;
+    }
+
+    public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+
+      await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        LastCardDigits = payload.Content.Card.Last4,
+        UpdatePaymentMethodUrl = updateUrl,
+        ExpiryMonth = payload.Content.Card.ExpiryMonth,
+        ExpiryYear = payload.Content.Card.ExpiryYear,
+        AlreadyExpired = payload.EventType == "card_expired",
+      });
+    }
+
+    public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
+      var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
 
       var message = new Mail.Models.PaymentFailedMailMessage() {
         GitHubUsername = payload.Content.Customer.GitHubUserName,
