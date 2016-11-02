@@ -105,7 +105,7 @@
           // no matter which grain I pick. Pick one at random to use as a fallback.
           var userId = _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
 
-          // TODO: We can't switch GitHubActors to userId from access tokens fast enough.
+          // TODO: Move this into load balancing code and detect grain activation failures instead.
           var token = await context.Accounts
             .Where(x => x.Id == userId)
             .Select(x => x.Token)
@@ -225,11 +225,26 @@
 
           _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
         }
+
+        /* Comments
+         * 
+         * For now primary population is on demand.
+         * Deletion is detected when checking for reactions.
+         * Each sync cycle, check a few pages before and after current watermarks.
+         * Note well: The watermarks MUST ONLY be updated from here. On demand
+         * sync will sparsely populate the comment corpus, so there's not a way
+         * to derive the overall sync status from the comments we've already synced.
+         */
+
+        /* Issue Events
+         * 
+         * For now primary population is on demand.
+         * Each sync cycle, check a few pages before and after current watermarks.
+         * Note well: The watermarks MUST ONLY be updated from here. On demand
+         * sync will sparsely populate the event corpus, so there's not a way
+         * to derive the overall sync status from the comments we've already synced.
+         */
       }
-
-      // Comments?
-
-      // Issue Events?
 
       // Send Changes.
       if (!changes.Empty) {

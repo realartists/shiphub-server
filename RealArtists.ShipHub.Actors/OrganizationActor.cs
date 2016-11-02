@@ -107,7 +107,7 @@
           // no matter which grain I pick. Pick one at random to use as a fallback.
           var userId = _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
 
-          // TODO: We can't switch GitHubActors to userId from access tokens fast enough.
+          // TODO: Move this into load balancing code and detect grain activation failures instead.
           var token = await context.Accounts
             .Where(x => x.Id == userId)
             .Select(x => x.Token)
