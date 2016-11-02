@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Configuration;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -10,11 +9,11 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ChargeBee.Models;
+  using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Mail;
-  using Microsoft.Azure;
   using Newtonsoft.Json;
   using QueueClient;
 
@@ -188,10 +187,7 @@
       var matches = regex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
-      if (apiHostName == null) {
-        throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
-      }
+      var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
       var signature = BillingController.CreateSignature(accountId, accountId);
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";

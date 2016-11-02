@@ -38,16 +38,6 @@
   public class BillingController : ShipHubController {
     private IGrainFactory _grainFactory;
 
-    private string ApiHostName {
-      get {
-        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
-        if (apiHostName == null) {
-          throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
-        }
-        return apiHostName;
-      }
-    }
-
     public BillingController(IGrainFactory grainFactory) {
       _grainFactory = grainFactory;
     }
@@ -92,7 +82,8 @@
        .Select(x => {
          var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
          var signature = CreateSignature(principal.UserId, x.Id);
-         var actionUrl = $"https://{ApiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
+         var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+         var actionUrl = $"https://{apiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
 
          return new BillingAccountRow() {
            Account = new BillingAccount() {
@@ -224,7 +215,8 @@
         // bummer because it means the customer's card won't get run as part of checkout.
         // If they provide invalid CC info, they won't know it until after they've completed
         // the checkout page; the failure info will have to come in an email.
-        pageRequest.RedirectUrl($"https://{ApiHostName}/billing/reactivate");
+        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+        pageRequest.RedirectUrl($"https://{apiHostName}/billing/reactivate");
 
         if (isMemberOfPaidOrg) {
           couponToAdd = "member_of_paid_org";
@@ -298,7 +290,7 @@
           // bummer because it means the customer's card won't get run as part of checkout.
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
-          .RedirectUrl($"https://{ApiHostName}/billing/reactivate")
+          .RedirectUrl($"https://{ShipHubCloudConfigurationManager.GetSetting("ApiHostName")}/billing/reactivate")
           .Request().HostedPage;
 
         return Redirect(result.Url);
