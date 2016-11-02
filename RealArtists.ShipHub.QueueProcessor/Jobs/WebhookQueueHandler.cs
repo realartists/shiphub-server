@@ -40,7 +40,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
         }
         await AddOrUpdateRepoWebhooksWithClient(message, gh, notifyChanges);
       });
@@ -148,7 +148,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
         }
 
         await AddOrUpdateOrgWebhooksWithClient(message, gh, notifyChanges);

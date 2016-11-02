@@ -5,7 +5,7 @@
   using Common.GitHub;
   using Common.GitHub.Models;
 
-  public interface IGitHubActor : Orleans.IGrainWithStringKey {
+  public interface IGitHubActor : Orleans.IGrainWithIntegerKey {
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);
     Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null);

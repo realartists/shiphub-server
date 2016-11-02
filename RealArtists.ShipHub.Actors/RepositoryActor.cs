@@ -114,18 +114,11 @@
           if (token.IsNullOrWhiteSpace()) {
             _interestedUserIds.Remove(userId);
           } else {
-            return _grainFactory.GetGrain<IGitHubActor>(token);
+            return _grainFactory.GetGrain<IGitHubActor>(userId);
           }
         }
       }
 
-      return null;
-    }
-
-    private long? GetRandomInterestedUserId() {
-      if (_interestedUserIds.Count > 0) {
-        return _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
-      }
       return null;
     }
 
@@ -137,11 +130,6 @@
       }
 
       var github = await GetRandomGitHubActor();
-      if (github == null) {
-        return;
-      }
-
-      var randomUserId = GetRandomInterestedUserId();
       if (github == null) {
         return;
       }

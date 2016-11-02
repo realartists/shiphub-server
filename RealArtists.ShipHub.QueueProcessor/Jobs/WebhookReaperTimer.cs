@@ -22,7 +22,7 @@
     }
 
     public virtual IGitHubActor CreateGitHubClient(User user, Guid correlationId) {
-      return _grainFactory.GetGrain<IGitHubActor>(user.Token);
+      return _grainFactory.GetGrain<IGitHubActor>(user.Id);
     }
 
     public virtual DateTimeOffset UtcNow {

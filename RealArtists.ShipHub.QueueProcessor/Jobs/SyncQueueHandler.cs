@@ -55,7 +55,7 @@
           logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository comments.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             var response = await ghc.Comments(repo.FullName, null, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -106,7 +106,7 @@
           logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Repository events.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Events(repo.FullName, metadata);
@@ -164,7 +164,7 @@
           logger.WriteLine($"Comments for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue comments.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Comments(issue.Repository.FullName, null, metadata);
@@ -227,7 +227,7 @@
           logger.WriteLine($"Reactions for {issue.Repository.FullName}#{issue.Number} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             var response = await ghc.IssueReactions(issue.Repository.FullName, issue.Number, metadata);
             if (response.Status != HttpStatusCode.NotModified) {
@@ -282,7 +282,7 @@
           logger.WriteLine($"Reactions for comment {comment.Id} in {comment.Repository.FullName} cached until {metadata?.Expires}");
           if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
             logger.WriteLine("Polling: Issue reactions.");
-            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+            var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             var response = await ghc.IssueCommentReactions(comment.Repository.FullName, comment.Id, metadata);
             switch (response.Status) {
@@ -349,7 +349,7 @@
             return;
           }
 
-          var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+          var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
           // Client doesn't send repoId :(
           var repoId = await context.Repositories

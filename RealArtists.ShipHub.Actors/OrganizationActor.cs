@@ -116,7 +116,7 @@
           if (token.IsNullOrWhiteSpace()) {
             _interestedUserIds.Remove(userId);
           } else {
-            return _grainFactory.GetGrain<IGitHubActor>(token);
+            return _grainFactory.GetGrain<IGitHubActor>(userId);
           }
         }
       }

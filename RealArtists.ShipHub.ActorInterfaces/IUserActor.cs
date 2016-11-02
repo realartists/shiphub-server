@@ -20,12 +20,5 @@
     /// one is known to have been added or deleted.
     /// </summary>
     Task ForceSyncRepositories();
-
-    // The actors will rely heavily on internal caches and won't go the the 
-    // database as often. Writes must pass through them to ensure they have
-    // the latest values.
-
-    Task UpdateToken(string token);
-    Task InvalidateToken(string token);
   }
 }
