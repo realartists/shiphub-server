@@ -166,7 +166,10 @@
       result.CacheData.Expires = expires;
 
       // Experiment:
-      result.CacheData.Expires = result.Date.Add(result.CacheData.PollInterval);
+      var pollExpires = result.Date.Add(result.CacheData.PollInterval);
+      if (result.CacheData.Expires > pollExpires) {
+        result.CacheData.Expires = pollExpires;
+      }
 
       // Rate Limits
       // These aren't always sent. Check for presence and fail gracefully.
