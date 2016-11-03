@@ -15,6 +15,15 @@
   using QueueClient;
   using System.Net;
   using Mail;
+  using ChargeBee.Api;
+  using Microsoft.Azure;
+  using System.Configuration;
+
+  public class ChargeBeeWebhookCard {
+    public long ExpiryMonth { get; set; }
+    public long ExpiryYear { get; set; }
+    public string Last4 { get; set; }
+  }
 
   public class ChargeBeeWebhookCustomer {
     public string FirstName { get; set; }
@@ -26,8 +35,15 @@
     public long ResourceVersion { get; set; }
   }
 
+  public class ChargeBeeWebhookCreditNote {
+    public int AmountRefunded { get; set; }
+    public string Id { get; set; }
+    public long Date { get; set; }
+  }
+
   public class ChargeBeeWebhookSubscription {
     public long ActivatedAt { get; set; }
+    public long CurrentTermEnd { get; set; }
     public string PlanId { get; set; }
     public string Status { get; set; }
     public long? TrialEnd { get; set; }
@@ -54,17 +70,22 @@
     public bool FirstInvoice { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceLineItem> LineItems { get; set; }
     public IEnumerable<ChargeBeeWebhookInvoiceDiscount> Discounts { get; set; }
+    public long? NextRetryAt { get; set; }
   }
 
   public class ChargeBeeWebhookTransaction {
+    public long Amount { get; set; }
+    public string ErrorText { get; set; }
     public string MaskedCardNumber { get; set; }
   }
 
   public class ChargeBeeWebhookContent {
+    public ChargeBeeWebhookCard Card { get; set; }
     public ChargeBeeWebhookCustomer Customer { get; set; }
     public ChargeBeeWebhookSubscription Subscription { get; set; }
     public ChargeBeeWebhookInvoice Invoice { get; set; }
     public ChargeBeeWebhookTransaction Transaction { get; set; }
+    public ChargeBeeWebhookCreditNote CreditNote { get; set; }
   }
 
   public class ChargeBeeWebhookPayload {
@@ -91,7 +112,19 @@
       using (var client = new WebClient()) {
         invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
       }
-        
+
+      return invoiceBytes;
+    }
+
+    public async virtual Task<byte[]> GetCreditNotePdfBytes(string creditNoteId) {
+      var downloadUrl = CreditNote.Pdf(creditNoteId).Request().Download.DownloadUrl;
+
+      byte[] invoiceBytes;
+
+      using (var client = new WebClient()) {
+        invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
+      }
+
       return invoiceBytes;
     }
 
@@ -138,9 +171,96 @@
         !payload.Content.Invoice.FirstInvoice &&
         payload.Content.Subscription.PlanId == "organization") {
         await SendPaymentSucceededOrganizationMessage(payload);
+      } else if (payload.EventType == "payment_refunded") {
+        await SendPaymentRefundedMessage(payload);
+      } else if (payload.EventType == "payment_failed") {
+        await SendPaymentFailedMessage(payload);
+      } else if (payload.EventType == "card_expired" || payload.EventType == "card_expiry_reminder") {
+        await SendCardExpiryReminderMessage(payload);
+      } else if (payload.EventType == "subscription_cancellation_scheduled") {
+        await SendCancellationScheduled(payload);
       }
 
       return Ok();
+    }
+
+    private static string GetPaymentMethodUpdateUrl(string customerId) {
+      var regex = new Regex(@"^(user|org)-(\d+)$");
+      var matches = regex.Match(customerId);
+      var accountId = long.Parse(matches.Groups[2].ToString());
+
+      var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
+      if (apiHostName == null) {
+        throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
+      }
+
+      var signature = BillingController.CreateSignature(accountId, accountId);
+      var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";
+
+      return updateUrl;
+    }
+
+    public async Task SendCancellationScheduled(ChargeBeeWebhookPayload payload) {
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+
+      await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CurrentTermEnd = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Subscription.CurrentTermEnd),
+      });
+    }
+
+    public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+
+      await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        LastCardDigits = payload.Content.Card.Last4,
+        UpdatePaymentMethodUrl = updateUrl,
+        ExpiryMonth = payload.Content.Card.ExpiryMonth,
+        ExpiryYear = payload.Content.Card.ExpiryYear,
+        AlreadyExpired = payload.EventType == "card_expired",
+      });
+    }
+
+    public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
+      var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
+      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+
+      var message = new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        Amount = payload.Content.Transaction.Amount / 100.0,
+        InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
+        InvoicePdfBytes = pdfBytes,
+        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        ErrorText = payload.Content.Transaction.ErrorText,
+        UpdatePaymentMethodUrl = updateUrl,
+      };
+
+      if (payload.Content.Invoice.NextRetryAt != null) {
+        message.NextRetryDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.NextRetryAt.Value);
+      }
+
+      await _mailer.PaymentFailed(message);
+    }
+
+    public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {
+      var pdfBytes = await GetCreditNotePdfBytes(payload.Content.CreditNote.Id);
+
+      await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        ToAddress = payload.Content.Customer.Email,
+        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
+        CreditNoteDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date),
+        CreditNotePdfBytes = pdfBytes,
+        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+      });
     }
 
     public async Task SendPaymentSucceededPersonalMessage(ChargeBeeWebhookPayload payload) {

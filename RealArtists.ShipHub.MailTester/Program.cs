@@ -72,6 +72,74 @@
           PreviousMonthActiveUsersCount = 25,
           PreviousMonthActiveUsersSample = Enumerable.Range(1, 20).Select(x => "user_" + x).ToArray(),
         }).Wait();
+
+      mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        CreditNoteDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        CreditNotePdfBytes = dummyInvoicePdfBytes,
+        AmountRefunded = 9.00,
+        LastCardDigits = "5678",
+      }).Wait();
+
+      // Payment failed, but we'll try to retry later.
+      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        InvoicePdfBytes = dummyInvoicePdfBytes,
+        Amount = 9.00,
+        LastCardDigits = "5678",
+        ErrorText = "Insufficient funds",
+        NextRetryDate = new DateTimeOffset(2016, 05, 05, 0, 0, 0, TimeSpan.Zero),
+        UpdatePaymentMethodUrl = "https://www.chargebee.com",
+      }).Wait();
+
+      // Payment failed, no more retries, and service is cancelled.
+      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
+        InvoicePdfBytes = dummyInvoicePdfBytes,
+        Amount = 9.00,
+        LastCardDigits = "5678",
+        ErrorText = "Insufficient funds",
+        NextRetryDate = null,
+      }).Wait();
+
+      // Card has already expired.
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        LastCardDigits = "5678",
+        AlreadyExpired = true,
+        ExpiryMonth = 9,
+        ExpiryYear = 2016,
+        UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
+      }).Wait();
+
+      // Card will expire.
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        LastCardDigits = "5678",
+        AlreadyExpired = false,
+        ExpiryMonth = 9,
+        ExpiryYear = 2016,
+        UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
+      }).Wait();
+
+      mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+        GitHubUsername = githubUsername,
+        ToAddress = toAddress,
+        ToName = toName,
+        CurrentTermEnd = new DateTimeOffset(2016, 12, 01, 0, 0, 0, TimeSpan.Zero),
+      }).Wait();
     }
 
     static void Main(string[] args) {

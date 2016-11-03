@@ -844,7 +844,7 @@
           "aroooooooon",
         }, outgoingMessage.PreviousMonthActiveUsersSample);
       }
-}
+    }
 
     [Test]
     public async Task PaymentSucceededForPersonalSendsMessage() {
@@ -914,6 +914,286 @@
       Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
       Assert.NotNull(outgoingMessage.InvoicePdfBytes);
       Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
+    }
+
+    [Test]
+    public async Task PaymentRefundedSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.PaymentRefunded(It.IsAny<PaymentRefundedMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((PaymentRefundedMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+      controller
+        .Setup(x => x.GetCreditNotePdfBytes(It.IsAny<string>()))
+        .Returns(Task.FromResult(new byte[0]));
+
+      var creditNotDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "payment_refunded",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            CreditNote = new ChargeBeeWebhookCreditNote() {
+              Id = "cn-1234",
+              Date = creditNotDate.ToUnixTimeSeconds(),
+              AmountRefunded = 900,
+            },
+            Transaction = new ChargeBeeWebhookTransaction() {
+              MaskedCardNumber = "************4567",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual(9.00, outgoingMessage.AmountRefunded);
+      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+    }
+
+
+    [Test]
+    public async Task PaymentFailedSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.PaymentFailed(It.IsAny<PaymentFailedMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((PaymentFailedMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+      controller
+        .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
+        .Returns(Task.FromResult(new byte[0]));
+
+      var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "payment_failed",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            Invoice = new ChargeBeeWebhookInvoice() {
+              Id = "cn-1234",
+              Date = invoiceDate.ToUnixTimeSeconds(),
+              NextRetryAt = invoiceDate.AddDays(3).ToUnixTimeSeconds(),
+            },
+            Transaction = new ChargeBeeWebhookTransaction() {
+              Amount = 900,
+              MaskedCardNumber = "************4567",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(9.00, outgoingMessage.Amount);
+      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
+      Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+      Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
+      Assert.AreEqual(invoiceDate.AddDays(3), outgoingMessage.NextRetryDate);
+    }
+
+    [Test]
+    public async Task CardExpiredSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryRemdinderMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((CardExpiryRemdinderMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+
+      var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "card_expired",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            Card = new ChargeBeeWebhookCard() {
+              ExpiryMonth = 9,
+              ExpiryYear = 2016,
+              Last4 = "5678",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(true, outgoingMessage.AlreadyExpired);
+      Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
+      Assert.AreEqual("5678", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(9, outgoingMessage.ExpiryMonth);
+      Assert.AreEqual(2016, outgoingMessage.ExpiryYear);
+    }
+
+    [Test]
+    public async Task CardExpiryReminderSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryRemdinderMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((CardExpiryRemdinderMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+
+      var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "card_expiry_reminder",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+            },
+            Card = new ChargeBeeWebhookCard() {
+              ExpiryMonth = 9,
+              ExpiryYear = 2016,
+              Last4 = "5678",
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(false, outgoingMessage.AlreadyExpired);
+      Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
+      Assert.AreEqual("5678", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(9, outgoingMessage.ExpiryMonth);
+      Assert.AreEqual(2016, outgoingMessage.ExpiryYear);
+    }
+
+    [Test]
+    public async Task CancellationScheduledSendsMessage() {
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns(Task.CompletedTask);
+
+      var outgoingMessages = new List<MailMessageBase>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      mockMailer
+        .Setup(x => x.CancellationScheduled(It.IsAny<CancellationScheduledMailMessage>()))
+        .Returns(Task.CompletedTask)
+        .Callback((CancellationScheduledMailMessage message) => outgoingMessages?.Add(message));
+
+      var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+      controller.CallBase = true;
+
+      var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "subscription_cancellation_scheduled",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              Id = $"user-1234",
+              Email = "aroon@pureimaginary.com",
+              FirstName = "Aroon",
+              LastName = "Pahwa",
+              GitHubUserName = "aroon",
+            },
+            Subscription = new ChargeBeeWebhookSubscription() {
+              Status = "active",
+              PlanId = "personal",
+              CurrentTermEnd = termEndDate.ToUnixTimeSeconds(),
+            },
+          },
+        });
+      await controller.Object.HandleHook();
+
+      Assert.AreEqual(1, outgoingMessages.Count);
+      var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
     }
   }
 }

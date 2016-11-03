@@ -10,9 +10,14 @@
   using Microsoft.Azure;
   using RazorEngine.Configuration;
   using RazorEngine.Templating;
-  using RealArtists.ShipHub.Mail.Models;
+  using Models;
+  using System.Collections.Generic;
 
   public interface IShipHubMailer {
+    Task CancellationScheduled(CancellationScheduledMailMessage model);
+    Task CardExpiryReminder(CardExpiryRemdinderMailMessage model);
+    Task PaymentFailed(PaymentFailedMailMessage model);
+    Task PaymentRefunded(PaymentRefundedMailMessage model);
     Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
     Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model);
     Task PurchasePersonal(PurchasePersonalMailMessage model);
@@ -58,7 +63,11 @@
         // pre-header text be sufficiently long so that the <img> tag's alt text and
         // the href URL don't leak into the pre-header.  The plain text version is long
         // enough for this.
-        bag.AddValue("PreHeader", text);
+        var preheader = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
+          { "SkipHeaderFooter", true }
+        })).Trim();
+        bag.AddValue("PreHeader", preheader);
+
         var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
 
         var premailer = new PreMailer.Net.PreMailer(html);
@@ -95,6 +104,38 @@
       } else {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       }
+    }
+
+    public Task CancellationScheduled(CancellationScheduledMailMessage model) {
+      var message = CreateMailMessage(model, $"Cancellation for {model.GitHubUsername}", "CancellationScheduled");
+      return SendMessage(message);
+    }
+
+    public Task CardExpiryReminder(CardExpiryRemdinderMailMessage model) {
+      var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUsername}", "CardExpiryReminder");
+      return SendMessage(message);
+    }
+
+    public Task PaymentFailed(PaymentFailedMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUsername}", "PaymentFailed");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.InvoicePdfBytes),
+        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
+    }
+
+    public Task PaymentRefunded(PaymentRefundedMailMessage model) {
+      var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUsername}", "PaymentRefunded");
+
+      message.Attachments.Add(new Attachment(
+        new MemoryStream(model.CreditNotePdfBytes),
+        $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf"));
+
+      return SendMessage(message);
     }
 
     public Task PurchasePersonal(PurchasePersonalMailMessage model) {

@@ -398,7 +398,7 @@
               Assert.AreEqual("organization", data["subscription[plan_id]"]);
               Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
               Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
-              Assert.AreEqual("pureimaginary", data["cf_github_username"]);
+              Assert.AreEqual("pureimaginary", data["customer[cf_github_username]"]);
 
               return new {
                 hosted_page = new {
@@ -572,6 +572,37 @@
           Assert.AreEqual("https://realartists-test.chargebee.com/pages/v2/someHostedPageId/thank_you", ((RedirectResult)response).Location.AbsoluteUri);
 
           Assert.IsTrue(doesReactivate);
+        }
+      }
+    }
+
+    [Test]
+    public async Task UpdatePaymentEndpointRedirectsToChargeBeePage() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        using (ShimsContext.Create()) {
+          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
+            if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/update_payment_method")) {
+              Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
+
+              return new {
+                hosted_page = new {
+                  url = "https://realartists-test.chargebee.com/some/page/path/123",
+                },
+              };
+            } else {
+              Assert.Fail($"Unexpected {method} to {path}");
+              return null;
+            }
+          });
+
+          var controller = new BillingController(null);
+          var response = await controller.UpdatePaymentMethod(org.Id, BillingController.CreateSignature(org.Id, org.Id));
+          Assert.IsInstanceOf<RedirectResult>(response);
+          Assert.AreEqual("https://realartists-test.chargebee.com/some/page/path/123", ((RedirectResult)response).Location.AbsoluteUri);
         }
       }
     }
