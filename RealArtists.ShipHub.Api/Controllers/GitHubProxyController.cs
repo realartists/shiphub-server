@@ -1,13 +1,22 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Data.Entity;
+  using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using AutoMapper;
+  using Common;
+  using Common.DataModel.Types;
+  using Common.GitHub;
+  using Common.GitHub.Models;
   using Filters;
+  using QueueClient;
+  using dm = Common.DataModel;
 
   [RoutePrefix("github")]
   public class GitHubProxyController : ApiController {
@@ -19,6 +28,16 @@
     };
 
     private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
+
+    private IMapper _mapper;
+    private IFactory<dm.ShipHubContext> _contextFactory;
+    private IShipHubQueueClient _queueClient;
+
+    public GitHubProxyController(IMapper mapper, IFactory<dm.ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
+      _mapper = mapper;
+      _contextFactory = contextFactory;
+      _queueClient = queueClient;
+    }
 
     [HttpDelete]
     [HttpGet]
@@ -48,6 +67,77 @@
       try {
         var response = await _ProxyClient.SendAsync(request, cancellationToken);
         response.Headers.Remove("Server");
+        return response;
+      } catch (TaskCanceledException exception) {
+        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      }
+    }
+
+    [HttpPost]
+    [Route("/repos/{owner}/{repo}/issues")]
+    public async Task<HttpResponseMessage> IssueCreate(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo) {
+      var builder = new UriBuilder(request.RequestUri);
+      builder.Scheme = Uri.UriSchemeHttps;
+      builder.Port = 443;
+      builder.Host = "api.github.com";
+      builder.Path = $"/repos/{owner}/{repo}/issues";
+      request.RequestUri = builder.Uri;
+
+      request.Headers.Host = request.RequestUri.Host;
+      var user = RequestContext.Principal as ShipHubPrincipal;
+      request.Headers.Authorization = new AuthenticationHeaderValue("token", user.Token);
+
+      // This is dumb
+      if (_BareMethods.Contains(request.Method)) {
+        request.Content = null;
+      }
+
+      try {
+        var response = await _ProxyClient.SendAsync(request, cancellationToken);
+        response.Headers.Remove("Server");
+
+        // Process the response
+        if (response.StatusCode == HttpStatusCode.Created) {
+          await response.Content.LoadIntoBufferAsync();
+          var issueResponse = await response.Content.ReadAsAsync<GitHubResponse<Issue>>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
+          var issue = issueResponse.Result;
+
+          // TODO: Unify this code with other issue update places to reduce bugs.
+
+          var accounts = new[] { issue.User, issue.ClosedBy }
+            .Concat(issue.Assignees)
+            .Where(x => x != null)
+            .Distinct(x => x.Id);
+
+          ChangeSummary changes = null;
+          using (var context = _contextFactory.CreateInstance()) {
+            var repoId = await context.Repositories
+              .Where(x => x.FullName == $"{owner}/{repo}")
+              .Select(x => x.Id)
+              .SingleAsync();
+
+            changes = await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
+
+            if (issue.Milestone != null) {
+              changes.UnionWith(
+                await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
+              );
+            }
+
+            changes.UnionWith(
+              await context.BulkUpdateIssues(
+              repoId,
+              _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
+              issue.Labels?.Select(y => new LabelTableType() { ItemId = issue.Id, Color = y.Color, Name = y.Name }),
+              issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
+            );
+          }
+
+          if (!changes.Empty) {
+            await _queueClient.NotifyChanges(changes);
+          }
+        }
+
         return response;
       } catch (TaskCanceledException exception) {
         return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
