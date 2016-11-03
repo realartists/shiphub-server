@@ -3,10 +3,12 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
+  using System.Text;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using Common.Hashing;
   using Filters;
   using Messages;
   using Messages.Entries;
@@ -43,10 +45,14 @@
     private async Task<SubscriptionResponse> GetSubscriptionEntry() {
       using (var context = new ShipHubContext()) {
         var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
-        var numOfSubscribedOrgs = await context.OrganizationAccounts
-          .CountAsync(x =>
-            x.UserId == _user.UserId &&
-            x.Organization.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()));
+        var orgs = await context.OrganizationAccounts
+          .Include(x => x.Organization.Subscription)
+          .Where(x => x.UserId == _user.UserId)
+          .Select(x => x.Organization)
+          .ToListAsync();
+        var numOfSubscribedOrgs = orgs
+          .Where(x => x.Subscription != null && x.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()))
+          .Count();
 
         SubscriptionMode mode;
         DateTimeOffset? trialEndDate = null;
@@ -64,9 +70,22 @@
           mode = SubscriptionMode.Free;
         }
 
+        var userState = $"{_user.UserId}:{personalSub?.StateName}";
+        var orgStates = orgs
+          .OrderBy(x => x.Id)
+          .Select(x => $"{x.Id}:{x.Subscription?.StateName}");
+
+        string hashString;
+        using (var hashFunction = new MurmurHash3()) {
+          var str = string.Join(";", new[] { userState }.Concat(orgStates));
+          var hash = hashFunction.ComputeHash(Encoding.UTF8.GetBytes(str));
+          hashString = new Guid(hash).ToString();
+        }
+
         return new SubscriptionResponse() {
           Mode = mode,
           TrialEndDate = trialEndDate,
+          ManageSubscriptionsRefreshHash = hashString,
         };
       }
     }

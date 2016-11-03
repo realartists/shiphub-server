@@ -190,5 +190,38 @@
         Assert.AreEqual(trialEndDate, entry.TrialEndDate);
       }
     }
+
+    [Test]
+    public async Task ManageSubscriptionsRefreshHashChanges() {
+      using (var context = new ShipHubContext()) {
+        Environment env = await MakeEnvironment(context);
+
+        var user1Sub = context.Subscriptions.Add(new Subscription() {
+          AccountId = env.user1.Id,
+          State = SubscriptionState.NotSubscribed,
+        });
+        var orgSub = context.Subscriptions.Add(new Subscription() {
+          AccountId = env.org.Id,
+          State = SubscriptionState.NotSubscribed,
+        });
+        await context.SaveChangesAsync();
+
+        var firstHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
+
+        orgSub.State = SubscriptionState.Subscribed;
+        await context.SaveChangesAsync();
+        var secondHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
+
+        Assert.AreNotEqual(secondHash, firstHash,
+          "hash should change because the org's subscription state changed");
+
+        user1Sub.State = SubscriptionState.Subscribed;
+        await context.SaveChangesAsync();
+        var thirdHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
+
+        Assert.AreNotEqual(thirdHash, secondHash,
+          "hash should change because the user's subscription state changed");
+      }
+    }
   }
 }
