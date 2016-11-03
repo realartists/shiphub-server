@@ -63,6 +63,7 @@
   <ItemGroup>
     <Compile Include="GitHub\IGitHubActor.cs" />
     <Compile Include="IEchoActor.cs" />
+    <Compile Include="IIssueActor.cs" />
     <Compile Include="Injection\LazyGrainFactory.cs" />
     <Compile Include="IOrganizationActor.cs" />
     <Compile Include="IRepositoryActor.cs" />
