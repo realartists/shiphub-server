@@ -1,23 +1,22 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Configuration;
   using System.Data.Entity;
+  using System.Linq;
+  using System.Net;
   using System.Text;
   using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using System.Linq;
   using ChargeBee.Models;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
+  using Mail;
+  using Microsoft.Azure;
   using Newtonsoft.Json;
   using QueueClient;
-  using System.Net;
-  using Mail;
-  using ChargeBee.Api;
-  using Microsoft.Azure;
-  using System.Configuration;
 
   public class ChargeBeeWebhookCard {
     public long ExpiryMonth { get; set; }
