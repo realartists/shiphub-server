@@ -38,6 +38,9 @@
     <ServiceConfiguration Include="ServiceConfiguration.ShipHub-Dev.cscfg" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="ServiceConfiguration.Local.cscfg.example" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\RealArtists.ShipHub.CloudServices.OrleansSilos\RealArtists.ShipHub.CloudServices.OrleansSilos.csproj">
       <Name>RealArtists.ShipHub.CloudServices.OrleansSilos</Name>
       <Project>{fa618652-48b6-496a-90db-368263decef2}</Project>
