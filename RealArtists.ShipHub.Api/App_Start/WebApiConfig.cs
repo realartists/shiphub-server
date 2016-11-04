@@ -9,9 +9,12 @@
   using Controllers;
   using Diagnostics;
   using Filters;
+  using Microsoft.Azure;
   using Mindscape.Raygun4Net.WebApi;
 
   public static class WebApiConfig {
+    private static readonly string RaygunApiKey = CloudConfigurationManager.GetSetting("RAYGUN_APIKEY");
+
     public static void Register(HttpConfiguration config) {
       config.Filters.Add(new DeaggregateExceptionFilterAttribute());
       config.Filters.Add(new ShipHubAuthenticationAttribute());
@@ -30,7 +33,14 @@
     }
 
     public static RaygunWebApiClient GenerateRaygunClient(HttpRequestMessage requestMessage) {
-      var client = new RaygunWebApiClient();
+      RaygunWebApiClient client = null;
+      if (RaygunApiKey.IsNullOrWhiteSpace()) {
+        // Use default.
+        client = new RaygunWebApiClient();
+      } else {
+        client = new RaygunWebApiClient(RaygunApiKey);
+      }
+
       client.AddWrapperExceptions(typeof(AggregateException));
 
       if (requestMessage.GetActionDescriptor()?.ControllerDescriptor?.ControllerType == typeof(GitHubWebhookController)) {
