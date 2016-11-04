@@ -8,6 +8,7 @@
   using System.Web.Http;
   using System.Web.Http.Controllers;
   using System.Web.Http.Hosting;
+  using System.Web.Http.Results;
   using System.Web.Http.Routing;
   using Common.DataModel;
   using Common.DataModel.Types;
@@ -15,6 +16,8 @@
   using Controllers;
   using Mail;
   using Mail.Models;
+  using Microsoft.Azure;
+  using Microsoft.Azure.Fakes;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json;
@@ -405,6 +408,9 @@
           new ChargeBeeWebhookPayload() {
             EventType = "pending_invoice_created",
             Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                GitHubUserName = "pureimaginary",
+              },
               Invoice = new ChargeBeeWebhookInvoice() {
                 Id = "draft_inv_123",
                 CustomerId = $"user-{user.Id}",
@@ -444,6 +450,9 @@
       var payload = new ChargeBeeWebhookPayload() {
         EventType = "pending_invoice_created",
         Content = new ChargeBeeWebhookContent() {
+          Customer = new ChargeBeeWebhookCustomer() {
+            GitHubUserName = "pureimaginary",
+          },
           Invoice = new ChargeBeeWebhookInvoice() {
             Id = "draft_inv_123",
             CustomerId = $"org-{orgId}",
@@ -1194,6 +1203,55 @@
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
       Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
+    }
+
+    public static async Task CanIgnoreWebHookEventsViaSettingsHelper(
+      string gitHubUserName,
+      string includeOnlyList,
+      string excludeList,
+      Type expectedResultType,
+      string message
+      ) {
+      using (ShimsContext.Create()) {
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        var mockMailer = new Mock<IShipHubMailer>();
+
+        var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+        controller.CallBase = true;
+
+        ConfigureController(
+          controller.Object,
+          new ChargeBeeWebhookPayload() {
+            EventType = "some_bogus_event_name",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                GitHubUserName = "aroon",
+              },
+            },
+          });
+
+        ShimCloudConfigurationManager.GetSettingString = (string name) => {
+          if (name == "ChargeBeeWebHookIncludeOnlyList") {
+            return includeOnlyList;
+          } else if (name == "ChargeBeeWebHookExcludeList") {
+            return excludeList;
+          } else {
+            throw new ApplicationException("Fetching unexpected setting: " + name);
+          }
+        };
+
+        var response = await controller.Object.HandleHook();
+        Assert.AreEqual(expectedResultType, response.GetType(), message);
+      }
+    }
+
+    [Test]
+    public async Task CanIgnoreWebHookEventsViaSettings() {
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, null, typeof(OkResult), "should accept when include + exclude aren't set");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar", null, typeof(BadRequestErrorMessageResult), "should reject since aroon not in include list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, typeof(OkResult), "should accept since aroon is in the include list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar", typeof(OkResult), "should accept since aroon not in exclude list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", typeof(BadRequestErrorMessageResult), "should reject since aroon is in exclude list.");
     }
   }
 }

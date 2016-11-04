@@ -14,6 +14,7 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Mail;
+  using Microsoft.Azure;
   using Newtonsoft.Json;
   using QueueClient;
 
@@ -126,6 +127,41 @@
       return invoiceBytes;
     }
 
+    /// <summary>
+    /// When testing ChargeBee webhooks on your local server, you want to prevent shiphub-dev
+    /// from handling the same hook.  Sometimes it's harmless for shiphub-dev and your local server
+    /// to process the same hook twice.  Other times, it's a race condition because handling that hook
+    /// changes some ChargeBee state.
+    /// 
+    /// If you're testing ChargeBee webhooks locally, do this --
+    /// 
+    /// In the app settings for shiphub-dev, add the github username to "ChargeBeeWebHookExcludeList" --
+    /// https://portal.azure.com/#resource/subscriptions/b9f28aae-2074-4097-b5ce-ec28f68c4981/resourceGroups/ShipHub-Dev/providers/Microsoft.Web/sites/shiphub-dev/application
+    /// 
+    /// In your Secret.AppSettings.config, add the following -- <![CDATA[
+    ///   <add key="ChargeBeeWebHookIncludeList" value="some_github_username"/>
+    /// ]]>
+    /// 
+    /// Dev will ignore hooks for your user and your local server will only process
+    /// hooks for your user.
+    /// </summary>
+    /// <param name="gitHubUserName">Github user or organization name</param>
+    /// <returns>True if we should reject this webhook event</returns>
+    private bool ShouldIgnoreWebhook(string gitHubUserName) {
+      var includeOnlyList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookIncludeOnlyList");
+      var excludeList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookExcludeList");
+
+      if (!includeOnlyList.IsNullOrWhiteSpace() && !includeOnlyList.Split(',').Contains(gitHubUserName)) {
+        return true;
+      }
+
+      if (!excludeList.IsNullOrWhiteSpace() && excludeList.Split(',').Contains(gitHubUserName)) {
+        return true;
+      }
+
+      return false;
+    }
+
     [HttpPost]
     [AllowAnonymous]
     [Route("chargebee")]
@@ -133,6 +169,10 @@
       var payloadString = await Request.Content.ReadAsStringAsync();
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
+
+      if (ShouldIgnoreWebhook(payload.Content.Customer.GitHubUserName)) {
+        return BadRequest($"Rejecting webhook because username '{payload.Content.Customer.GitHubUserName}' is on the exclude list, or not on the include list.");
+      }
 
       switch (payload.EventType) {
         case "subscription_activated":
