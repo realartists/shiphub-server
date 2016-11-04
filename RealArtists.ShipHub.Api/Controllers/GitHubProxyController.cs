@@ -30,12 +30,10 @@
     private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
 
     private IMapper _mapper;
-    private IFactory<dm.ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
 
-    public GitHubProxyController(IMapper mapper, IFactory<dm.ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
+    public GitHubProxyController(IMapper mapper, IShipHubQueueClient queueClient) {
       _mapper = mapper;
-      _contextFactory = contextFactory;
       _queueClient = queueClient;
     }
 
@@ -74,13 +72,13 @@
     }
 
     [HttpPost]
-    [Route("/repos/{owner}/{repo}/issues")]
+    [Route("repos/{owner}/{repo}/issues")]
     public async Task<HttpResponseMessage> IssueCreate(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo) {
       var builder = new UriBuilder(request.RequestUri);
       builder.Scheme = Uri.UriSchemeHttps;
       builder.Port = 443;
       builder.Host = "api.github.com";
-      builder.Path = $"/repos/{owner}/{repo}/issues";
+      builder.Path = $"repos/{owner}/{repo}/issues";
       request.RequestUri = builder.Uri;
 
       request.Headers.Host = request.RequestUri.Host;
@@ -110,7 +108,7 @@
             .Distinct(x => x.Id);
 
           ChangeSummary changes = null;
-          using (var context = _contextFactory.CreateInstance()) {
+          using (var context = new dm.ShipHubContext()) {
             var repoId = await context.Repositories
               .Where(x => x.FullName == $"{owner}/{repo}")
               .Select(x => x.Id)
