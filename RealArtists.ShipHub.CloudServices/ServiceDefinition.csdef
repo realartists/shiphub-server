@@ -12,6 +12,7 @@
       <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY" />
       <Setting name="AzureWebJobsServiceBus" />
       <Setting name="AzureWebJobsServiceBusPair" />
+      <Setting name="UseFiddler" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

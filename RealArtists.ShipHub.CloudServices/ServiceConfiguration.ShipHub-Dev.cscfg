@@ -21,6 +21,8 @@
                value="" />
       <Setting name="AzureWebJobsServiceBusPair"
                value="" />
+      <Setting name="UseFiddler"
+               value="false" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
