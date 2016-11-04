@@ -62,7 +62,12 @@
 
         _login = org.Login;
         _metadata = org.OrganizationMetadata;
+
         // TODO: Load member and admin metadata
+        // For now, we just start them null and request the data once.
+        // Be sure to load the current membership/admin data too if you load
+        // the metadata in the future. It's assumed to be populated when
+        // changes are detected.
       }
 
       await base.OnActivateAsync();
@@ -102,7 +107,7 @@
           // no matter which grain I pick. Pick one at random to use as a fallback.
           var userId = _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
 
-          // TODO: We can't switch GitHubActors to userId from access tokens fast enough.
+          // TODO: Move this into load balancing code and detect grain activation failures instead.
           var token = await context.Accounts
             .Where(x => x.Id == userId)
             .Select(x => x.Token)
@@ -111,7 +116,7 @@
           if (token.IsNullOrWhiteSpace()) {
             _interestedUserIds.Remove(userId);
           } else {
-            return _grainFactory.GetGrain<IGitHubActor>(token);
+            return _grainFactory.GetGrain<IGitHubActor>(userId);
           }
         }
       }
@@ -196,23 +201,23 @@
           _memberMetadata = GitHubMetadata.FromResponse(members);
           _adminMetadata = GitHubMetadata.FromResponse(admins);
         }
-
-        // Send Changes.
-        if (!changes.Empty) {
-          tasks.Add(_queueClient.NotifyChanges(changes));
-        }
-
-        // If any interested users are admins, update webhooks
-        // TODO: Does this really need to happen this often?
-        var interestedAdmins = _admins.Where(x => _interestedUserIds.Contains(x.Id)).ToArray();
-        if (interestedAdmins.Any()) {
-          var randmin = interestedAdmins[_random.Next(interestedAdmins.Length)];
-          tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin.Id));
-        }
-
-        // Await all outstanding operations.
-        await Task.WhenAll(tasks);
       }
+
+      // Send Changes.
+      if (!changes.Empty) {
+        tasks.Add(_queueClient.NotifyChanges(changes));
+      }
+
+      // If any interested users are admins, update webhooks
+      // TODO: Does this really need to happen this often?
+      var interestedAdmins = _admins.Where(x => _interestedUserIds.Contains(x.Id)).ToArray();
+      if (interestedAdmins.Any()) {
+        var randmin = interestedAdmins[_random.Next(interestedAdmins.Length)];
+        tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin.Id));
+      }
+
+      // Await all outstanding operations.
+      await Task.WhenAll(tasks);
     }
   }
 }

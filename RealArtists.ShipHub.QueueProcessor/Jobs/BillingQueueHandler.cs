@@ -146,7 +146,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
         }
 
         await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, gh, logger);
@@ -221,7 +221,7 @@
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
           }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
         }
 
         await SyncOrgSubscriptionStateHelper(message, notifyChanges, gh, logger);

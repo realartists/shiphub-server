@@ -61,6 +61,11 @@
       return FetchPaged(request, (UserEmail x) => x.Email);
     }
 
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"/repos/{repoFullName}", cacheOptions);
+      return Fetch<Repository>(request);
+    }
+
     public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest("user/repos", cacheOptions, restricted: true);
       return FetchPaged(request, (Repository x) => x.Id);

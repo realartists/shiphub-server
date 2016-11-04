@@ -163,7 +163,7 @@
     }
 
     public virtual IGitHubActor CreateGitHubActor(User user) {
-      return _grainFactory.GetGrain<IGitHubActor>(user.Token);
+      return _grainFactory.GetGrain<IGitHubActor>(user.Id);
     }
 
     private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {

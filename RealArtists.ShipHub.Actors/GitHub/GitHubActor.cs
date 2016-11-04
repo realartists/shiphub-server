@@ -16,11 +16,13 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor {
-    private GitHubClient _github;
-    private string _accessToken;
-
     private IGrainFactory _grainFactory;
     private IFactory<dm.ShipHubContext> _shipContextFactory;
+
+    private long _userId;
+    private string _accessToken;
+
+    private GitHubClient _github;
 
     // TODO: Overhaul this code and trim/eliminate the pipeline
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
@@ -36,26 +38,6 @@
       handler = new ShipHubFilter(handler, shipContextFactory);
       handler = new PaginationHandler(handler);
 
-      // Revoke expired and invalid tokens
-      handler = new TokenRevocationHandler(handler, async token => {
-        using (var context = shipContextFactory.CreateInstance()) {
-          // WARN: Can't do this until the UserActor is reentrant.
-          //// Find the user
-          //var userId = await context.Accounts
-          //  .Where(x => x.Token == token)
-          //  .Select(x => x.Id)
-          //  .SingleOrDefaultAsync();
-
-          //if (userId != default(long)) {
-          //  var _user = grainFactory.GetGrain<IUserActor>(userId);
-          //  await _user.InvalidateToken(token);
-          //}
-
-          // Instead, do next best thing.
-          await context.RevokeAccessToken(token);
-        }
-      });
-
       return (_handler = handler);
     }
 
@@ -65,18 +47,22 @@
     }
 
     public override async Task OnActivateAsync() {
-      _accessToken = this.GetPrimaryKeyString();
+      _userId = this.GetPrimaryKeyLong();
 
-      // Load state from DB
       using (var context = _shipContextFactory.CreateInstance()) {
-        // For now, require user and token to already exist in database.
-        var user = await context.Users.SingleOrDefaultAsync(x => x.Token == _accessToken);
+        // Require user and token to already exist in database.
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == _userId);
 
         if (user == null) {
-          throw new InvalidOperationException($"No user with the specified token exists.");
+          throw new InvalidOperationException($"User {_userId} does not exist.");
         }
 
-        // Ew
+        if (user.Token.IsNullOrWhiteSpace()) {
+          throw new InvalidOperationException($"User {_userId} has no token.");
+        }
+
+        _accessToken = user.Token;
+
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
           rateLimit = new GitHubRateLimit() {
@@ -89,8 +75,15 @@
 
         // TODO: Orleans has a concept of state/correlation that we can use
         // instead of this hack or adding parameters to every call.
-        var pipeline = GetOrCreateHandlerPipeline(_grainFactory, _shipContextFactory);
-        _github = new GitHubClient(pipeline, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
+        var handler = GetOrCreateHandlerPipeline(_grainFactory, _shipContextFactory);
+        // Revoke expired and invalid tokens
+        handler = new TokenRevocationHandler(handler, async token => {
+          using (var ctx = _shipContextFactory.CreateInstance()) {
+            await ctx.RevokeAccessToken(token);
+          }
+          DeactivateOnIdle();
+        });
+        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
       }
 
       await base.OnActivateAsync();
@@ -223,6 +216,10 @@
 
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null) {
       return _github.PullRequest(repoFullName, pullRequestNumber, cacheOptions);
+    }
+
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      return _github.Repository(repoFullName, cacheOptions);
     }
 
     public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {

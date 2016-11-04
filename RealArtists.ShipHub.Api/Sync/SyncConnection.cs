@@ -22,7 +22,6 @@
   using Mindscape.Raygun4Net.WebApi;
   using Newtonsoft.Json.Linq;
   using Orleans;
-  using QueueClient;
 
   public interface ISyncConnection {
     Task SendJsonAsync(object message);
@@ -42,18 +41,16 @@
     private ShipHubPrincipal _user;
     private SyncContext _syncContext;
     private ISyncManager _syncManager;
-    private IShipHubQueueClient _queueClient;
     private IGrainFactory _grainFactory;
 
     private IDisposable _syncSubscription;
     private IDisposable _pollSubscription;
 
 
-    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IShipHubQueueClient queueClient, IGrainFactory grainFactory)
+    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IGrainFactory grainFactory)
       : base(_MaxMessageSize) {
       _user = user;
       _syncManager = syncManager;
-      _queueClient = queueClient;
       _grainFactory = grainFactory;
     }
 
@@ -133,7 +130,8 @@
           var parts = viewing.Issue.Split('#');
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
-          await _queueClient.SyncRepositoryIssueTimeline(repoFullName, issueNumber, _user.UserId);
+          var issueGrain = _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
+          await issueGrain.SyncInteractive(_user.UserId);
           return;
         default:
           // Ignore unknown messages for now

@@ -5,7 +5,7 @@
   using Common.GitHub;
   using Common.GitHub.Models;
 
-  public interface IGitHubActor : Orleans.IGrainWithStringKey {
+  public interface IGitHubActor : Orleans.IGrainWithIntegerKey {
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);
     Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null);
@@ -31,6 +31,7 @@
     Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId);
     Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId);
     Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null);
+    Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, GitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null);

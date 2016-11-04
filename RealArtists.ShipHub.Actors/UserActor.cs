@@ -64,7 +64,7 @@
         _repoMetadata = user.RepositoryMetadata;
         _orgMetadata = user.OrganizationMetadata;
 
-        _github = _grainFactory.GetGrain<IGitHubActor>(user.Token);
+        _github = _grainFactory.GetGrain<IGitHubActor>(user.Id);
       }
 
       await base.OnActivateAsync();
@@ -100,48 +100,6 @@
 
     public Task ForceSyncRepositories() {
       return TimerSync(forceRepos: true);
-    }
-
-    public async Task InvalidateToken(string token) {
-      using (var context = _contextFactory.CreateInstance()) {
-        await context.RevokeAccessToken(token);
-
-        // TODO: Clear cache metadata tied to this token
-        if (_metadata.AccessToken == token) {
-          _metadata = null;
-        }
-
-        if (_repoMetadata.AccessToken == token) {
-          _repoMetadata = null;
-        }
-
-        if (_orgMetadata.AccessToken == token) {
-          _orgMetadata = null;
-        }
-
-        // Clear current GitHubClient reference if its token matches
-        // Deactivate sync and the grain itself
-        if (_github.GetPrimaryKeyString() == token) {
-          _github = null;
-
-          _syncTimer?.Dispose();
-          _syncTimer = null;
-
-          DeactivateOnIdle();
-        }
-      }
-    }
-
-    public Task UpdateToken(string token) {
-      // Right now token updates are only handled by login.
-      // TODO: Update login to call this
-
-      // If token does not match current, replace GitHubActor reference.
-      if (_github.GetPrimaryKeyString() != token) {
-        _github = _grainFactory.GetGrain<IGitHubActor>(token);
-      }
-
-      return Task.CompletedTask;
     }
 
     // Implementation methods
@@ -246,7 +204,7 @@
           .Where(x => x.AccountId == _userId)
           .ToArrayAsync();
 
-        tasks.AddRange(allRepos.Select(x => _queueClient.SyncRepository(x.RepositoryId, _userId)));
+        tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync(_userId)));
         tasks.AddRange(allRepos
           .Where(x => x.Admin)
           .Select(x => _queueClient.AddOrUpdateRepoWebhooks(x.RepositoryId, _userId)));

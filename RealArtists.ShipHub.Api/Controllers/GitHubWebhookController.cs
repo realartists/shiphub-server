@@ -90,7 +90,7 @@
       hook.LastPing = null;
       await Context.SaveChangesAsync();
 
-      var changeSummary = new ChangeSummary();
+      ChangeSummary changeSummary = null;
 
       switch (eventName) {
         case "issues":
@@ -103,7 +103,7 @@
             case "unlabeled":
             case "assigned":
             case "unassigned":
-              await HandleIssues(payload, changeSummary);
+              changeSummary = await HandleIssues(payload);
               break;
           }
           break;
@@ -112,7 +112,7 @@
             case "created":
             case "edited":
             case "deleted":
-              await HandleIssueComment(payload, changeSummary);
+              changeSummary = await HandleIssueComment(payload);
               break;
           }
           break;
@@ -132,30 +132,32 @@
           throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
-      if (!changeSummary.Empty) {
-        await _queueClient?.NotifyChanges(changeSummary);
+      if (_queueClient != null && changeSummary != null && !changeSummary.Empty) {
+        await _queueClient.NotifyChanges(changeSummary);
       }
 
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task HandleIssueComment(WebhookPayload payload, ChangeSummary changeSummary) {
+    private async Task<ChangeSummary> HandleIssueComment(WebhookPayload payload) {
       // Ensure the issue that owns this comment exists locally before we add the comment.
-      await HandleIssues(payload, changeSummary);
+      var summary = await HandleIssues(payload);
 
       using (var context = new ShipHubContext()) {
         if (payload.Action == "deleted") {
-          changeSummary.UnionWith(await context.DeleteComments(new[] { payload.Comment.Id }));
+          summary.UnionWith(await context.DeleteComments(new[] { payload.Comment.Id }));
         } else {
-          changeSummary.UnionWith(await context.BulkUpdateAccounts(
+          summary.UnionWith(await context.BulkUpdateAccounts(
           DateTimeOffset.UtcNow,
           _mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
-          changeSummary.UnionWith(await context.BulkUpdateComments(
+          summary.UnionWith(await context.BulkUpdateComments(
             payload.Repository.Id,
             _mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
         }
       }
+
+      return summary;
     }
 
     private async Task HandleRepository(WebhookPayload payload) {
@@ -183,7 +185,8 @@
       }
     }
 
-    private async Task HandleIssues(WebhookPayload payload, ChangeSummary summary) {
+    private async Task<ChangeSummary> HandleIssues(WebhookPayload payload) {
+      var summary = new ChangeSummary();
       if (payload.Issue.Milestone != null) {
         var milestone = _mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
         var milestoneSummary = await Context.BulkUpdateMilestones(
@@ -220,8 +223,9 @@
         Item2 = x.Id,
       });
 
-      var issueChanges = await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings);
-      summary.UnionWith(issueChanges);
+      summary.UnionWith(await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings));
+
+      return summary;
     }
   }
 }
