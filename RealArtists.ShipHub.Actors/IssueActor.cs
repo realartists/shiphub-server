@@ -359,8 +359,7 @@
         // Comment Reactions
         var commentReactionMetadata = await context.Comments
           .Where(x => x.IssueId == _issueId)
-          .Select(x => new { Id = x.Id, ReactionMetdata = x.ReactionMetadata })
-          .ToDictionaryAsync(key => key.Id, value => value.ReactionMetdata);
+          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
 
         // Now, find the ones that need updating.
         var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
