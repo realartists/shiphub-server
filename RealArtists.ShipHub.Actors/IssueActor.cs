@@ -78,11 +78,10 @@
 
     private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
-        await Task.WhenAll(
-          context.UpdateMetadata("Issues", _issueId, _metadata),
-          context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata),
-          context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata)
-        );
+        // context only supports one operation at a time
+        await context.UpdateMetadata("Issues", _issueId, _metadata);
+        await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
+        await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
       }
     }
 
@@ -401,7 +400,8 @@
               break;
           }
 
-          tasks.Add(context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp));
+          // context only supports one operation at a time
+          await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
         }
       }
 
@@ -410,7 +410,7 @@
       }
 
       // Save metadata and other updates
-      tasks.Add(Save());
+      await Save();
 
       await Task.WhenAll(tasks);
     }
