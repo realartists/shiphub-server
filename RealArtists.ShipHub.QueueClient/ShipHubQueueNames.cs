@@ -20,10 +20,7 @@
     // Queue Names
     private const string SyncRepository = "sync-repository";
     public const string SyncRepositoryComments = SyncRepository + "-comments";
-    public const string SyncRepositoryIssueCommentReactions = SyncRepository + "-issue-comment-reactions";
-    public const string SyncRepositoryIssueComments = SyncRepository + "-issue-comments";
     public const string SyncRepositoryIssueEvents = SyncRepository + "-issue-events";
-    public const string SyncRepositoryIssueReactions = SyncRepository + "-issue-reactions";
 
     public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
     public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";

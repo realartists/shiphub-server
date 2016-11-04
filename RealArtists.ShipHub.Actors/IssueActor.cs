@@ -20,6 +20,7 @@
 
 #if DEBUG
   using System.Diagnostics;
+  using QueueClient.Messages;
 #endif
 
   public class IssueActor : Grain, IIssueActor {
@@ -35,12 +36,7 @@
     private long _issueId;
 
     private GitHubMetadata _metadata;
-
-    // Comment sync
-    private DateTimeOffset _latestComment;
-    private GitHubMetadata _latestCommentMetadata;
-
-    // Reaction sync
+    private GitHubMetadata _commentMetadata;
     private GitHubMetadata _reactionMetadata;
 
     // Event sync
@@ -68,6 +64,7 @@
         _repoId = issue.RepositoryId;
 
         _metadata = issue.Metadata;
+        _commentMetadata = issue.CommentMetadata;
         _reactionMetadata = issue.ReactionMetadata;
       }
 
@@ -82,7 +79,9 @@
     private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
         await Task.WhenAll(
-          context.UpdateMetadata("Issues", "MetadataJson", _issueId, _metadata)
+          context.UpdateMetadata("Issues", _issueId, _metadata),
+          context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata),
+          context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata)
         );
       }
     }
@@ -255,21 +254,6 @@
           var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
           changes.UnionWith(await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam));
 
-          // TODO: Use the comment entries from the timeline.
-          // Don't force an additional sync.
-          {
-            //var issueMessage = new TargetMessage(issueId.Value, user.Id);
-
-            //// Now safe to sync reactions
-            //tasks.Add(syncRepoIssueReactions.AddAsync(issueMessage));
-
-            //// If we find comments, sync them
-            //if (timeline.Any(x => x.Event == "commented")) {
-            //  tasks.Add(syncIssueComments.AddAsync(issueMessage));
-            //  // Can't sync comment reactions yet in case they don't exist
-            //}
-          }
-
           // Cleanup the data
           foreach (var item in filteredEvents) {
             // Oh GitHub, how I hate thee. Why can't you provide ids?
@@ -321,12 +305,112 @@
             item.IssueId = _issueId;
           }
           changes.UnionWith(await context.BulkUpdateTimelineEvents(forUserId, _repoId, events, accountsParam.Select(x => x.Id)));
+
+          // Issue Reactions
+          if (_reactionMetadata == null || _reactionMetadata.Expires < DateTimeOffset.UtcNow) {
+            var issueReactionsResponse = await ghc.IssueReactions(_repoFullName, _issueNumber, _reactionMetadata);
+            if (issueReactionsResponse.Status != HttpStatusCode.NotModified) {
+              var reactions = issueReactionsResponse.Result;
+
+              var users = reactions
+                .Select(x => x.User)
+                .Distinct(x => x.Id);
+
+              changes.UnionWith(
+                await context.BulkUpdateAccounts(issueReactionsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(users))
+              );
+
+              changes.UnionWith(await context.BulkUpdateIssueReactions(
+                _repoId,
+                _issueId,
+                _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+            }
+
+            _reactionMetadata = GitHubMetadata.FromResponse(issueReactionsResponse);
+          }
+
+          // Comments
+          if (timeline.Any(x => x.Event == "commented")) {
+            if (_commentMetadata == null || _commentMetadata.Expires < DateTimeOffset.UtcNow) {
+              var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata);
+              if (commentResponse.Status != HttpStatusCode.NotModified) {
+                var comments = commentResponse.Result;
+
+                var users = comments
+                  .Select(x => x.User)
+                  .Distinct(x => x.Id);
+                changes.UnionWith(await context.BulkUpdateAccounts(commentResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+                foreach (var comment in comments) {
+                  if (comment.IssueNumber == null) {
+                    comment.IssueNumber = _issueNumber;
+                  }
+                }
+
+                changes.UnionWith(await context.BulkUpdateComments(
+                  _repoId,
+                  _mapper.Map<IEnumerable<CommentTableType>>(comments)));
+              }
+
+              _commentMetadata = GitHubMetadata.FromResponse(commentResponse);
+            }
+          }
+        }
+
+        // Comment Reactions
+        var commentReactionMetadata = await context.Comments
+          .Where(x => x.IssueId == _issueId)
+          .Select(x => new { Id = x.Id, ReactionMetdata = x.ReactionMetadata })
+          .ToDictionaryAsync(key => key.Id, value => value.ReactionMetdata);
+
+        // Now, find the ones that need updating.
+        var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
+        foreach (var reactionMetadata in commentReactionMetadata) {
+          if (reactionMetadata.Value == null || reactionMetadata.Value.Expires < DateTimeOffset.UtcNow) {
+            commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value));
+          }
+        }
+
+        await Task.WhenAll(commentReactionRequests.Values);
+
+        // TODO: Optimize this a lot.
+        // Update all users at once
+        // Update reactions as batch with single call to DB
+        // Delete all comments at once.
+        foreach (var commentReactionsResponse in commentReactionRequests) {
+          var resp = await commentReactionsResponse.Value;
+          switch (resp.Status) {
+            case HttpStatusCode.NotModified:
+              break;
+            case HttpStatusCode.NotFound:
+              // Deleted
+              changes.UnionWith(await context.DeleteComments(new[] { commentReactionsResponse.Key }));
+              break;
+            default:
+              var reactions = resp.Result;
+
+              var users = reactions
+                .Select(x => x.User)
+                .Distinct(x => x.Id);
+              changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+              changes.UnionWith(await context.BulkUpdateCommentReactions(
+                _repoId,
+                commentReactionsResponse.Key,
+                _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+              break;
+          }
+
+          tasks.Add(context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp));
         }
       }
 
       if (!changes.Empty) {
         tasks.Add(_queueClient.NotifyChanges(changes));
       }
+
+      // Save metadata and other updates
+      tasks.Add(Save());
 
       await Task.WhenAll(tasks);
     }
