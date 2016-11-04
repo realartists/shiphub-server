@@ -143,7 +143,7 @@
 
           if (repo.Status != HttpStatusCode.NotModified) {
             changes.UnionWith(
-              await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new { repo.Result }))
+              await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }))
             );
           }
 
