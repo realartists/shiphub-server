@@ -20,9 +20,6 @@
   /// Currently supports redirects, pagination, rate limits and limited retry logic.
   /// </summary>
   public class GitHubHandler : IGitHubHandler {
-#if DEBUG
-    public const bool UseFiddler = true;
-#endif
     public const int MaxRetries = 2;
 
     public static HttpClient HttpClient { get; } = CreateGitHubHttpClient();
@@ -239,6 +236,13 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
+      var useFiddler = false;
+#if DEBUG
+      if (!bool.TryParse(CloudConfigurationManager.GetSetting("UseFiddler") ?? "", out useFiddler)) {
+        useFiddler = false;
+      }
+#endif
+
       HttpMessageHandler handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
@@ -246,14 +250,14 @@
         UseCookies = false,
         UseDefaultCredentials = false,
 #if DEBUG
-        UseProxy = UseFiddler,
-        Proxy = UseFiddler ? new WebProxy("127.0.0.1", 8888) : null,
+        UseProxy = useFiddler,
+        Proxy = useFiddler ? new WebProxy("127.0.0.1", 8888) : null,
 #endif
       };
 
       // This is a gross hack
 #if DEBUG
-      if (UseFiddler) {
+      if (useFiddler) {
         ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
       }
 #endif
