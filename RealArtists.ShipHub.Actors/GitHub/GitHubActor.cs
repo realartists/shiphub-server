@@ -83,7 +83,7 @@
           }
           DeactivateOnIdle();
         });
-        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
+        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
       }
 
       await base.OnActivateAsync();

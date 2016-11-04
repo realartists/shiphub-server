@@ -100,7 +100,12 @@
       }
 
       // Authentication (prefer token from cache metadata if present)
-      var accessToken = request.CacheOptions?.AccessToken ?? client.DefaultToken;
+      var accessToken = client.DefaultToken;
+      var userId = client.UserId;
+      if (request.CacheOptions?.AccessToken != null) {
+        accessToken = request.CacheOptions.AccessToken;
+        userId = request.CacheOptions.UserId;
+      }
       httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", accessToken);
 
       // Caching (Only for GETs when not restricted or token matches)
@@ -148,6 +153,7 @@
 
       // Cache Headers
       result.CacheData = new GitHubCacheDetails() {
+        UserId = userId,
         AccessToken = accessToken,
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,

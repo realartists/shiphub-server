@@ -3,6 +3,7 @@
   using GitHub;
 
   public class GitHubMetadata {
+    public long? UserId { get; set; }
     public string AccessToken { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? Expires { get; set; }
@@ -16,6 +17,7 @@
       }
 
       return new GitHubCacheDetails() {
+        UserId = metadata.UserId,
         AccessToken = metadata.AccessToken,
         ETag = metadata.ETag,
         Expires = metadata.Expires,
@@ -32,6 +34,7 @@
 
       var cacheData = response.CacheData;
       return new GitHubMetadata() {
+        UserId = cacheData.UserId,
         AccessToken = cacheData.AccessToken,
         ETag = cacheData.ETag,
         Expires = cacheData.Expires,
