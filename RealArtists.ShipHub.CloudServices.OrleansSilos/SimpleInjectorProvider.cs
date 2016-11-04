@@ -37,10 +37,11 @@
         new GenericFactory<ShipHubContext>(() => new ShipHubContext(connectionString)));
 
       // AutoMapper
-      container.Register(() => new MapperConfiguration(cfg => {
-        cfg.AddProfile<GitHubToDataModelProfile>();
-        cfg.AddProfile<DataModelToApiModelProfile>();
-      }).CreateMapper(),
+      container.Register(
+        () => new MapperConfiguration(cfg => {
+          cfg.AddProfile<GitHubToDataModelProfile>();
+          cfg.AddProfile<DataModelToApiModelProfile>();
+        }).CreateMapper(),
         Lifestyle.Singleton);
 
       // Service Bus

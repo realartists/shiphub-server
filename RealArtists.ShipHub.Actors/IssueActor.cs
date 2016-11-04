@@ -20,7 +20,6 @@
 
 #if DEBUG
   using System.Diagnostics;
-  using QueueClient.Messages;
 #endif
 
   public class IssueActor : Grain, IIssueActor {
