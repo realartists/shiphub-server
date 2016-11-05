@@ -149,6 +149,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DataModel\ShipHubContextConfiguration.cs" />
     <Compile Include="DataModel\Subscription.cs" />
     <Compile Include="DataModel\Account.cs" />
     <Compile Include="DataModel\OrganizationAccount.cs" />

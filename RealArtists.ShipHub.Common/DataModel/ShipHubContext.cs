@@ -12,14 +12,16 @@
   using Legacy;
   using Types;
 
+#if !DEBUG
+  // This works for real stuff but not unit tests
+  // because it doesn't support transactions.
+  [DbConfigurationType(typeof(ShipHubContextConfiguration))]
+#endif
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
       // Tell EF to leave our DB alone.
       // Maybe do migrations with dacpacs when possible later.
       Database.SetInitializer<ShipHubContext>(null);
-
-      // TODO: Start using SqlAzureExecutionStrategy?
-      // http://ritzlgrmft.blogspot.com/2014/03/working-with-sqlazureexecutionstrategy.html
     }
 
     public ShipHubContext()
