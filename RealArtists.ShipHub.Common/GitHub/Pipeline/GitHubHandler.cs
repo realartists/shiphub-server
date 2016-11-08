@@ -186,16 +186,18 @@
       // Screw the RFC, minimally match what GitHub actually sends.
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
 
-      if (response.IsSuccessStatusCode) {
-        // TODO: Handle accepted, etc.
+      if (!result.IsError) {
+        // Gross special case hack for Assignable :/
         if (response.StatusCode == HttpStatusCode.NoContent && typeof(T) == typeof(bool)) {
           result.Result = (T)(object)true;
+        } else if (response.Content != null) {
+          result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
         }
-        result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
-      } else if (response.StatusCode != HttpStatusCode.NotModified) {
+      } else {
         if (response.Content != null) {
           result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
         }
+
         switch (response.StatusCode) {
           case HttpStatusCode.BadRequest:
           case HttpStatusCode.Unauthorized:
