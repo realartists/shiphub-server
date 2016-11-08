@@ -6,42 +6,26 @@
   using System.Net.Http;
 
   public class GitHubRequest {
+    public GitHubRequest(string path, GitHubCacheDetails opts = null)
+      : this(HttpMethod.Get, path, opts) { }
+
     public GitHubRequest(HttpMethod method, string path)
-      : this(method, path, null, true) { }
+      : this(method, path, null) { }
 
-    public GitHubRequest(string path, GitHubCacheDetails opts = null, bool restricted = false)
-      : this(HttpMethod.Get, path, opts, restricted) { }
-
-    private GitHubRequest(HttpMethod method, string path, GitHubCacheDetails opts, bool restricted) {
+    private GitHubRequest(HttpMethod method, string path, GitHubCacheDetails opts) {
       if (path.IsNullOrWhiteSpace() || path.Contains('?')) {
         throw new ArgumentException($"path must be non null and cannot contain query parameters. provided: {path}", nameof(path));
       }
 
       Method = method;
       Path = path;
-      _cacheOptions = opts;
-      Restricted = restricted;
+      CacheOptions = opts;
     }
 
     public string AcceptHeaderOverride { get; set; }
+    public GitHubCacheDetails CacheOptions { get; set; }
     public HttpMethod Method { get; set; }
     public string Path { get; set; }
-
-    /// <summary>
-    /// Set to true to restrict pipeline handlers from changing the access token used for the request.
-    /// </summary>
-    public bool Restricted { get; }
-
-    private GitHubCacheDetails _cacheOptions;
-    public GitHubCacheDetails CacheOptions {
-      get { return _cacheOptions; }
-      set {
-        if (Restricted && _cacheOptions != null && value != null) {
-          throw new InvalidOperationException("Cannot change cache options on restricted requests.");
-        }
-        _cacheOptions = value;
-      }
-    }
 
     public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -64,19 +48,12 @@
       }
     }
 
-    public GitHubRequest CloneWithNewUri(Uri uri, bool preserveCache = false) {
+    public GitHubRequest CloneWithNewUri(Uri uri) {
       if (!uri.IsAbsoluteUri) {
         throw new ArgumentException($"Only absolute URIs are supported. Given: {uri}", nameof(uri));
       }
 
-      // TODO: Retain cache options? I think it's important to preserve credentials at least.
-      GitHubCacheDetails cache = null;
-      if (preserveCache || CacheOptions == GitHubCacheDetails.Empty) {
-        cache = _cacheOptions;
-      }
-
-      var clone = new GitHubRequest(uri.GetComponents(UriComponents.Path, UriFormat.Unescaped), cache, Restricted) {
-        Method = Method,
+      var clone = new GitHubRequest(Method, uri.GetComponents(UriComponents.Path, UriFormat.Unescaped)) {
         AcceptHeaderOverride = AcceptHeaderOverride,
       };
 

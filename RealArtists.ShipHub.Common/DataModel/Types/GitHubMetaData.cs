@@ -3,7 +3,7 @@
   using GitHub;
 
   public class GitHubMetadata {
-    public long? UserId { get; set; }
+    public long UserId { get; set; }
     public string AccessToken { get; set; }
     public string ETag { get; set; }
     public DateTimeOffset? Expires { get; set; }

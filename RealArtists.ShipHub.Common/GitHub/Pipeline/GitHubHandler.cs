@@ -33,7 +33,9 @@
     }
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
-      client.RateLimit.ThrowIfUnder(RateLimitFloor, client.UserInfo);
+      if (client.RateLimit != null && client.RateLimit.IsUnder(RateLimitFloor)) {
+        throw new GitHubException($"Rate limit exceeded. Only {client.RateLimit.RateLimitRemaining} requests left before {client.RateLimit.RateLimitReset:o} ({client.UserInfo}).");
+      }
 
       GitHubResponse<T> result = null;
 
@@ -49,22 +51,7 @@
           break;
         }
 
-        // This might be too cute?
-        if ((result.Status == HttpStatusCode.Unauthorized
-            || result.Status == HttpStatusCode.NotFound)
-          && request.CacheOptions != null
-          && client.DefaultToken != request.CacheOptions?.AccessToken) {
-          // Try again with default credentials
-          // HACK: Better to clear expired/stale metadata, but that's hard.
-          request.CacheOptions = null;
-          continue;
-        } else if (result.ErrorSeverity == GitHubErrorSeverity.RateLimited 
-          && request.CacheOptions != null
-          && client.DefaultToken != request.CacheOptions?.AccessToken) {
-          // HACK: really need to load balance tokens instead
-          request.CacheOptions = null;
-          continue;
-        } else if (result.ErrorSeverity != GitHubErrorSeverity.Retry) {
+        if (result.ErrorSeverity != GitHubErrorSeverity.Retry) {
           // Unrecoverable, abort.
           break;
         }
@@ -93,24 +80,18 @@
         httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
       }
 
-      // Restricted
-      if (request.Restricted && request.CacheOptions?.AccessToken != client.DefaultToken) {
-        // When requesting restricted data, cached and current access tokens must match.
-        request.CacheOptions = null;
-      }
+      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", client.AccessToken);
 
-      // Authentication (prefer token from cache metadata if present)
-      var accessToken = client.DefaultToken;
-      var userId = client.UserId;
-      if (request.CacheOptions?.AccessToken != null) {
-        accessToken = request.CacheOptions.AccessToken;
-        userId = request.CacheOptions.UserId;
-      }
-      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", accessToken);
+      var cache = request.CacheOptions;
+      if (cache != null) {
+        if (request.Method != HttpMethod.Get) {
+          throw new InvalidOperationException("Cache options are only valid on GET requests.");
+        }
 
-      // Caching (Only for GETs when not restricted or token matches)
-      if (request.Method == HttpMethod.Get && request.CacheOptions != null) {
-        var cache = request.CacheOptions;
+        if (cache.UserId != client.UserId) {
+          throw new InvalidOperationException($"Cache data for user {cache.UserId} cannot be used by user {client.UserId}.");
+        }
+
         httpRequest.Headers.IfModifiedSince = cache.LastModified;
         if (!cache.ETag.IsNullOrWhiteSpace()) {
           httpRequest.Headers.IfNoneMatch.Add(new EntityTagHeaderValue(cache.ETag));
@@ -133,11 +114,11 @@
       switch (response.StatusCode) {
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
-          request = request.CloneWithNewUri(response.Headers.Location, preserveCache: true);
+          request = request.CloneWithNewUri(response.Headers.Location);
           return await MakeRequest<T>(client, request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
-          request = request.CloneWithNewUri(response.Headers.Location, preserveCache: true);
+          request = request.CloneWithNewUri(response.Headers.Location);
           request.Method = HttpMethod.Get;
           return await MakeRequest<T>(client, request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         default:
@@ -153,8 +134,8 @@
 
       // Cache Headers
       result.CacheData = new GitHubCacheDetails() {
-        UserId = userId,
-        AccessToken = accessToken,
+        UserId = client.UserId,
+        AccessToken = client.AccessToken,
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
         PollInterval = response.ParseHeader("X-Poll-Interval", x => (x == null) ? TimeSpan.Zero : TimeSpan.FromSeconds(int.Parse(x))),
@@ -181,7 +162,7 @@
       // These aren't always sent. Check for presence and fail gracefully.
       if (response.Headers.Contains("X-RateLimit-Limit")) {
         result.RateLimit = new GitHubRateLimit() {
-          AccessToken = accessToken,
+          AccessToken = client.AccessToken,
           RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
           RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
           RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
