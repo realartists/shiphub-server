@@ -83,13 +83,9 @@
       httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", client.AccessToken);
 
       var cache = request.CacheOptions;
-      if (cache != null) {
+      if (cache?.UserId == client.UserId) {
         if (request.Method != HttpMethod.Get) {
           throw new InvalidOperationException("Cache options are only valid on GET requests.");
-        }
-
-        if (cache.UserId != client.UserId) {
-          throw new InvalidOperationException($"Cache data for user {cache.UserId} cannot be used by user {client.UserId}.");
         }
 
         httpRequest.Headers.IfModifiedSince = cache.LastModified;
@@ -125,9 +121,10 @@
           break;
       }
 
+      var isError = !(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotModified);
       var result = new GitHubResponse<T>(request) {
         Date = response.Headers.Date.Value,
-        IsError = !response.IsSuccessStatusCode,
+        IsError = isError,
         Redirect = redirect,
         Status = response.StatusCode,
       };
@@ -193,10 +190,9 @@
         // TODO: Handle accepted, etc.
         if (response.StatusCode == HttpStatusCode.NoContent && typeof(T) == typeof(bool)) {
           result.Result = (T)(object)true;
-        } else if (response.StatusCode != HttpStatusCode.NotModified) {
-          result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
         }
-      } else {
+        result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
+      } else if (response.StatusCode != HttpStatusCode.NotModified) {
         if (response.Content != null) {
           result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
         }
