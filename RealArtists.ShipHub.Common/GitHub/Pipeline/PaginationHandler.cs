@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
+  using System.Net;
   using System.Net.Http;
   using System.Threading;
   using System.Threading.Tasks;
@@ -35,7 +36,7 @@
       // Fetch has the retry logic.
       var result = await _next.Fetch<IEnumerable<T>>(client, request);
 
-      if (!result.IsError && result.Pagination != null) {
+      if (result.Status == HttpStatusCode.OK && result.Pagination != null) {
         result = await EnumerateParallel<IEnumerable<T>, T>(client, result);
       }
 

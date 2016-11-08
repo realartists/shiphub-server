@@ -39,7 +39,7 @@
     }.AsReadOnly();
 
     private static GitHubClient CreateGitHubClient(string accessToken) {
-      return new GitHubClient(_handlerPipeline, ApplicationName, ApplicationVersion, "ShipHub Authentication Controller", Guid.NewGuid(), accessToken, null);
+      return new GitHubClient(_handlerPipeline, ApplicationName, ApplicationVersion, "ShipHub Authentication Controller", Guid.NewGuid(), GitHubClient.InvalidUserId, accessToken);
     }
 
     public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {

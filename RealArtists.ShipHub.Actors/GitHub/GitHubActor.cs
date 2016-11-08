@@ -35,7 +35,7 @@
       }
 
       IGitHubHandler handler = new GitHubHandler();
-      handler = new ShipHubFilter(handler, shipContextFactory);
+      handler = new SneakyCacheFilter(handler, shipContextFactory);
       handler = new PaginationHandler(handler);
 
       return (_handler = handler);
@@ -83,7 +83,7 @@
           }
           DeactivateOnIdle();
         });
-        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Token, rateLimit);
+        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
       }
 
       await base.OnActivateAsync();
@@ -114,6 +114,12 @@
       } finally {
         _maxConcurrentRequests.Release();
       }
+    }
+
+    ////////////////////////////////////////////////////////////
+
+    public Task<GitHubRateLimit> GetLatestRateLimit() {
+      return Task.FromResult(_github.RateLimit);
     }
 
     ////////////////////////////////////////////////////////////

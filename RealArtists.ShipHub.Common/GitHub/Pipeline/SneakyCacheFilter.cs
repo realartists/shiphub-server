@@ -14,11 +14,11 @@
   /// Rate limit tracking has already moved to Orleans.
   /// It needs to go, and will with the Orleans spider transition.
   /// </summary>
-  public class ShipHubFilter : IGitHubHandler {
+  public class SneakyCacheFilter : IGitHubHandler {
     private IGitHubHandler _next;
     private IFactory<ShipHubContext> _shipContextFactory;
 
-    public ShipHubFilter(IGitHubHandler next, IFactory<ShipHubContext> shipContextFactory) {
+    public SneakyCacheFilter(IGitHubHandler next, IFactory<ShipHubContext> shipContextFactory) {
       _next = next;
       _shipContextFactory = shipContextFactory;
     }
@@ -30,9 +30,9 @@
       return response;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "ShipHubFilter")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "SneakyCacheFilter")]
     public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector) {
-      throw new NotSupportedException($"{nameof(ShipHubFilter)} only supports single fetches.");
+      throw new NotSupportedException($"{nameof(SneakyCacheFilter)} only supports single fetches.");
     }
 
     private async Task HandleRequest(GitHubClient client, GitHubRequest request) {
@@ -45,7 +45,7 @@
         var key = request.Uri.ToString();
         var cacheOptions = await context.CacheMetadata
           .AsNoTracking()
-          .Where(x => x.AccessToken == client.DefaultToken)
+          .Where(x => x.AccessToken == client.AccessToken)
           .Where(x => x.Key == key)
           .SingleOrDefaultAsync();
         request.CacheOptions = cacheOptions?.Metadata;

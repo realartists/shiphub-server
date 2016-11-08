@@ -9,9 +9,12 @@
   using Models;
 
   public class GitHubClient : IGitHubClient {
+    public const long InvalidUserId = -1;
+
     public Uri ApiRoot { get; } = new Uri("https://api.github.com/");
-    public string DefaultToken { get; set; }
+    public string AccessToken { get; }
     public ProductInfoHeaderValue UserAgent { get; }
+    public long UserId { get; }
     public string UserInfo { get; }
     public Guid CorrelationId { get; }
 
@@ -20,10 +23,11 @@
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
 
-    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, Guid correlationId, string accessToken = null, GitHubRateLimit rateLimit = null) {
+    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, Guid correlationId, long userId, string accessToken, GitHubRateLimit rateLimit = null) {
       Handler = handler;
-      DefaultToken = accessToken;
+      AccessToken = accessToken;
       UserAgent = new ProductInfoHeaderValue(productName, productVersion);
+      UserId = userId;
       UserInfo = userInfo;
       CorrelationId = correlationId;
       _rateLimit = rateLimit;
@@ -52,7 +56,7 @@
     /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user", cacheOptions, restricted: true);
+      var request = new GitHubRequest("user", cacheOptions);
       return Fetch<Account>(request);
     }
 
@@ -67,12 +71,12 @@
     }
 
     public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user/repos", cacheOptions, restricted: true);
+      var request = new GitHubRequest("user/repos", cacheOptions);
       return FetchPaged(request, (Repository x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/timeline", cacheOptions, restricted: true) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/timeline", cacheOptions) {
         // Timeline support (application/vnd.github.mockingbird-preview+json)
         // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
         AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json",
@@ -132,7 +136,7 @@
     }
 
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions, restricted: true);
+      var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions);
       return Fetch<Commit>(request);
     }
 
@@ -160,11 +164,11 @@
     }
 
     public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest("user/memberships/orgs", cacheOptions, restricted: true);
+      var request = new GitHubRequest("user/memberships/orgs", cacheOptions);
       request.AddParameter(nameof(state), state);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
 
-      if (!result.IsError) {
+      if (result.Status == HttpStatusCode.OK) {
         // Seriously GitHub?
         foreach (var membership in result.Result) {
           membership.Organization.Type = GitHubAccountType.Organization;
