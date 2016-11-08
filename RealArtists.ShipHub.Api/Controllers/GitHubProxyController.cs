@@ -97,8 +97,7 @@
         // Process the response
         if (response.StatusCode == HttpStatusCode.Created) {
           await response.Content.LoadIntoBufferAsync();
-          var issueResponse = await response.Content.ReadAsAsync<GitHubResponse<Issue>>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
-          var issue = issueResponse.Result;
+          var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
 
           // TODO: Unify this code with other issue update places to reduce bugs.
 
@@ -114,7 +113,7 @@
               .Select(x => x.Id)
               .SingleAsync();
 
-            changes = await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
+            changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
 
             if (issue.Milestone != null) {
               changes.UnionWith(
