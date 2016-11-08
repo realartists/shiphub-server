@@ -10,6 +10,7 @@
   using System.Web.Http.Hosting;
   using System.Web.Http.Results;
   using System.Web.Http.Routing;
+  using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
@@ -38,6 +39,10 @@
       controller.ControllerContext = new HttpControllerContext(config, routeData, request);
       controller.Request = request;
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
+    }
+
+    private static string WebHookSecret() {
+      return ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret");
     }
 
     private static async Task TestSubscriptionStateChangeHelper(
@@ -127,7 +132,7 @@
               Invoice = invoicePayload,
             },
           });
-        await controller.Object.HandleHook();
+        await controller.Object.HandleHook(ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret"));
 
         context.Entry(sub).Reload();
         Assert.AreEqual(expectedState, sub.State);
@@ -439,7 +444,7 @@
               return null;
             }
           });
-          await controller.HandleHook();
+          await controller.HandleHook(WebHookSecret());
         }
 
         Assert.IsTrue(didCloseInvoice);
@@ -496,7 +501,7 @@
             return null;
           }
         });
-        await controller.HandleHook();
+        await controller.HandleHook(WebHookSecret());
       }
 
       Assert.IsTrue(didCloseInvoice);
@@ -644,7 +649,7 @@
           var mockMailer = new Mock<IShipHubMailer>();
           var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
           ConfigureController(controller, payload);
-          return controller.HandleHook();
+          return controller.HandleHook(WebHookSecret());
         };
 
         // should see version advance.
@@ -751,7 +756,7 @@
               }
             },
           });
-        await controller.HandleHook();
+        await controller.HandleHook(WebHookSecret());
 
         Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
       };
@@ -829,7 +834,7 @@
               },
             },
           });
-        await controller.Object.HandleHook();
+        await controller.Object.HandleHook(WebHookSecret());
 
         Assert.AreEqual(1, outgoingMessages.Count);
         var outgoingMessage = (PaymentSucceededOrganizationMailMessage)outgoingMessages.First();
@@ -911,7 +916,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
@@ -972,7 +977,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
@@ -1033,7 +1038,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
@@ -1089,7 +1094,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
@@ -1144,7 +1149,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
@@ -1195,7 +1200,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
@@ -1236,11 +1241,11 @@
           } else if (name == "ChargeBeeWebHookExcludeList") {
             return excludeList;
           } else {
-            throw new ApplicationException("Fetching unexpected setting: " + name);
+            return ShimsContext.ExecuteWithoutShims(() => CloudConfigurationManager.GetSetting(name));
           }
         };
 
-        var response = await controller.Object.HandleHook();
+        var response = await controller.Object.HandleHook(WebHookSecret());
         Assert.AreEqual(expectedResultType, response.GetType(), message);
       }
     }

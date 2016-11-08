@@ -164,8 +164,12 @@
 
     [HttpPost]
     [AllowAnonymous]
-    [Route("chargebee")]
-    public async Task<IHttpActionResult> HandleHook() {
+    [Route("chargebee/{secret}")]
+    public async Task<IHttpActionResult> HandleHook(string secret) {
+      if (secret != ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret")) {
+        return BadRequest("Invalid secret.");
+      }
+
       var payloadString = await Request.Content.ReadAsStringAsync();
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
