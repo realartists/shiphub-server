@@ -6,11 +6,11 @@
   using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces;
-  using ActorInterfaces.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using GitHub;
   using Orleans;
   using QueueClient;
 
@@ -36,7 +36,6 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
-    private HashSet<long> _interestedUserIds = new HashSet<long>();
     private Random _random = new Random();
 
     public RepositoryActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
@@ -89,8 +88,6 @@
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
 
-      _interestedUserIds.Add(forUserId);
-
       if (_syncTimer == null) {
         _syncTimer = RegisterTimer(SyncCallback, null, TimeSpan.Zero, SyncDelay);
       }
@@ -98,45 +95,28 @@
       return Task.CompletedTask;
     }
 
-    private async Task<IGitHubActor> GetRandomGitHubActor() {
-      using (var context = _contextFactory.CreateInstance()) {
-        while (_interestedUserIds.Count > 0) {
-          // The way the current caching code works, it will try to re-use an existing token
-          // no matter which grain I pick. Pick one at random to use as a fallback.
-          var userId = _interestedUserIds.ElementAt(_random.Next(_interestedUserIds.Count));
-
-          // TODO: Move this into load balancing code and detect grain activation failures instead.
-          var token = await context.Accounts
-            .Where(x => x.Id == userId)
-            .Select(x => x.Token)
-            .SingleOrDefaultAsync();
-
-          if (token.IsNullOrWhiteSpace()) {
-            _interestedUserIds.Remove(userId);
-          } else {
-            return _grainFactory.GetGrain<IGitHubActor>(userId);
-          }
-        }
-      }
-
-      return null;
-    }
-
     private async Task SyncCallback(object state) {
-      if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle
-        || _interestedUserIds.Count == 0) {
+      if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
-        return;
-      }
-
-      var github = await GetRandomGitHubActor();
-      if (github == null) {
         return;
       }
 
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
+        var syncUserIds = await context.AccountRepositories
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Token != null)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+
+        if (syncUserIds.Length == 0) {
+          DeactivateOnIdle();
+          return;
+        }
+
+        var github = new GitHubActorPool(_grainFactory, syncUserIds);
+
         // Update repo
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var repo = await github.Repository(_fullName, _metadata);
