@@ -54,6 +54,7 @@
 
     public DateTimeOffset? TrialEndDate { get; set; }
 
+    [ConcurrencyCheck]
     public long Version { get; set; }
   }
 }

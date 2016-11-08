@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Data.Entity.Infrastructure;
   using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
@@ -93,41 +94,51 @@
           sub = subList.First().Subscription;
         }
 
-        using (var transaction = context.Database.BeginTransaction()) {
-          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
+        for (int attempt = 0; attempt < 2; ++attempt) {
+          try {
+            var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
 
-          if (accountSubscription == null) {
-            accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
-              AccountId = user.Id,
-            });
-          }
+            if (accountSubscription == null) {
+              accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+                AccountId = user.Id,
+              });
+            }
 
-          switch (sub.Status) {
-            case ChargeBee.Models.Subscription.StatusEnum.Active:
-            case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
-              accountSubscription.State = SubscriptionState.Subscribed;
-              accountSubscription.TrialEndDate = null;
+            var version = sub.ResourceVersion.GetValueOrDefault(0);
+            if (accountSubscription.Version > version) {
+              // Drop old data
               break;
-            case ChargeBee.Models.Subscription.StatusEnum.InTrial:
-              accountSubscription.State = SubscriptionState.InTrial;
-              accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
-              break;
-            default:
-              accountSubscription.State = SubscriptionState.NotSubscribed;
-              accountSubscription.TrialEndDate = null;
-              break;
-          }
+            } else {
+              accountSubscription.Version = version;
+            }
 
-          accountSubscription.Version = sub.ResourceVersion.GetValueOrDefault(0);
+            switch (sub.Status) {
+              case ChargeBee.Models.Subscription.StatusEnum.Active:
+              case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
+                accountSubscription.State = SubscriptionState.Subscribed;
+                accountSubscription.TrialEndDate = null;
+                break;
+              case ChargeBee.Models.Subscription.StatusEnum.InTrial:
+                accountSubscription.State = SubscriptionState.InTrial;
+                accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
+                break;
+              default:
+                accountSubscription.State = SubscriptionState.NotSubscribed;
+                accountSubscription.TrialEndDate = null;
+                break;
+            }
 
-          int recordsSaved = await context.SaveChangesAsync();
+            int recordsSaved = await context.SaveChangesAsync();
 
-          transaction.Commit();
+            if (recordsSaved > 0) {
+              var changes = new ChangeSummary();
+              changes.Users.Add(user.Id);
+              await notifyChanges.AddAsync(new ChangeMessage(changes));
+            }
 
-          if (recordsSaved > 0) {
-            var changes = new ChangeSummary();
-            changes.Users.Add(user.Id);
-            await notifyChanges.AddAsync(new ChangeMessage(changes));
+            // Success. Don't retry.
+            break;
+          } catch (DbUpdateConcurrencyException) {
           }
         }
       }
@@ -170,39 +181,43 @@
           .Limit(1)
           .Request().List.SingleOrDefault()?.Subscription;
 
-        using (var transaction = context.Database.BeginTransaction()) {
-          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.TargetId);
+        for (int attempt = 0; attempt < 2; ++attempt) {
+          try {
+            var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.TargetId);
 
-          if (accountSubscription == null) {
-            accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
-              AccountId = message.TargetId,
-            });
-          }
-
-          if (sub != null) {
-            switch (sub.Status) {
-              case ChargeBee.Models.Subscription.StatusEnum.Active:
-              case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
-              case ChargeBee.Models.Subscription.StatusEnum.Future:
-                accountSubscription.State = SubscriptionState.Subscribed;
-                break;
-              default:
-                accountSubscription.State = SubscriptionState.NotSubscribed;
-                break;
+            if (accountSubscription == null) {
+              accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+                AccountId = message.TargetId,
+              });
             }
-            accountSubscription.Version = sub.GetValue<long>("resource_version");
-          } else {
-            accountSubscription.State = SubscriptionState.NotSubscribed;
-          }
 
-          int recordsSaved = await context.SaveChangesAsync();
+            if (sub != null) {
+              switch (sub.Status) {
+                case ChargeBee.Models.Subscription.StatusEnum.Active:
+                case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
+                case ChargeBee.Models.Subscription.StatusEnum.Future:
+                  accountSubscription.State = SubscriptionState.Subscribed;
+                  break;
+                default:
+                  accountSubscription.State = SubscriptionState.NotSubscribed;
+                  break;
+              }
+              accountSubscription.Version = sub.GetValue<long>("resource_version");
+            } else {
+              accountSubscription.State = SubscriptionState.NotSubscribed;
+            }
 
-          transaction.Commit();
+            int recordsSaved = await context.SaveChangesAsync();
 
-          if (recordsSaved > 0) {
-            var changes = new ChangeSummary();
-            changes.Organizations.Add(message.TargetId);
-            await notifyChanges.AddAsync(new ChangeMessage(changes));
+            if (recordsSaved > 0) {
+              var changes = new ChangeSummary();
+              changes.Organizations.Add(message.TargetId);
+              await notifyChanges.AddAsync(new ChangeMessage(changes));
+            }
+
+            // Success. Don't retry.
+            break;
+          } catch (DbUpdateConcurrencyException) {
           }
         }
       }
