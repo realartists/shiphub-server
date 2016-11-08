@@ -35,7 +35,7 @@
       }
 
       IGitHubHandler handler = new GitHubHandler();
-      handler = new ShipHubFilter(handler, shipContextFactory);
+      handler = new SneakyCacheFilter(handler, shipContextFactory);
       handler = new PaginationHandler(handler);
 
       return (_handler = handler);
