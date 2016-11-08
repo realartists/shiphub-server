@@ -12,11 +12,7 @@
   using Legacy;
   using Types;
 
-#if !DEBUG
-  // This works for real stuff but not unit tests
-  // because it doesn't support transactions.
   [DbConfigurationType(typeof(ShipHubContextConfiguration))]
-#endif
   public class ShipHubContext : DbContext {
     static ShipHubContext() {
       // Tell EF to leave our DB alone.
