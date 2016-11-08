@@ -30,6 +30,11 @@
 
       // Application Insights exception logging
       config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());
+      // Common logging for exceptions
+      config.Services.Add(typeof(IExceptionLogger), new CommonLogExceptionLogger());
+
+      // Common logging for all requests
+      config.MessageHandlers.Add(new CommonLogMessageHandler());
     }
 
     public static RaygunWebApiClient GenerateRaygunClient(HttpRequestMessage requestMessage) {

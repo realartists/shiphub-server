@@ -335,6 +335,8 @@
     <Compile Include="Controllers\SyncController.cs" />
     <Compile Include="Controllers\TestController.cs" />
     <Compile Include="Diagnostics\ApplicationInsightsExceptionLogger.cs" />
+    <Compile Include="Diagnostics\CommonLogExceptionLogger.cs" />
+    <Compile Include="Diagnostics\CommonLogMessageHandler.cs" />
     <Compile Include="Filters\DeaggregateExceptionFilterAttribute.cs" />
     <Compile Include="Filters\ShipHubAuthenticationAttribute.cs" />
     <Compile Include="Global.asax.cs">
@@ -370,6 +372,7 @@
     <None Include="..\Secret.AppSettings.config">
       <Link>Secret.AppSettings.config</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
     </None>
     <None Include="..\Secret.ConnectionStrings.config">
       <Link>Secret.ConnectionStrings.config</Link>
