@@ -123,6 +123,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="EchoActor.cs" />
+    <Compile Include="GitHub\GitHubActorPool.cs" />
     <Compile Include="IssueActor.cs" />
     <Compile Include="OrganizationActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
