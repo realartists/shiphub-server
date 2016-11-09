@@ -19,6 +19,7 @@
       config.Filters.Add(new DeaggregateExceptionFilterAttribute());
       config.Filters.Add(new ShipHubAuthenticationAttribute());
       config.Filters.Add(new AuthorizeAttribute());
+      config.Filters.Add(new CommonLogActionFilterAttribute());
 
       RaygunWebApiClient.Attach(config, GenerateRaygunClient);
 
@@ -32,9 +33,6 @@
       config.Services.Add(typeof(IExceptionLogger), new ApplicationInsightsExceptionLogger());
       // Common logging for exceptions
       config.Services.Add(typeof(IExceptionLogger), new CommonLogExceptionLogger());
-
-      // Common logging for all requests
-      config.MessageHandlers.Add(new CommonLogMessageHandler());
     }
 
     public static RaygunWebApiClient GenerateRaygunClient(HttpRequestMessage requestMessage) {
