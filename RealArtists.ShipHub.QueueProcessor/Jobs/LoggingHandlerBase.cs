@@ -26,6 +26,7 @@
       [CallerMemberName] string memberName = "",
       [CallerFilePath]   string sourceFilePath = "",
       [CallerLineNumber] int sourceLineNumber = 0) {
+      Common.Log.Info($"functionInstanceId={functionInstanceId.ToString()}, userId={forUserId??0}", sourceFilePath, memberName, sourceLineNumber);
       try {
         await action();
       } catch (Exception e) {

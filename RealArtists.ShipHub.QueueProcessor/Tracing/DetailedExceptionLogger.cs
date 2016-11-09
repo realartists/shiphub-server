@@ -54,6 +54,7 @@
 
       _raygunClient?.SendInBackground(ex, null, props, new RaygunIdentifierMessage(forUserId?.ToString()));
       _aiClient?.TrackException(ex, props);
+      Common.Log.Exception(ex, $"{sourceFilePath}:{sourceLineNumber} {memberName} forUserId={props["forUserId"]}, functionInstanceId={props["functionInstanceId"]}, message={props["message"]}");
     }
   }
 }
