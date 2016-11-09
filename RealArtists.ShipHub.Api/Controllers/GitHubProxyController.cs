@@ -107,9 +107,10 @@
             .Distinct(x => x.Id);
 
           ChangeSummary changes = null;
+          var repoName = $"{owner}/{repo}";
           using (var context = new dm.ShipHubContext()) {
             var repoId = await context.Repositories
-              .Where(x => x.FullName == $"{owner}/{repo}")
+              .Where(x => x.FullName == repoName)
               .Select(x => x.Id)
               .SingleAsync();
 
