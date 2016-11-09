@@ -252,16 +252,28 @@
         using (var context = new ShipHubContext()) {
           var couponId = "member_of_paid_org";
 
-          var isMemberOfPaidOrg = await context.OrganizationAccounts
-            .CountAsync(x =>
-              x.UserId == message.UserId &&
-              x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
-
           var sub = ChargeBee.Models.Subscription.List()
             .CustomerId().Is($"user-{message.UserId}")
             .PlanId().Is("personal")
             .Limit(1)
             .Request().List.FirstOrDefault()?.Subscription;
+
+          var isMemberOfPaidOrg = await context.OrganizationAccounts
+            .CountAsync(x =>
+              x.UserId == message.UserId &&
+              x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
+
+          bool shouldHaveCoupon = isMemberOfPaidOrg;
+
+          // We should only apply this coupon to already active subscriptions, and never
+          // to free trials.  If we apply it to a free trial, the amount due at the end
+          // of term would be $0, and the subscription would automatically transition to
+          // active even though no payment method is set.
+          if (sub != null &&
+              sub.Status != ChargeBee.Models.Subscription.StatusEnum.Active &&
+              sub.Status != ChargeBee.Models.Subscription.StatusEnum.NonRenewing) {
+            shouldHaveCoupon = false;
+          }
 
           if (sub != null) {
             var hasCoupon = false;
@@ -270,11 +282,11 @@
               hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
             }
 
-            if (isMemberOfPaidOrg && !hasCoupon) {
+            if (shouldHaveCoupon && !hasCoupon) {
               ChargeBee.Models.Subscription.Update(sub.Id)
                 .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
                 .Request();
-            } else if (!isMemberOfPaidOrg && hasCoupon) {
+            } else if (!shouldHaveCoupon && hasCoupon) {
               ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
                 .CouponIds(new List<string>() { couponId })
                 .Request();
