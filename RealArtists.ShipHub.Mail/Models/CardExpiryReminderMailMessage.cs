@@ -1,5 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Mail.Models {
-  public class CardExpiryRemdinderMailMessage : MailMessageBase {
+  public class CardExpiryReminderMailMessage : MailMessageBase {
     public bool AlreadyExpired { get; set; }
     public long ExpiryMonth { get; set; }
     public long ExpiryYear { get; set; }

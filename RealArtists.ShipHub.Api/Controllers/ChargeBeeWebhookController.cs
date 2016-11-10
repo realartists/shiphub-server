@@ -213,7 +213,7 @@
     public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
       var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
 
-      await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+      await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUsername = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,

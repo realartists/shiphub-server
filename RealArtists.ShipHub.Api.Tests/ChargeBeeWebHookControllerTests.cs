@@ -1048,9 +1048,9 @@
       var outgoingMessages = new List<MailMessageBase>();
       var mockMailer = new Mock<IShipHubMailer>();
       mockMailer
-        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryRemdinderMailMessage>()))
+        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryReminderMailMessage>()))
         .Returns(Task.CompletedTask)
-        .Callback((CardExpiryRemdinderMailMessage message) => outgoingMessages?.Add(message));
+        .Callback((CardExpiryReminderMailMessage message) => outgoingMessages?.Add(message));
 
       var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
       controller.CallBase = true;
@@ -1083,7 +1083,7 @@
       await controller.Object.HandleHook();
 
       Assert.AreEqual(1, outgoingMessages.Count);
-      var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
+      var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
@@ -1103,9 +1103,9 @@
       var outgoingMessages = new List<MailMessageBase>();
       var mockMailer = new Mock<IShipHubMailer>();
       mockMailer
-        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryRemdinderMailMessage>()))
+        .Setup(x => x.CardExpiryReminder(It.IsAny<CardExpiryReminderMailMessage>()))
         .Returns(Task.CompletedTask)
-        .Callback((CardExpiryRemdinderMailMessage message) => outgoingMessages?.Add(message));
+        .Callback((CardExpiryReminderMailMessage message) => outgoingMessages?.Add(message));
 
       var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
       controller.CallBase = true;
@@ -1138,7 +1138,7 @@
       await controller.Object.HandleHook();
 
       Assert.AreEqual(1, outgoingMessages.Count);
-      var outgoingMessage = (CardExpiryRemdinderMailMessage)outgoingMessages.First();
+      var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);

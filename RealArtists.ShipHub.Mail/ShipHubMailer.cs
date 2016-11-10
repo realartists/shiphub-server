@@ -15,7 +15,7 @@
 
   public interface IShipHubMailer {
     Task CancellationScheduled(CancellationScheduledMailMessage model);
-    Task CardExpiryReminder(CardExpiryRemdinderMailMessage model);
+    Task CardExpiryReminder(CardExpiryReminderMailMessage model);
     Task PaymentFailed(PaymentFailedMailMessage model);
     Task PaymentRefunded(PaymentRefundedMailMessage model);
     Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model);
@@ -111,7 +111,7 @@
       return SendMessage(message);
     }
 
-    public Task CardExpiryReminder(CardExpiryRemdinderMailMessage model) {
+    public Task CardExpiryReminder(CardExpiryReminderMailMessage model) {
       var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUsername}", "CardExpiryReminder");
       return SendMessage(message);
     }

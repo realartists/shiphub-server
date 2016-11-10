@@ -111,7 +111,7 @@
       }).Wait();
 
       // Card has already expired.
-      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUsername = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -123,7 +123,7 @@
       }).Wait();
 
       // Card will expire.
-      mailer.CardExpiryReminder(new Mail.Models.CardExpiryRemdinderMailMessage() {
+      mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUsername = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
