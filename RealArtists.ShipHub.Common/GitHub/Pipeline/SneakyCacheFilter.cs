@@ -30,7 +30,6 @@
       return response;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "SneakyCacheFilter")]
     public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector) {
       throw new NotSupportedException($"{nameof(SneakyCacheFilter)} only supports single fetches.");
     }

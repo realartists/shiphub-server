@@ -15,13 +15,10 @@
   using dm = Common.DataModel;
 
   [Reentrant]
-  public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor {
-    private IGrainFactory _grainFactory;
+  public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor, IDisposable {
     private IFactory<dm.ShipHubContext> _shipContextFactory;
 
     private long _userId;
-    private string _accessToken;
-
     private GitHubClient _github;
 
     // TODO: Overhaul this code and trim/eliminate the pipeline
@@ -29,7 +26,7 @@
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
     private static IGitHubHandler _handler;
-    private static IGitHubHandler GetOrCreateHandlerPipeline(IGrainFactory grainFactory, IFactory<dm.ShipHubContext> shipContextFactory) {
+    private static IGitHubHandler GetOrCreateHandlerPipeline(IFactory<dm.ShipHubContext> shipContextFactory) {
       if (_handler != null) {
         return _handler;
       }
@@ -41,8 +38,7 @@
       return (_handler = handler);
     }
 
-    public GitHubActor(IGrainFactory grainFactory, IFactory<dm.ShipHubContext> shipContextFactory) {
-      _grainFactory = grainFactory;
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory) {
       _shipContextFactory = shipContextFactory;
     }
 
@@ -61,8 +57,6 @@
           throw new InvalidOperationException($"User {_userId} has no token.");
         }
 
-        _accessToken = user.Token;
-
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
           rateLimit = new GitHubRateLimit() {
@@ -75,7 +69,7 @@
 
         // TODO: Orleans has a concept of state/correlation that we can use
         // instead of this hack or adding parameters to every call.
-        var handler = GetOrCreateHandlerPipeline(_grainFactory, _shipContextFactory);
+        var handler = GetOrCreateHandlerPipeline(_shipContextFactory);
         // Revoke expired and invalid tokens
         handler = new TokenRevocationHandler(handler, async token => {
           using (var ctx = _shipContextFactory.CreateInstance()) {
@@ -90,13 +84,12 @@
     }
 
     public override async Task OnDeactivateAsync() {
-      _maxConcurrentRequests.Dispose();
-      _maxConcurrentRequests = null;
-
       // Save state
       using (var context = _shipContextFactory.CreateInstance()) {
         await context.UpdateRateLimit(_github.RateLimit);
       }
+
+      Dispose();
 
       await base.OnDeactivateAsync();
     }
@@ -246,6 +239,24 @@
 
     public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null) {
       return _github.UserEmails(cacheOptions);
+    }
+
+    private bool disposedValue = false;
+    protected virtual void Dispose(bool disposing) {
+      if (!disposedValue) {
+        if (disposing) {
+          if (_maxConcurrentRequests != null) {
+            _maxConcurrentRequests.Dispose();
+            _maxConcurrentRequests = null;
+          }
+        }
+        disposedValue = true;
+      }
+    }
+
+    public void Dispose() {
+      Dispose(true);
+      GC.SuppressFinalize(this);
     }
   }
 }

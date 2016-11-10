@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces.Serialization {
   using System;
+  using System.Diagnostics.CodeAnalysis;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using Orleans.CodeGeneration;
@@ -7,6 +8,9 @@
 
   [RegisterSerializer]
   internal class OrleansJTokenSerializer {
+    // Can't make the class static or Orleans won't find it.
+    private OrleansJTokenSerializer() { }
+
     private static readonly JsonSerializerSettings _JsonSerializerSettings = new JsonSerializerSettings {
       // The default value, DateParseHandling.DateTime, drops time zone information from DateTimeOffets.
       // This value appears to work well with both DateTimes (without time zone information) and DateTimeOffsets.
@@ -15,6 +19,7 @@
       Formatting = Formatting.Indented
     };
 
+    [SuppressMessage("Microsoft.Performance", "CA1810:InitializeReferenceTypeStaticFieldsInline")]
     static OrleansJTokenSerializer() {
       Register();
     }

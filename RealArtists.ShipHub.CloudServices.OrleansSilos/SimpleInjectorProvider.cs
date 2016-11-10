@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics.CodeAnalysis;
   using Api.Sync.Messages;
   using AutoMapper;
   using Common;
@@ -29,6 +30,7 @@
       }
     }
 
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public IServiceProvider ConfigureServices(IServiceCollection services) {
       var container = new Container();
 

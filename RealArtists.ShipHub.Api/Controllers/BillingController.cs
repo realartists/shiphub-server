@@ -1,8 +1,8 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Configuration;
   using System.Data.Entity;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
   using System.Security.Cryptography;
@@ -15,14 +15,13 @@
   using Common.DataModel;
   using Common.GitHub;
   using Filters;
-  using Microsoft.Azure;
   using Orleans;
 
   public class BillingAccount {
     public long Identifier { get; set; }
     public string Login { get; set; }
     public string AvatarUrl { get; set; }
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
+    [SuppressMessage("Microsoft.Naming", "CA1721:PropertyNamesShouldNotMatchGetMethods")]
     public string Type { get; set; }
   }
 
@@ -374,7 +373,7 @@
         .CustomerId($"{customerIdPrefix}-{accountId}")
         .Embed(false)
         .Request();
-      
+
       return Redirect(result.HostedPage.Url);
     }
   }
