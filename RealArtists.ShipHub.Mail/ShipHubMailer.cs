@@ -70,15 +70,13 @@
 
         var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
 
-        var premailer = new PreMailer.Net.PreMailer(html);
-        var htmlProcessed = premailer.MoveCssInline(
-          removeComments: true
-          ).Html;
+        using (var premailer = new PreMailer.Net.PreMailer(html)) {
+          html = premailer.MoveCssInline(
+            removeComments: true
+            ).Html;
+        }
 
-        var htmlView = new AlternateView(
-          new MemoryStream(Encoding.UTF8.GetBytes(htmlProcessed)),
-          new ContentType("text/html"));
-
+        var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
         var linkedResource = new LinkedResource(Path.Combine(GetBaseDirectory(), "ShipLogo.png"), "image/png");
         linkedResource.ContentId = "ShipLogo.png";
         htmlView.LinkedResources.Add(linkedResource);
@@ -116,70 +114,76 @@
       return SendMessage(message);
     }
 
-    public Task PaymentFailed(PaymentFailedMailMessage model) {
+    public async Task PaymentFailed(PaymentFailedMailMessage model) {
       var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.InvoicePdfBytes),
-        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
 
-    public Task PaymentRefunded(PaymentRefundedMailMessage model) {
+    public async Task PaymentRefunded(PaymentRefundedMailMessage model) {
       var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.CreditNotePdfBytes),
-        $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.CreditNotePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
 
-    public Task PurchasePersonal(PurchasePersonalMailMessage model) {
+    public async Task PurchasePersonal(PurchasePersonalMailMessage model) {
       var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.InvoicePdfBytes),
-        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
 
-    public Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
+    public async Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
       var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.InvoicePdfBytes),
-        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
 
-    public Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
+    public async Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
       var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.InvoicePdfBytes),
-        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
 
-    public Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
+    public async Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
       var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization");
 
-      message.Attachments.Add(new Attachment(
-        new MemoryStream(model.InvoicePdfBytes),
-        $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf"));
-
-      return SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
+        message.Attachments.Add(new Attachment(
+          stream,
+          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+          "application/pdf"));
+        await SendMessage(message);
+      }
     }
   }
 }
