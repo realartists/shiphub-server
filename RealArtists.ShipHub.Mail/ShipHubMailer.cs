@@ -76,7 +76,7 @@
           ).Html;
 
         var htmlView = new AlternateView(
-          new MemoryStream(UTF8Encoding.Default.GetBytes(htmlProcessed)),
+          new MemoryStream(Encoding.UTF8.GetBytes(htmlProcessed)),
           new ContentType("text/html"));
 
         var linkedResource = new LinkedResource(Path.Combine(GetBaseDirectory(), "ShipLogo.png"), "image/png");
