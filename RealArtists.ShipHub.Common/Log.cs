@@ -172,7 +172,7 @@ namespace RealArtists.ShipHub.Common {
 
     class LogSink : IDisposable {
 
-      private const long HysteresisMillis = 2000; // time we wait to flush when logs are sent slowly
+      private const long HysteresisMillis = 500; // time we wait to flush when logs are sent slowly
       private const long FlushCount = 1000; // logs will be flushed immediately if more than this amount queue up
       private const long MaxBufferCount = 10000; // max logs to buffer. above this count, we start dropping them.
 
@@ -181,21 +181,19 @@ namespace RealArtists.ShipHub.Common {
       private Timer _timer;
       private bool _timerScheduled = false;
       private Thread _consumerThread;
-      
+
       public LogSink() {
-        _syslog = new Syslog() {
-          Host = "logs.papertrailapp.com",
-          Port = 36114
-        };
         _timer = new Timer((ctx) => {
           ((LogSink)ctx).TimerFired();
         }, this, Timeout.Infinite, Timeout.Infinite);
+        _syslog = new Syslog("logs.papertrailapp.com", 36114);
         _consumerThread = new Thread(ProcessBuffer);
         _consumerThread.Start();
       }
 
       public void Dispose() {
         _timer.Dispose();
+        _syslog.Dispose();
       }
 
       /* Add a single line to _buffer. Callable from any thread */
@@ -246,21 +244,22 @@ namespace RealArtists.ShipHub.Common {
         } while (true);
       }
 
-      [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
       private void WriteLines(LogLine[] lines) {
-        try {
-          _syslog.WriteLines(lines);
-        } catch (Exception e) {
-          Console.Error.WriteLine(e.ToString());
-        }
+        _syslog.WriteLines(lines);
       }
     }
 
+    private class Syslog : IDisposable {
+      public Syslog(string host, int port) {
+        Host = host;
+        Port = port;
+      }
 
-    private class Syslog {
-      public Syslog() { }
       public string Host { get; set; }
       public int Port { get; set; }
+
+      private TcpClient _tcp;
+      private SslStream _ssl;
 
       private int LevelToSeverity(LogLine.LogLevel level) {
         switch (level) {
@@ -286,12 +285,35 @@ namespace RealArtists.ShipHub.Common {
         return bytes.ToArray();
       }
 
+      public void Dispose() {
+        Cleanup();
+      }
+
+      private void Cleanup() {
+        if (_ssl != null) {
+          _ssl.Dispose();
+          _ssl = null;
+        }
+        if (_tcp != null) {
+          _tcp.Dispose();
+          _tcp = null;
+        }
+      }
+
       public void WriteLines(LogLine[] lines) {
-        using (var tcp = new TcpClient(Host, Port)) {
-          var stream = tcp.GetStream();
-          using (var ssl = new SslStream(stream, true)) {
-            ssl.AuthenticateAsClient(Host);
-            ssl.Write(LogLineBytes(lines));
+        bool sent = false;
+        for (int i = 0; i < 2 && !sent; i++) {
+          try {
+            if (_tcp == null) {
+              _tcp = new TcpClient(Host, Port);
+              _ssl = new SslStream(_tcp.GetStream(), true);
+              _ssl.AuthenticateAsClient(Host);
+            }
+            _ssl.Write(LogLineBytes(lines));
+            _ssl.Flush();
+            sent = true;
+          } catch (SocketException) {
+            Cleanup();
           }
         }
       }
