@@ -9,9 +9,7 @@ using System.Threading;
 using Microsoft.Azure;
 
 namespace RealArtists.ShipHub.Common {
-  public sealed class Log {
-    private Log() { } // don't instantiate me
-
+  public static class Log {
     /// <summary>
     /// Logs filePath, memberName, and lineNumber to the log
     /// </summary>
@@ -268,8 +266,8 @@ namespace RealArtists.ShipHub.Common {
           case LogLine.LogLevel.Debug: return 7; // Debug
           case LogLine.LogLevel.Error: return 3; // Error
           case LogLine.LogLevel.Exception: return 2; // Critical
+          default: System.Diagnostics.Debug.Assert(false, "Unhandled LogLevel"); return 1;
         }
-        return 1;
       }
 
       private static Lazy<string> _progName = new Lazy<string>(() => {
@@ -279,7 +277,7 @@ namespace RealArtists.ShipHub.Common {
         var bytes = new List<byte>();
         var progName = _progName.Value;
         foreach (var line in lines) {
-          var formatted = $"<22>{LevelToSeverity(line.Level)} {line.Timestamp.ToString("o")} {line.Sender} {progName} - - - {line.Formatted}\n";
+          var formatted = $"<22>{LevelToSeverity(line.Level)} {line.Timestamp:o} {line.Sender} {progName} - - - {line.Formatted}\n";
           bytes.AddRange(Encoding.UTF8.GetBytes(formatted));
         }
         return bytes.ToArray();
@@ -306,7 +304,7 @@ namespace RealArtists.ShipHub.Common {
           try {
             if (_tcp == null) {
               _tcp = new TcpClient(Host, Port);
-              _ssl = new SslStream(_tcp.GetStream(), true);
+              _ssl = new SslStream(_tcp.GetStream());
               _ssl.AuthenticateAsClient(Host);
             }
             _ssl.Write(LogLineBytes(lines));
