@@ -56,10 +56,7 @@
           "issues",
           "issue_comment",
         };
-        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
-        if (apiHostName == null) {
-          throw new ConfigurationErrorsException("ApiHostName not specified in configuration.");
-        }
+        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
 
@@ -164,10 +161,7 @@
         var requiredEvents = new string[] {
           "repository",
         };
-        var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
-        if (apiHostName == null) {
-          throw new ApplicationException("ApiHostName not specified in configuration.");
-        }
+        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
 

@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Configuration;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -10,6 +9,7 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ChargeBee.Models;
+  using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
@@ -127,13 +127,56 @@
       return invoiceBytes;
     }
 
+    /// <summary>
+    /// When testing ChargeBee webhooks on your local server, you want to prevent shiphub-dev
+    /// from handling the same hook.  Sometimes it's harmless for shiphub-dev and your local server
+    /// to process the same hook twice.  Other times, it's a race condition because handling that hook
+    /// changes some ChargeBee state.
+    /// 
+    /// If you're testing ChargeBee webhooks locally, do this --
+    /// 
+    /// In the app settings for shiphub-dev, add the github username to "ChargeBeeWebHookExcludeList" --
+    /// https://portal.azure.com/#resource/subscriptions/b9f28aae-2074-4097-b5ce-ec28f68c4981/resourceGroups/ShipHub-Dev/providers/Microsoft.Web/sites/shiphub-dev/application
+    /// 
+    /// In your Secret.AppSettings.config, add the following -- <![CDATA[
+    ///   <add key="ChargeBeeWebHookIncludeList" value="some_github_username"/>
+    /// ]]>
+    /// 
+    /// Dev will ignore hooks for your user and your local server will only process
+    /// hooks for your user.
+    /// </summary>
+    /// <param name="gitHubUserName">Github user or organization name</param>
+    /// <returns>True if we should reject this webhook event</returns>
+    private bool ShouldIgnoreWebhook(string gitHubUserName) {
+      var includeOnlyList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookIncludeOnlyList");
+      var excludeList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookExcludeList");
+
+      if (!includeOnlyList.IsNullOrWhiteSpace() && !includeOnlyList.Split(',').Contains(gitHubUserName)) {
+        return true;
+      }
+
+      if (!excludeList.IsNullOrWhiteSpace() && excludeList.Split(',').Contains(gitHubUserName)) {
+        return true;
+      }
+
+      return false;
+    }
+
     [HttpPost]
     [AllowAnonymous]
-    [Route("chargebee")]
-    public async Task<IHttpActionResult> HandleHook() {
+    [Route("chargebee/{secret}")]
+    public async Task<IHttpActionResult> HandleHook(string secret) {
+      if (secret != ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret")) {
+        return BadRequest("Invalid secret.");
+      }
+
       var payloadString = await Request.Content.ReadAsStringAsync();
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
+
+      if (ShouldIgnoreWebhook(payload.Content.Customer.GitHubUserName)) {
+        return BadRequest($"Rejecting webhook because username '{payload.Content.Customer.GitHubUserName}' is on the exclude list, or not on the include list.");
+      }
 
       switch (payload.EventType) {
         case "subscription_activated":
@@ -188,10 +231,7 @@
       var matches = regex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      var apiHostName = CloudConfigurationManager.GetSetting("ApiHostName");
-      if (apiHostName == null) {
-        throw new ConfigurationErrorsException("'ApiHostName' not specified in configuration.");
-      }
+      var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
       var signature = BillingController.CreateSignature(accountId, accountId);
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";

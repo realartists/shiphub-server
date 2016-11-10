@@ -5,10 +5,10 @@
   using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
+  using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Common.GitHub.Models;
-  using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
@@ -26,9 +26,7 @@
 
     static string ApiHostName {
       get {
-        var hostname = CloudConfigurationManager.GetSetting("ApiHostName");
-        Assert.NotNull(hostname);
-        return hostname;
+        return ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
       }
     }
 

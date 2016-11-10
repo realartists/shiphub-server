@@ -638,6 +638,7 @@
       bool isMemberOfPaidOrg,
       bool memberHasSub,
       bool subHasCoupon,
+      string subStatus,
       bool expectCouponAddition,
       bool expectCouponRemoval
       ) {
@@ -672,7 +673,7 @@
                     new {
                       subscription = new {
                         id = "some-sub-id",
-                        status = "active",
+                        status = subStatus,
                         coupons = !subHasCoupon ?
                           new object[0] :
                           new[] {
@@ -732,6 +733,7 @@
       return UpdateComplimentarySubscriptionHelper(
         isMemberOfPaidOrg: true,
         memberHasSub: true,
+        subStatus: "active",
         subHasCoupon: false,
         expectCouponAddition: true,
         expectCouponRemoval: false);
@@ -743,6 +745,7 @@
         isMemberOfPaidOrg: false,
         memberHasSub: true,
         subHasCoupon: true,
+        subStatus: "active",
         expectCouponAddition: false,
         expectCouponRemoval: true);
     }
@@ -753,6 +756,7 @@
         isMemberOfPaidOrg: true,
         memberHasSub: true,
         subHasCoupon: true,
+        subStatus: "active",
         expectCouponAddition: false,
         expectCouponRemoval: false);
     }
@@ -763,6 +767,7 @@
         isMemberOfPaidOrg: false,
         memberHasSub: true,
         subHasCoupon: false,
+        subStatus: "active",
         expectCouponAddition: false,
         expectCouponRemoval: false);
     }
@@ -773,6 +778,18 @@
         isMemberOfPaidOrg: true,
         memberHasSub: false,
         subHasCoupon: false,
+        subStatus: "active",
+        expectCouponAddition: false,
+        expectCouponRemoval: false);
+    }
+
+    [Test]
+    public Task WillNotAddCouponWhenOrgIsPaidButMemberIsInTrial() {
+      return UpdateComplimentarySubscriptionHelper(
+        isMemberOfPaidOrg: true,
+        memberHasSub: true,
+        subHasCoupon: false,
+        subStatus: "in_trial",
         expectCouponAddition: false,
         expectCouponRemoval: false);
     }

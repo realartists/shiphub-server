@@ -98,6 +98,9 @@
       <HintPath>..\packages\Microsoft.WindowsAzure.ConfigurationManager.3.2.3\lib\net40\Microsoft.WindowsAzure.Configuration.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.WindowsAzure.Configuration.3.0.0.0.Fakes">
+      <HintPath>FakesAssemblies\Microsoft.WindowsAzure.Configuration.3.0.0.0.Fakes.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.WindowsAzure.Storage, Version=7.2.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\WindowsAzure.Storage.7.2.1\lib\net40\Microsoft.WindowsAzure.Storage.dll</HintPath>
       <Private>True</Private>
@@ -179,9 +182,14 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Secret.AppSettings.config">
+      <Link>Secret.AppSettings.config</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="App.config" />
     <Fakes Include="Fakes\ChargeBee.fakes" />
     <Fakes Include="Fakes\System.fakes" />
+    <Fakes Include="Fakes\Microsoft.WindowsAzure.Configuration.fakes" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

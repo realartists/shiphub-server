@@ -8,13 +8,17 @@
   using System.Web.Http;
   using System.Web.Http.Controllers;
   using System.Web.Http.Hosting;
+  using System.Web.Http.Results;
   using System.Web.Http.Routing;
+  using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Controllers;
   using Mail;
   using Mail.Models;
+  using Microsoft.Azure;
+  using Microsoft.Azure.Fakes;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json;
@@ -35,6 +39,10 @@
       controller.ControllerContext = new HttpControllerContext(config, routeData, request);
       controller.Request = request;
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
+    }
+
+    private static string WebHookSecret() {
+      return ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret");
     }
 
     private static async Task TestSubscriptionStateChangeHelper(
@@ -124,7 +132,7 @@
               Invoice = invoicePayload,
             },
           });
-        await controller.Object.HandleHook();
+        await controller.Object.HandleHook(ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret"));
 
         context.Entry(sub).Reload();
         Assert.AreEqual(expectedState, sub.State);
@@ -405,6 +413,9 @@
           new ChargeBeeWebhookPayload() {
             EventType = "pending_invoice_created",
             Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                GitHubUserName = "pureimaginary",
+              },
               Invoice = new ChargeBeeWebhookInvoice() {
                 Id = "draft_inv_123",
                 CustomerId = $"user-{user.Id}",
@@ -433,7 +444,7 @@
               return null;
             }
           });
-          await controller.HandleHook();
+          await controller.HandleHook(WebHookSecret());
         }
 
         Assert.IsTrue(didCloseInvoice);
@@ -444,6 +455,9 @@
       var payload = new ChargeBeeWebhookPayload() {
         EventType = "pending_invoice_created",
         Content = new ChargeBeeWebhookContent() {
+          Customer = new ChargeBeeWebhookCustomer() {
+            GitHubUserName = "pureimaginary",
+          },
           Invoice = new ChargeBeeWebhookInvoice() {
             Id = "draft_inv_123",
             CustomerId = $"org-{orgId}",
@@ -487,7 +501,7 @@
             return null;
           }
         });
-        await controller.HandleHook();
+        await controller.HandleHook(WebHookSecret());
       }
 
       Assert.IsTrue(didCloseInvoice);
@@ -635,7 +649,7 @@
           var mockMailer = new Mock<IShipHubMailer>();
           var controller = new ChargeBeeWebhookController(mockBusClient.Object, mockMailer.Object);
           ConfigureController(controller, payload);
-          return controller.HandleHook();
+          return controller.HandleHook(WebHookSecret());
         };
 
         // should see version advance.
@@ -742,7 +756,7 @@
               }
             },
           });
-        await controller.HandleHook();
+        await controller.HandleHook(WebHookSecret());
 
         Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
       };
@@ -820,7 +834,7 @@
               },
             },
           });
-        await controller.Object.HandleHook();
+        await controller.Object.HandleHook(WebHookSecret());
 
         Assert.AreEqual(1, outgoingMessages.Count);
         var outgoingMessage = (PaymentSucceededOrganizationMailMessage)outgoingMessages.First();
@@ -902,7 +916,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
@@ -963,7 +977,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
@@ -1024,7 +1038,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
@@ -1080,7 +1094,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
@@ -1135,7 +1149,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
@@ -1186,7 +1200,7 @@
             },
           },
         });
-      await controller.Object.HandleHook();
+      await controller.Object.HandleHook(WebHookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
@@ -1194,6 +1208,55 @@
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
       Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
+    }
+
+    public static async Task CanIgnoreWebHookEventsViaSettingsHelper(
+      string gitHubUserName,
+      string includeOnlyList,
+      string excludeList,
+      Type expectedResultType,
+      string message
+      ) {
+      using (ShimsContext.Create()) {
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        var mockMailer = new Mock<IShipHubMailer>();
+
+        var controller = new Mock<ChargeBeeWebhookController>(mockBusClient.Object, mockMailer.Object);
+        controller.CallBase = true;
+
+        ConfigureController(
+          controller.Object,
+          new ChargeBeeWebhookPayload() {
+            EventType = "some_bogus_event_name",
+            Content = new ChargeBeeWebhookContent() {
+              Customer = new ChargeBeeWebhookCustomer() {
+                GitHubUserName = "aroon",
+              },
+            },
+          });
+
+        ShimCloudConfigurationManager.GetSettingString = (string name) => {
+          if (name == "ChargeBeeWebHookIncludeOnlyList") {
+            return includeOnlyList;
+          } else if (name == "ChargeBeeWebHookExcludeList") {
+            return excludeList;
+          } else {
+            return ShimsContext.ExecuteWithoutShims(() => CloudConfigurationManager.GetSetting(name));
+          }
+        };
+
+        var response = await controller.Object.HandleHook(WebHookSecret());
+        Assert.AreEqual(expectedResultType, response.GetType(), message);
+      }
+    }
+
+    [Test]
+    public async Task CanIgnoreWebHookEventsViaSettings() {
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, null, typeof(OkResult), "should accept when include + exclude aren't set");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar", null, typeof(BadRequestErrorMessageResult), "should reject since aroon not in include list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, typeof(OkResult), "should accept since aroon is in the include list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar", typeof(OkResult), "should accept since aroon not in exclude list.");
+      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", typeof(BadRequestErrorMessageResult), "should reject since aroon is in exclude list.");
     }
   }
 }
