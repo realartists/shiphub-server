@@ -107,17 +107,17 @@
     }
 
     public Task CancellationScheduled(CancellationScheduledMailMessage model) {
-      var message = CreateMailMessage(model, $"Cancellation for {model.GitHubUsername}", "CancellationScheduled");
+      var message = CreateMailMessage(model, $"Cancellation for {model.GitHubUserName}", "CancellationScheduled");
       return SendMessage(message);
     }
 
     public Task CardExpiryReminder(CardExpiryReminderMailMessage model) {
-      var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUsername}", "CardExpiryReminder");
+      var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
       return SendMessage(message);
     }
 
     public Task PaymentFailed(PaymentFailedMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUsername}", "PaymentFailed");
+      var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -128,7 +128,7 @@
     }
 
     public Task PaymentRefunded(PaymentRefundedMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUsername}", "PaymentRefunded");
+      var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.CreditNotePdfBytes),
@@ -139,7 +139,7 @@
     }
 
     public Task PurchasePersonal(PurchasePersonalMailMessage model) {
-      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchasePersonal");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -150,7 +150,7 @@
     }
 
     public Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUsername}", "PurchaseOrganization");
+      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -161,7 +161,7 @@
     }
 
     public Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededPersonal");
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),
@@ -172,7 +172,7 @@
     }
 
     public Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUsername}", "PaymentSucceededOrganization");
+      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization");
 
       message.Attachments.Add(new Attachment(
         new MemoryStream(model.InvoicePdfBytes),

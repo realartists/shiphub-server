@@ -214,7 +214,7 @@
       Assert.AreEqual(1, messages.Count);
       var message = (PurchasePersonalMailMessage)messages.First();
       Assert.AreEqual("Aroon", message.FirstName);
-      Assert.AreEqual("aroon", message.GitHubUsername);
+      Assert.AreEqual("aroon", message.GitHubUserName);
       Assert.AreEqual(true, message.BelongsToOrganization);
       Assert.AreEqual(true, message.WasGivenTrialCredit);
     }
@@ -357,7 +357,7 @@
       Assert.AreEqual(1, messages.Count);
       var message = (PurchaseOrganizationMailMessage)messages.First();
       Assert.AreEqual("Aroon", message.FirstName);
-      Assert.AreEqual("aroon", message.GitHubUsername);
+      Assert.AreEqual("aroon", message.GitHubUserName);
     }
 
     [Test]
@@ -986,7 +986,7 @@
       Assert.AreEqual("Aroon", outgoingMessage.FirstName);
       Assert.AreEqual(9.00, outgoingMessage.AmountRefunded);
       Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
-      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
     }
 
 
@@ -1044,7 +1044,7 @@
       var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(9.00, outgoingMessage.Amount);
       Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
       Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
@@ -1100,7 +1100,7 @@
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(true, outgoingMessage.AlreadyExpired);
       Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
       Assert.AreEqual("5678", outgoingMessage.LastCardDigits);
@@ -1155,7 +1155,7 @@
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(false, outgoingMessage.AlreadyExpired);
       Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
       Assert.AreEqual("5678", outgoingMessage.LastCardDigits);
@@ -1206,7 +1206,7 @@
       var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("aroon", outgoingMessage.GitHubUsername);
+      Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
     }
 
