@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System;
   using System.Configuration;
+  using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.Threading;
   using Microsoft.Azure;
@@ -130,7 +131,7 @@
       return CloudConfigurationManager.GetSetting(DataConnectionSettingsKey);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "It's a retry loop.")]
+    [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "It's a retry loop.")]
     private static void InitializeImpl_FromConfig(ClientConfiguration config) {
       if (GrainClient.IsInitialized) {
         return;

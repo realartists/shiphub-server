@@ -180,7 +180,6 @@
     <Rule Id="CA2200" Action="Warning" />
     <Rule Id="CA2201" Action="Warning" />
     <Rule Id="CA2202" Action="Warning" />
-    <Rule Id="CA2204" Action="Warning" />
     <Rule Id="CA2205" Action="Warning" />
     <Rule Id="CA2207" Action="Warning" />
     <Rule Id="CA2208" Action="Warning" />

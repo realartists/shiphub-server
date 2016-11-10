@@ -1,5 +1,6 @@
 namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System.Diagnostics;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
   using System.Threading;
@@ -9,6 +10,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
 
+  [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
     private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     private readonly ManualResetEvent runCompleteEvent = new ManualResetEvent(false);

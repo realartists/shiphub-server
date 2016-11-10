@@ -12,6 +12,7 @@
     <AssemblyName>RealArtists.ShipHub.CloudServices</AssemblyName>
     <StartDevelopmentStorage>True</StartDevelopmentStorage>
     <Name>RealArtists.ShipHub.CloudServices</Name>
+    <UseWebProjectPorts>True</UseWebProjectPorts>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>

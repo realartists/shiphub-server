@@ -10,6 +10,6 @@
     /// <summary>
     /// This refreshes the issue timeline, comments, reactions, etc.
     /// </summary>
-    Task SyncInteractive(long forUser);
+    Task SyncInteractive(long forUserId);
   }
 }

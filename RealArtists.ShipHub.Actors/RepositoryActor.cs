@@ -36,7 +36,6 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
-    private Random _random = new Random();
 
     public RepositoryActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;

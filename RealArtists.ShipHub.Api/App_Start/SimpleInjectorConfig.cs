@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api {
+  using System.Diagnostics.CodeAnalysis;
   using System.Web.Http;
   using ActorInterfaces.Injection;
   using AutoMapper;
@@ -12,7 +13,7 @@
   using Sync.Messages;
 
   public static class SimpleInjectorConfig {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public static void Register(HttpConfiguration config) {
       var container = new Container();
       container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();

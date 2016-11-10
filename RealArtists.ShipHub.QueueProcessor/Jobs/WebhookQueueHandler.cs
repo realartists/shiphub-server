@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
   using System;
   using System.Collections.Generic;
-  using System.Configuration;
   using System.Data.Entity;
   using System.Diagnostics;
   using System.IO;
@@ -12,7 +11,6 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
-  using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Orleans;
   using QueueClient;
