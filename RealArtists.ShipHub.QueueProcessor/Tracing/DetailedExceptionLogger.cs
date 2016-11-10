@@ -31,6 +31,7 @@
       _raygunClient = raygunClient;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly")]
     public void Log(
       Guid functionInstanceId,
       long? forUserId,

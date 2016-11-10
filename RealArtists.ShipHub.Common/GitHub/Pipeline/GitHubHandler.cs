@@ -252,11 +252,12 @@
 
       // TODO: Inject this or something.
       var gitHubLoggingStorage = CloudConfigurationManager.GetSetting("GitHubLoggingStorage");
-      if (!gitHubLoggingStorage.IsNullOrWhiteSpace()) {
-        var account = CloudStorageAccount.Parse(gitHubLoggingStorage);
-        var logHandler = new LoggingMessageProcessingHandler(account, "github-logs", handler);
-        handler = logHandler;
-      }
+      var logHandler = new LoggingMessageProcessingHandler(
+        gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
+        "github-logs",
+        handler
+      );
+      handler = logHandler;
 
       var httpClient = new HttpClient(handler, true);
 

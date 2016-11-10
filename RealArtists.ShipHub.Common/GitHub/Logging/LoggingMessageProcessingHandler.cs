@@ -33,8 +33,10 @@
       CloudStorageAccount storageAccount,
       string containerName,
       HttpMessageHandler innerHandler) : base(innerHandler) {
-      _blobClient = storageAccount.CreateCloudBlobClient();
-      _containerName = containerName;
+      if (storageAccount != null) {
+        _blobClient = storageAccount.CreateCloudBlobClient();
+        _containerName = containerName;
+      }
     }
 
     private bool _initialized = false;
@@ -43,6 +45,10 @@
         return;
       }
       _initialized = true;
+
+      if (_blobClient == null) {
+        return;
+      }
 
       _container = _blobClient.GetContainerReference(_containerName);
       await _container.CreateIfNotExistsAsync();
@@ -72,9 +78,11 @@
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
       var blobName = ExtractBlobName(request);
 
-      if (blobName.IsNullOrWhiteSpace()) {
-        // pass through
-        return await base.SendAsync(request, cancellationToken);
+      if (_blobClient == null || blobName.IsNullOrWhiteSpace()) {
+        // log that the request happened, but don't store to blob
+        var response = await base.SendAsync(request, cancellationToken);
+        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase}");
+        return response;
       }
 
       if (!_initialized) {
@@ -91,6 +99,9 @@
           BlobName = blobName,
           Content = Encoding.UTF8.GetString(ms.ToArray()),
         });
+
+        long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
+        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase} - {blobName} - {contentLength} bytes");
 
         return response;
       }
