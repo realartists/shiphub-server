@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.MailTester {
   using System;
+  using System.Collections.Generic;
   using System.IO;
   using System.Linq;
   using Mail;
@@ -143,11 +144,13 @@
     }
 
     static void Main(string[] args) {
-
-      var toAddresses = new[] {
-        "fred@realartists.com",
-        "fpotter@gmail.com",
-      };
+      var toAddresses = new List<string>(args);
+      if (toAddresses.Count == 0) {
+        toAddresses.AddRange(new[] {
+          "fred@realartists.com",
+          "fpotter@gmail.com",
+        });
+      }
       var toName = "Fred Potter";
       var githubUsername = "fpotter";
 
