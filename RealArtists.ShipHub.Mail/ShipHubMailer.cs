@@ -1,17 +1,16 @@
 ﻿namespace RealArtists.ShipHub.Mail {
   using System;
+  using System.Collections.Generic;
   using System.IO;
   using System.Net;
   using System.Net.Mail;
-  using System.Net.Mime;
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Hosting;
   using Microsoft.Azure;
+  using Models;
   using RazorEngine.Configuration;
   using RazorEngine.Templating;
-  using Models;
-  using System.Collections.Generic;
 
   public interface IShipHubMailer {
     Task CancellationScheduled(CancellationScheduledMailMessage model);
@@ -46,7 +45,7 @@
       return RazorEngineService.Create(config);
     }
 
-    private MailMessage CreateMailMessage(MailMessageBase model, string subject, string templateBaseName) {
+    private async Task SendMailMessage(MailMessageBase model, string subject, string templateBaseName, Attachment attachment = null) {
       var razor = GetRazorEngineService();
       var text = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model);
 
@@ -83,12 +82,11 @@
         message.AlternateViews.Add(htmlView);
       }
 
-      return message;
-    }
+      if (attachment != null) {
+        message.Attachments.Add(attachment);
+      }
 
-    private async Task SendMessage(MailMessage message) {
       var password = CloudConfigurationManager.GetSetting("SmtpPassword");
-
       if (password != null) {
         using (var client = new SmtpClient()) {
 
@@ -105,84 +103,58 @@
     }
 
     public Task CancellationScheduled(CancellationScheduledMailMessage model) {
-      var message = CreateMailMessage(model, $"Cancellation for {model.GitHubUserName}", "CancellationScheduled");
-      return SendMessage(message);
+      return SendMailMessage(model, $"Cancellation for {model.GitHubUserName}", "CancellationScheduled");
     }
 
     public Task CardExpiryReminder(CardExpiryReminderMailMessage model) {
-      var message = CreateMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
-      return SendMessage(message);
+      return SendMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
     }
 
     public async Task PaymentFailed(PaymentFailedMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed");
-
-      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed", attachment);
       }
     }
 
     public async Task PaymentRefunded(PaymentRefundedMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded");
-
-      using (var stream = new MemoryStream(model.CreditNotePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.CreditNotePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded", attachment);
       }
     }
 
     public async Task PurchasePersonal(PurchasePersonalMailMessage model) {
-      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal");
-
-      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal", attachment);
       }
     }
 
     public async Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization");
-
-      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization", attachment);
       }
     }
 
     public async Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal");
-
-      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal", attachment);
       }
     }
 
     public async Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
-      var message = CreateMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization");
-
-      using (var stream = new MemoryStream(model.InvoicePdfBytes)) {
-        message.Attachments.Add(new Attachment(
-          stream,
-          $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-          "application/pdf"));
-        await SendMessage(message);
+      using (var stream = new MemoryStream(model.InvoicePdfBytes))
+      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
+        "application/pdf")) {
+        await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization", attachment);
       }
     }
   }
