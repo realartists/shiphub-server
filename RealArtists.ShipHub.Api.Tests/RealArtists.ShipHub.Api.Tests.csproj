@@ -182,6 +182,10 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Secret.AppSettings.config">
+      <Link>Secret.AppSettings.config</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="App.config" />
     <Fakes Include="Fakes\ChargeBee.fakes" />
     <Fakes Include="Fakes\System.fakes" />
