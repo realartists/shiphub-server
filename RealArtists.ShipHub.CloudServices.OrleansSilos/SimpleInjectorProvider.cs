@@ -30,6 +30,8 @@
     }
 
     public IServiceProvider ConfigureServices(IServiceCollection services) {
+      Log.Trace();
+
       var container = new Container();
 
       var connectionString = CloudConfigurationManager.GetSetting("ShipHubContext");

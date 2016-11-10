@@ -76,6 +76,8 @@
         aiClient.TrackException(exception, new Dictionary<string, string>() {
           { "User", userInfo },
         });
+
+        Log.Exception(exception);
       }
 
       return Task.CompletedTask;
@@ -105,6 +107,7 @@
     }
 
     public override async Task OnMessage(string message) {
+      Log.Debug(() => $"{_user.Login} {message}");
       var jobj = JObject.Parse(message);
       var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
       switch (data.MessageType) {
@@ -164,6 +167,8 @@
     }
 
     private void Subscribe() {
+      Log.Info($"{_user.Login}");
+
       if (_syncSubscription != null) {
         throw new InvalidOperationException("Already subscribed to changes.");
       }
@@ -200,6 +205,8 @@
     }
 
     private void Unsubscribe() {
+      Log.Info($"{_user.Login}");
+
       if (_syncSubscription != null) {
         _syncSubscription.Dispose();
         _syncSubscription = null;

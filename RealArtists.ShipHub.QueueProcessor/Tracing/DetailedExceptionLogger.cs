@@ -31,6 +31,7 @@
       _raygunClient = raygunClient;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly")]
     public void Log(
       Guid functionInstanceId,
       long? forUserId,
@@ -54,6 +55,7 @@
 
       _raygunClient?.SendInBackground(ex, null, props, new RaygunIdentifierMessage(forUserId?.ToString()));
       _aiClient?.TrackException(ex, props);
+      Common.Log.Exception(ex, $"{sourceFilePath}:{sourceLineNumber} {memberName} forUserId={props["forUserId"]}, functionInstanceId={props["functionInstanceId"]}, message={props["message"]}");
     }
   }
 }
