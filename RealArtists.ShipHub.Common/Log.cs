@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -311,6 +312,8 @@ namespace RealArtists.ShipHub.Common {
             _ssl.Flush();
             sent = true;
           } catch (SocketException) {
+            Cleanup();
+          } catch (IOException) {
             Cleanup();
           }
         }
