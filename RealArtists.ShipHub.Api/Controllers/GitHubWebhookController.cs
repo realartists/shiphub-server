@@ -103,6 +103,8 @@
             case "unlabeled":
             case "assigned":
             case "unassigned":
+            case "milestoned":
+            case "demilestoned":
               changeSummary = await HandleIssues(payload);
               break;
           }

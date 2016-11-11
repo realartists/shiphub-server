@@ -107,7 +107,7 @@
 
     private static JObject IssueChange(string action, Issue issue, long repositoryId) {
       var obj = new {
-        action = "opened",
+        action = action,
         issue = issue,
         repository = new {
           id = repositoryId,
@@ -297,6 +297,122 @@
           await controller.HandleHook("repo", repo.Id),
           "Webhook does not match any known repository or organization."
         );
+      }
+    }
+
+    [Test]
+    public async Task TestIssueMilestoned() {
+      Common.DataModel.User testUser;
+      Common.DataModel.Repository testRepo;
+      Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
+        testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label>(),
+        User = new Account() {
+          Id = testUser.Id,
+          Login = testUser.Login,
+          Type = GitHubAccountType.User,
+        },
+        Milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "",
+          Title = "some milestone",
+          Description = "more info about some milestone",
+          CreatedAt = DateTimeOffset.Parse("1/1/2016"),
+          UpdatedAt = DateTimeOffset.Parse("1/2/2016"),
+          DueOn = DateTimeOffset.Parse("2/1/2016"),
+          ClosedAt = DateTimeOffset.Parse("3/1/2016"),
+          Creator = new Account() {
+            Id = testUser.Id,
+            Login = testUser.Login,
+            Type = GitHubAccountType.User,
+          }
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("milestoned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+
+      Assert.NotNull(changeSummary, "should have generated change notification");
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        Assert.AreEqual("some milestone", updatedIssue.Milestone.Title);
+      }
+    }
+
+    [Test]
+    public async Task TestIssueDemilestoned() {
+      Common.DataModel.User testUser;
+      Common.DataModel.Repository testRepo;
+      Common.DataModel.Issue testIssue;
+      Common.DataModel.Hook testHook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        testUser = TestUtil.MakeTestUser(context);
+        testRepo = TestUtil.MakeTestRepo(context, testUser.Id);
+        testIssue = MakeTestIssue(context, testUser.Id, testRepo.Id);
+        testHook = MakeTestRepoHook(context, testUser.Id, testRepo.Id);
+        context.Milestones.Add(new Common.DataModel.Milestone() {
+          Id = 5001,
+          RepositoryId = testRepo.Id,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        testIssue.MilestoneId = 5001;
+        await context.SaveChangesAsync();
+
+        context.Entry(testIssue).Reload();
+        Assert.NotNull(testIssue.Milestone);
+      }
+
+      var issue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 5,
+        Labels = new List<Label>(),
+        User = new Account() {
+          Id = testUser.Id,
+          Login = testUser.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("demilestoned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+
+      Assert.NotNull(changeSummary, "should have generated change notification");
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
+        Assert.Null(updatedIssue.MilestoneId);
       }
     }
 
