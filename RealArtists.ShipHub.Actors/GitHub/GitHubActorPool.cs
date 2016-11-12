@@ -202,5 +202,19 @@
         cacheOptions
       );
     }
+
+    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
+      return TryWithFallback(
+        (actor, cache) => actor.ListDirectoryContents(repoFullName, directoryPath, cache),
+        cacheOptions
+       );
+    }
+
+    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null) {
+      return TryWithFallback(
+        (actor, cache) => actor.FileContents(repoFullName, filePath, cache),
+        cacheOptions
+      );
+    }
   }
 }

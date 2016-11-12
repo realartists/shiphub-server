@@ -402,6 +402,7 @@
                       Name = ddr.Name,
                       Private = ddr.Private,
                       ShipNeedsWebhookHelp = !(ddr.HasHook || ddr.Admin),
+                      IssueTemplate = ddr.IssueTemplate
                     },
                   });
                 }

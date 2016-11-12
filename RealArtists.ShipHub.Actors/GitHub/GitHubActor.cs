@@ -241,6 +241,14 @@
       return _github.UserEmails(cacheOptions);
     }
 
+    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
+      return _github.ListDirectoryContents(repoFullName, directoryPath, cacheOptions);
+    }
+
+    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null) {
+      return _github.FileContents(repoFullName, filePath, cacheOptions);
+    }
+
     private bool disposedValue = false;
     protected virtual void Dispose(bool disposing) {
       if (!disposedValue) {

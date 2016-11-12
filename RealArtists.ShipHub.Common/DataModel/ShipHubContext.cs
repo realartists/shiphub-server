@@ -552,6 +552,13 @@
       });
     }
 
+    public Task<ChangeSummary> SetRepositoryIssueTemplate(long repositoryId, string issueTemplate) {
+      return ExecuteAndReadChanges("[dbo].[SetRepositoryIssueTemplate]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueTemplate = issueTemplate;
+      });
+    }
+
     public async Task RecordUsage(long accountId, DateTimeOffset date) {
       if (date.Offset != TimeSpan.Zero) {
         throw new ArgumentException("date must be in UTC");

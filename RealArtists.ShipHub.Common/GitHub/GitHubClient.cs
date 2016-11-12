@@ -276,6 +276,22 @@
       return Fetch<bool>(request);
     }
 
+    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
+      if (!directoryPath.StartsWith("/", StringComparison.Ordinal)) {
+        directoryPath = "/" + directoryPath;
+      }
+      var request = new GitHubRequest($"repos/{repoFullName}/contents{directoryPath}", cacheOptions);
+      return FetchPaged(request, (ContentsFile f) => f.Path);
+    }
+
+    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions) {
+      if (!filePath.StartsWith("/", StringComparison.Ordinal)) {
+        filePath = "/" + filePath;
+      }
+      var request = new GitHubRequest($"repos/{repoFullName}/contents{filePath}", cacheOptions);
+      return Fetch<byte[]>(request);
+    }
+
     private int _requestId = 0;
     public int NextRequestId() {
       return Interlocked.Increment(ref _requestId);

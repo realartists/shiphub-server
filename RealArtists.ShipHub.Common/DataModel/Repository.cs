@@ -24,6 +24,8 @@
 
     public DateTimeOffset Date { get; set; }
 
+    public string IssueTemplate { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
@@ -81,6 +83,30 @@
 
     [NotMapped]
     public GitHubMetadata MilestoneMetadata { get; set; }
+
+    public string ContentsRootMetadataJson {
+      get { return ContentsRootMetadata.SerializeObject(); }
+      set { ContentsRootMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata ContentsRootMetadata { get; set; }
+
+    public string ContentsDotGitHubMetadataJson {
+      get { return ContentsDotGitHubMetadata.SerializeObject(); }
+      set { ContentsDotGitHubMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata ContentsDotGitHubMetadata { get; set; }
+
+    public string ContentsIssueTemplateMetadataJson {
+      get { return ContentsIssueTemplateMetadata.SerializeObject(); }
+      set { ContentsIssueTemplateMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata ContentsIssueTemplateMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
