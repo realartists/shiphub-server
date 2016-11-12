@@ -36,6 +36,7 @@
       var expectedEvents = new string[] {
           "issues",
           "issue_comment",
+          "milestone",
         };
 
       using (var context = new ShipHubContext()) {
@@ -90,6 +91,7 @@
                 Events = new string[] {
                   "issues",
                   "issue_comment",
+                  "milestone",
                 },
                 Name = "web",
               },
@@ -235,6 +237,7 @@
         var expectedEvents = new string[] {
           "issues",
           "issue_comment",
+          "milestone",
         };
 
         Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));

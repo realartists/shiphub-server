@@ -42,6 +42,7 @@
     private static IMapper CreateMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
+        cfg.AddProfile<Api.Sync.Messages.DataModelToApiModelProfile>();
 
         cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
@@ -1547,6 +1548,320 @@
         Assert.NotNull(issue, "should have created issue referenced by comment.");
 
         Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task MilestoneCreated() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "created",
+        milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "open",
+          Title = "new milestone",
+          Description = "some description",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero),
+          ClosedAt = new DateTimeOffset(2017, 1, 3, 0, 0, 0, TimeSpan.Zero),
+          DueOn = new DateTimeOffset(2017, 1, 4, 0, 0, 0, TimeSpan.Zero),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var newMilestone = context.Milestones.First();
+        Assert.AreEqual(5001, newMilestone.Id);
+        Assert.AreEqual(1234, newMilestone.Number);
+        Assert.AreEqual("new milestone", newMilestone.Title);
+        Assert.AreEqual("some description", newMilestone.Description);
+        Assert.AreEqual("open", newMilestone.State);
+        Assert.AreEqual(repo.Id, newMilestone.RepositoryId);
+        Assert.AreEqual(new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero), newMilestone.CreatedAt);
+        Assert.AreEqual(new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero), newMilestone.UpdatedAt);
+        Assert.AreEqual(new DateTimeOffset(2017, 1, 3, 0, 0, 0, TimeSpan.Zero), newMilestone.ClosedAt);
+        Assert.AreEqual(new DateTimeOffset(2017, 1, 4, 0, 0, 0, TimeSpan.Zero), newMilestone.DueOn);
+      }
+    }
+
+    [Test]
+    public async Task MilestoneDeleted() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Milestone milestone;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        milestone = context.Milestones.Add(new Common.DataModel.Milestone() {
+          Id = 5001,
+          RepositoryId = repo.Id,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "deleted",
+        milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var deletedMilestone = context.Milestones.SingleOrDefault(x => x.Id == milestone.Id);
+        Assert.Null(deletedMilestone);
+      }
+
+      changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+      Assert.Null(changeSummary,
+        "if we try to delete an already deleted milestone, should see no change");
+    }
+
+    [Test]
+    public async Task MilestoneEdited() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Milestone milestone;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        milestone = context.Milestones.Add(new Common.DataModel.Milestone() {
+          Id = 5001,
+          RepositoryId = repo.Id,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "edited",
+        milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone edited",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var editedMilestone = context.Milestones.First();
+        Assert.AreEqual("some milestone edited", editedMilestone.Title);
+      }
+    }
+
+    [Test]
+    public async Task MilestoneClosed() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Milestone milestone;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        milestone = context.Milestones.Add(new Common.DataModel.Milestone() {
+          Id = 5001,
+          RepositoryId = repo.Id,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "edited",
+        milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "closed",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var editedMilestone = context.Milestones.First();
+        Assert.AreEqual("closed", editedMilestone.State);
+      }
+    }
+
+    [Test]
+    public async Task MilestoneOpened() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Milestone milestone;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        milestone = context.Milestones.Add(new Common.DataModel.Milestone() {
+          Id = 5001,
+          RepositoryId = repo.Id,
+          Number = 1234,
+          State = "closed",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        });
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "opened",
+        milestone = new Milestone() {
+          Id = 5001,
+          Number = 1234,
+          State = "open",
+          Title = "some milestone",
+          Description = "whatever",
+          CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2017, 1, 2, 0, 0, 0, TimeSpan.Zero),
+          Creator = new Account() {
+            Id = user.Id,
+            Login = user.Login,
+            Type = GitHubAccountType.User,
+          },
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "milestone",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var editedMilestone = context.Milestones.First();
+        Assert.AreEqual("open", editedMilestone.State);
       }
     }
   }

@@ -53,6 +53,7 @@
         var requiredEvents = new string[] {
           "issues",
           "issue_comment",
+          "milestone",
         };
         var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
