@@ -135,6 +135,7 @@
     <Build Include="Procedures\DeleteComments.sql" />
     <Build Include="Tables\Usage.sql" />
     <Build Include="Procedures\RecordUsage.sql" />
+    <Build Include="Procedures\SetRepositoryIssueTemplate.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

@@ -11,6 +11,7 @@
     public virtual DateTimeOffset? LastModified { get; set; }
     public virtual DateTimeOffset? Expires { get; set; }
     public virtual TimeSpan PollInterval { get; set; }
+    public virtual string Path { get; set; }
 
     // Hidden from public view...
     [Serializable]
@@ -21,6 +22,7 @@
       public override DateTimeOffset? Expires { get { return null; } }
       public override DateTimeOffset? LastModified { get { return null; } }
       public override TimeSpan PollInterval { get { return TimeSpan.Zero; } }
+      public override string Path { get { return null; } }
     }
   }
 }

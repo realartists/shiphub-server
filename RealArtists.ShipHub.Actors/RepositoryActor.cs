@@ -4,6 +4,7 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
+  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using AutoMapper;
@@ -32,6 +33,9 @@
     private GitHubMetadata _issueMetadata;
     private GitHubMetadata _labelMetadata;
     private GitHubMetadata _milestoneMetadata;
+    private GitHubMetadata _contentsRootMetadata;
+    private GitHubMetadata _contentsDotGithubMetadata;
+    private GitHubMetadata _contentsIssueTemplateMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -61,6 +65,9 @@
         _issueMetadata = repo.IssueMetadata;
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
+        _contentsRootMetadata = repo.ContentsRootMetadata;
+        _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
+        _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
       }
 
       await base.OnActivateAsync();
@@ -74,6 +81,9 @@
         await context.UpdateMetadata("Repositories", "IssueMetadataJson", _repoId, _issueMetadata);
         await context.UpdateMetadata("Repositories", "LabelMetadataJson", _repoId, _labelMetadata);
         await context.UpdateMetadata("Repositories", "MilestoneMetadataJson", _repoId, _milestoneMetadata);
+        await context.UpdateMetadata("Repositories", "ContentsRootMetadataJson", _repoId, _contentsRootMetadata);
+        await context.UpdateMetadata("Repositories", "ContentsDotGithubMetadataJson", _repoId, _contentsDotGithubMetadata);
+        await context.UpdateMetadata("Repositories", "ContentsIssueTemplateMetadataJson", _repoId, _contentsIssueTemplateMetadata);
       }
 
       // TODO: Look into how agressively Orleans deactivates "inactive" grains.
@@ -129,6 +139,9 @@
           // Don't update until saved.
           _metadata = GitHubMetadata.FromResponse(repo);
         }
+
+        var issueTemplateChanges = await UpdateIssueTemplate(context, github);
+        changes.UnionWith(issueTemplateChanges);
 
         // Update Assignees
         if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
@@ -232,6 +245,84 @@
 
       // Await all outstanding operations.
       await Task.WhenAll(tasks);
+    }
+
+    static Regex IssueTemplateRegex = new Regex("^issue_template(?:\\.\\w+)?$", RegexOptions.IgnoreCase);
+
+    private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
+      return file.Type == Common.GitHub.Models.ContentsFileType.File
+            && file.Name != null
+            && IssueTemplateRegex.IsMatch(file.Name);
+    }
+
+    private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
+      if (_contentsIssueTemplateMetadata == null) {
+        // then we don't have any known IssueTemplate, we have to search for it
+        var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
+        _contentsRootMetadata = GitHubMetadata.FromResponse(rootListing);
+        if (rootListing.Status == HttpStatusCode.OK) {
+          // search the root listing for any matching ISSUE_TEMPLATE files
+          var rootTemplateFile = rootListing.Result.FirstOrDefault(IsTemplateFile);
+          Common.GitHub.GitHubResponse<byte[]> templateContent = null;
+
+          if (rootTemplateFile == null) {
+            var hasDotGitHub = rootListing.Result.Any((file) => {
+              return file.Type == Common.GitHub.Models.ContentsFileType.Dir
+                && file.Name != null
+                && file.Name.ToLowerInvariant() == ".github";
+            });
+
+            // NB: If /.github's contents change, then the ETag on / also changes
+            // Which means that we're fine to only search /.github in the event that
+            // / returns 200 (and not 304).
+            if (hasDotGitHub) {
+              var dotGitHubListing = await github.ListDirectoryContents(_fullName, "/.github", _contentsDotGithubMetadata);
+              _contentsDotGithubMetadata = GitHubMetadata.FromResponse(dotGitHubListing);
+              if (dotGitHubListing.Status == HttpStatusCode.OK) {
+                var dotGitHubTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsTemplateFile);
+                if (dotGitHubTemplateFile != null) {
+                  templateContent = await github.FileContents(_fullName, dotGitHubTemplateFile.Path);
+                }
+              }
+            }
+          } else /* rootTemplateFile != null */ {
+            templateContent = await github.FileContents(_fullName, rootTemplateFile.Path);
+          }
+
+          _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
+          if (templateContent != null && templateContent.Status == HttpStatusCode.OK) {
+            return await UpdateIssueTemplateWithResult(context, templateContent.Result);
+          }
+        }
+        return new ChangeSummary(); // couldn't find any ISSUE_TEMPLATE anywhere
+      } else {
+        // we have some cached data on an existing ISSUE_TEMPLATE.
+        // try to short-circuit by just looking it up.
+        // If we get a 404, then we start over from the top
+        var filePath = _contentsIssueTemplateMetadata.Path.Substring($"repos/{_fullName}/contents".Length);
+        var templateContent = await github.FileContents(_fullName, _contentsIssueTemplateMetadata.Path);
+        _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
+        if (templateContent.Status == HttpStatusCode.NotFound) {
+          // it's been deleted or moved. clear it optimistically, but then start a new search from the top.
+          var changes = new ChangeSummary();
+          changes.UnionWith(await UpdateIssueTemplateWithResult(context, null));
+          changes.UnionWith(await UpdateIssueTemplate(context, github));
+          return changes;
+        } else if (templateContent.Status == HttpStatusCode.OK) {
+          return await UpdateIssueTemplateWithResult(context, templateContent.Result);
+        } else {
+          return new ChangeSummary(); // nothing changed as far as we can tell
+        }
+     }
+    }
+
+    private async Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
+      string templateStr = null;
+      if (templateData != null) {
+        templateStr = System.Text.Encoding.UTF8.GetString(templateData);
+      }
+
+      return await context.SetRepositoryIssueTemplate(_repoId, templateStr);
     }
   }
 }

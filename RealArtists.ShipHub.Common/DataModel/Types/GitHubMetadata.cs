@@ -10,6 +10,7 @@
     public DateTimeOffset? LastModified { get; set; }
     public DateTimeOffset? LastRefresh { get; set; }
     public TimeSpan PollInterval { get; set; }
+    public string Path { get; set; }
 
     public static implicit operator GitHubCacheDetails(GitHubMetadata metadata) {
       if (metadata == null) {
@@ -23,6 +24,7 @@
         Expires = metadata.Expires,
         LastModified = metadata.LastModified,
         PollInterval = metadata.PollInterval,
+        Path = metadata.Path,
       };
     }
 
@@ -41,6 +43,7 @@
         LastModified = cacheData.LastModified,
         LastRefresh = response.Date,
         PollInterval = cacheData.PollInterval,
+        Path = cacheData.Path,
       };
     }
   }

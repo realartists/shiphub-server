@@ -73,7 +73,10 @@
       };
 
       // Accept
-      if (!request.AcceptHeaderOverride.IsNullOrWhiteSpace()) {
+      if (typeof(T) == typeof(byte[])) {
+        httpRequest.Headers.Accept.Clear();
+        httpRequest.Headers.Accept.ParseAdd("application/vnd.github.v3.raw");
+      } else if (!request.AcceptHeaderOverride.IsNullOrWhiteSpace()) {
         httpRequest.Headers.Accept.Clear();
         httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
       }
@@ -130,6 +133,7 @@
       // Cache Headers
       result.CacheData = new GitHubCacheDetails() {
         UserId = client.UserId,
+        Path = request.Path,
         AccessToken = client.AccessToken,
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
@@ -185,10 +189,14 @@
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
 
       if (!result.IsError) {
-        // Gross special case hack for Assignable :/
         if (response.StatusCode == HttpStatusCode.NoContent && typeof(T) == typeof(bool)) {
+          // Gross special case hack for Assignable :/
           result.Result = (T)(object)true;
+        } else if (response.Content != null && typeof(T) == typeof(byte[])) {
+          // Raw byte result
+          result.Result = (T)(object)(await response.Content.ReadAsByteArrayAsync());
         } else if (response.Content != null) {
+          // JSON formatted result
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
         }
       } else {

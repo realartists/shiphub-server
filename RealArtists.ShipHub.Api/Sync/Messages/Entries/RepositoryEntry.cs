@@ -7,6 +7,7 @@
     public bool Private { get; set; }
     public string Name { get; set; }
     public string FullName { get; set; }
+    public string IssueTemplate { get; set; }
 
     public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<Label> Labels { get; set; }
