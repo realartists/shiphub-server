@@ -748,12 +748,17 @@
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
-        var labels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
-        Assert.AreEqual(2, labels.Count());
-        Assert.AreEqual("Blue", labels[0].Name);
-        Assert.AreEqual("0000ff", labels[0].Color);
-        Assert.AreEqual("Red", labels[1].Name);
-        Assert.AreEqual("ff0000", labels[1].Color);
+        var issueLabels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, issueLabels.Count());
+        Assert.AreEqual("Blue", issueLabels[0].Name);
+        Assert.AreEqual("0000ff", issueLabels[0].Color);
+        Assert.AreEqual("Red", issueLabels[1].Name);
+        Assert.AreEqual("ff0000", issueLabels[1].Color);
+
+        var updatedRepo = context.Repositories.Single(x => x.Id == testRepo.Id);
+        var repoLabels = updatedRepo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(repoLabels.Select(x => x.Name), issueLabels.Select(x => x.Name),
+          "these new labels should be linked with our repo");
       };
     }
 
