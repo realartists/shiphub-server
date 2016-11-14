@@ -592,6 +592,13 @@
       return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
         x.RepositoryId = repositoryId;
         x.MilestoneId = milestoneId;
+     });
+    }
+
+    public Task<ChangeSummary> DeleteLabel(long repositoryId, long labelId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
+        x.RepositoryId = repositoryId;
+        x.LabelId = labelId;
       });
     }
 

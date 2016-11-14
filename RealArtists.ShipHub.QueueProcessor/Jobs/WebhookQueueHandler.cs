@@ -22,6 +22,7 @@
     public static ISet<string> RequiredEvents { get; } = new HashSet<string>() {
       "issues",
       "issue_comment",
+      "label",
       "milestone",
       "push"
     };

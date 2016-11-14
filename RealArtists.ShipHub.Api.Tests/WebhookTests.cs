@@ -1882,5 +1882,472 @@
         Assert.AreEqual("open", editedMilestone.State);
       }
     }
+
+    [Test]
+    public async Task LabelCreated() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+        var hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+        await context.BulkUpdateLabels(repo.Id, new[] {
+          new LabelTableType() {
+            Id = 1001,
+            Name = "blue",
+            Color = "0000ff",
+          },
+        });
+
+        var payload = new {
+          action = "created",
+          label = new Label() {
+            Color = "ff0000",
+            Name = "red",
+          },
+          repository = new {
+            id = repo.Id,
+          },
+        };
+
+        IChangeSummary changeSummary = await ChangeSummaryFromHook(
+          "label",
+          JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+          "repo",
+          repo.Id,
+          hook.Secret.ToString());
+
+        Assert.AreEqual(0, changeSummary.Organizations.Count());
+        Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+
+        context.Entry(repo).Reload();
+        var labels = repo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, labels.Count());
+        Assert.AreEqual("blue", labels[0].Name);
+        Assert.AreEqual("0000ff", labels[0].Color);
+        Assert.AreEqual("red", labels[1].Name);
+        Assert.AreEqual("ff0000", labels[1].Color);
+      }
+    }
+
+    [Test]
+    public async Task LabelCreatedButAlreadyExists() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+        var hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+        await context.BulkUpdateLabels(repo.Id, new[] {
+          new LabelTableType() {
+            Id = 1001,
+            Name = "blue",
+            Color = "0000ff",
+          },
+        });
+
+        var payload = new {
+          action = "created",
+          label = new Label() {
+            Id = 1001,
+            Color = "0000ff",
+            Name = "blue",
+          },
+          repository = new {
+            id = repo.Id,
+          },
+        };
+
+        IChangeSummary changeSummary = await ChangeSummaryFromHook(
+          "label",
+          JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+          "repo",
+          repo.Id,
+          hook.Secret.ToString());
+
+        Assert.Null(changeSummary);
+
+        context.Entry(repo).Reload();
+        var labels = repo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(1, labels.Count());
+        Assert.AreEqual(1001, labels[0].Id);
+        Assert.AreEqual("blue", labels[0].Name);
+        Assert.AreEqual("0000ff", labels[0].Color);
+      }
+    }
+
+    [Test]
+    public async Task LabelDeleted() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Issue issue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var purpleLabel = new Label() {
+        Id = 10021,
+        Color = "ff00ff",
+        Name = "purple",
+      };
+
+      var issueToNotDisturb = new Issue() {
+        Id = 1002,
+        Title = "Other Issue",
+        Body = "",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 2,
+        Labels = new[] {
+          purpleLabel,
+        },
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      // Make an issue with label purple.  We're not going to send
+      // any changes related to this issue - we just want to make sure
+      // it doesn't get disturbed by changes to other issues.
+      await ChangeSummaryFromIssuesHook(
+        IssueChange("opened", issueToNotDisturb, repo.Id),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      var blueLabel = new Label() {
+        Id = 2002,
+        Color = "0000ff",
+        Name = "blue",
+      };
+      var redLabel = new Label() {
+        Id = 2001,
+        Color = "ff0000",
+        Name = "red",
+      };
+
+      // Pretend an issue was just opened.  Later, we'll pretend one of
+      // its labels was deleted.
+      var githubIssue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 5,
+        Labels = new[] { redLabel, blueLabel },
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      await ChangeSummaryFromIssuesHook(
+        IssueChange("opened", githubIssue, repo.Id),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      var payload = new {
+        action = "deleted",
+        label = blueLabel,
+        repository = new {
+          id = repo.Id,
+        },
+      };
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "label",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedRepo = context.Repositories.Single(x => x.Id == repo.Id);
+        var labels = updatedRepo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, labels.Count());
+        // Purple tag should remain since it was attached to another issue.
+        Assert.AreEqual(purpleLabel.Id, labels[0].Id);
+        Assert.AreEqual(purpleLabel.Name, labels[0].Name);
+        Assert.AreEqual(purpleLabel.Color, labels[0].Color);
+        Assert.AreEqual(redLabel.Id, labels[1].Id);
+        Assert.AreEqual(redLabel.Name, labels[1].Name);
+        Assert.AreEqual(redLabel.Color, labels[1].Color);
+
+        var updatedIssue = context.Issues.Single(x => x.Id == issue.Id);
+        var issueLabels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(1, issueLabels.Count());
+        Assert.AreEqual(redLabel.Id, issueLabels[0].Id);
+        Assert.AreEqual(redLabel.Name, issueLabels[0].Name);
+        Assert.AreEqual(redLabel.Color, issueLabels[0].Color);
+      }
+    }
+
+    [Test]
+    public async Task LabelDeletedButAlreadyDeleted() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Issue issue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var payload = new {
+        action = "deleted",
+        label = new Label() {
+          Id = 1001,
+          Color = "0000ff",
+          Name = "blue",
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "label",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.Null(changeSummary);
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedRepo = context.Repositories.Single(x => x.Id == repo.Id);
+        Assert.AreEqual(0, updatedRepo.Labels.Count);
+      }
+    }
+
+    [Test]
+    public async Task LabelEdited() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Issue issue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var purpleLabel = new Label() {
+        Id = 5001,
+        Color = "ff00ff",
+        Name = "purple",
+      };
+
+      var issueNotToDisturb = new Issue() {
+        Id = 1002,
+        Title = "Other Issue",
+        Body = "",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 2,
+        Labels = new[] { purpleLabel },
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+
+      // Create an issue only to make sure its labels don't get disturbed
+      // by our other edits.
+      await ChangeSummaryFromIssuesHook(
+        IssueChange("opened", issueNotToDisturb, repo.Id),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      var redLabel = new Label() {
+        Id = 2001,
+        Color = "ff0000",
+        Name = "red",
+      };
+      var blueLabel = new Label() {
+        Id = 2002,
+        Color = "0000ff",
+        Name = "blue",
+      };
+
+      // Create an issue with some labels.  We'll edit one of the labels next.
+      var githubIssue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 5,
+        Labels = new[] { redLabel, blueLabel },
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+      await ChangeSummaryFromIssuesHook(
+        IssueChange("opened", githubIssue, repo.Id),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      // Change "blue" label to a "green"
+      var payload = new {
+        action = "edited",
+        label = new Label() {
+          Id = blueLabel.Id,
+          Color = "00ff00",
+          Name = "green",
+        },
+        repository = new {
+          id = repo.Id,
+        },
+      };
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "label",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedRepo = context.Repositories.Single(x => x.Id == repo.Id);
+        var labels = updatedRepo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(3, labels.Count());
+        Assert.AreEqual(blueLabel.Id, labels[0].Id);
+        Assert.AreEqual("green", labels[0].Name);
+        Assert.AreEqual("00ff00", labels[0].Color);
+        Assert.AreEqual(purpleLabel.Id, labels[1].Id);
+        Assert.AreEqual(purpleLabel.Name, labels[1].Name);
+        Assert.AreEqual(purpleLabel.Color, labels[1].Color);
+        Assert.AreEqual(redLabel.Id, labels[2].Id);
+        Assert.AreEqual(redLabel.Name, labels[2].Name);
+        Assert.AreEqual(redLabel.Color, labels[2].Color);
+
+        var updatedIssue = context.Issues.Single(x => x.Id == issue.Id);
+        var issueLabels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, issueLabels.Count());
+        Assert.AreEqual(blueLabel.Id, issueLabels[0].Id);
+        Assert.AreEqual("green", issueLabels[0].Name);
+        Assert.AreEqual("00ff00", issueLabels[0].Color);
+        Assert.AreEqual(redLabel.Id, issueLabels[1].Id);
+        Assert.AreEqual(redLabel.Name, issueLabels[1].Name);
+        Assert.AreEqual(redLabel.Color, issueLabels[1].Color);
+      }
+    }
+
+    [Test]
+    public async Task LabelEditedButAlreadyUpToDate() {
+      Common.DataModel.User user;
+      Common.DataModel.Repository repo;
+      Common.DataModel.Hook hook;
+      Common.DataModel.Issue issue;
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        user = TestUtil.MakeTestUser(context);
+        repo = TestUtil.MakeTestRepo(context, user.Id);
+        hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
+        await context.SaveChangesAsync();
+      }
+
+      var redLabel = new Label() {
+        Id = 2001,
+        Color = "ff0000",
+        Name = "red",
+      };
+      var greenLabel = new Label() {
+        Id = 2002,
+        Color = "00ff00",
+        Name = "green",
+      };
+
+      var githubIssue = new Issue() {
+        Id = 1001,
+        Title = "Some Title",
+        Body = "Some Body",
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow,
+        State = "open",
+        Number = 5,
+        Labels = new[] { redLabel, greenLabel },
+        User = new Account() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = GitHubAccountType.User,
+        },
+      };
+      await ChangeSummaryFromIssuesHook(
+        IssueChange("opened", githubIssue, repo.Id),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      var payload = new {
+        action = "edited",
+        label = greenLabel,
+        repository = new {
+          id = repo.Id,
+        },
+      };
+
+      IChangeSummary changeSummary = await ChangeSummaryFromHook(
+        "label",
+        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
+        "repo",
+        repo.Id,
+        hook.Secret.ToString());
+
+      Assert.Null(changeSummary);
+
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var updatedRepo = context.Repositories.Single(x => x.Id == repo.Id);
+        var labels = updatedRepo.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, labels.Count());
+        Assert.AreEqual(greenLabel.Id, labels[0].Id);
+        Assert.AreEqual(greenLabel.Name, labels[0].Name);
+        Assert.AreEqual(greenLabel.Color, labels[0].Color);
+        Assert.AreEqual(redLabel.Id, labels[1].Id);
+        Assert.AreEqual(redLabel.Name, labels[1].Name);
+        Assert.AreEqual(redLabel.Color, labels[1].Color);
+
+        var updatedIssue = context.Issues.Single(x => x.Id == issue.Id);
+        var issueLabels = updatedIssue.Labels.OrderBy(x => x.Name).ToArray();
+        Assert.AreEqual(2, issueLabels.Count());
+        Assert.AreEqual(greenLabel.Id, issueLabels[0].Id);
+        Assert.AreEqual(greenLabel.Name, issueLabels[0].Name);
+        Assert.AreEqual(greenLabel.Color, issueLabels[0].Color);
+        Assert.AreEqual(redLabel.Id, issueLabels[1].Id);
+        Assert.AreEqual(redLabel.Name, issueLabels[1].Name);
+        Assert.AreEqual(redLabel.Color, issueLabels[1].Color);
+      }
+    }
   }
 }
