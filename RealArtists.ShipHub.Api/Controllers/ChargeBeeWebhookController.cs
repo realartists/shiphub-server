@@ -243,7 +243,7 @@
       var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
 
       await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
-        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         CurrentTermEnd = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Subscription.CurrentTermEnd),
@@ -254,7 +254,7 @@
       var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
 
       await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
-        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         LastCardDigits = payload.Content.Card.Last4,
@@ -270,7 +270,7 @@
       var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
 
       var message = new Mail.Models.PaymentFailedMailMessage() {
-        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         Amount = payload.Content.Transaction.Amount / 100.0,
@@ -292,7 +292,7 @@
       var pdfBytes = await GetCreditNotePdfBytes(payload.Content.CreditNote.Id);
 
       await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
-        GitHubUsername = payload.Content.Customer.GitHubUserName,
+        GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
@@ -309,7 +309,7 @@
 
       await _mailer.PaymentSucceededPersonal(
         new Mail.Models.PaymentSucceededPersonalMailMessage() {
-          GitHubUsername = payload.Content.Customer.GitHubUserName,
+          GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
@@ -361,7 +361,7 @@
 
       await _mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
-          GitHubUsername = payload.Content.Customer.GitHubUserName,
+          GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
@@ -399,7 +399,7 @@
 
       await _mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {
-          GitHubUsername = payload.Content.Customer.GitHubUserName,
+          GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           BelongsToOrganization = belongsToOrganization,
@@ -418,7 +418,7 @@
 
       await _mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
-          GitHubUsername = payload.Content.Customer.GitHubUserName,
+          GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),

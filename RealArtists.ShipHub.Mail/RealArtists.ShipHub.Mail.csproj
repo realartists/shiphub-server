@@ -134,6 +134,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <CodeAnalysisDictionary Include="..\ShipHubDictionary.xml">
+      <Link>ShipHubDictionary.xml</Link>
+    </CodeAnalysisDictionary>
     <Content Include="packages.config" />
     <EmbeddedResource Include="ShipLogo.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

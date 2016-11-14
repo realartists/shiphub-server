@@ -14,7 +14,7 @@
 
       mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {
-          GitHubUsername = githubUsername,
+          GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
           BelongsToOrganization = true,
@@ -25,7 +25,7 @@
 
       mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
-          GitHubUsername = githubUsername,
+          GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
           InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -34,7 +34,7 @@
 
       mailer.PaymentSucceededPersonal(
         new Mail.Models.PaymentSucceededPersonalMailMessage() {
-          GitHubUsername = githubUsername,
+          GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
           InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -47,7 +47,7 @@
       // Version with <= 5 active users
       mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
-          GitHubUsername = githubUsername,
+          GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
           InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -61,7 +61,7 @@
         }).Wait();
       mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
-          GitHubUsername = githubUsername,
+          GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
           InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -75,7 +75,7 @@
         }).Wait();
 
       mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         CreditNoteDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -86,7 +86,7 @@
 
       // Payment failed, but we'll try to retry later.
       mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -100,7 +100,7 @@
 
       // Payment failed, no more retries, and service is cancelled.
       mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
@@ -113,7 +113,7 @@
 
       // Card has already expired.
       mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         LastCardDigits = "5678",
@@ -125,7 +125,7 @@
 
       // Card will expire.
       mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         LastCardDigits = "5678",
@@ -136,7 +136,7 @@
       }).Wait();
 
       mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
-        GitHubUsername = githubUsername,
+        GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
         CurrentTermEnd = new DateTimeOffset(2016, 12, 01, 0, 0, 0, TimeSpan.Zero),
