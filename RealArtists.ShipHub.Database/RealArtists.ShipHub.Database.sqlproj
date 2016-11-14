@@ -134,6 +134,7 @@
     <Build Include="Procedures\SetRepositoryIssueTemplate.sql" />
     <Build Include="Procedures\DeleteMilestone.sql" />
     <Build Include="Procedures\BulkUpdateLabels.sql" />
+    <Build Include="Procedures\DeleteLabel.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace RealArtists.ShipHub.Common.GitHub.Models {
   public class WebhookIssuePayload {
     public string Action { get; set; }
     public Issue Issue { get; set; }
     public Comment Comment { get; set; }
+    public Label Label { get; set; }
     public Milestone Milestone { get; set; }
     public Repository Repository { get; set; }
     public Account Organization { get; set; }

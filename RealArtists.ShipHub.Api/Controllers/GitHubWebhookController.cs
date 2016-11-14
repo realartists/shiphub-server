@@ -129,6 +129,17 @@
             }
             break;
           }
+        case "label": {
+            var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
+            switch (payload.Action) {
+              case "created":
+              case "edited":
+              case "deleted":
+                changeSummary = await HandleLabel(payload);
+                break;
+            }
+            break;
+          }
         case "repository": {
             var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
             if (
@@ -300,6 +311,34 @@
         return repoActor.SyncIssueTemplate();
       } else {
         return Task.CompletedTask;
+      }
+    }
+
+    private async Task<ChangeSummary> HandleLabel(WebhookIssuePayload payload) {
+      if (payload.Action == "created") {
+        return await Context.BulkUpdateLabels(
+          payload.Repository.Id,
+          new[] {
+            new LabelTableType() {
+              Id = payload.Label.Id,
+              Name = payload.Label.Name,
+              Color = payload.Label.Color,
+            },
+          });
+      } else if (payload.Action == "deleted") {
+        return await Context.DeleteLabel(payload.Repository.Id, payload.Label.Id);
+      } else if (payload.Action == "edited") {
+        return await Context.BulkUpdateLabels(
+          payload.Repository.Id,
+          new[] {
+            new LabelTableType() {
+              Id = payload.Label.Id,
+              Name = payload.Label.Name,
+              Color = payload.Label.Color,
+            },
+          });
+      } else {
+        throw new ArgumentException("Unexpected action: " + payload.Action);
       }
     }
   }
