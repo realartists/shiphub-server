@@ -222,8 +222,8 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
-      var useFiddler = false;
 #if DEBUG
+      var useFiddler = false;
       if (!bool.TryParse(CloudConfigurationManager.GetSetting("UseFiddler") ?? "", out useFiddler)) {
         useFiddler = false;
       }
