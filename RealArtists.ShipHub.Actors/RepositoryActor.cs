@@ -318,7 +318,7 @@
         // try to short-circuit by just looking it up.
         // If we get a 404, then we start over from the top
         var filePath = _contentsIssueTemplateMetadata.Path.Substring($"repos/{_fullName}/contents".Length);
-        var templateContent = await github.FileContents(_fullName, _contentsIssueTemplateMetadata.Path);
+        var templateContent = await github.FileContents(_fullName, filePath);
         _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
         if (templateContent.Status == HttpStatusCode.NotFound) {
           // it's been deleted or moved. clear it optimistically, but then start a new search from the top.
