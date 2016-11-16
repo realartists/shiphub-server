@@ -72,13 +72,13 @@
         Content = request.CreateBodyContent(),
       };
 
-      // Accept
-      if (typeof(T) == typeof(byte[])) {
-        httpRequest.Headers.Accept.Clear();
-        httpRequest.Headers.Accept.ParseAdd("application/vnd.github.v3.raw");
-      } else if (!request.AcceptHeaderOverride.IsNullOrWhiteSpace()) {
+      // Accept header
+      if (!request.AcceptHeaderOverride.IsNullOrWhiteSpace()) {
         httpRequest.Headers.Accept.Clear();
         httpRequest.Headers.Accept.ParseAdd(request.AcceptHeaderOverride);
+      } else if (typeof(T) == typeof(byte[])) {
+        httpRequest.Headers.Accept.Clear();
+        httpRequest.Headers.Accept.ParseAdd("application/vnd.github.v3.raw");
       }
 
       httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", client.AccessToken);

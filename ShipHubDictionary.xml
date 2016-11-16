@@ -40,6 +40,10 @@
       <Word>raygun</Word>
       <Word>webhook</Word>
       <Word>webhooks</Word>
+      <Word>symlink</Word>
+      <Word>submodule</Word>
+      <Word>dir</Word>
+      <Word>sha</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
       <Word>AzureClient</Word>
