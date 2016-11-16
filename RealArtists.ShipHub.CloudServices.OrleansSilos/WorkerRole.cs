@@ -25,6 +25,8 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.
       RoleEnvironment.Changing += RoleEnvironmentChanging;
 
+      Common.LogTraceListener.Configure();
+
       return base.OnStart();
     }
 
