@@ -29,8 +29,7 @@
     }
 
     public static GitHubMetadata FromResponse(GitHubResponse response) {
-      // Should we drop in all error cases? I think yes.
-      if (response == null || response.IsError || response.CacheData == null) {
+      if (response == null || response.CacheData == null) {
         return null;
       }
 

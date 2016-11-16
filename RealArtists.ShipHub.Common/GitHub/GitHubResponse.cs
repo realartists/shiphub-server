@@ -18,9 +18,9 @@
     public DateTimeOffset Date { get; set; }
     public HashSet<string> Scopes { get; } = new HashSet<string>();
 
-    public bool IsError { get; set; }
+    public bool Succeeded { get { return (int)Status >= 200 && (int)Status < 400; } }
+
     public GitHubError Error { get; set; }
-    public GitHubErrorSeverity ErrorSeverity { get; set; }
     public DateTimeOffset? RetryAfter { get; set; }
 
     public GitHubCacheDetails CacheData { get; set; }
@@ -37,10 +37,6 @@
     private T _result = default(T);
     public T Result {
       get {
-        if (IsError) {
-          throw new InvalidOperationException($"Cannot get the result of failed request. ({Status}): {Error?.Message}");
-        }
-
         if (!_resultSet) {
           throw new InvalidOperationException("Cannot get the result before it's set.");
         }
@@ -49,10 +45,6 @@
       }
       set {
         // Allow results to be set multiple times because I'm lazy and pagination uses it.
-        if (IsError) {
-          throw new InvalidOperationException("Cannot set the result of failed request.");
-        }
-
         _result = value;
         _resultSet = true;
       }
@@ -61,7 +53,7 @@
 
   public static class GitHubResponseExtensions {
     public static GitHubResponse<IEnumerable<TResult>> Distinct<TResult, TKey>(this GitHubResponse<IEnumerable<TResult>> source, Func<TResult, TKey> keySelector) {
-      if (source == null || source.IsError || source.Status != HttpStatusCode.OK) {
+      if (source == null || source.Status != HttpStatusCode.OK) {
         return source;
       }
 

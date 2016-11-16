@@ -193,7 +193,6 @@
     <Compile Include="ExceptionUtilities.cs" />
     <Compile Include="GenericFactory.cs" />
     <Compile Include="GitHub\GitHubCacheDetails.cs" />
-    <Compile Include="GitHub\GitHubErrorSeverity.cs" />
     <Compile Include="GitHub\GitHubRateLimit.cs" />
     <Compile Include="GitHub\GitHubSerialization.cs" />
     <Compile Include="GitHub\IGitHubClient.cs" />

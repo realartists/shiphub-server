@@ -66,18 +66,17 @@
         // Check if we can request all the pages within the limit.
         if (firstPage.RateLimit.RateLimitRemaining < pageRequestors.Length) {
           firstPage.Result = default(TCollection);
-          firstPage.IsError = true;
-          firstPage.ErrorSeverity = GitHubErrorSeverity.RateLimited;
+          firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
           return firstPage;
         }
 
         batch = await Batch(pageRequestors);
 
         foreach (var response in batch) {
-          if (response.IsError) {
-            return response;
-          } else {
+          if (response.Status == HttpStatusCode.OK) {
             results.AddRange(response.Result);
+          } else {
+            return response;
           }
         }
       } else { // Walk in order
@@ -86,10 +85,10 @@
           var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
           current = await _next.Fetch<TCollection>(client, nextReq);
 
-          if (current.IsError) {
-            return current;
-          } else {
+          if (current.Status == HttpStatusCode.OK) {
             results.AddRange(current.Result);
+          } else {
+            return current;
           }
         }
         // Just use the last request.

@@ -75,7 +75,7 @@
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
             var deleteResponse = await client.DeleteRepositoryWebhook(repo.FullName, existingHook.Id);
-            if (deleteResponse.IsError || !deleteResponse.Result) {
+            if (!deleteResponse.Succeeded || !deleteResponse.Result) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for repo '{repo.FullName}'");
             }
           }
@@ -104,7 +104,7 @@
             });
           await Task.WhenAny(addRepoHookTask);
 
-          if (!addRepoHookTask.IsFaulted && !addRepoHookTask.Result.IsError) {
+          if (!addRepoHookTask.IsFaulted && addRepoHookTask.Result.Succeeded) {
             hook.GitHubId = addRepoHookTask.Result.Result.Id;
             await context.SaveChangesAsync();
 
@@ -121,7 +121,7 @@
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
           var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, requiredEvents);
 
-          if (editResponse.IsError) {
+          if (!editResponse.Succeeded) {
             Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
           } else {
             hook.Events = string.Join(",", editResponse.Result.Events);
@@ -180,7 +180,7 @@
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
             var deleteResponse = await client.DeleteOrganizationWebhook(org.Login, existingHook.Id);
-            if (deleteResponse.IsError || !deleteResponse.Result) {
+            if (!deleteResponse.Succeeded || !deleteResponse.Result) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for org '{org.Login}'");
             }
           }
@@ -209,7 +209,7 @@
             });
           await Task.WhenAny(addTask);
 
-          if (!addTask.IsFaulted && !addTask.Result.IsError) {
+          if (!addTask.IsFaulted && addTask.Result.Succeeded) {
             hook.GitHubId = addTask.Result.Result.Id;
             await context.SaveChangesAsync();
 
@@ -226,7 +226,7 @@
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
           var editResponse = await client.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, requiredEvents);
 
-          if (editResponse.IsError) {
+          if (!editResponse.Succeeded) {
             Trace.TraceWarning($"Failed to edit hook for org '{org.Login}': {editResponse.Error}");
           } else {
             hook.Events = string.Join(",", editResponse.Result.Events);
