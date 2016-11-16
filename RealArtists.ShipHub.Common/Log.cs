@@ -320,4 +320,29 @@ namespace RealArtists.ShipHub.Common {
       }
     }
   }
+
+  public class LogTraceListener : System.Diagnostics.TraceListener {
+
+    private static Lazy<LogTraceListener> Singleton = new Lazy<LogTraceListener>(() => {
+      var listener = new LogTraceListener();
+      System.Diagnostics.Trace.Listeners.Add(listener);
+      return listener;
+    });
+
+    public LogTraceListener() { }
+
+    public static void Configure() {
+      Singleton.Value.Nop();
+    }
+
+    private void Nop() { }
+
+    public override void Write(string message) {
+      WriteLine(message);
+    }
+
+    public override void WriteLine(string message) {
+      Log.Info(message, null, null, 0);
+    }
+  }
 }
