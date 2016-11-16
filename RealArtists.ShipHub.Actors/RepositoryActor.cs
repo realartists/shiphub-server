@@ -247,7 +247,10 @@
       await Task.WhenAll(tasks);
     }
 
-    static Regex IssueTemplateRegex = new Regex("^issue_template(?:\\.\\w+)?$", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
+    static Regex IssueTemplateRegex = new Regex(
+      @"^issue_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
 
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
@@ -328,7 +331,7 @@
         } else {
           return new ChangeSummary(); // nothing changed as far as we can tell
         }
-     }
+      }
     }
 
     private Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {

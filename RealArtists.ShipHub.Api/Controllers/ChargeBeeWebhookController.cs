@@ -226,9 +226,10 @@
       return Ok();
     }
 
+    private static Regex CustomerIdRegex { get; } = new Regex(@"^(user|org)-(\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
+
     private static string GetPaymentMethodUpdateUrl(string customerId) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(customerId);
+      var matches = CustomerIdRegex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
@@ -321,8 +322,7 @@
     }
 
     public async Task SendPaymentSucceededOrganizationMessage(ChargeBeeWebhookPayload payload) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Customer.Id);
+      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
@@ -376,8 +376,7 @@
     }
 
     public async Task SendPurchasePersonalMessage(ChargeBeeWebhookPayload payload) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Customer.Id);
+      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
 
       if (matches.Groups[1].ToString() != "user") {
         // "activated" only happens on transition from trial -> active, and we only do trials
@@ -410,8 +409,7 @@
     }
 
     public async Task SendPurchaseOrganizationMessage(ChargeBeeWebhookPayload payload) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Customer.Id);
+      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
 
       var accountId = long.Parse(matches.Groups[2].ToString());
       var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
@@ -427,8 +425,7 @@
     }
 
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Customer.Id);
+      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
       var sub = await Context.Subscriptions
@@ -522,8 +519,7 @@
     }
 
     public async Task HandlePendingInvoiceCreated(ChargeBeeWebhookPayload payload) {
-      var regex = new Regex(@"^(user|org)-(\d+)$");
-      var matches = regex.Match(payload.Content.Invoice.CustomerId);
+      var matches = CustomerIdRegex.Match(payload.Content.Invoice.CustomerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
