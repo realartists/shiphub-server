@@ -62,12 +62,6 @@
     <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\GCSettingsManagement.ps1">
       <SubType>Content</SubType>
     </Content>
-    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\install-netfx.cmd">
-      <SubType>Content</SubType>
-    </Content>
-    <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\NDP462-KB3120737-Web.exe">
-      <SubType>Content</SubType>
-    </Content>
     <Content Include="RealArtists.ShipHub.CloudServices.OrleansSilosContent\ServerGC.cmd">
       <SubType>Content</SubType>
     </Content>
