@@ -247,7 +247,7 @@
       await Task.WhenAll(tasks);
     }
 
-    static Regex IssueTemplateRegex = new Regex("^issue_template(?:\\.\\w+)?$", RegexOptions.IgnoreCase);
+    static Regex IssueTemplateRegex = new Regex("^issue_template(?:\\.\\w+)?$", RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(200));
 
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
@@ -256,6 +256,21 @@
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
+      var prevRootMetadata = _contentsRootMetadata;
+      var prevDotGitHubMetadata = _contentsDotGithubMetadata;
+      var prevIssueTemplateMetadata = _contentsIssueTemplateMetadata;
+      try {
+        return await _UpdateIssueTemplate(context, github);
+      } catch {
+        // unwind anything we've discovered about the cache state if we couldn't finish the whole operation
+        _contentsRootMetadata = prevRootMetadata;
+        _contentsDotGithubMetadata = prevDotGitHubMetadata;
+        _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
+        throw;
+      }
+    }
+
+    private async Task<ChangeSummary> _UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
       if (_contentsIssueTemplateMetadata == null) {
         // then we don't have any known IssueTemplate, we have to search for it
         var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
@@ -306,7 +321,7 @@
           // it's been deleted or moved. clear it optimistically, but then start a new search from the top.
           var changes = new ChangeSummary();
           changes.UnionWith(await UpdateIssueTemplateWithResult(context, null));
-          changes.UnionWith(await UpdateIssueTemplate(context, github));
+          changes.UnionWith(await _UpdateIssueTemplate(context, github));
           return changes;
         } else if (templateContent.Status == HttpStatusCode.OK) {
           return await UpdateIssueTemplateWithResult(context, templateContent.Result);
@@ -316,13 +331,13 @@
      }
     }
 
-    private async Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
+    private Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
       string templateStr = null;
       if (templateData != null) {
         templateStr = System.Text.Encoding.UTF8.GetString(templateData);
       }
 
-      return await context.SetRepositoryIssueTemplate(_repoId, templateStr);
+      return context.SetRepositoryIssueTemplate(_repoId, templateStr);
     }
   }
 }
