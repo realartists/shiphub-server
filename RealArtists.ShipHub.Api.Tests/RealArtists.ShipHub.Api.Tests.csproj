@@ -220,6 +220,11 @@
       <Name>RealArtists.ShipHub.QueueProcessor</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <CodeAnalysisDictionary Include="..\ShipHubDictionary.xml">
+      <Link>ShipHubDictionary.xml</Link>
+    </CodeAnalysisDictionary>
+  </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
       <ItemGroup>

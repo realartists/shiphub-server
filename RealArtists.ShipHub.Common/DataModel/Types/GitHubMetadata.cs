@@ -46,14 +46,4 @@
       };
     }
   }
-
-  public static class GitHubMetadataExtensions {
-    public static GitHubMetadata IfValidFor(this GitHubMetadata metadata, Account account) {
-      if (metadata?.AccessToken == account?.Token) {
-        return metadata;
-      }
-
-      return null;
-    }
-  }
 }
