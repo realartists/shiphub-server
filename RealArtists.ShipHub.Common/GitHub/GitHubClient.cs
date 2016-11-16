@@ -199,16 +199,12 @@
       // Pass empty cache options to ensure we get a response. We need the result.
       var request = new GitHubRequest($"repos/{repoFullName}/assignees/{login}", GitHubCacheDetails.Empty);
       var response = await Fetch<bool>(request);
-      response.IsError = false;
       switch (response.Status) {
         case HttpStatusCode.NotFound:
           response.Result = false;
           break;
         case HttpStatusCode.NoContent:
           response.Result = true;
-          break;
-        default:
-          response.IsError = true;
           break;
       }
       return response;

@@ -171,7 +171,7 @@
 
               // best effort - requests will fail when the user doesn't have source access.
               // see Nick's account and references from the github-beta repo
-              if (lookup.IsError) {
+              if (!lookup.Succeeded) {
                 continue;
               }
 

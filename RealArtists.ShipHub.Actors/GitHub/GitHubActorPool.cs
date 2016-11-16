@@ -3,6 +3,7 @@
   using System.Collections.Concurrent;
   using System.Collections.Generic;
   using System.Linq;
+  using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common.GitHub;
@@ -72,20 +73,15 @@
 
         try {
           var result = await action(actor, cacheOptions);
-          if (result.IsError) {
-            switch (result.ErrorSeverity) {
-              // TODO: These may not be right.
-              // For example, what if something is deleted, like a comment?
-              case GitHubErrorSeverity.Abuse:
-              case GitHubErrorSeverity.Failed:
-              case GitHubErrorSeverity.RateLimited:
-                Remove(actor);
-                actor = null;
-                continue;
-              default:
-                // Retry with someone else.
-                continue;
-            }
+
+          // Only retry authorization failures and rate limiting
+          switch (result.Status) {
+            case HttpStatusCode.Forbidden:
+            case HttpStatusCode.Unauthorized:
+              // Retry with someone else.
+              Remove(actor);
+              actor = null;
+              continue;
           }
           return result;
         } catch (GitHubException) {

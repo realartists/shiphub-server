@@ -46,17 +46,18 @@
           client.UpdateInternalRateLimit(result.RateLimit);
         }
 
-        if (!result.IsError) {
-          // Much success
-          break;
+        switch (result.Status) {
+          case HttpStatusCode.BadGateway:
+          case HttpStatusCode.GatewayTimeout:
+          case HttpStatusCode.InternalServerError:
+          case HttpStatusCode.ServiceUnavailable:
+            // retry after delay
+            await Task.Delay(RetryMilliseconds * (i + 1));
+            continue;
+          default:
+            // Abort
+            break;
         }
-
-        if (result.ErrorSeverity != GitHubErrorSeverity.Retry) {
-          // Unrecoverable, abort.
-          break;
-        }
-
-        await Task.Delay(RetryMilliseconds * (i + 1));
       }
 
       return result;
@@ -122,10 +123,8 @@
           break;
       }
 
-      var isError = !(response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotModified);
       var result = new GitHubResponse<T>(request) {
         Date = response.Headers.Date.Value,
-        IsError = isError,
         Redirect = redirect,
         Status = response.StatusCode,
       };
@@ -188,7 +187,7 @@
       // Screw the RFC, minimally match what GitHub actually sends.
       result.Pagination = response.ParseHeader("Link", x => (x == null) ? null : GitHubPagination.FromLinkHeader(x));
 
-      if (!result.IsError) {
+      if (result.Succeeded) {
         if (response.StatusCode == HttpStatusCode.NoContent && typeof(T) == typeof(bool)) {
           // Gross special case hack for Assignable :/
           result.Result = (T)(object)true;
@@ -199,30 +198,8 @@
           // JSON formatted result
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
         }
-      } else {
-        if (response.Content != null) {
-          result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
-        }
-
-        switch (response.StatusCode) {
-          case HttpStatusCode.BadRequest:
-          case HttpStatusCode.Unauthorized:
-            result.ErrorSeverity = GitHubErrorSeverity.Failed;
-            break;
-          case HttpStatusCode.Forbidden:
-            if (result.RateLimit == null || result.Error.IsAbuse) {
-              result.ErrorSeverity = GitHubErrorSeverity.Abuse;
-            } else if (result.RateLimit.RateLimitRemaining == 0) {
-              result.ErrorSeverity = GitHubErrorSeverity.RateLimited;
-            }
-            break;
-          case HttpStatusCode.BadGateway:
-          case HttpStatusCode.GatewayTimeout:
-          case HttpStatusCode.InternalServerError:
-          case HttpStatusCode.ServiceUnavailable:
-            result.ErrorSeverity = GitHubErrorSeverity.Retry;
-            break;
-        }
+      } else if (response.Content != null) {
+        result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
       }
 
       return result;
