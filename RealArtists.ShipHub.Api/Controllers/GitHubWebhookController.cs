@@ -103,6 +103,8 @@
             case "unlabeled":
             case "assigned":
             case "unassigned":
+            case "milestoned":
+            case "demilestoned":
               changeSummary = await HandleIssues(payload);
               break;
           }
@@ -113,6 +115,17 @@
             case "edited":
             case "deleted":
               changeSummary = await HandleIssueComment(payload);
+              break;
+          }
+          break;
+        case "milestone":
+          switch (payload.Action) {
+            case "closed":
+            case "created":
+            case "deleted":
+            case "edited":
+            case "opened":
+              changeSummary = await HandleMilestone(payload);
               break;
           }
           break;
@@ -226,6 +239,18 @@
       summary.UnionWith(await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings));
 
       return summary;
+    }
+
+    private async Task<ChangeSummary> HandleMilestone(WebhookPayload payload) {
+      if (payload.Action == "deleted") {
+        var summary = await Context.DeleteMilestone(payload.Repository.Id, payload.Milestone.Id);
+        return summary;
+      } else {
+        var summary = await Context.BulkUpdateMilestones(
+          payload.Repository.Id,
+          new[] { _mapper.Map<MilestoneTableType>(payload.Milestone) });
+        return summary;
+      }
     }
   }
 }

@@ -387,7 +387,7 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones) {
+    public Task<ChangeSummary> BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones, bool complete = false) {
       var tableParam = CreateTableParameter(
         "Milestones",
         "[dbo].[MilestoneTableType]",
@@ -418,6 +418,7 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
         x.RepositoryId = repositoryId;
         x.Milestones = tableParam;
+        x.Complete = complete;
       });
     }
 
@@ -569,6 +570,13 @@
         dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
         await dsp.ExecuteNonQueryAsync();
       }
+    }
+
+    public Task<ChangeSummary> DeleteMilestone(long repositoryId, long milestoneId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
+        x.RepositoryId = repositoryId;
+        x.MilestoneId = milestoneId;
+      });
     }
 
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
