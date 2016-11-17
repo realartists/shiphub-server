@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
+  using System.Net;
   using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
@@ -87,11 +88,12 @@
                   Url = $"https://{ApiHostName}/webhook/repo/1234",
                 },
                 Events = new string[] {
-                "issues",
-                "issue_comment",
-              },
+                  "issues",
+                  "issue_comment",
+                },
                 Name = "web",
-              }
+              },
+              Status = HttpStatusCode.OK,
             };
             return Task.FromResult(result);
           });
@@ -159,6 +161,7 @@
           .Setup(x => x.DeleteRepositoryWebhook(repo.FullName, It.IsAny<long>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
+            Status = HttpStatusCode.OK,
           })
           .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
@@ -169,7 +172,8 @@
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -197,6 +201,7 @@
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
+            Status = HttpStatusCode.OK,
           });
 
         string installRepoName = null;
@@ -207,7 +212,8 @@
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           })
           .Callback((string fullName, Webhook webhook) => {
             installRepoName = fullName;
@@ -266,6 +272,7 @@
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
+            Status = HttpStatusCode.OK,
           });
         mock
            .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
@@ -296,6 +303,7 @@
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
+            Status = HttpStatusCode.OK,
           });
         mock
            .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
@@ -329,6 +337,7 @@
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
+            Status = HttpStatusCode.OK,
           });
 
         Webhook installWebHook = null;
@@ -338,7 +347,8 @@
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           })
           .Callback((string login, Webhook webhook) => {
             installWebHook = webhook;
@@ -438,6 +448,7 @@
           .Setup(x => x.DeleteOrganizationWebhook(org.Login, It.IsAny<long>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
+            Status = HttpStatusCode.OK,
           })
           .Callback((string fullName, long hookId) => {
             deletedHookIds.Add(hookId);
@@ -448,7 +459,8 @@
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -504,6 +516,7 @@
                 Name = "web",
               },
             },
+            Status = HttpStatusCode.OK,
           });
 
         mock
@@ -521,7 +534,8 @@
                 },
                 Events = eventList,
                 Name = "web",
-              }
+              },
+              Status = HttpStatusCode.OK,
             };
             return Task.FromResult(result);
           });
@@ -560,13 +574,15 @@
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
             },
+            Status = HttpStatusCode.OK,
           });
         mock
           .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -600,13 +616,15 @@
           .Setup(x => x.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
+            Status = HttpStatusCode.OK,
           });
         mock
           .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
-            }
+            },
+            Status = HttpStatusCode.OK,
           });
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
