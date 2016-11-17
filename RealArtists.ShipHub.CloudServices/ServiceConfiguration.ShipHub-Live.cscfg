@@ -23,6 +23,8 @@
                value="" />
       <Setting name="UseFiddler"
                value="false" />
+      <Setting name="GitHubLoggingStorage"
+               value="UseDevelopmentStorage=true"/>
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

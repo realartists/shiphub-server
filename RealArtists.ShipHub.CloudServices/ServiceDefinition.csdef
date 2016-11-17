@@ -13,6 +13,7 @@
       <Setting name="AzureWebJobsServiceBus" />
       <Setting name="AzureWebJobsServiceBusPair" />
       <Setting name="UseFiddler" />
+      <Setting name="GitHubLoggingStorage" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"
