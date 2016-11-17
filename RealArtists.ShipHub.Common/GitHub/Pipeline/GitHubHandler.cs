@@ -56,8 +56,10 @@
             continue;
           default:
             // Abort
-            break;
+            break; // switch
         }
+
+        break; // for
       }
 
       return result;
