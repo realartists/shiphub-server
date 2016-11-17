@@ -216,7 +216,7 @@
       }
 #endif
 
-      HttpMessageHandler handler = new HttpClientHandler() {
+      var rootHandler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
         UseCookies = false,
@@ -230,9 +230,11 @@
       // This is a gross hack
 #if DEBUG
       if (useFiddler) {
-        ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
+        rootHandler.ServerCertificateCustomValidationCallback = (request, cert, chain, sslPolicyErrors) => { return true; };
       }
 #endif
+
+      HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
       var gitHubLoggingStorage = CloudConfigurationManager.GetSetting("GitHubLoggingStorage");
