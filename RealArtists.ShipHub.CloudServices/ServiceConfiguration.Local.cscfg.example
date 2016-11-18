@@ -24,7 +24,7 @@
       <Setting name="UseFiddler"
                value="false" />
       <Setting name="GitHubLoggingStorage"
-               value="UseDevelopmentStorage=true"/>
+               value=""/>
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>
