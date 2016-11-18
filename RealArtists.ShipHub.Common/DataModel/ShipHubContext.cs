@@ -226,11 +226,13 @@
       using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
         applyParams(dsp);
 
-        using (var sdr = await dsp.ExecuteReaderAsync(CommandBehavior.SingleResult)) {
+        using (var sdr = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = sdr;
-          while (sdr.Read()) {
-            result.Add(ddr.OrganizationId, ddr.RepositoryId, ddr.UserId);
-          }
+          do {
+            while (sdr.Read()) {
+              result.Add(ddr.OrganizationId, ddr.RepositoryId, ddr.UserId);
+            }
+          } while (sdr.NextResult());
         }
       }
 
