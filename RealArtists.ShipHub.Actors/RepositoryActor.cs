@@ -4,13 +4,13 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
-  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using AutoMapper;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using Common.GitHub;
   using GitHub;
   using Orleans;
   using QueueClient;
@@ -18,6 +18,8 @@
   public class RepositoryActor : Grain, IRepositoryActor {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
+    public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
+    public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -40,6 +42,10 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
+    private IDisposable _syncIssueTemplateTimer;
+    private bool _needsIssueTemplateSync;
+    private bool _pollIssueTemplate;
+    private int _syncCount;
 
     public RepositoryActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -68,6 +74,11 @@
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
+        
+        // if we have no webhook, we must poll the ISSUE_TEMPLATE
+        _pollIssueTemplate = !(context.Hooks.Where((hook) => hook.RepositoryId == _repoId && hook.LastSeen != null).Any());
+        _needsIssueTemplateSync = false;
+        Log.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
       }
 
       await base.OnActivateAsync();
@@ -92,6 +103,53 @@
       await base.OnDeactivateAsync();
     }
 
+    public Task SyncIssueTemplate() {
+      Log.Trace();
+
+      if (_syncIssueTemplateTimer != null) {
+        _syncIssueTemplateTimer.Dispose();
+      }
+      _needsIssueTemplateSync = true;
+      _syncIssueTemplateTimer = RegisterTimer(SyncIssueTemplateCallback, null, SyncIssueTemplateHysteresis, TimeSpan.MaxValue);
+      return Task.CompletedTask;
+    }
+
+    private async Task SyncIssueTemplateCallback(object state) {
+      Log.Trace();
+
+      _syncIssueTemplateTimer.Dispose();
+      _syncIssueTemplateTimer = null;
+
+      if (!_needsIssueTemplateSync) {
+        return;
+      }
+
+      using (var context = _contextFactory.CreateInstance()) {
+        var syncUserIds = await context.AccountRepositories
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Token != null)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+
+        if (syncUserIds.Length == 0) {
+          DeactivateOnIdle();
+          return;
+        }
+
+        if (syncUserIds.Length == 0) {
+          DeactivateOnIdle();
+          return;
+        }
+
+        var github = new GitHubActorPool(_grainFactory, syncUserIds);
+
+        var changes = await UpdateIssueTemplate(context, github);
+        if (!changes.Empty) {
+          await _queueClient.NotifyChanges(changes);
+        }
+      }
+    }
+
     public Task Sync(long forUserId) {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
@@ -105,10 +163,17 @@
     }
 
     private async Task SyncCallback(object state) {
+      if (_syncIssueTemplateTimer != null) {
+        _syncIssueTemplateTimer.Dispose();
+        _syncIssueTemplateTimer = null;
+      }
+
       if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
         return;
       }
+
+      _syncCount++;
 
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
@@ -247,29 +312,33 @@
       await Task.WhenAll(tasks);
     }
 
-    static Regex IssueTemplateRegex = new Regex(
-      @"^issue_template(?:\.\w+)?$",
-      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
-      TimeSpan.FromMilliseconds(200));
-
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
             && file.Name != null
-            && IssueTemplateRegex.IsMatch(file.Name);
+            && GitHubClient.IssueTemplateRegex.IsMatch(file.Name);
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
+      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount-1 % PollIssueTemplateSkip == 0))) {
+        Log.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
+        return new ChangeSummary();
+      }
+      Log.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
+
       var prevRootMetadata = _contentsRootMetadata;
       var prevDotGitHubMetadata = _contentsDotGithubMetadata;
       var prevIssueTemplateMetadata = _contentsIssueTemplateMetadata;
       try {
-        return await _UpdateIssueTemplate(context, github);
-      } catch {
+        var ret = await _UpdateIssueTemplate(context, github);
+        _needsIssueTemplateSync = false;
+        return ret;
+      } catch (Exception ex) {
         // unwind anything we've discovered about the cache state if we couldn't finish the whole operation
         _contentsRootMetadata = prevRootMetadata;
         _contentsDotGithubMetadata = prevDotGitHubMetadata;
         _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
-        throw;
+        Log.Exception(ex);
+        throw ex;
       }
     }
 
@@ -281,7 +350,7 @@
         if (rootListing.Status == HttpStatusCode.OK) {
           // search the root listing for any matching ISSUE_TEMPLATE files
           var rootTemplateFile = rootListing.Result.FirstOrDefault(IsTemplateFile);
-          Common.GitHub.GitHubResponse<byte[]> templateContent = null;
+          GitHubResponse<byte[]> templateContent = null;
 
           if (rootTemplateFile == null) {
             var hasDotGitHub = rootListing.Result.Any((file) => {

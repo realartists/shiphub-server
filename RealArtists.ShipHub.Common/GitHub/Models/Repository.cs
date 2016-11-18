@@ -16,5 +16,6 @@
     public bool HasIssues { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public RepositoryPermissions Permissions { get; set; }
+    public string DefaultBranch { get; set; }
   }
 }
