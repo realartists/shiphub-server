@@ -64,6 +64,9 @@ BEGIN
       SET [RowVersion] = DEFAULT
     WHERE RepositoryId = @RepositoryId
       AND [Type] = 'repository'
+
+    -- Signal changes in repo
+    SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId 
   END
 
   MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
