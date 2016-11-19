@@ -39,25 +39,22 @@
     }
 
     private async Task<T> ReadPayloadAsync<T>(Hook hook) {
-      T payload = default(T);
       var signatureHeader = Request.Headers.GetValues(SignatureHeaderName).Single();
+      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value; // header of form "sha1=..."
 
-      // header of form "sha1=..."
-      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString())))
       using (var bodyStream = await Request.Content.ReadAsStreamAsync())
       using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
       using (var textReader = new StreamReader(hmacStream, Encoding.UTF8))
       using (var jsonReader = new JsonTextReader(textReader) { CloseInput = true }) {
-        payload = GitHubSerialization.JsonSerializer.Deserialize<T>(jsonReader);
+        var payload = GitHubSerialization.JsonSerializer.Deserialize<T>(jsonReader);
         jsonReader.Close();
         // We're not worth launching a timing attack against.
         if (!signature.SequenceEqual(hmac.Hash)) {
           throw new HttpResponseException(HttpStatusCode.BadRequest);
         }
+        return payload;
       }
-
-      return payload;
     }
 
     [HttpPost]
@@ -283,10 +280,13 @@
       } else {
         // the payload includes all of the commits. take a look and see if we can find the ISSUE_TEMPLATE.md in any of the edited files
         hasIssueTemplate = payload.Commits
-          .Select((c) => c.Modified.Union(c.Removed).Union(c.Modified))
-          .Aggregate<IEnumerable<string>, IEnumerable<string>>(new string[] { }, (x, accum) => accum.Union(x))
-          .Where((f) => GitHubClient.IssueTemplateRegex.IsMatch(Path.GetFileName(f)))
-          .Any();
+          .Aggregate(new HashSet<string>(), (accum, commit) => {
+            accum.UnionWith(commit.Added);
+            accum.UnionWith(commit.Modified);
+            accum.UnionWith(commit.Removed);
+            return accum;
+          })
+          .Any(f => GitHubClient.IssueTemplateRegex.IsMatch(Path.GetFileName(f)));
       }
 
       if (hasIssueTemplate) {
