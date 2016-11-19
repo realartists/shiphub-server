@@ -5,6 +5,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System.Net;
   using System.Threading;
   using System.Threading.Tasks;
+  using Common;
   using Microsoft.Azure;
   using Microsoft.WindowsAzure.ServiceRuntime;
   using Orleans.Runtime.Configuration;
@@ -25,7 +26,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.
       RoleEnvironment.Changing += RoleEnvironmentChanging;
 
-      Common.LogTraceListener.Configure();
+      LogTraceListener.Configure();
 
       return base.OnStart();
     }
@@ -40,25 +41,26 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
     public override void OnStop() {
       cancellationTokenSource.Cancel();
-      runCompleteEvent.WaitOne();
 
       if (_silo != null) {
         _silo.Stop();
         _silo = null;
       }
 
+      runCompleteEvent.WaitOne();
+
       RoleEnvironment.Changing -= RoleEnvironmentChanging;
 
       base.OnStop();
     }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-    private async Task RunAsync(CancellationToken cancellationToken) {
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+    private Task RunAsync(CancellationToken cancellationToken) {
       while (!cancellationToken.IsCancellationRequested) {
         Trace.TraceInformation("Working");
 
         var config = AzureSilo.DefaultConfiguration();
+
+        var shipHubConfig = ShipHubCloudConfigurationManager.Instance;
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
         config.Globals.DeploymentId = shipHubConfig.DeploymentId;
@@ -72,11 +74,12 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // It is IMPORTANT to start the silo not in OnStart but in Run.
         // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
         _silo = new AzureSilo();
-        bool ok = _silo.Start(config);
+        _silo.Start(config);
 
         // Block until silo is shutdown
         _silo.Run();
       }
+      return Task.CompletedTask;
     }
 
     private static void RoleEnvironmentChanging(object sender, RoleEnvironmentChangingEventArgs e) {
