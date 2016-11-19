@@ -93,7 +93,6 @@
     <Build Include="Tables\Milestones.sql" />
     <Build Include="Tables\AccountRepositories.sql" />
     <Build Include="Tables\IssueLabels.sql" />
-    <Build Include="Tables\RepositoryLabels.sql" />
     <Build Include="Tables\RepositoryAccounts.sql" />
     <Build Include="Tables\Hooks.sql" />
     <Build Include="Procedures\SetRepositoryAssignableAccounts.sql" />
@@ -107,10 +106,7 @@
     <Build Include="Procedures\SetOrganizationUsers.sql" />
     <Build Include="User Defined Types\MilestoneTableType.sql" />
     <Build Include="User Defined Types\LabelTableType.sql" />
-    <Build Include="Procedures\BulkCreateLabels.sql" />
-    <Build Include="Procedures\GarbageCollectLabels.sql" />
     <Build Include="Procedures\BulkUpdateMilestones.sql" />
-    <Build Include="Procedures\SetRepositoryLabels.sql" />
     <Build Include="User Defined Types\IssueTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssues.sql" />
     <Build Include="User Defined Types\CommentTableType.sql" />
@@ -137,6 +133,7 @@
     <Build Include="Procedures\RecordUsage.sql" />
     <Build Include="Procedures\SetRepositoryIssueTemplate.sql" />
     <Build Include="Procedures\DeleteMilestone.sql" />
+    <Build Include="Procedures\BulkUpdateLabels.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

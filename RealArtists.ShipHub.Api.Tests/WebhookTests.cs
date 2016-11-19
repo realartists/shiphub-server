@@ -580,10 +580,12 @@
         Number = 5,
         Labels = new List<Label> {
           new Label() {
+            Id = 1,
             Color = "ff0000",
             Name = "Red",
           },
           new Label() {
+            Id = 2,
             Color = "0000ff",
             Name = "Blue",
           },
@@ -728,10 +730,12 @@
         Number = 5,
         Labels = new List<Label> {
           new Label() {
+            Id = 1,
             Color = "ff0000",
             Name = "Red",
           },
           new Label() {
+            Id = 2,
             Color = "0000ff",
             Name = "Blue",
           },
@@ -791,10 +795,12 @@
         Number = 5,
         Labels = new List<Label> {
           new Label() {
+            Id = 1,
             Color = "ff0000",
             Name = "Red",
           },
           new Label() {
+            Id = 2,
             Color = "0000ff",
             Name = "Blue",
           },

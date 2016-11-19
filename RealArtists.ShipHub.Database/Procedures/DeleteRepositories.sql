@@ -25,10 +25,6 @@ BEGIN
   DELETE FROM AccountRepositories
   WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-  --RepositoryLabels
-  DELETE FROM RepositoryLabels
-  WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
-
   --IssueEventAccess
   DELETE FROM IssueEventAccess
   FROM IssueEventAccess as iea

@@ -240,9 +240,10 @@
       var issuesMapped = _mapper.Map<IEnumerable<IssueTableType>>(issues);
 
       var labels = payload.Issue.Labels?.Select(x => new LabelTableType() {
-        ItemId = payload.Issue.Id,
+        Id = x.Id,
         Color = x.Color,
-        Name = x.Name
+        Name = x.Name,
+        IssueId = payload.Issue.Id,
       });
 
       var assigneeMappings = payload.Issue.Assignees?.Select(x => new MappingTableType() {

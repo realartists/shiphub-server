@@ -236,14 +236,16 @@
 
         var labels = new[] {
           new LabelTableType() {
-            ItemId = issue.Id,
+            Id = 6001,
             Name = "red",
             Color = "ff0000",
+            IssueId = issue.Id,
           },
           new LabelTableType() {
-            ItemId = issue.Id,
+            Id = 6002,
             Name = "blue",
             Color = "0000ff",
+            IssueId = issue.Id,
           },
         };
         issue.UpdatedAt = issue.UpdatedAt.AddHours(1);
