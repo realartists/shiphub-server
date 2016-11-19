@@ -224,10 +224,10 @@
           var labels = await github.Labels(_fullName, _labelMetadata);
           if (labels.IsOk) {
             changes.UnionWith(
-              await context.SetRepositoryLabels(
+              await context.BulkUpdateLabels(
                 _repoId,
                 labels.Result.Select(x => new LabelTableType() {
-                  ItemId = _repoId,
+                  Id = x.Id,
                   Color = x.Color,
                   Name = x.Name
                 }))
@@ -273,7 +273,7 @@
               await context.BulkUpdateIssues(
                 _repoId,
                 _mapper.Map<IEnumerable<IssueTableType>>(issues),
-                issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { ItemId = x.Id, Color = y.Color, Name = y.Name })),
+                issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Color = y.Color, Name = y.Name, IssueId = x.Id })),
                 issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
             ));
           }
