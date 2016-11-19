@@ -139,6 +139,9 @@
       try {
         container = new Container();
 
+        // ShipHub Configuration
+        container.Register(() => ShipHubCloudConfigurationManager.Instance, Lifestyle.Singleton);
+
         // AutoMapper
         container.Register(() => {
           var config = new MapperConfiguration(cfg => {

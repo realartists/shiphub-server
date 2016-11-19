@@ -22,14 +22,10 @@
   public class WebhookHandlerTests {
 
     public static WebhookQueueHandler CreateHandler() {
-      return new WebhookQueueHandler(null, new DetailedExceptionLogger());
+      return new WebhookQueueHandler(ShipHubCloudConfigurationManager.Instance, null, new DetailedExceptionLogger());
     }
 
-    static string ApiHostName {
-      get {
-        return ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
-      }
-    }
+    static string ApiHostName { get; } = ShipHubCloudConfigurationManager.Instance.ApiHostName;
 
     [Test]
     public async Task WillEditHookWhenEventListIsNotCompleteForRepo() {
@@ -197,7 +193,7 @@
           });
 
         string installRepoName = null;
-        Webhook installWebHook = null;
+        Webhook installWebhook = null;
 
         mock
           .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
@@ -209,7 +205,7 @@
           })
           .Callback((string fullName, Webhook webhook) => {
             installRepoName = fullName;
-            installWebHook = webhook;
+            installWebhook = webhook;
           });
 
         var changeMessages = new List<ChangeMessage>();
@@ -232,12 +228,12 @@
         Assert.NotNull(hook.Secret);
 
         Assert.AreEqual(repo.FullName, installRepoName);
-        Assert.AreEqual("web", installWebHook.Name);
-        Assert.AreEqual(true, installWebHook.Active);
-        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(installWebHook.Events));
-        Assert.AreEqual("json", installWebHook.Config.ContentType);
-        Assert.AreEqual(false, installWebHook.Config.InsecureSsl);
-        Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
+        Assert.AreEqual("web", installWebhook.Name);
+        Assert.AreEqual(true, installWebhook.Active);
+        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(installWebhook.Events));
+        Assert.AreEqual("json", installWebhook.Config.ContentType);
+        Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
+        Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
 
         context.Entry(repoLogItem).Reload();
         Assert.Greater(repoLogItem.RowVersion, repoLogItemRowVersion,
@@ -327,7 +323,7 @@
             Status = HttpStatusCode.OK,
           });
 
-        Webhook installWebHook = null;
+        Webhook installWebhook = null;
 
         mock
           .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
@@ -338,7 +334,7 @@
             Status = HttpStatusCode.OK,
           })
           .Callback((string login, Webhook webhook) => {
-            installWebHook = webhook;
+            installWebhook = webhook;
           });
 
         var changeMessages = new List<ChangeMessage>();
@@ -363,12 +359,12 @@
         Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
 
-        Assert.AreEqual("web", installWebHook.Name);
-        Assert.AreEqual(true, installWebHook.Active);
-        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
-        Assert.AreEqual("json", installWebHook.Config.ContentType);
-        Assert.AreEqual(false, installWebHook.Config.InsecureSsl);
-        Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);
+        Assert.AreEqual("web", installWebhook.Name);
+        Assert.AreEqual(true, installWebhook.Active);
+        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebhook.Events));
+        Assert.AreEqual("json", installWebhook.Config.ContentType);
+        Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
+        Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
 
         context.Entry(orgLogItem).Reload();
         Assert.Greater(orgLogItem.RowVersion, orgLogItemRowVersion,

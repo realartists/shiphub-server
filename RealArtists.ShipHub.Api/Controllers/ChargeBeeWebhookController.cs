@@ -136,11 +136,11 @@
     /// 
     /// If you're testing ChargeBee webhooks locally, do this --
     /// 
-    /// In the app settings for shiphub-dev, add the github username to "ChargeBeeWebHookExcludeList" --
+    /// In the app settings for shiphub-dev, add the github username to "ChargeBeeWebhookExcludeList" --
     /// https://portal.azure.com/#resource/subscriptions/b9f28aae-2074-4097-b5ce-ec28f68c4981/resourceGroups/ShipHub-Dev/providers/Microsoft.Web/sites/shiphub-dev/application
     /// 
     /// In your Secret.AppSettings.config, add the following -- <![CDATA[
-    ///   <add key="ChargeBeeWebHookIncludeList" value="some_github_username"/>
+    ///   <add key="ChargeBeeWebhookIncludeList" value="some_github_username"/>
     /// ]]>
     /// 
     /// Dev will ignore hooks for your user and your local server will only process
@@ -166,7 +166,7 @@
     [AllowAnonymous]
     [Route("chargebee/{secret}")]
     public async Task<IHttpActionResult> HandleHook(string secret) {
-      if (secret != ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret")) {
+      if (secret != ShipHubCloudConfigurationManager.Instance.ChargeBeeWebhookSecret) {
         return BadRequest("Invalid secret.");
       }
 
@@ -232,7 +232,7 @@
       var matches = CustomerIdRegex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+      var apiHostName = ShipHubCloudConfigurationManager.Instance.ApiHostName;
 
       var signature = BillingController.CreateSignature(accountId, accountId);
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";

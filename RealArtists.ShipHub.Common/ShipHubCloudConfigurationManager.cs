@@ -83,23 +83,23 @@
     private Lazy<string> _chargeBeeWebhookSecret = new Lazy<string>(() => GetSetting("ChargeBeeWebhookSecret", required: true));
     public string ChargeBeeWebhookSecret { get { return _chargeBeeWebhookSecret.Value; } }
 
-    private Lazy<ISet<string>> _chargeBeeWebHookIncludeOnlyList = new Lazy<ISet<string>>(() => {
-      var list = GetSetting("ChargeBeeWebHookIncludeOnlyList");
+    private Lazy<ISet<string>> _chargeBeeWebhookIncludeOnlyList = new Lazy<ISet<string>>(() => {
+      var list = GetSetting("ChargeBeeWebhookIncludeOnlyList");
       if (list != null) {
         return list.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
       }
       return null;
     });
-    public ISet<string> ChargeBeeWebhookIncludeOnlyList { get { return _chargeBeeWebHookIncludeOnlyList.Value; } }
+    public ISet<string> ChargeBeeWebhookIncludeOnlyList { get { return _chargeBeeWebhookIncludeOnlyList.Value; } }
 
-    private Lazy<ISet<string>> _chargeBeeWebHookExcludeList = new Lazy<ISet<string>>(() => {
-      var list = GetSetting("ChargeBeeWebHookExcludeList");
+    private Lazy<ISet<string>> _chargeBeeWebhookExcludeList = new Lazy<ISet<string>>(() => {
+      var list = GetSetting("ChargeBeeWebhookExcludeList");
       if (list != null) {
         return list.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
       }
       return null;
     });
-    public ISet<string> ChargeBeeWebhookExcludeList { get { return _chargeBeeWebHookExcludeList.Value; } }
+    public ISet<string> ChargeBeeWebhookExcludeList { get { return _chargeBeeWebhookExcludeList.Value; } }
 
     private Lazy<string> _dataConnectionString = new Lazy<string>(() => GetSetting("DataConnectionString", required: true));
     public string DataConnectionString { get { return _dataConnectionString.Value; } }
@@ -125,7 +125,7 @@
     });
     public bool UseFiddler { get { return _useFiddler.Value; } }
 
-    public static string GetSetting(string key, bool required = false) {
+    private static string GetSetting(string key, bool required = false) {
       string value = CloudConfigurationManager.GetSetting(key);
       if (value == null && required) {
         throw new ConfigurationErrorsException($"'{key}' is required but not specified in configuration.");

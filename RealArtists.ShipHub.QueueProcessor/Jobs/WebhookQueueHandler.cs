@@ -26,10 +26,12 @@
       "push"
     };
 
+    private IShipHubConfiguration _config;
     private IGrainFactory _grainFactory;
 
-    public WebhookQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+    public WebhookQueueHandler(IShipHubConfiguration config, IGrainFactory grainFactory, IDetailedExceptionLogger logger)
       : base(logger) {
+      _config = config;
       _grainFactory = grainFactory;
     }
 
@@ -57,7 +59,7 @@
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+        var apiHostName = _config.ApiHostName;
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
 
@@ -162,7 +164,7 @@
         var requiredEvents = new string[] {
           "repository",
         };
-        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+        var apiHostName = _config.ApiHostName;
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
 

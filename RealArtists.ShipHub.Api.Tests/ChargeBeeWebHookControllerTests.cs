@@ -26,7 +26,7 @@
 
   [TestFixture]
   [AutoRollback]
-  public class ChargeBeeWebHookControllerTests {
+  public class ChargeBeeWebhookControllerTests {
     public static void ConfigureController(ChargeBeeWebhookController controller, ChargeBeeWebhookPayload payload) {
       var json = JsonConvert.SerializeObject(payload, GitHubSerialization.JsonSerializerSettings);
 
@@ -40,8 +40,8 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static string WebHookSecret() {
-      return ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret");
+    private static string WebhookSecret() {
+      return ShipHubCloudConfigurationManager.Instance.ChargeBeeWebhookSecret;
     }
 
     private static async Task TestSubscriptionStateChangeHelper(
@@ -133,7 +133,7 @@
               Invoice = invoicePayload,
             },
           });
-        await controller.Object.HandleHook(ShipHubCloudConfigurationManager.GetSetting("ChargeBeeWebHookSecret"));
+        await controller.Object.HandleHook(ShipHubCloudConfigurationManager.Instance.ChargeBeeWebhookSecret);
 
         context.Entry(sub).Reload();
         Assert.AreEqual(expectedState, sub.State);
@@ -446,7 +446,7 @@
               return null;
             }
           });
-          await controller.HandleHook(WebHookSecret());
+          await controller.HandleHook(WebhookSecret());
         }
 
         Assert.IsTrue(didCloseInvoice);
@@ -504,7 +504,7 @@
             return null;
           }
         });
-        await controller.HandleHook(WebHookSecret());
+        await controller.HandleHook(WebhookSecret());
       }
 
       Assert.IsTrue(didCloseInvoice);
@@ -653,7 +653,7 @@
           var mockConfig = new Mock<IShipHubConfiguration>();
           var controller = new ChargeBeeWebhookController(mockConfig.Object, mockBusClient.Object, mockMailer.Object);
           ConfigureController(controller, payload);
-          return controller.HandleHook(WebHookSecret());
+          return controller.HandleHook(WebhookSecret());
         };
 
         // should see version advance.
@@ -761,7 +761,7 @@
               }
             },
           });
-        await controller.HandleHook(WebHookSecret());
+        await controller.HandleHook(WebhookSecret());
 
         Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
       };
@@ -841,7 +841,7 @@
               },
             },
           });
-        await controller.Object.HandleHook(WebHookSecret());
+        await controller.Object.HandleHook(WebhookSecret());
 
         Assert.AreEqual(1, outgoingMessages.Count);
         var outgoingMessage = (PaymentSucceededOrganizationMailMessage)outgoingMessages.First();
@@ -925,7 +925,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
@@ -988,7 +988,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
@@ -1051,7 +1051,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (PaymentFailedMailMessage)outgoingMessages.First();
@@ -1109,7 +1109,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
@@ -1166,7 +1166,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CardExpiryReminderMailMessage)outgoingMessages.First();
@@ -1219,7 +1219,7 @@
             },
           },
         });
-      await controller.Object.HandleHook(WebHookSecret());
+      await controller.Object.HandleHook(WebhookSecret());
 
       Assert.AreEqual(1, outgoingMessages.Count);
       var outgoingMessage = (CancellationScheduledMailMessage)outgoingMessages.First();
@@ -1229,7 +1229,7 @@
       Assert.AreEqual(termEndDate, outgoingMessage.CurrentTermEnd);
     }
 
-    public static async Task CanIgnoreWebHookEventsViaSettingsHelper(
+    public static async Task CanIgnoreWebhookEventsViaSettingsHelper(
       string gitHubUserName,
       string includeOnlyList,
       string excludeList,
@@ -1262,18 +1262,18 @@
             },
           });
 
-        var response = await controller.Object.HandleHook(WebHookSecret());
+        var response = await controller.Object.HandleHook(WebhookSecret());
         Assert.AreEqual(expectedResultType, response.GetType(), message);
       }
     }
 
     [Test]
-    public async Task CanIgnoreWebHookEventsViaSettings() {
-      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, null, typeof(OkResult), "should accept when include + exclude aren't set");
-      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar", null, typeof(BadRequestErrorMessageResult), "should reject since aroon not in include list.");
-      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, typeof(OkResult), "should accept since aroon is in the include list.");
-      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar", typeof(OkResult), "should accept since aroon not in exclude list.");
-      await CanIgnoreWebHookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", typeof(BadRequestErrorMessageResult), "should reject since aroon is in exclude list.");
+    public async Task CanIgnoreWebhookEventsViaSettings() {
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, null, typeof(OkResult), "should accept when include + exclude aren't set");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar", null, typeof(BadRequestErrorMessageResult), "should reject since aroon not in include list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, typeof(OkResult), "should accept since aroon is in the include list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar", typeof(OkResult), "should accept since aroon not in exclude list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", typeof(BadRequestErrorMessageResult), "should reject since aroon is in exclude list.");
     }
   }
 }

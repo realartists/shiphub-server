@@ -81,7 +81,7 @@
        .Select(x => {
          var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
          var signature = CreateSignature(principal.UserId, x.Id);
-         var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+         var apiHostName = ShipHubCloudConfigurationManager.Instance.ApiHostName;
          var actionUrl = $"https://{apiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
 
          return new BillingAccountRow() {
@@ -214,7 +214,7 @@
         // bummer because it means the customer's card won't get run as part of checkout.
         // If they provide invalid CC info, they won't know it until after they've completed
         // the checkout page; the failure info will have to come in an email.
-        var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
+        var apiHostName = ShipHubCloudConfigurationManager.Instance.ApiHostName;
         pageRequest.RedirectUrl($"https://{apiHostName}/billing/reactivate");
 
         if (isMemberOfPaidOrg) {
@@ -289,7 +289,7 @@
           // bummer because it means the customer's card won't get run as part of checkout.
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
-          .RedirectUrl($"https://{ShipHubCloudConfigurationManager.GetSetting("ApiHostName")}/billing/reactivate")
+          .RedirectUrl($"https://{ShipHubCloudConfigurationManager.Instance.ApiHostName}/billing/reactivate")
           .Request().HostedPage;
 
         return Redirect(result.Url);
