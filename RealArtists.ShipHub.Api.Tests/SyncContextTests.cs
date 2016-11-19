@@ -178,5 +178,94 @@
         return ((OrganizationEntry)logs.Single(x => x.Entity == SyncEntityType.Organization).Data).ShipNeedsWebhookHelp;
       }
     }
+
+    [Test]
+    public async Task AddingLabelstoIssueShouldSyncIssueAndRepo() {
+      using (var context = new ShipHubContext()) {
+        var userAccount = new AccountTableType() {
+          Id = 3001,
+          Login = "aroon",
+          Type = "user",
+        };
+        var repo = new RepositoryTableType() {
+          Id = 4001,
+          AccountId = userAccount.Id,
+          Name = "things",
+          FullName = $"{userAccount.Login}/things",
+          Private = true,
+        };
+        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount });
+        await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
+        await context.SetAccountLinkedRepositories(userAccount.Id, new[] {
+          Tuple.Create(repo.Id, true),
+        });
+
+        var issue = new IssueTableType() {
+          Id = 5001,
+          Number = 1,
+          State = "open",
+          Title = "Some Title",
+          Body = "Some Body",
+          UserId = userAccount.Id,
+          CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+          UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+        };
+        await context.BulkUpdateIssues(repo.Id, new[] { issue }, new LabelTableType[0], new MappingTableType[0]);
+
+        var user = context.Accounts.Single(x => x.Id == userAccount.Id);
+        user.Token = Guid.NewGuid().ToString();
+        await context.SaveChangesAsync();
+
+        var logs = new List<SyncLogEntry>();
+
+        var mockConnection = new Mock<ISyncConnection>();
+        mockConnection
+          .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
+          .Returns((object obj) => {
+            if (obj is SyncResponse) {
+              var response = (SyncResponse)obj;
+              logs.AddRange(response.Logs);
+            }
+            return Task.CompletedTask;
+          });
+
+        var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
+        await syncContext.Sync();
+        logs.Clear();
+
+        var labels = new[] {
+          new LabelTableType() {
+            ItemId = issue.Id,
+            Name = "red",
+            Color = "ff0000",
+          },
+          new LabelTableType() {
+            ItemId = issue.Id,
+            Name = "blue",
+            Color = "0000ff",
+          },
+        };
+        issue.UpdatedAt = issue.UpdatedAt.AddHours(1);
+        // Adding some labels to an issue should trigger a new sync of the issue
+        // and the repository.
+        await context.BulkUpdateIssues(repo.Id, new[] { issue }, labels, new MappingTableType[0]);
+        await syncContext.Sync();
+
+        var repoEntry = logs.Where(x => x.Entity == SyncEntityType.Repository).Select(x => (RepositoryEntry)x.Data).Single();
+        var repoLabels = repoEntry.Labels.OrderBy(x => x.Name).ToArray();
+        var issueEntry = logs.Where(x => x.Entity == SyncEntityType.Issue).Select(x => (IssueEntry)x.Data).Single();
+        var issueLabels = issueEntry.Labels.OrderBy(x => x.Name).ToArray();
+
+        Assert.AreEqual("blue", repoLabels[0].Name);
+        Assert.AreEqual("0000ff", repoLabels[0].Color);
+        Assert.AreEqual("red", repoLabels[1].Name);
+        Assert.AreEqual("ff0000", repoLabels[1].Color);
+        Assert.AreEqual("blue", issueLabels[0].Name);
+        Assert.AreEqual("0000ff", issueLabels[0].Color);
+        Assert.AreEqual("red", issueLabels[1].Name);
+        Assert.AreEqual("ff0000", issueLabels[1].Color);
+      }
+    }
   }
 }
