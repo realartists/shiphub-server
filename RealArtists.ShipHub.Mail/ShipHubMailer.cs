@@ -26,20 +26,21 @@
   public class ShipHubMailer : IShipHubMailer {
     public bool IncludeHtmlView { get; set; } = true;
 
-    private string GetBaseDirectory() {
+    private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
       if (HostingEnvironment.IsHosted) {
         return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin");
       } else {
         return Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
       }
-    }
+    });
+    private static string BaseDirectory { get { return _BaseDirectory.Value; } }
 
     private IRazorEngineService GetRazorEngineService() {
       var config = new TemplateServiceConfiguration {
         CachingProvider = new DefaultCachingProvider(_ => { }),
         DisableTempFileLocking = true,
         TemplateManager = new ResolvePathTemplateManager(new[] {
-          Path.Combine(GetBaseDirectory(), "Views"),
+          Path.Combine(BaseDirectory, "Views"),
         })
       };
       return RazorEngineService.Create(config);
@@ -76,7 +77,7 @@
         }
 
         var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
-        var linkedResource = new LinkedResource(Path.Combine(GetBaseDirectory(), "ShipLogo.png"), "image/png");
+        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png");
         linkedResource.ContentId = "ShipLogo.png";
         htmlView.LinkedResources.Add(linkedResource);
         message.AlternateViews.Add(htmlView);
@@ -86,19 +87,19 @@
         message.Attachments.Add(attachment);
       }
 
-      var password = CloudConfigurationManager.GetSetting("SmtpPassword");
-      if (password != null) {
+      // TODO: Change this to use IShipHubConfiguration
+      var smtpPassword = CloudConfigurationManager.GetSetting("SmtpPassword");
+      if (string.IsNullOrWhiteSpace(smtpPassword)) {
+        Console.WriteLine("SmtpPassword unset so will not send email.");
+      } else {
         using (var client = new SmtpClient()) {
-
           client.Host = "smtp.mailgun.org";
           client.Port = 587;
           client.Credentials = new NetworkCredential(
             "shiphub@email.realartists.com",
-            password);
+            smtpPassword);
           await client.SendMailAsync(message);
         }
-      } else {
-        Console.WriteLine("SmtpPassword unset so will not send email.");
       }
     }
 

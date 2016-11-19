@@ -94,11 +94,12 @@
 
   [AllowAnonymous]
   public class ChargeBeeWebhookController : ShipHubController {
-
+    private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
     private IShipHubMailer _mailer;
 
-    public ChargeBeeWebhookController(IShipHubQueueClient queueClient, IShipHubMailer mailer) {
+    public ChargeBeeWebhookController(IShipHubConfiguration configuration, IShipHubQueueClient queueClient, IShipHubMailer mailer) {
+      _configuration = configuration;
       _queueClient = queueClient;
       _mailer = mailer;
     }
@@ -148,14 +149,13 @@
     /// <param name="gitHubUserName">Github user or organization name</param>
     /// <returns>True if we should reject this webhook event</returns>
     private bool ShouldIgnoreWebhook(string gitHubUserName) {
-      var includeOnlyList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookIncludeOnlyList");
-      var excludeList = CloudConfigurationManager.GetSetting("ChargeBeeWebHookExcludeList");
-
-      if (!includeOnlyList.IsNullOrWhiteSpace() && !includeOnlyList.Split(',').Contains(gitHubUserName)) {
+      if (_configuration.ChargeBeeWebhookIncludeOnlyList != null
+        && !_configuration.ChargeBeeWebhookIncludeOnlyList.Contains(gitHubUserName)) {
         return true;
       }
 
-      if (!excludeList.IsNullOrWhiteSpace() && excludeList.Split(',').Contains(gitHubUserName)) {
+      if (_configuration.ChargeBeeWebhookExcludeList != null
+        && _configuration.ChargeBeeWebhookExcludeList.Contains(gitHubUserName)) {
         return true;
       }
 

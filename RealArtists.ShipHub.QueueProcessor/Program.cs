@@ -23,11 +23,12 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     static void Main() {
-      var azureWebJobsDashboard = CloudConfigurationManager.GetSetting("AzureWebJobsDashboard");
-      var azureWebJobsStorage = CloudConfigurationManager.GetSetting("AzureWebJobsStorage");
+      var shipHubConfig = ShipHubCloudConfigurationManager.Instance;
+      var azureWebJobsDashboard = shipHubConfig.AzureWebJobsDashboard;
+      var azureWebJobsStorage = shipHubConfig.AzureWebJobsStorage;
 
       // Raygun Client
-      var raygunApiKey = CloudConfigurationManager.GetSetting(RaygunApiKey);
+      var raygunApiKey = shipHubConfig.RaygunApiKey;
       RaygunClient raygunClient = null;
       if (!raygunApiKey.IsNullOrWhiteSpace()) {
         raygunClient = new RaygunClient(raygunApiKey);
@@ -35,7 +36,7 @@
       }
 
       // App Insights Client
-      var applicationInsightsKey = CloudConfigurationManager.GetSetting(ApplicationInsightsKey);
+      var applicationInsightsKey = shipHubConfig.ApplicationInsightsKey;
       TelemetryClient telemetryClient = null;
       if (!applicationInsightsKey.IsNullOrWhiteSpace()) {
         TelemetryConfiguration.Active.InstrumentationKey = applicationInsightsKey;
@@ -58,13 +59,13 @@
       ConfigureGlobalLogging(config, telemetryClient, raygunClient);
 
       // ChargeBee
-      var chargeBeeHostAndApiKey = CloudConfigurationManager.GetSetting("ChargeBeeHostAndKey");
+      var chargeBeeHostAndApiKey = shipHubConfig.ChargeBeeHostAndKey;
       if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
         var parts = chargeBeeHostAndApiKey.Split(':');
         ChargeBee.Api.ApiConfig.Configure(parts[0], parts[1]);
       }
 
-      var azureWebJobsServiceBus = CloudConfigurationManager.GetSetting("AzureWebJobsServiceBus");
+      var azureWebJobsServiceBus = shipHubConfig.AzureWebJobsServiceBus;
       var sbConfig = new ServiceBusConfiguration() {
         ConnectionString = azureWebJobsServiceBus,
       };

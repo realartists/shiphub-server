@@ -18,6 +18,9 @@
       var container = new Container();
       container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();
 
+      // ShipHubConfiguration
+      container.Register(() => ShipHubCloudConfigurationManager.Instance, Lifestyle.Singleton);
+
       // AutoMapper
       container.Register(() => new MapperConfiguration(cfg => {
         cfg.AddProfile<GitHubToDataModelProfile>();

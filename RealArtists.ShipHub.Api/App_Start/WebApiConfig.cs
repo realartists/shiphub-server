@@ -13,15 +13,13 @@
   using Mindscape.Raygun4Net.WebApi;
 
   public static class WebApiConfig {
-    private static readonly string RaygunApiKey = CloudConfigurationManager.GetSetting("RAYGUN_APIKEY");
-
-    public static void Register(HttpConfiguration config) {
+    public static void Register(HttpConfiguration config, string raygunApiKey) {
       config.Filters.Add(new DeaggregateExceptionFilterAttribute());
       config.Filters.Add(new ShipHubAuthenticationAttribute());
       config.Filters.Add(new AuthorizeAttribute());
       config.Filters.Add(new CommonLogActionFilterAttribute());
 
-      RaygunWebApiClient.Attach(config, GenerateRaygunClient);
+      RaygunWebApiClient.Attach(config, RaygunClientFactory(raygunApiKey));
 
       config.Formatters.Clear();
       config.Formatters.Add(new JsonMediaTypeFormatter());
@@ -35,30 +33,32 @@
       config.Services.Add(typeof(IExceptionLogger), new CommonLogExceptionLogger());
     }
 
-    public static RaygunWebApiClient GenerateRaygunClient(HttpRequestMessage requestMessage) {
-      RaygunWebApiClient client = null;
-      if (RaygunApiKey.IsNullOrWhiteSpace()) {
-        // Use default.
-        client = new RaygunWebApiClient();
-      } else {
-        client = new RaygunWebApiClient(RaygunApiKey);
-      }
-
-      client.AddWrapperExceptions(typeof(AggregateException));
-
-      if (requestMessage.GetActionDescriptor()?.ControllerDescriptor?.ControllerType == typeof(GitHubWebhookController)) {
-        // Webhook calls from GitHub don't really have a user, but we'd still like for Raygun
-        // to show us how many unique orgs + repos are affected by a given error.  We can abuse
-        // the User concept to get this.
-        client.User = requestMessage.RequestUri.PathAndQuery.Replace('/', '_');
-      } else {
-        var user = HttpContext.Current?.User as ShipHubPrincipal;
-        if (user != null) {
-          client.User = user.DebugIdentifier;
+    public static Func<HttpRequestMessage, RaygunWebApiClient> RaygunClientFactory(string raygunApiKey) {
+      return (HttpRequestMessage requestMessage) => {
+        RaygunWebApiClient client = null;
+        if (raygunApiKey.IsNullOrWhiteSpace()) {
+          // Use default.
+          client = new RaygunWebApiClient();
+        } else {
+          client = new RaygunWebApiClient(raygunApiKey);
         }
-      }
 
-      return client;
+        client.AddWrapperExceptions(typeof(AggregateException));
+
+        if (requestMessage.GetActionDescriptor()?.ControllerDescriptor?.ControllerType == typeof(GitHubWebhookController)) {
+          // Webhook calls from GitHub don't really have a user, but we'd still like for Raygun
+          // to show us how many unique orgs + repos are affected by a given error.  We can abuse
+          // the User concept to get this.
+          client.User = requestMessage.RequestUri.PathAndQuery.Replace('/', '_');
+        } else {
+          var user = HttpContext.Current?.User as ShipHubPrincipal;
+          if (user != null) {
+            client.User = user.DebugIdentifier;
+          }
+        }
+
+        return client;
+      };
     }
   }
 }

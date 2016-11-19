@@ -20,9 +20,6 @@
   public class ServiceBusFactory : IServiceBusFactory {
     public static readonly TimeSpan DefaultTimeToLive = TimeSpan.FromMinutes(2);
 
-    const string ConnectionStringKey = "AzureWebJobsServiceBus";
-    const string PairConnectionStringKey = "AzureWebJobsServiceBusPair";
-
     bool _initialized;
     string _connString;
     string _pairConnString;
@@ -32,7 +29,7 @@
     public MessagingFactory MessagingFactory { get; private set; }
 
     public ServiceBusFactory() :
-      this(CloudConfigurationManager.GetSetting(ConnectionStringKey), CloudConfigurationManager.GetSetting(PairConnectionStringKey)) { }
+      this(ShipHubCloudConfigurationManager.Instance.AzureWebJobsServiceBus, ShipHubCloudConfigurationManager.Instance.AzureWebJobsServiceBusPair) { }
 
     public ServiceBusFactory(string connectionString) : this(connectionString, null) { }
 

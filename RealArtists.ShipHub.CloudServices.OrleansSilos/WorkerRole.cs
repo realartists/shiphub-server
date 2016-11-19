@@ -61,13 +61,13 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         var config = AzureSilo.DefaultConfiguration();
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
-        config.Globals.DeploymentId = CloudConfigurationManager.GetSetting("DeploymentId");
+        config.Globals.DeploymentId = shipHubConfig.DeploymentId;
 
         // Dependency Injection
         config.UseStartupType<SimpleInjectorProvider>();
 
         config.AddMemoryStorageProvider();
-        config.AddAzureTableStorageProvider("AzureStore", CloudConfigurationManager.GetSetting("DataConnectionString"));
+        config.AddAzureTableStorageProvider("AzureStore", shipHubConfig.DataConnectionString);
 
         // It is IMPORTANT to start the silo not in OnStart but in Run.
         // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
