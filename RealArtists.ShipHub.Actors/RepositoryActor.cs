@@ -74,9 +74,9 @@
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
-        
+
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
-        _pollIssueTemplate = !(context.Hooks.Where((hook) => hook.RepositoryId == _repoId && hook.LastSeen != null).Any());
+        _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
         _needsIssueTemplateSync = false;
         Log.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
       }
@@ -114,6 +114,21 @@
       return Task.CompletedTask;
     }
 
+    private async Task<GitHubActorPool> GetRepositoryActorPool(ShipHubContext context) {
+      // TODO: Keep this cached and current instead of looking it up every time.
+      var syncUserIds = await context.AccountRepositories
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Token != null)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+
+      if (syncUserIds.Length == 0) {
+        return null;
+      }
+
+      return new GitHubActorPool(_grainFactory, syncUserIds);
+    }
+
     private async Task SyncIssueTemplateCallback(object state) {
       Log.Trace();
 
@@ -125,23 +140,12 @@
       }
 
       using (var context = _contextFactory.CreateInstance()) {
-        var syncUserIds = await context.AccountRepositories
-          .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Token != null)
-          .Select(x => x.AccountId)
-          .ToArrayAsync();
+        var github = await GetRepositoryActorPool(context);
 
-        if (syncUserIds.Length == 0) {
-          DeactivateOnIdle();
-          return;
+        if (github == null) {
+          DeactivateOnIdle(); // Sync may not even be running.
+          return; 
         }
-
-        if (syncUserIds.Length == 0) {
-          DeactivateOnIdle();
-          return;
-        }
-
-        var github = new GitHubActorPool(_grainFactory, syncUserIds);
 
         var changes = await UpdateIssueTemplate(context, github);
         if (!changes.Empty) {
@@ -178,18 +182,12 @@
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
-        var syncUserIds = await context.AccountRepositories
-          .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Token != null)
-          .Select(x => x.AccountId)
-          .ToArrayAsync();
+        var github = await GetRepositoryActorPool(context);
 
-        if (syncUserIds.Length == 0) {
+        if (github == null) {
           DeactivateOnIdle();
           return;
         }
-
-        var github = new GitHubActorPool(_grainFactory, syncUserIds);
 
         // Update repo
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
@@ -338,7 +336,7 @@
         _contentsDotGithubMetadata = prevDotGitHubMetadata;
         _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
         Log.Exception(ex);
-        throw ex;
+        throw;
       }
     }
 
