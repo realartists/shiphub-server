@@ -54,6 +54,7 @@
           "issues",
           "issue_comment",
           "milestone",
+          "push"
         };
         var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 

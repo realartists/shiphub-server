@@ -38,6 +38,25 @@
       _mapper = mapper;
     }
 
+    private async Task<T> ReadPayloadAsync<T>(Hook hook) {
+      var signatureHeader = Request.Headers.GetValues(SignatureHeaderName).Single();
+      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value; // header of form "sha1=..."
+
+      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString())))
+      using (var bodyStream = await Request.Content.ReadAsStreamAsync())
+      using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
+      using (var textReader = new StreamReader(hmacStream, Encoding.UTF8))
+      using (var jsonReader = new JsonTextReader(textReader) { CloseInput = true }) {
+        var payload = GitHubSerialization.JsonSerializer.Deserialize<T>(jsonReader);
+        jsonReader.Close();
+        // We're not worth launching a timing attack against.
+        if (!signature.SequenceEqual(hmac.Hash)) {
+          throw new HttpResponseException(HttpStatusCode.BadRequest);
+        }
+        return payload;
+      }
+    }
+
     [HttpPost]
     [AllowAnonymous]
     [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
@@ -48,10 +67,6 @@
 
       var eventName = Request.Headers.GetValues(EventHeaderName).Single();
       var deliveryIdHeader = Request.Headers.GetValues(DeliveryIdHeaderName).Single();
-      var signatureHeader = Request.Headers.GetValues(SignatureHeaderName).Single();
-
-      // header of form "sha1=..."
-      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value;
       var deliveryId = Guid.Parse(deliveryIdHeader);
 
       Hook hook = null;
@@ -69,19 +84,73 @@
         return NotFound();
       }
 
-      WebhookPayload payload = null;
+      ChangeSummary changeSummary = null;
 
-      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString())))
-      using (var bodyStream = await Request.Content.ReadAsStreamAsync())
-      using (var hmacStream = new CryptoStream(bodyStream, hmac, CryptoStreamMode.Read))
-      using (var textReader = new StreamReader(hmacStream, Encoding.UTF8))
-      using (var jsonReader = new JsonTextReader(textReader) { CloseInput = true }) {
-        payload = GitHubSerialization.JsonSerializer.Deserialize<WebhookPayload>(jsonReader);
-        jsonReader.Close();
-        // We're not worth launching a timing attack against.
-        if (!signature.SequenceEqual(hmac.Hash)) {
-          return BadRequest("Invalid signature.");
-        }
+      switch (eventName) {
+        case "issues": {
+            var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
+            switch (payload.Action) {
+              case "opened":
+              case "closed":
+              case "reopened":
+              case "edited":
+              case "labeled":
+              case "unlabeled":
+              case "assigned":
+              case "unassigned":
+              case "milestoned":
+              case "demilestoned":
+                changeSummary = await HandleIssues(payload);
+                break;
+            }
+            break;
+          }
+        case "issue_comment": {
+            var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
+            switch (payload.Action) {
+              case "created":
+              case "edited":
+              case "deleted":
+                changeSummary = await HandleIssueComment(payload);
+                break;
+            }
+            break;
+          }
+        case "milestone": {
+            var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
+            switch (payload.Action) {
+              case "closed":
+              case "created":
+              case "deleted":
+              case "edited":
+              case "opened":
+                changeSummary = await HandleMilestone(payload);
+                break;
+            }
+            break;
+          }
+        case "repository": {
+            var payload = await ReadPayloadAsync<WebhookIssuePayload>(hook);
+            if (
+            // Created events can only come from the org-level hook.
+            payload.Action == "created" ||
+            // We'll get deletion events from both the repo and org, but
+            // we'll ignore the org one.
+            (type == "repo" && payload.Action == "deleted")) {
+              await HandleRepository(payload);
+            }
+            break;
+          }
+        case "push": {
+            var payload = await ReadPayloadAsync<WebhookPushPayload>(hook);
+            await HandlePush(payload);
+            break;
+          }
+        case "ping":
+          await ReadPayloadAsync<object>(hook); // read payload to validate signature
+          break;
+        default:
+          throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
       }
 
       hook.LastSeen = DateTimeOffset.UtcNow;
@@ -90,61 +159,6 @@
       hook.LastPing = null;
       await Context.SaveChangesAsync();
 
-      ChangeSummary changeSummary = null;
-
-      switch (eventName) {
-        case "issues":
-          switch (payload.Action) {
-            case "opened":
-            case "closed":
-            case "reopened":
-            case "edited":
-            case "labeled":
-            case "unlabeled":
-            case "assigned":
-            case "unassigned":
-            case "milestoned":
-            case "demilestoned":
-              changeSummary = await HandleIssues(payload);
-              break;
-          }
-          break;
-        case "issue_comment":
-          switch (payload.Action) {
-            case "created":
-            case "edited":
-            case "deleted":
-              changeSummary = await HandleIssueComment(payload);
-              break;
-          }
-          break;
-        case "milestone":
-          switch (payload.Action) {
-            case "closed":
-            case "created":
-            case "deleted":
-            case "edited":
-            case "opened":
-              changeSummary = await HandleMilestone(payload);
-              break;
-          }
-          break;
-        case "repository":
-          if (
-            // Created events can only come from the org-level hook.
-            payload.Action == "created" ||
-            // We'll get deletion events from both the repo and org, but
-            // we'll ignore the org one.
-            (type == "repo" && payload.Action == "deleted")) {
-            await HandleRepository(payload);
-          }
-          break;
-        case "ping":
-          break;
-        default:
-          throw new NotImplementedException($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
-      }
-
       if (_queueClient != null && changeSummary != null && !changeSummary.Empty) {
         await _queueClient.NotifyChanges(changeSummary);
       }
@@ -152,7 +166,7 @@
       return StatusCode(HttpStatusCode.Accepted);
     }
 
-    private async Task<ChangeSummary> HandleIssueComment(WebhookPayload payload) {
+    private async Task<ChangeSummary> HandleIssueComment(WebhookIssuePayload payload) {
       // Ensure the issue that owns this comment exists locally before we add the comment.
       var summary = await HandleIssues(payload);
 
@@ -173,7 +187,7 @@
       return summary;
     }
 
-    private async Task HandleRepository(WebhookPayload payload) {
+    private async Task HandleRepository(WebhookIssuePayload payload) {
       if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
         var users = await Context.OrganizationAccounts
           .Where(x => x.OrganizationId == payload.Repository.Owner.Id)
@@ -198,7 +212,7 @@
       }
     }
 
-    private async Task<ChangeSummary> HandleIssues(WebhookPayload payload) {
+    private async Task<ChangeSummary> HandleIssues(WebhookIssuePayload payload) {
       var summary = new ChangeSummary();
       if (payload.Issue.Milestone != null) {
         var milestone = _mapper.Map<MilestoneTableType>(payload.Issue.Milestone);
@@ -241,7 +255,7 @@
       return summary;
     }
 
-    private async Task<ChangeSummary> HandleMilestone(WebhookPayload payload) {
+    private async Task<ChangeSummary> HandleMilestone(WebhookIssuePayload payload) {
       if (payload.Action == "deleted") {
         var summary = await Context.DeleteMilestone(payload.Repository.Id, payload.Milestone.Id);
         return summary;
@@ -250,6 +264,36 @@
           payload.Repository.Id,
           new[] { _mapper.Map<MilestoneTableType>(payload.Milestone) });
         return summary;
+      }
+    }
+
+    private Task HandlePush(WebhookPushPayload payload) {
+      var defaultBranch = payload.Repository.DefaultBranch ?? "";
+      var defaultRef = $"refs/heads/{defaultBranch}";
+      if (defaultRef != payload.Ref) {
+        return Task.CompletedTask; // if not a push to default branch then we don't care
+      }
+
+      bool hasIssueTemplate;
+      if (payload.Size > payload.Commits.Count()) {
+        hasIssueTemplate = true; // if we can't enumerate all the commits, assume ISSUE_TEMPLATE was changed.
+      } else {
+        // the payload includes all of the commits. take a look and see if we can find the ISSUE_TEMPLATE.md in any of the edited files
+        hasIssueTemplate = payload.Commits
+          .Aggregate(new HashSet<string>(), (accum, commit) => {
+            accum.UnionWith(commit.Added);
+            accum.UnionWith(commit.Modified);
+            accum.UnionWith(commit.Removed);
+            return accum;
+          })
+          .Any(f => GitHubClient.IssueTemplateRegex.IsMatch(Path.GetFileName(f)));
+      }
+
+      if (hasIssueTemplate) {
+        var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+        return repoActor.SyncIssueTemplate();
+      } else {
+        return Task.CompletedTask;
       }
     }
   }

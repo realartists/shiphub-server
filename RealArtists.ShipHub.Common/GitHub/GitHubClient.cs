@@ -4,6 +4,7 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
+  using System.Text.RegularExpressions;
   using System.Threading;
   using System.Threading.Tasks;
   using Models;
@@ -287,6 +288,12 @@
       var request = new GitHubRequest($"repos/{repoFullName}/contents{filePath}", cacheOptions);
       return Fetch<byte[]>(request);
     }
+
+    static Regex _IssueTemplateRegex = new Regex(
+      @"^issue_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
+    public static Regex IssueTemplateRegex { get { return _IssueTemplateRegex; } }
 
     private int _requestId = 0;
     public int NextRequestId() {
