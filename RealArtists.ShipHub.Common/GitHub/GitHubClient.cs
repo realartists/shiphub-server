@@ -241,7 +241,7 @@
       return Fetch<bool>(request);
     }
 
-    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, IEnumerable<string> events) {
       var request = new GitHubRequest<object>(
         new HttpMethod("PATCH"),
         $"repos/{repoFullName}/hooks/{hookId}",
@@ -252,7 +252,7 @@
       return Fetch<Webhook>(request);
     }
 
-    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, IEnumerable<string> events) {
       var request = new GitHubRequest<object>(
         new HttpMethod("PATCH"),
         $"orgs/{orgName}/hooks/{hookId}",
@@ -289,11 +289,10 @@
       return Fetch<byte[]>(request);
     }
 
-    static Regex _IssueTemplateRegex = new Regex(
+    public static Regex IssueTemplateRegex { get; } = new Regex(
       @"^issue_template(?:\.\w+)?$",
       RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
       TimeSpan.FromMilliseconds(200));
-    public static Regex IssueTemplateRegex { get { return _IssueTemplateRegex; } }
 
     private int _requestId = 0;
     public int NextRequestId() {

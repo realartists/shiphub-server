@@ -149,11 +149,11 @@
       return _github.DeleteRepositoryWebhook(repoFullName, hookId);
     }
 
-    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, IEnumerable<string> events) {
       return _github.EditOrganizationWebhookEvents(orgName, hookId, events);
     }
 
-    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, string[] events) {
+    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, IEnumerable<string> events) {
       return _github.EditRepositoryWebhookEvents(repoFullName, hookId, events);
     }
 

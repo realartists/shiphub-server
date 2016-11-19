@@ -35,7 +35,7 @@
   public interface IGitHubOrganizationAdmin {
     Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook);
     Task<GitHubResponse<bool>> DeleteOrganizationWebhook(string orgName, long hookId);
-    Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, string[] events);
+    Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, IEnumerable<string> events);
     Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId);
     Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null);
   }
@@ -46,7 +46,7 @@
   public interface IGitHubRepositoryAdmin {
     Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook);
     Task<GitHubResponse<bool>> DeleteRepositoryWebhook(string repoFullName, long hookId);
-    Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, string[] events);
+    Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, IEnumerable<string> events);
     Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId);
     Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, GitHubCacheDetails cacheOptions = null);
   }

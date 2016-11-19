@@ -33,12 +33,6 @@
 
     [Test]
     public async Task WillEditHookWhenEventListIsNotCompleteForRepo() {
-      var expectedEvents = new string[] {
-          "issues",
-          "issue_comment",
-          "milestone",
-        };
-
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
@@ -76,8 +70,8 @@
           });
 
         mock
-          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<string[]>()))
-          .Returns((string repoName, long hookId, string[] eventList) => {
+          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -88,11 +82,7 @@
                   Secret = "*******",
                   Url = $"https://{ApiHostName}/webhook/repo/1234",
                 },
-                Events = new string[] {
-                  "issues",
-                  "issue_comment",
-                  "milestone",
-                },
+                Events = eventList,
                 Name = "web",
               },
               Status = HttpStatusCode.OK,
@@ -103,9 +93,9 @@
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
 
-        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, WebhookQueueHandler.RequiredEvents));
         context.Entry(hook).Reload();
-        Assert.AreEqual(expectedEvents, hook.Events.Split(','));
+        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, hook.Events.Split(',').ToHashSet());
       }
     }
 
@@ -234,13 +224,7 @@
         await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
-        var expectedEvents = new string[] {
-          "issues",
-          "issue_comment",
-          "milestone",
-        };
-
-        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
+        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(hook.Events.Split(',')));
         Assert.AreEqual(repo.Id, hook.RepositoryId);
         Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.OrganizationId);
@@ -250,7 +234,7 @@
         Assert.AreEqual(repo.FullName, installRepoName);
         Assert.AreEqual("web", installWebHook.Name);
         Assert.AreEqual(true, installWebHook.Active);
-        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebHook.Events));
+        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(installWebHook.Events));
         Assert.AreEqual("json", installWebHook.Config.ContentType);
         Assert.AreEqual(false, installWebHook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebHook.Config.Secret);

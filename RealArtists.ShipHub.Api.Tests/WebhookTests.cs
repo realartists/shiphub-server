@@ -235,9 +235,12 @@
 
         var controller = new GitHubWebhookController(null, AutoMapper, null);
         ConfigureController(controller, "ping", obj, "someIncorrectSignature");
-        var result = await controller.HandleHook("repo", repo.Id);
-        Assert.IsInstanceOf(typeof(BadRequestErrorMessageResult), result);
-        Assert.AreEqual("Invalid signature.", ((BadRequestErrorMessageResult)result).Message);
+        try {
+          await controller.HandleHook("repo", repo.Id);
+          Assert.Fail("Should throw exception.");
+        } catch (Exception ex) {
+          Assert.IsInstanceOf<HttpResponseException>(ex);
+        }
       }
     }
 

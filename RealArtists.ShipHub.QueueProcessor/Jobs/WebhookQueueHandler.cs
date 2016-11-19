@@ -19,6 +19,13 @@
   using gm = Common.GitHub.Models;
 
   public class WebhookQueueHandler : LoggingHandlerBase {
+    public static ISet<string> RequiredEvents { get; } = new HashSet<string>() {
+      "issues",
+      "issue_comment",
+      "milestone",
+      "push"
+    };
+
     private IGrainFactory _grainFactory;
 
     public WebhookQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
@@ -50,12 +57,6 @@
       IAsyncCollector<ChangeMessage> notifyChanges) {
       using (var context = new ShipHubContext()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-        var requiredEvents = new string[] {
-          "issues",
-          "issue_comment",
-          "milestone",
-          "push"
-        };
         var apiHostName = ShipHubCloudConfigurationManager.GetSetting("ApiHostName");
 
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
@@ -86,7 +87,7 @@
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
           hook = context.Hooks.Add(new Hook() {
-            Events = string.Join(",", requiredEvents),
+            Events = string.Join(",", RequiredEvents),
             Secret = Guid.NewGuid(),
             RepositoryId = repo.Id,
           });
@@ -97,7 +98,7 @@
             new gm.Webhook() {
               Name = "web",
               Active = true,
-              Events = requiredEvents,
+              Events = RequiredEvents,
               Config = new gm.WebhookConfiguration() {
                 Url = $"https://{apiHostName}/webhook/repo/{repo.Id}",
                 ContentType = "json",
@@ -120,8 +121,8 @@
             context.Hooks.Remove(hook);
             await context.SaveChangesAsync();
           }
-        } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
-          var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, requiredEvents);
+        } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(RequiredEvents)) {
+          var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RequiredEvents);
 
           if (!editResponse.Succeeded) {
             Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
