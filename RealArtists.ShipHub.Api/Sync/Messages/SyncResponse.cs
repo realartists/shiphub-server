@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
+  using System;
   using System.Collections.Generic;
   using System.Runtime.Serialization;
 
@@ -47,9 +48,36 @@
   }
 
   public class SyncLogEntry {
-    public SyncLogAction Action { get; set; }
-    public SyncEntityType Entity { get; set; }
+    private SyncLogAction _action;
+    public SyncLogAction Action {
+      get { return _action; }
+      set {
+        ThrowIfInvalid(value, _entity);
+        _action = value;
+      }
+    }
+
+    private SyncEntityType _entity;
+    public SyncEntityType Entity {
+      get { return _entity; }
+      set {
+        ThrowIfInvalid(_action, value);
+        _entity = value;
+      }
+    }
+
     public SyncEntity Data { get; set; }
+
+    private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
+      if (action == SyncLogAction.Delete) {
+        switch (entity) {
+          case SyncEntityType.Event:
+          case SyncEntityType.Organization:
+          case SyncEntityType.User:
+            throw new InvalidOperationException($"It is not valid to {action} a {entity}.");
+        }
+      }
+    }
   }
 
   public class SyncResponse : SyncMessageBase {

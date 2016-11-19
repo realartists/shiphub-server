@@ -154,11 +154,13 @@
           reader.NextResult();
           while (reader.Read()) {
             long orgId = ddr.OrganizationId;
+            // Don't delete the org
             entries.Add(new SyncLogEntry() {
-              Action = SyncLogAction.Delete,
+              Action = SyncLogAction.Set,
               Entity = SyncEntityType.Organization,
               Data = new OrganizationEntry() {
                 Identifier = orgId,
+                Users = Array.Empty<long>()
               },
             });
             _versions.OrgVersions.Remove(orgId);
