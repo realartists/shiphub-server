@@ -49,8 +49,8 @@
       <HintPath>..\packages\Castle.Core.3.3.3\lib\net45\Castle.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="ChargeBee, Version=2.1.9.0, Culture=neutral, PublicKeyToken=2efc9456dd1bdb9d, processorArchitecture=MSIL">
-      <HintPath>..\packages\ChargeBee.2.1.9.0\lib\net30\ChargeBee.dll</HintPath>
+    <Reference Include="ChargeBee, Version=2.1.8.0, Culture=neutral, PublicKeyToken=2efc9456dd1bdb9d, processorArchitecture=MSIL">
+      <HintPath>..\packages\ChargeBee.2.1.8.0\lib\net30\ChargeBee.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="ChargeBee.2.1.8.0.Fakes">
@@ -69,19 +69,15 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
+      <HintPath>..\packages\Microsoft.Azure.WebJobs.Core.2.0.0-beta1\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
+    <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=1.0.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Azure.WebJobs.Extensions.1.0.1\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.2.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
+      <HintPath>..\packages\Microsoft.Azure.WebJobs.2.0.0-beta1\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
