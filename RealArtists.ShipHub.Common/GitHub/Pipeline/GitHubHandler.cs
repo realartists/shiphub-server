@@ -213,7 +213,7 @@
       var useFiddler = ShipHubCloudConfiguration.Instance.UseFiddler;
 #endif
 
-      var rootHandler = new HttpClientHandler() {
+      HttpMessageHandler handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
         UseCookies = false,
@@ -227,11 +227,9 @@
       // This is a gross hack
 #if DEBUG
       if (useFiddler) {
-        rootHandler.ServerCertificateCustomValidationCallback = (request, cert, chain, sslPolicyErrors) => { return true; };
+        ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) => { return true; };
       }
 #endif
-
-      HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
       var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
