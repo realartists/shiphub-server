@@ -49,8 +49,8 @@
       <HintPath>..\packages\Castle.Core.3.3.3\lib\net45\Castle.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="ChargeBee, Version=2.1.8.0, Culture=neutral, PublicKeyToken=2efc9456dd1bdb9d, processorArchitecture=MSIL">
-      <HintPath>..\packages\ChargeBee.2.1.8.0\lib\net30\ChargeBee.dll</HintPath>
+    <Reference Include="ChargeBee, Version=2.1.9.0, Culture=neutral, PublicKeyToken=2efc9456dd1bdb9d, processorArchitecture=MSIL">
+      <HintPath>..\packages\ChargeBee.2.1.9.0\lib\net30\ChargeBee.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="ChargeBee.2.1.8.0.Fakes">
@@ -108,8 +108,8 @@
       <HintPath>..\packages\Moq.4.5.23\lib\net45\Moq.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="NCrontab, Version=3.2.20120.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\ncrontab.3.2.0\lib\net45\NCrontab.dll</HintPath>
+    <Reference Include="NCrontab, Version=2.0.16709.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ncrontab.2.0.0\lib\net20\NCrontab.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
