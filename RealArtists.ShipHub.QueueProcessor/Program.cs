@@ -23,7 +23,7 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     static void Main() {
-      var shipHubConfig = ShipHubCloudConfigurationManager.Instance;
+      var shipHubConfig = new ShipHubCloudConfiguration();
       var azureWebJobsDashboard = shipHubConfig.AzureWebJobsDashboard;
       var azureWebJobsStorage = shipHubConfig.AzureWebJobsStorage;
 
@@ -140,7 +140,7 @@
         container = new Container();
 
         // ShipHub Configuration
-        container.Register(() => ShipHubCloudConfigurationManager.Instance, Lifestyle.Singleton);
+        container.Register<IShipHubConfiguration, ShipHubCloudConfiguration>(Lifestyle.Singleton);
 
         // AutoMapper
         container.Register(() => {

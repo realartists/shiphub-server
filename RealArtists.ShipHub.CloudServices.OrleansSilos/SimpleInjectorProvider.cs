@@ -36,7 +36,10 @@
 
       var container = new Container();
 
-      var connectionString = ShipHubCloudConfigurationManager.Instance.ShipHubContext;
+      // Configuration
+      container.Register<IShipHubConfiguration, ShipHubCloudConfiguration>(Lifestyle.Singleton);
+
+      var connectionString = ShipHubCloudConfiguration.Instance.ShipHubContext;
       container.RegisterSingleton<IFactory<ShipHubContext>>(
         new GenericFactory<ShipHubContext>(() => new ShipHubContext(connectionString)));
 

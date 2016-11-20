@@ -19,7 +19,7 @@
       container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();
 
       // ShipHubConfiguration
-      container.Register(() => ShipHubCloudConfigurationManager.Instance, Lifestyle.Singleton);
+      container.Register(() => new ShipHubCloudConfiguration(), Lifestyle.Singleton);
 
       // AutoMapper
       container.Register(() => new MapperConfiguration(cfg => {

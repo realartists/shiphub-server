@@ -166,7 +166,7 @@
     [AllowAnonymous]
     [Route("chargebee/{secret}")]
     public async Task<IHttpActionResult> HandleHook(string secret) {
-      if (secret != ShipHubCloudConfigurationManager.Instance.ChargeBeeWebhookSecret) {
+      if (secret != _configuration.ChargeBeeWebhookSecret) {
         return BadRequest("Invalid secret.");
       }
 
@@ -228,11 +228,11 @@
 
     private static Regex CustomerIdRegex { get; } = new Regex(@"^(user|org)-(\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
 
-    private static string GetPaymentMethodUpdateUrl(string customerId) {
+    private static string GetPaymentMethodUpdateUrl(IShipHubConfiguration configuration, string customerId) {
       var matches = CustomerIdRegex.Match(customerId);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      var apiHostName = ShipHubCloudConfigurationManager.Instance.ApiHostName;
+      var apiHostName = configuration.ApiHostName;
 
       var signature = BillingController.CreateSignature(accountId, accountId);
       var updateUrl = $"https://{apiHostName}/billing/update/{accountId}/{signature}";
@@ -241,7 +241,7 @@
     }
 
     public async Task SendCancellationScheduled(ChargeBeeWebhookPayload payload) {
-      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+      var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
       await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
@@ -252,7 +252,7 @@
     }
 
     public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
-      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+      var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
       await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
@@ -268,7 +268,7 @@
 
     public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
       var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
-      var updateUrl = GetPaymentMethodUpdateUrl(payload.Content.Customer.Id);
+      var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
       var message = new Mail.Models.PaymentFailedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,

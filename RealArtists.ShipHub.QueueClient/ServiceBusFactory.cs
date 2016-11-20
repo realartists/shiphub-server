@@ -29,7 +29,7 @@
     public MessagingFactory MessagingFactory { get; private set; }
 
     public ServiceBusFactory() :
-      this(ShipHubCloudConfigurationManager.Instance.AzureWebJobsServiceBus, ShipHubCloudConfigurationManager.Instance.AzureWebJobsServiceBusPair) { }
+      this(ShipHubCloudConfiguration.Instance.AzureWebJobsServiceBus, ShipHubCloudConfiguration.Instance.AzureWebJobsServiceBusPair) { }
 
     public ServiceBusFactory(string connectionString) : this(connectionString, null) { }
 

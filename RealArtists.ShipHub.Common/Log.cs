@@ -160,8 +160,8 @@ namespace RealArtists.ShipHub.Common {
         }
       }
 
-      private static Lazy<string> _sender = new Lazy<string>(() => ShipHubCloudConfigurationManager.Instance.DeploymentId);
-      
+      private static Lazy<string> _sender = new Lazy<string>(() => ShipHubCloudConfiguration.Instance.DeploymentId);
+
       private static Lazy<string> _hostName = new Lazy<string>(() => {
         return Dns.GetHostName();
       });

@@ -60,7 +60,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
         var config = AzureSilo.DefaultConfiguration();
 
-        var shipHubConfig = ShipHubCloudConfigurationManager.Instance;
+        var shipHubConfig = new ShipHubCloudConfiguration();
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
         config.Globals.DeploymentId = shipHubConfig.DeploymentId;

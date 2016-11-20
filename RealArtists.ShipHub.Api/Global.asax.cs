@@ -6,7 +6,7 @@
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
-      var shipHubConfig = ShipHubCloudConfigurationManager.Instance;
+      var shipHubConfig = new ShipHubCloudConfiguration();
       ApplicationInsightsConfig.Register(shipHubConfig.ApplicationInsightsKey);
       GlobalConfiguration.Configure((config) => WebApiConfig.Register(config, shipHubConfig.RaygunApiKey));
       GlobalConfiguration.Configure(SimpleInjectorConfig.Register);

@@ -210,7 +210,7 @@
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
 #if DEBUG
-      var useFiddler = ShipHubCloudConfigurationManager.Instance.UseFiddler;
+      var useFiddler = ShipHubCloudConfiguration.Instance.UseFiddler;
 #endif
 
       var rootHandler = new HttpClientHandler() {
@@ -234,7 +234,7 @@
       HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
-      var gitHubLoggingStorage = ShipHubCloudConfigurationManager.Instance.GitHubLoggingStorage;
+      var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
       var logHandler = new LoggingMessageProcessingHandler(
         gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
         "github-logs",

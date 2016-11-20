@@ -56,8 +56,11 @@
   /// <summary>
   /// For use at runtime. Lazily grabs the values from the environment.
   /// </summary>
-  public class ShipHubCloudConfigurationManager : IShipHubConfiguration {
-    public static IShipHubConfiguration Instance { get; } = new ShipHubCloudConfigurationManager();
+  public class ShipHubCloudConfiguration : IShipHubConfiguration {
+    /// <summary>
+    /// This is only for cases where it's a lot of trouble or really gross to inject. Breaks testability.
+    /// </summary>
+    public static IShipHubConfiguration Instance { get; } = new ShipHubCloudConfiguration();
 
     private Lazy<string> _apiHostName = new Lazy<string>(() => GetSetting("ApiHostName", required: true));
     public string ApiHostName { get { return _apiHostName.Value; } }
