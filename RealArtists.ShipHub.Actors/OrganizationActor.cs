@@ -123,7 +123,7 @@
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var org = await github.Organization(_login, _metadata);
 
-          if (org.Status != HttpStatusCode.NotModified) {
+          if (org.IsOk) {
             changes.UnionWith(
               await context.UpdateAccount(org.Date, _mapper.Map<AccountTableType>(org.Result))
             );
@@ -141,13 +141,13 @@
           var updated = false;
 
           var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
-          if (members.Status != HttpStatusCode.NotModified) {
+          if (members.IsOk) {
             updated = true;
             _members = members.Result;
           }
 
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
-          if (admins.Status != HttpStatusCode.NotModified) {
+          if (admins.IsOk) {
             updated = true;
             _admins = admins.Result;
           }

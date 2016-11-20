@@ -169,7 +169,7 @@
       request.AddParameter(nameof(state), state);
       var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
 
-      if (result.Status == HttpStatusCode.OK) {
+      if (result.IsOk) {
         // Seriously GitHub?
         foreach (var membership in result.Result) {
           membership.Organization.Type = GitHubAccountType.Organization;

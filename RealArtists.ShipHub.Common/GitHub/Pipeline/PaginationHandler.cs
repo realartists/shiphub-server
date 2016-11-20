@@ -36,7 +36,7 @@
       // Fetch has the retry logic.
       var result = await _next.Fetch<IEnumerable<T>>(client, request);
 
-      if (result.Status == HttpStatusCode.OK && result.Pagination != null) {
+      if (result.IsOk && result.Pagination != null) {
         result = await EnumerateParallel<IEnumerable<T>, T>(client, result);
       }
 
@@ -73,7 +73,7 @@
         batch = await Batch(pageRequestors);
 
         foreach (var response in batch) {
-          if (response.Status == HttpStatusCode.OK) {
+          if (response.IsOk) {
             results.AddRange(response.Result);
           } else {
             return response;
@@ -85,7 +85,7 @@
           var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
           current = await _next.Fetch<TCollection>(client, nextReq);
 
-          if (current.Status == HttpStatusCode.OK) {
+          if (current.IsOk) {
             results.AddRange(current.Result);
           } else {
             return current;

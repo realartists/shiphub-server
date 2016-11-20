@@ -51,7 +51,7 @@
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
             var response = await ghc.Comments(repo.FullName, null, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
+            if (response.IsOk) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var comments = response.Result;
 
@@ -103,7 +103,7 @@
 
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Events(repo.FullName, metadata);
-            if (response.Status != HttpStatusCode.NotModified) {
+            if (response.IsOk) {
               logger.WriteLine("Github: Changed. Saving changes.");
               var events = response.Result;
 

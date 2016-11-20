@@ -193,7 +193,7 @@
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var repo = await github.Repository(_fullName, _metadata);
 
-          if (repo.Status != HttpStatusCode.NotModified) {
+          if (repo.IsOk) {
             changes.UnionWith(
               await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }))
             );
@@ -209,7 +209,7 @@
         // Update Assignees
         if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
           var assignees = await github.Assignable(_fullName, _assignableMetadata);
-          if (assignees.Status != HttpStatusCode.NotModified) {
+          if (assignees.IsOk) {
             changes.UnionWith(
               await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)),
               await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id))
@@ -222,7 +222,7 @@
         // Update Labels
         if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
           var labels = await github.Labels(_fullName, _labelMetadata);
-          if (labels.Status != HttpStatusCode.NotModified) {
+          if (labels.IsOk) {
             changes.UnionWith(
               await context.SetRepositoryLabels(
                 _repoId,
@@ -240,7 +240,7 @@
         // Update Milestones
         if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
           var milestones = await github.Milestones(_fullName, _milestoneMetadata);
-          if (milestones.Status != HttpStatusCode.NotModified) {
+          if (milestones.IsOk) {
             changes.UnionWith(
               await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result))
             );
@@ -253,7 +253,7 @@
         // TODO: Do this incrementally (since, or skipping to last page, etc)
         if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
           var issueResponse = await github.Issues(_fullName, null, _issueMetadata);
-          if (issueResponse.Status != HttpStatusCode.NotModified) {
+          if (issueResponse.IsOk) {
             var issues = issueResponse.Result;
 
             var accounts = issues
@@ -345,7 +345,7 @@
         // then we don't have any known IssueTemplate, we have to search for it
         var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
         _contentsRootMetadata = GitHubMetadata.FromResponse(rootListing);
-        if (rootListing.Status == HttpStatusCode.OK) {
+        if (rootListing.IsOk) {
           // search the root listing for any matching ISSUE_TEMPLATE files
           var rootTemplateFile = rootListing.Result.FirstOrDefault(IsTemplateFile);
           GitHubResponse<byte[]> templateContent = null;
@@ -363,7 +363,7 @@
             if (hasDotGitHub) {
               var dotGitHubListing = await github.ListDirectoryContents(_fullName, "/.github", _contentsDotGithubMetadata);
               _contentsDotGithubMetadata = GitHubMetadata.FromResponse(dotGitHubListing);
-              if (dotGitHubListing.Status == HttpStatusCode.OK) {
+              if (dotGitHubListing.IsOk) {
                 var dotGitHubTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsTemplateFile);
                 if (dotGitHubTemplateFile != null) {
                   templateContent = await github.FileContents(_fullName, dotGitHubTemplateFile.Path);
@@ -375,7 +375,7 @@
           }
 
           _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
-          if (templateContent != null && templateContent.Status == HttpStatusCode.OK) {
+          if (templateContent != null && templateContent.IsOk) {
             return await UpdateIssueTemplateWithResult(context, templateContent.Result);
           }
         }
@@ -393,7 +393,7 @@
           changes.UnionWith(await UpdateIssueTemplateWithResult(context, null));
           changes.UnionWith(await _UpdateIssueTemplate(context, github));
           return changes;
-        } else if (templateContent.Status == HttpStatusCode.OK) {
+        } else if (templateContent.IsOk) {
           return await UpdateIssueTemplateWithResult(context, templateContent.Result);
         } else {
           return new ChangeSummary(); // nothing changed as far as we can tell

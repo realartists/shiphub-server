@@ -52,7 +52,7 @@
     }
 
     private async Task HandleResponse(GitHubResponse response) {
-      if (response.Status == HttpStatusCode.OK
+      if (response.IsOk
          && response.Request.Method == HttpMethod.Get
          && response.Request.CacheOptions?.AccessToken != null) {
         using (var context = _shipContextFactory.CreateInstance()) {

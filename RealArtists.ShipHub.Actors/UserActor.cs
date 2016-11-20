@@ -126,7 +126,7 @@
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var user = await _github.User(_metadata);
 
-          if (user.Status != HttpStatusCode.NotModified) {
+          if (user.IsOk) {
             changes.UnionWith(
               await context.UpdateAccount(user.Date, _mapper.Map<AccountTableType>(user.Result))
             );
@@ -143,7 +143,7 @@
         if (_orgMetadata == null || _orgMetadata.Expires < DateTimeOffset.UtcNow) {
           var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata);
 
-          if (orgs.Status != HttpStatusCode.NotModified) {
+          if (orgs.IsOk) {
             changes.UnionWith(
               await context.BulkUpdateAccounts(orgs.Date, _mapper.Map<IEnumerable<AccountTableType>>(orgs.Result.Select(x => x.Organization)))
             );
@@ -177,7 +177,7 @@
         if (forceRepos || _repoMetadata == null || _repoMetadata.Expires < DateTimeOffset.UtcNow) {
           var repos = await _github.Repositories(_repoMetadata);
 
-          if (repos.Status != HttpStatusCode.NotModified) {
+          if (repos.IsOk) {
             var reposWithIssues = repos.Result.Where(x => x.HasIssues);
             // The next batch of calls is not cached. Maybe we should, but it's complicated because we need the results.
             var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => _github.IsAssignable(x.FullName, _login));

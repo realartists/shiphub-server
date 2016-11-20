@@ -103,7 +103,7 @@
       using (var context = _contextFactory.CreateInstance()) {
         // Always refresh the issue when viewed
         var issueResponse = await ghc.Issue(_repoFullName, _issueNumber, _metadata);
-        if (issueResponse.Status != HttpStatusCode.NotModified) {
+        if (issueResponse.IsOk) {
           var update = issueResponse.Result;
 
           // TODO: Unify this code with other issue update places to reduce bugs.
@@ -129,7 +129,7 @@
 
         // This will be cached per-user by the ShipHubFilter.
         var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber);
-        if (timelineResponse.Status != HttpStatusCode.NotModified) {
+        if (timelineResponse.IsOk) {
           var timeline = timelineResponse.Result;
 
           // Now just filter
@@ -171,7 +171,7 @@
 
               // best effort - requests will fail when the user doesn't have source access.
               // see Nick's account and references from the github-beta repo
-              if (!lookup.Succeeded) {
+              if (!lookup.IsOk) {
                 continue;
               }
 
@@ -307,7 +307,7 @@
           // Issue Reactions
           if (_reactionMetadata == null || _reactionMetadata.Expires < DateTimeOffset.UtcNow) {
             var issueReactionsResponse = await ghc.IssueReactions(_repoFullName, _issueNumber, _reactionMetadata);
-            if (issueReactionsResponse.Status != HttpStatusCode.NotModified) {
+            if (issueReactionsResponse.IsOk) {
               var reactions = issueReactionsResponse.Result;
 
               var users = reactions
@@ -331,7 +331,7 @@
           if (timeline.Any(x => x.Event == "commented")) {
             if (_commentMetadata == null || _commentMetadata.Expires < DateTimeOffset.UtcNow) {
               var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata);
-              if (commentResponse.Status != HttpStatusCode.NotModified) {
+              if (commentResponse.IsOk) {
                 var comments = commentResponse.Result;
 
                 var users = comments

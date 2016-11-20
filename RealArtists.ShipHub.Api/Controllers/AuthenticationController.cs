@@ -60,7 +60,7 @@
       var userClient = CreateGitHubClient(request.AccessToken);
       var userResponse = await userClient.User(GitHubCacheDetails.Empty);
 
-      if (!userResponse.Succeeded) {
+      if (!userResponse.IsOk) {
         Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
       }
 
