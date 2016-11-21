@@ -24,7 +24,9 @@
       <Setting name="UseFiddler"
                value="false" />
       <Setting name="GitHubLoggingStorage"
-               value="UseDevelopmentStorage=true"/>
+               value=""/>
+      <Setting name="RAYGUN_APIKEY"
+               value="" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

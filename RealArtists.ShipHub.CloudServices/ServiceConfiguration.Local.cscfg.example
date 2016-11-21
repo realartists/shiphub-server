@@ -25,6 +25,8 @@
                value="false" />
       <Setting name="GitHubLoggingStorage"
                value=""/>
+      <Setting name="RAYGUN_APIKEY"
+               value="" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>
