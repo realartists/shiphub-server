@@ -61,7 +61,7 @@
 
   public static class GitHubResponseExtensions {
     public static GitHubResponse<IEnumerable<TResult>> Distinct<TResult, TKey>(this GitHubResponse<IEnumerable<TResult>> source, Func<TResult, TKey> keySelector) {
-      if (source == null || source.IsOk) {
+      if (source == null || !source.IsOk) {
         return source;
       }
 

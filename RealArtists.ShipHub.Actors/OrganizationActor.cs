@@ -144,12 +144,16 @@
           if (members.IsOk) {
             updated = true;
             _members = members.Result;
+          } else if (!members.Succeeded) {
+            throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
           }
 
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
           if (admins.IsOk) {
             updated = true;
             _admins = admins.Result;
+          } else if (!admins.Succeeded) {
+            throw new Exception($"Unexpected response: OrganizationAdmins {admins.Status}");
           }
 
           if (updated) {
