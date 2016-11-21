@@ -6,8 +6,10 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System.Threading;
   using System.Threading.Tasks;
   using Common;
+  using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.Azure;
   using Microsoft.WindowsAzure.ServiceRuntime;
+  using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
 
@@ -64,6 +66,19 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
         config.Globals.DeploymentId = shipHubConfig.DeploymentId;
+
+        // Logging
+        // Common.Log already configured (once) in OnStart
+        var aiKey = ShipHubCloudConfiguration.Instance.ApplicationInsightsKey;
+        if (!aiKey.IsNullOrWhiteSpace()) {
+          TelemetryConfiguration.Active.InstrumentationKey = aiKey;
+          LogManager.TelemetryConsumers.Add(new Orleans.TelemetryConsumers.AI.AITelemetryConsumer());
+        }
+
+        var raygunKey = ShipHubCloudConfiguration.Instance.RaygunApiKey;
+        if (!raygunKey.IsNullOrWhiteSpace()) {
+          LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(raygunKey));
+        }
 
         // Dependency Injection
         config.UseStartupType<SimpleInjectorProvider>();
