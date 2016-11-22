@@ -8,7 +8,7 @@
     <Instances count="5" />
     <ConfigurationSettings>
       <Setting name="DeploymentId"
-               value="unicorns" />
+               value="shiphub-live-20161122" />
       <Setting name="DataConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
@@ -30,7 +30,7 @@
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
-    <VirtualNetworkSite name="Group ShipHub-Dev shiphub-live-net" />
+    <VirtualNetworkSite name="Group ShipHub-Live shiphub-live-net" />
     <AddressAssignments>
       <InstanceAddress roleName="RealArtists.ShipHub.CloudServices.OrleansSilos">
         <Subnets>

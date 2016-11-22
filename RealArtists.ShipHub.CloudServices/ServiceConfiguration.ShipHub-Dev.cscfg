@@ -8,7 +8,7 @@
     <Instances count="3" />
     <ConfigurationSettings>
       <Setting name="DeploymentId"
-               value="shiphub-dev-20161017" />
+               value="shiphub-dev-20161119" />
       <Setting name="DataConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"

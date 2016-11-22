@@ -68,6 +68,7 @@
   </ItemGroup>
   <ItemGroup>
     <PublishProfile Include="Profiles\ShipHub-Dev.azurePubxml" />
+    <PublishProfile Include="Profiles\ShipHub-Live.azurePubxml" />
   </ItemGroup>
   <!-- Import the target files for this project template -->
   <PropertyGroup>
