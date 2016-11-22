@@ -1,4 +1,5 @@
 namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
+  using System;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
@@ -15,12 +16,27 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
   [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
-    private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
     private readonly ManualResetEvent runCompleteEvent = new ManualResetEvent(false);
 
     private AzureSilo _silo;
+    private CancellationTokenSource _cancellationTokenSource;
 
     public override bool OnStart() {
+      Log.Trace();
+
+      LogTraceListener.Configure();
+
+      var aiKey = ShipHubCloudConfiguration.Instance.ApplicationInsightsKey;
+      if (!aiKey.IsNullOrWhiteSpace()) {
+        TelemetryConfiguration.Active.InstrumentationKey = aiKey;
+        LogManager.TelemetryConsumers.Add(new Orleans.TelemetryConsumers.AI.AITelemetryConsumer());
+      }
+
+      var raygunKey = ShipHubCloudConfiguration.Instance.RaygunApiKey;
+      if (!raygunKey.IsNullOrWhiteSpace()) {
+        LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(raygunKey));
+      }
+
       // Set the maximum number of concurrent connections
       ServicePointManager.DefaultConnectionLimit = 12;
 
@@ -28,28 +44,46 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.
       RoleEnvironment.Changing += RoleEnvironmentChanging;
 
-      LogTraceListener.Configure();
-
       return base.OnStart();
     }
 
     public override void Run() {
+      Log.Trace();
+
       try {
-        RunAsync(cancellationTokenSource.Token).Wait();
+        using (_cancellationTokenSource = new CancellationTokenSource()) {
+          Log.Info("Running worker.");
+          runCompleteEvent.Reset();
+          RunAsync(_cancellationTokenSource.Token).Wait();
+          Log.Info("Worker exited.");
+        }
+      } catch (Exception e) {
+        Log.Exception(e);
+        throw;
       } finally {
         runCompleteEvent.Set();
+        _cancellationTokenSource = null;
       }
     }
 
     public override void OnStop() {
-      cancellationTokenSource.Cancel();
+      Log.Trace();
 
-      if (_silo != null) {
-        _silo.Stop();
-        _silo = null;
+      _cancellationTokenSource?.Cancel();
+
+      var silo = _silo;
+      _silo = null;
+
+      if (silo != null) {
+        Log.Info("Stopping silo.");
+        silo.Stop();
+
+        Log.Info("Waiting for worker to stop.");
+        runCompleteEvent.WaitOne();
+        Log.Info("Worker stopped.");
+      } else {
+        Log.Info("Silo is null. Wat?");
       }
-
-      runCompleteEvent.WaitOne();
 
       RoleEnvironment.Changing -= RoleEnvironmentChanging;
 
@@ -58,42 +92,28 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
     private Task RunAsync(CancellationToken cancellationToken) {
       while (!cancellationToken.IsCancellationRequested) {
-        Trace.TraceInformation("Working");
-
-        var config = AzureSilo.DefaultConfiguration();
-
         var shipHubConfig = new ShipHubCloudConfiguration();
+        var siloConfig = AzureSilo.DefaultConfiguration();
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
-        config.Globals.DeploymentId = shipHubConfig.DeploymentId;
-
-        // Logging
-        // Common.Log already configured (once) in OnStart
-        var aiKey = ShipHubCloudConfiguration.Instance.ApplicationInsightsKey;
-        if (!aiKey.IsNullOrWhiteSpace()) {
-          TelemetryConfiguration.Active.InstrumentationKey = aiKey;
-          LogManager.TelemetryConsumers.Add(new Orleans.TelemetryConsumers.AI.AITelemetryConsumer());
-        }
-
-        var raygunKey = ShipHubCloudConfiguration.Instance.RaygunApiKey;
-        if (!raygunKey.IsNullOrWhiteSpace()) {
-          LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(raygunKey));
-        }
+        siloConfig.Globals.DeploymentId = shipHubConfig.DeploymentId;
 
         // Dependency Injection
-        config.UseStartupType<SimpleInjectorProvider>();
+        siloConfig.UseStartupType<SimpleInjectorProvider>();
 
-        config.AddMemoryStorageProvider();
-        config.AddAzureTableStorageProvider("AzureStore", shipHubConfig.DataConnectionString);
+        siloConfig.AddMemoryStorageProvider();
+        siloConfig.AddAzureTableStorageProvider("AzureStore", shipHubConfig.DataConnectionString);
 
         // It is IMPORTANT to start the silo not in OnStart but in Run.
         // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
-        _silo = new AzureSilo();
-        _silo.Start(config);
+        var silo = new AzureSilo();
+        silo.Start(siloConfig);
+        _silo = silo;
 
         // Block until silo is shutdown
-        _silo.Run();
+        silo.Run();
       }
+
       return Task.CompletedTask;
     }
 
