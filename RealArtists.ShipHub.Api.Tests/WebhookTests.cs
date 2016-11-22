@@ -42,7 +42,7 @@
     private static IMapper CreateMapper() {
       var config = new MapperConfiguration(cfg => {
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
-        cfg.AddProfile<Api.Sync.Messages.DataModelToApiModelProfile>();
+        cfg.AddProfile<Sync.Messages.DataModelToApiModelProfile>();
 
         cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
