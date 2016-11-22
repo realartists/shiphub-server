@@ -1,7 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssues]
   @RepositoryId BIGINT,
   @Issues IssueTableType READONLY,
-  @Labels LabelTableType READONLY,
+  @Labels MappingTableType READONLY,
   @Assignees MappingTableType READONLY
 AS
 BEGIN
@@ -44,23 +44,9 @@ BEGIN
       [Reactions] = [Source].[Reactions]
   OUTPUT INSERTED.Id INTO @Changes (IssueId);
 
-  EXEC [dbo].[BulkUpdateLabels] @RepositoryId = @RepositoryId, @Labels = @Labels
-
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    -- Update repo log entry if we modified RepositoryLabels
-    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
-      SET [RowVersion] = DEFAULT
-    WHERE RepositoryId = @RepositoryId
-      AND [Type] = 'repository'
-
-    -- Signal changes in repo
-    SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId 
-  END
-
   MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT Id AS LabelId, IssueId FROM @Labels
+    SELECT Item1 AS IssueId, Item2 AS LabelId FROM @Labels
   ) as [Source]
   ON ([Target].LabelId = [Source].LabelId AND [Target].IssueId = [Source].IssueId)
   -- Add
