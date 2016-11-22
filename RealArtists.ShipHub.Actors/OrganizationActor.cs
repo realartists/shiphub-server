@@ -56,6 +56,7 @@
         var org = await context.Organizations.SingleOrDefaultAsync(x => x.Id == _orgId);
 
         if (org == null) {
+          this.Info("Cannot activate grain. Organization does not exist.");
           throw new InvalidOperationException($"Organization {_orgId} does not exist and cannot be activated.");
         }
 
@@ -113,6 +114,7 @@
           .ToArrayAsync();
 
         if (syncUserIds.Length == 0) {
+          this.Info("No members with tokens. Cannot sync.");
           DeactivateOnIdle();
           return;
         }
@@ -124,6 +126,7 @@
           var org = await github.Organization(_login, _metadata);
 
           if (org.IsOk) {
+            this.Info("Updating Organization");
             changes.UnionWith(
               await context.UpdateAccount(org.Date, _mapper.Map<AccountTableType>(org.Result))
             );

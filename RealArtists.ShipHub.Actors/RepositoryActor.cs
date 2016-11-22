@@ -78,7 +78,7 @@
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
         _needsIssueTemplateSync = false;
-        Log.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
+        this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
       }
 
       await base.OnActivateAsync();
@@ -104,7 +104,7 @@
     }
 
     public Task SyncIssueTemplate() {
-      Log.Trace();
+      this.Trace();
 
       if (_syncIssueTemplateTimer != null) {
         _syncIssueTemplateTimer.Dispose();
@@ -130,7 +130,7 @@
     }
 
     private async Task SyncIssueTemplateCallback(object state) {
-      Log.Trace();
+      this.Trace();
 
       _syncIssueTemplateTimer.Dispose();
       _syncIssueTemplateTimer = null;
@@ -318,10 +318,10 @@
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
       if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount-1 % PollIssueTemplateSkip == 0))) {
-        Log.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
+        this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
         return new ChangeSummary();
       }
-      Log.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
+      this.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
 
       var prevRootMetadata = _contentsRootMetadata;
       var prevDotGitHubMetadata = _contentsDotGithubMetadata;
@@ -335,7 +335,7 @@
         _contentsRootMetadata = prevRootMetadata;
         _contentsDotGithubMetadata = prevDotGitHubMetadata;
         _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
-        Log.Exception(ex);
+        this.Exception(ex);
         throw;
       }
     }
