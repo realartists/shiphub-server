@@ -73,11 +73,9 @@
     public override async Task OnDeactivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
         // I think all we need to persist is the metadata.
-        await Task.WhenAll(
-          context.UpdateMetadata("Accounts", _userId, _metadata),
-          context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata),
-          context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata)
-        );
+        await context.UpdateMetadata("Accounts", _userId, _metadata);
+        await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
+        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
       }
 
       // TODO: Look into how agressively Orleans deactivates "inactive" grains.

@@ -5,11 +5,8 @@
 
   public class EchoActor : Grain, IEchoActor {
     public Task<string> Echo(string value) {
+      this.Info($"Echo: {value}");
       return Task.FromResult(value);
-    }
-
-    public Task<long> EchoKey() {
-      return Task.FromResult(this.GetPrimaryKeyLong());
     }
   }
 }
