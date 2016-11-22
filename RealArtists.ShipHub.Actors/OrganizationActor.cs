@@ -33,8 +33,8 @@
     private GitHubMetadata _memberMetadata;
 
     // Data
-    private IEnumerable<gh.Account> _members = Array.Empty<gh.Account>();
-    private IEnumerable<gh.Account> _admins = Array.Empty<gh.Account>();
+    private HashSet<long> _members = new HashSet<long>();
+    private HashSet<long> _admins = new HashSet<long>();
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -53,7 +53,9 @@
         _orgId = this.GetPrimaryKeyLong();
 
         // Ensure this organization actually exists
-        var org = await context.Organizations.SingleOrDefaultAsync(x => x.Id == _orgId);
+        var org = await context.Organizations
+          .Include(x => x.OrganizationAccounts)
+          .SingleOrDefaultAsync(x => x.Id == _orgId);
 
         if (org == null) {
           this.Info("Cannot activate grain. Organization does not exist.");
@@ -61,13 +63,22 @@
         }
 
         _login = org.Login;
-        _metadata = org.OrganizationMetadata;
 
-        // TODO: Load member and admin metadata
-        // For now, we just start them null and request the data once.
-        // Be sure to load the current membership/admin data too if you load
-        // the metadata in the future. It's assumed to be populated when
-        // changes are detected.
+        _members = org.OrganizationAccounts
+          .Where(x => !x.Admin)
+          .Select(x => x.UserId)
+          .ToHashSet();
+
+        _admins = org.OrganizationAccounts
+          .Where(x => x.Admin)
+          .Select(x => x.UserId)
+          .ToHashSet();
+
+        // This is kind of a gross hack to save DB fields. I have mixed feelings about it.
+        // MUST MATCH SAVE
+        _metadata = org.Metadata;
+        _memberMetadata = org.MemberMetadata; // RepoMetadataJson behind the scenes
+        _adminMetadata = org.OrganizationMetadata;
       }
 
       await base.OnActivateAsync();
@@ -75,15 +86,18 @@
 
     public override async Task OnDeactivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
-        // I think all we need to persist is the metadata.
-        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _metadata);
-        // TODO: Persist admin and member metadata
+        await Save(context);
       }
 
-      // TODO: Look into how agressively Orleans deactivates "inactive" grains.
-      // We may need to delay deactivation based on sync interest.
-
       await base.OnDeactivateAsync();
+    }
+
+    private async Task Save(ShipHubContext context) {
+      // MUST MATCH LOAD
+      await context.UpdateMetadata("Accounts", _orgId, _metadata);
+      // RepoMetadataJson here IS NOT A BUG, just a nasty hack
+      await context.UpdateMetadata("Accounts", "RepoMetadataJson", _orgId, _memberMetadata);
+      await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
     }
 
     public Task Sync(long forUserId) {
@@ -146,7 +160,8 @@
           var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
           if (members.IsOk) {
             updated = true;
-            _members = members.Result;
+            _members = members.Result.Select(x => x.Id).ToHashSet();
+            this.Info($"Changed. Members: [{string.Join(",", _members.OrderBy(x => x))}]");
           } else if (!members.Succeeded) {
             throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
           }
@@ -154,7 +169,8 @@
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
           if (admins.IsOk) {
             updated = true;
-            _admins = admins.Result;
+            _admins = admins.Result.Select(x => x.Id).ToHashSet();
+            this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
           } else if (!admins.Succeeded) {
             throw new Exception($"Unexpected response: OrganizationAdmins {admins.Status}");
           }
@@ -163,13 +179,12 @@
             changes.UnionWith(
               await context.BulkUpdateAccounts(
                 members.Date,
-                _mapper.Map<IEnumerable<AccountTableType>>(_members.Concat(_admins))));
+                _mapper.Map<IEnumerable<AccountTableType>>(members.Result.Concat(admins.Result))));
 
             var orgMemberChanges = await context.SetOrganizationUsers(
                 _orgId,
-                _members
-                  .Select(x => Tuple.Create(x.Id, false))
-                  .Concat(_admins.Select(x => Tuple.Create(x.Id, true))));
+                _members.Select(x => Tuple.Create(x, false))
+                  .Concat(_admins.Select(x => Tuple.Create(x, true))));
 
             if (!orgMemberChanges.Empty) {
               // Check for subscription changes
