@@ -17,7 +17,7 @@ BEGIN
 
   MERGE INTO Labels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT DISTINCT Id, Name, Color
+    SELECT Id, Name, Color
     FROM @Labels
   ) as [Source]
   ON ([Target].Id = [Source].Id)

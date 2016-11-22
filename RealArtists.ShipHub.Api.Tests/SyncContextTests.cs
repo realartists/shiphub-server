@@ -210,7 +210,7 @@
           CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
           UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
-        await context.BulkUpdateIssues(repo.Id, new[] { issue }, new LabelTableType[0], new MappingTableType[0]);
+        await context.BulkUpdateIssues(repo.Id, new[] { issue }, new MappingTableType[0], new MappingTableType[0]);
 
         var user = context.Accounts.Single(x => x.Id == userAccount.Id);
         user.Token = Guid.NewGuid().ToString();
@@ -239,19 +239,22 @@
             Id = 6001,
             Name = "red",
             Color = "ff0000",
-            IssueId = issue.Id,
           },
           new LabelTableType() {
             Id = 6002,
             Name = "blue",
             Color = "0000ff",
-            IssueId = issue.Id,
           },
         };
         issue.UpdatedAt = issue.UpdatedAt.AddHours(1);
         // Adding some labels to an issue should trigger a new sync of the issue
         // and the repository.
-        await context.BulkUpdateIssues(repo.Id, new[] { issue }, labels, new MappingTableType[0]);
+        await context.BulkUpdateLabels(repo.Id, labels);
+        await context.BulkUpdateIssues(
+          repo.Id,
+          new[] { issue },
+          labels.Select(x => new MappingTableType() { Item1 = issue.Id, Item2 = x.Id }),
+          new MappingTableType[0]);
         await syncContext.Sync();
 
         var repoEntry = logs.Where(x => x.Entity == SyncEntityType.Repository).Select(x => (RepositoryEntry)x.Data).Single();

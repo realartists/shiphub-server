@@ -291,7 +291,7 @@
     }
 
     [Test]
-    public async Task BulkUpdateIssuesCreatesLabels() {
+    public async Task BulkUpdateIssuesMakesLabelAssociations() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
@@ -304,6 +304,26 @@
         });
         await context.SaveChangesAsync();
 
+        await context.BulkUpdateLabels(
+          repo.Id,
+          new[] {
+            new LabelTableType() {
+              Id = 2001,
+              Name = "red",
+              Color = "ff0000",
+            },
+            new LabelTableType() {
+              Id = 2002,
+              Name = "blue",
+              Color = "0000ff",
+            },
+            new LabelTableType() {
+              Id = 2003,
+              Name = "blue",
+              Color = "0000ff",
+            },
+          }
+        );
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
@@ -329,23 +349,17 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2001,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1001,
+            new MappingTableType() {
+              Item1 = 1001,
+              Item2 = 2001,
             },
-            new LabelTableType() {
-              Id = 2002,
-              Name = "blue",
-              Color = "0000ff",
-              IssueId = 1001,
+            new MappingTableType() {
+              Item1 = 1001,
+              Item2 = 2002,
             },
-            new LabelTableType() {
-              Id = 2003,
-              Name = "blue",
-              Color = "0000ff",
-              IssueId = 1002,
+            new MappingTableType() {
+              Item1 = 1002,
+              Item2 = 2003,
             },
           },
           new MappingTableType[0]);
@@ -378,6 +392,16 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
         await context.SaveChangesAsync();
 
+        await context.BulkUpdateLabels(
+          repo.Id,
+          new[] {
+            new LabelTableType() {
+              Id = 2001,
+              Name = "red",
+              Color = "ff0000",
+            },
+          });
+
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
@@ -403,17 +427,13 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2001,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1001,
+            new MappingTableType() {
+              Item1 = 1001,
+              Item2 = 2001,
             },
-            new LabelTableType() {
-              Id = 2001,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1002,
+            new MappingTableType() {
+              Item1 = 1002,
+              Item2 = 2001,
             },
           },
           new MappingTableType[0]);
@@ -432,6 +452,20 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
         await context.SaveChangesAsync();
 
+        await context.BulkUpdateLabels(repo.Id,
+          new[] {
+            new LabelTableType() {
+              Id = 2001,
+              Name = "red",
+              Color = "ff0000",
+            },
+            new LabelTableType() {
+              Id = 2003,
+              Name = "blue",
+              Color = "0000ff",
+            },
+          });
+
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
@@ -457,17 +491,13 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2001,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1001,
+            new MappingTableType() {
+              Item1 = 1001,
+              Item2 = 2001,
             },
-            new LabelTableType() {
-              Id = 2003,
-              Name = "blue",
-              Color = "0000ff",
-              IssueId = 1002,
+            new MappingTableType() {
+              Item1 = 1002,
+              Item2 = 2003,
             },
           },
           new MappingTableType[0]);
@@ -488,11 +518,9 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2003,
-              Name = "blue",
-              Color = "0000ff",
-              IssueId = 1002,
+            new MappingTableType() {
+              Item1 = 1002,
+              Item2 = 2003,
             },
           },
           new MappingTableType[0]);
@@ -505,12 +533,22 @@
     }
 
     [Test]
-    public async Task BulkUpdateIssuesPreservesExistingIssueLabelAssociationsAcrossRepos() {
+    public async Task BulkUpdateIssuesDoesNotDistrurbIssueLabelAssociationsInOtherRepos() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
         var repo2 = TestUtil.MakeTestRepo(context, user.Id, 2002, "repo_b");
         await context.SaveChangesAsync();
+
+        await context.BulkUpdateLabels(
+          repo.Id,
+          new[] {
+            new LabelTableType() {
+              Id = 2001,
+              Name = "red",
+              Color = "ff0000",
+            },
+          });
 
         await context.BulkUpdateIssues(
           repo.Id,
@@ -527,14 +565,22 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2001,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1001,
+            new MappingTableType() {
+              Item1 = 1001,
+              Item2 = 2001,
             },
           },
           new MappingTableType[0]);
+
+        await context.BulkUpdateLabels(
+          repo2.Id,
+          new[] {
+            new LabelTableType() {
+              Id = 2201,
+              Name = "red",
+              Color = "ff0000",
+            },
+          });
 
         await context.BulkUpdateIssues(
           repo2.Id,
@@ -551,19 +597,17 @@
             },
           },
           new[] {
-            new LabelTableType() {
-              Id = 2201,
-              Name = "red",
-              Color = "ff0000",
-              IssueId = 1201,
+            new MappingTableType() {
+              Item1 = 1201,
+              Item2 = 2201,
             },
           },
           new MappingTableType[0]);
 
         var updatedRepo1 = context.Repositories.Single(x => x.Id == repo.Id);
         var updatedRepo2 = context.Repositories.Single(x => x.Id == repo2.Id);
-        Assert.AreEqual(new[] { 2001 }, updatedRepo1.Labels.Select(x => x.Id).ToArray());
-        Assert.AreEqual(new[] { 2201 }, updatedRepo2.Labels.Select(x => x.Id).ToArray());
+        Assert.AreEqual(new long[] { 2001 }, updatedRepo1.Labels.Select(x => x.Id).ToArray());
+        Assert.AreEqual(new long[] { 2201 }, updatedRepo2.Labels.Select(x => x.Id).ToArray());
       };
     }
   }

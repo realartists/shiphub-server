@@ -243,7 +243,6 @@
         Id = x.Id,
         Color = x.Color,
         Name = x.Name,
-        IssueId = payload.Issue.Id,
       });
 
       var assigneeMappings = payload.Issue.Assignees?.Select(x => new MappingTableType() {
@@ -251,7 +250,13 @@
         Item2 = x.Id,
       });
 
-      summary.UnionWith(await Context.BulkUpdateIssues(payload.Repository.Id, issuesMapped, labels, assigneeMappings));
+      summary.UnionWith(
+        await Context.BulkUpdateLabels(payload.Repository.Id, labels),
+        await Context.BulkUpdateIssues(
+          payload.Repository.Id,
+          issuesMapped,
+          payload.Issue.Labels?.Select(x => new MappingTableType() { Item1 = payload.Issue.Id, Item2 = x.Id }),
+          assigneeMappings));
 
       return summary;
     }

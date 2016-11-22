@@ -336,7 +336,7 @@
     public Task<ChangeSummary> BulkUpdateIssues(
       long repositoryId,
       IEnumerable<IssueTableType> issues,
-      IEnumerable<LabelTableType> labels,
+      IEnumerable<MappingTableType> labels,
       IEnumerable<MappingTableType> assignees) {
       var issueParam = CreateTableParameter(
         "Issues",
@@ -380,10 +380,7 @@
         x.Issues = issueParam;
 
         if (labels != null) {
-          if (labels.Count(l => l.IssueId == null) > 0) {
-            throw new ArgumentException("LabelTableType's IssueId most not be null when using BulkUpdateIssues.");
-          }
-          x.Labels = CreateLabelTable("Labels", labels);
+          x.Labels = CreateMappingTable("Labels", labels);
         }
 
         if (assignees != null) {
@@ -435,13 +432,11 @@
           Tuple.Create("Id", typeof(long)),
           Tuple.Create("Color", typeof(string)),
           Tuple.Create("Name", typeof(string)),
-          Tuple.Create("IssueId", typeof(long)),
         },
         x => new object[] {
           x.Id,
           x.Color,
           x.Name,
-          x.IssueId,
         },
         labels);
 
@@ -642,13 +637,11 @@
           Tuple.Create("Id", typeof(long)),
           Tuple.Create("Color", typeof(string)),
           Tuple.Create("Name", typeof(string)),
-          Tuple.Create("IssueId", typeof(long)),
         },
         x => new object[] {
           x.Id,
           x.Color,
           x.Name,
-          x.IssueId,
         },
         labels);
     }
