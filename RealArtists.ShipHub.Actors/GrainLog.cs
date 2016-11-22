@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Actors {
   using System;
-  using System.Diagnostics.CodeAnalysis;
   using System.Runtime.CompilerServices;
   using Orleans;
 
@@ -8,10 +7,9 @@
     /// <summary>
     /// Logs filePath, memberName, and lineNumber to the log
     /// </summary>
-    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "grain", Justification = "Mirror Common.Log API")]
     public static void Trace(this IGrain grain, [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0) {
-      // Would love to add grain info here. Maybe ask James.
-      Common.Log.Trace(filePath, memberName, lineNumber);
+      // Emulate Trace but include Grain identifier
+      grain.Info(string.Empty, filePath, memberName, lineNumber);
     }
 
     /// <summary>
