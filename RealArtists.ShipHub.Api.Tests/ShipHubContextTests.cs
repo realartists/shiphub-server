@@ -291,6 +291,82 @@
     }
 
     [Test]
+    public async Task BulkUpdateLabelsShouldNotDisturbIssueLabelRelationshipsInOtherRepos() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo1 = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo1");
+        var repo2 = TestUtil.MakeTestRepo(context, user.Id, 2002, "repo2");
+        await context.SaveChangesAsync();
+
+        await context.BulkUpdateLabels(repo1.Id, new[] {
+          new LabelTableType() {
+            Id = 1001,
+            Name = "red",
+            Color = "ff0000",
+          },
+        });
+        await context.BulkUpdateLabels(repo2.Id, new[] {
+          new LabelTableType() {
+            Id = 1002,
+            Name = "blue",
+            Color = "0000ff",
+          },
+        });
+
+        await context.BulkUpdateIssues(
+          repo1.Id,
+          new[] {
+            new IssueTableType() {
+              Id = 2001,
+              Number = 1,
+              State = "open",
+              Title = "Some Title",
+              Body = "Some Body",
+              UserId = user.Id,
+              CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+              UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            },
+          },
+          new[] {
+            new MappingTableType() {
+              Item1 = 2001,
+              Item2 = 1001,
+            },
+          },
+          new MappingTableType[0]);
+        await context.BulkUpdateIssues(
+          repo2.Id,
+          new[] {
+            new IssueTableType() {
+              Id = 2002,
+              Number = 1,
+              State = "open",
+              Title = "Some Title",
+              Body = "Some Body",
+              UserId = user.Id,
+              CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+              UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
+            },
+          },
+          new[] {
+            new MappingTableType() {
+              Item1 = 2002,
+              Item2 = 1002,
+            },
+          },
+          new MappingTableType[0]);
+
+        // Deleting all labels in repo1 should not disturb issue label relationships in repo2
+        await context.BulkUpdateLabels(repo1.Id, new LabelTableType[0], complete: true);
+
+        var repo2Issue = context.Issues.Single(x => x.Id == 2002);
+        Assert.AreEqual(new long[] { 1002 }, repo2Issue.Labels.Select(x => x.Id).ToArray(),
+          "IssueLabel relationship in other repo should be undisturbed");
+      }
+    }
+
+
+    [Test]
     public async Task BulkUpdateIssuesMakesLabelAssociations() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
