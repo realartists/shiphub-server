@@ -17,6 +17,8 @@ BEGIN
       INNER JOIN Issues as i ON (i.Id = il.IssueId)
     WHERE i.RepositoryId = @RepositoryId
       AND il.LabelId NOT IN (SELECT Id FROM @Labels)
+
+    SET @Changes = CASE WHEN (@@ROWCOUNT > 0) THEN 1 ELSE @Changes END
   END
 
   MERGE INTO Labels WITH (UPDLOCK SERIALIZABLE) as [Target]
@@ -37,16 +39,16 @@ BEGIN
       Name = [Source].Name,
       Color = [Source].Color;
 
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    SET @Changes = 1
-  
-    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
-    SET [RowVersion] = DEFAULT
-    WHERE RepositoryId = @RepositoryId
-    AND [Type] = 'repository'
-  END
+  SET @Changes = CASE WHEN (@@ROWCOUNT > 0) THEN 1 ELSE @Changes END
 
-  -- Return repository if updated
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId WHERE @Changes = 1
+  IF(@Changes = 1)
+  BEGIN
+    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
+      SET [RowVersion] = DEFAULT
+    WHERE RepositoryId = @RepositoryId
+      AND [Type] = 'repository'
+
+    -- Return repository if updated
+    SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
+  END
 END
