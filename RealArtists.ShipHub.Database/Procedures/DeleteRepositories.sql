@@ -70,6 +70,10 @@ BEGIN
   DELETE FROM Milestones
   WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
+  --Labels
+  DELETE FROM Labels
+  WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
   --Repositories
   DELETE FROM Repositories
   WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = Id)
