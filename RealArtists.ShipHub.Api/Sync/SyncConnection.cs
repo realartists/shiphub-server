@@ -30,7 +30,6 @@
 
   public class SyncConnection : WebSocketHandler, ISyncConnection {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
-    private static readonly Guid _purgeId = new Guid("00000000-0000-0000-0000-000000000002");
 
     // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
