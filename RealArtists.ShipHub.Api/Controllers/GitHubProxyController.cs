@@ -122,11 +122,17 @@
               );
             }
 
+            if (issue.Labels?.Count() > 0) {
+              changes.UnionWith(await context.BulkUpdateLabels(
+                repoId,
+                issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
+            }
+
             changes.UnionWith(
               await context.BulkUpdateIssues(
               repoId,
               _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
-              issue.Labels?.Select(y => new LabelTableType() { ItemId = issue.Id, Color = y.Color, Name = y.Name }),
+              issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
               issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
             );
           }

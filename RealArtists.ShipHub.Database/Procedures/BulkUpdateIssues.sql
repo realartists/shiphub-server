@@ -1,7 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssues]
   @RepositoryId BIGINT,
   @Issues IssueTableType READONLY,
-  @Labels LabelTableType READONLY,
+  @Labels MappingTableType READONLY,
   @Assignees MappingTableType READONLY
 AS
 BEGIN
@@ -44,36 +44,9 @@ BEGIN
       [Reactions] = [Source].[Reactions]
   OUTPUT INSERTED.Id INTO @Changes (IssueId);
 
-  EXEC [dbo].[BulkCreateLabels] @Labels = @Labels
-
-  MERGE INTO RepositoryLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (SELECT L1.Id as LabelId
-    FROM Labels as L1
-      INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
-  ) as [Source]
-  ON ([Target].LabelId = [Source].LabelId AND [Target].RepositoryId = @RepositoryId)
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, LabelId)
-    VALUES (@RepositoryId, LabelId);
-
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    -- Update repo log entry if we modified RepositoryLabels
-    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
-      SET [RowVersion] = DEFAULT
-    WHERE RepositoryId = @RepositoryId
-      AND [Type] = 'repository'
-
-    -- Signal changes in repo
-    SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId 
-  END
-
   MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT L1.Id as LabelId, L2.ItemId as IssueId
-    FROM Labels as L1
-      INNER JOIN @Labels as L2 ON (L1.Color = L2.Color AND L1.Name = L2.Name)
+    SELECT Item1 AS IssueId, Item2 AS LabelId FROM @Labels
   ) as [Source]
   ON ([Target].LabelId = [Source].LabelId AND [Target].IssueId = [Source].IssueId)
   -- Add
@@ -83,7 +56,8 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT Id FROM @Issues)
-    THEN DELETE;
+    THEN DELETE
+  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId);
 
   -- Assignees
   MERGE INTO IssueAssignees WITH(UPDLOCK SERIALIZABLE) as [Target]

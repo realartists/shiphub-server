@@ -5,7 +5,11 @@
   using System.Diagnostics.CodeAnalysis;
 
   public class Label {
+    [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long Id { get; set; }
+
+    [Required]
+    public long RepositoryId { get; set; }
 
     [Required]
     [Column(TypeName = "char")]
@@ -19,7 +23,6 @@
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> Issues { get; set; } = new HashSet<Issue>();
 
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Repository> Repositories { get; set; } = new HashSet<Repository>();
+    public virtual Repository Repository { get; set; }
   }
 }

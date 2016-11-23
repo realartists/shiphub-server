@@ -105,11 +105,6 @@
         .WithMany(e => e.Issues)
         .Map(m => m.ToTable("IssueLabels").MapLeftKey("IssueId").MapRightKey("LabelId"));
 
-      modelBuilder.Entity<Label>()
-        .HasMany(e => e.Repositories)
-        .WithMany(e => e.Labels)
-        .Map(m => m.ToTable("RepositoryLabels").MapLeftKey("LabelId").MapRightKey("RepositoryId"));
-
       modelBuilder.Entity<Repository>()
         .HasMany(e => e.LinkedAccounts)
         .WithRequired(e => e.Repository)
@@ -132,6 +127,11 @@
 
       modelBuilder.Entity<Repository>()
         .HasMany(e => e.Milestones)
+        .WithRequired(e => e.Repository)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Repository>()
+        .HasMany(e => e.Labels)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
 
@@ -336,7 +336,7 @@
     public Task<ChangeSummary> BulkUpdateIssues(
       long repositoryId,
       IEnumerable<IssueTableType> issues,
-      IEnumerable<LabelTableType> labels,
+      IEnumerable<MappingTableType> labels,
       IEnumerable<MappingTableType> assignees) {
       var issueParam = CreateTableParameter(
         "Issues",
@@ -380,7 +380,7 @@
         x.Issues = issueParam;
 
         if (labels != null) {
-          x.Labels = CreateLabelTable("Labels", labels);
+          x.Labels = CreateMappingTable("Labels", labels);
         }
 
         if (assignees != null) {
@@ -420,6 +420,29 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
         x.RepositoryId = repositoryId;
         x.Milestones = tableParam;
+        x.Complete = complete;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateLabels(long repositoryId, IEnumerable<LabelTableType> labels, bool complete = false) {
+      var tableParam = CreateTableParameter(
+        "Labels",
+        "[dbo].[LabelTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("Color", typeof(string)),
+          Tuple.Create("Name", typeof(string)),
+        },
+        x => new object[] {
+          x.Id,
+          x.Color,
+          x.Name,
+        },
+        labels);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateLabels]", x => {
+        x.RepositoryId = repositoryId;
+        x.Labels = tableParam;
         x.Complete = complete;
       });
     }
@@ -481,15 +504,6 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateRepositories]", x => {
         x.Date = date;
         x.Repositories = tableParam;
-      });
-    }
-
-    public Task<ChangeSummary> SetRepositoryLabels(long repositoryId, IEnumerable<LabelTableType> labels) {
-      var labelParam = CreateLabelTable("Labels", labels);
-
-      return ExecuteAndReadChanges("[dbo].[SetRepositoryLabels]", x => {
-        x.RepositoryId = repositoryId;
-        x.Labels = labelParam;
       });
     }
 
@@ -620,12 +634,12 @@
         parameterName,
         "[dbo].[LabelTableType]",
         new[] {
-          Tuple.Create("ItemId", typeof(long)),
+          Tuple.Create("Id", typeof(long)),
           Tuple.Create("Color", typeof(string)),
           Tuple.Create("Name", typeof(string)),
         },
         x => new object[] {
-          x.ItemId,
+          x.Id,
           x.Color,
           x.Name,
         },
