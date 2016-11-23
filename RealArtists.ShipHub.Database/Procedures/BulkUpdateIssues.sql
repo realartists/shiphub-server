@@ -56,7 +56,8 @@ BEGIN
   -- Delete
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT Id FROM @Issues)
-    THEN DELETE;
+    THEN DELETE
+  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId);
 
   -- Assignees
   MERGE INTO IssueAssignees WITH(UPDLOCK SERIALIZABLE) as [Target]
