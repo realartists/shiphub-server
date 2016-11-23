@@ -828,8 +828,10 @@
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
       changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
-      // Expect null if there are no changes to notify about.
-      Assert.Null(changeSummary);
+      // Adding or removing a label changes the issue
+      Assert.NotNull(changeSummary, "should have generated change notification");
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
@@ -843,8 +845,10 @@
       issue.Labels = new Label[] { };
       changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
 
-      // Expect null if there are no changes to notify about.
-      Assert.Null(changeSummary);
+      // Adding or removing a label changes the issue
+      Assert.NotNull(changeSummary, "should have generated change notification");
+      Assert.AreEqual(0, changeSummary.Organizations.Count());
+      Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         var updatedIssue = context.Issues.Where(x => x.Id == testIssue.Id).First();
