@@ -318,16 +318,35 @@
                   entries.Add(entry);
                 }
 
+                // Labels
+                reader.NextResult();
+                while (reader.Read()) {
+                  var entry = new SyncLogEntry() {
+                    Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                    Entity = SyncEntityType.Label,
+                  };
+
+                  if (entry.Action == SyncLogAction.Set) {
+                    entry.Data = new LabelEntry() {
+                      Color = ddr.Color,
+                      Identifier = ddr.Id,
+                      Name = ddr.Name,
+                      Repository = ddr.RepositoryId,
+                    };
+                  } else {
+                    entry.Data = new LabelEntry() { Identifier = ddr.Id };
+                  }
+
+                  entries.Add(entry);
+                }
+
                 // Issue Labels
-                var issueLabels = new Dictionary<long, List<se.Label>>();
+                var issueLabels = new Dictionary<long, List<long>>();
                 reader.NextResult();
                 while (reader.Read()) {
                   issueLabels
                     .Valn((long)ddr.IssueId)
-                    .Add(new se.Label() {
-                      Color = ddr.Color,
-                      Name = ddr.Name,
-                    });
+                    .Add((long)ddr.LabelId);
                 }
 
                 // Issue Assignees
@@ -352,7 +371,7 @@
                       ClosedBy = ddr.ClosedById,
                       CreatedAt = ddr.CreatedAt,
                       Identifier = ddr.Id,
-                      Labels = issueLabels.Val((long)ddr.Id, () => new List<se.Label>()),
+                      Labels = issueLabels.Val((long)ddr.Id, () => new List<long>()),
                       Locked = ddr.Locked,
                       Milestone = ddr.MilestoneId,
                       Number = ddr.Number,
@@ -366,18 +385,6 @@
                       User = ddr.UserId,
                     },
                   });
-                }
-
-                // Repository Labels
-                var repoLabels = new Dictionary<long, List<se.Label>>();
-                reader.NextResult();
-                while (reader.Read()) {
-                  repoLabels
-                    .Valn((long)ddr.RepositoryId)
-                    .Add(new se.Label() {
-                      Color = ddr.Color,
-                      Name = ddr.Name,
-                    });
                 }
 
                 // Repository Assignable Users
@@ -400,7 +407,6 @@
                       Owner = ddr.AccountId,
                       FullName = ddr.FullName,
                       Identifier = ddr.Id,
-                      Labels = repoLabels.Val((long)ddr.Id, () => new List<se.Label>()),
                       Name = ddr.Name,
                       Private = ddr.Private,
                       ShipNeedsWebhookHelp = !(ddr.HasHook || ddr.Admin),

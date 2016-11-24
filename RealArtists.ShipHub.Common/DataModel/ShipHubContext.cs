@@ -594,9 +594,8 @@
      });
     }
 
-    public Task<ChangeSummary> DeleteLabel(long repositoryId, long labelId) {
+    public Task<ChangeSummary> DeleteLabel(long labelId) {
       return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
-        x.RepositoryId = repositoryId;
         x.LabelId = labelId;
       });
     }

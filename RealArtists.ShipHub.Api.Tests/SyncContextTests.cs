@@ -257,19 +257,15 @@
           new MappingTableType[0]);
         await syncContext.Sync();
 
-        var repoEntry = logs.Where(x => x.Entity == SyncEntityType.Repository).Select(x => (RepositoryEntry)x.Data).Single();
-        var repoLabels = repoEntry.Labels.OrderBy(x => x.Name).ToArray();
+        var labelEntries = logs.Where(x => x.Entity == SyncEntityType.Label).Select(x => (LabelEntry)x.Data);
+        var repoLabels = labelEntries.Select(x => x.Identifier).OrderBy(x => x).ToArray();
         var issueEntry = logs.Where(x => x.Entity == SyncEntityType.Issue).Select(x => (IssueEntry)x.Data).Single();
-        var issueLabels = issueEntry.Labels.OrderBy(x => x.Name).ToArray();
+        var issueLabels = issueEntry.Labels.OrderBy(x => x).ToArray();
 
-        Assert.AreEqual("blue", repoLabels[0].Name);
-        Assert.AreEqual("0000ff", repoLabels[0].Color);
-        Assert.AreEqual("red", repoLabels[1].Name);
-        Assert.AreEqual("ff0000", repoLabels[1].Color);
-        Assert.AreEqual("blue", issueLabels[0].Name);
-        Assert.AreEqual("0000ff", issueLabels[0].Color);
-        Assert.AreEqual("red", issueLabels[1].Name);
-        Assert.AreEqual("ff0000", issueLabels[1].Color);
+        Assert.AreEqual(6001, repoLabels[0]);
+        Assert.AreEqual(6002, repoLabels[1]);
+        Assert.AreEqual(6001, issueLabels[0]);
+        Assert.AreEqual(6002, issueLabels[1]);
       }
     }
   }
