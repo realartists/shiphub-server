@@ -1,5 +1,4 @@
 ﻿CREATE PROCEDURE [dbo].[DeleteMilestone]
-  @RepositoryId BIGINT,
   @MilestoneId BIGINT
 AS
 BEGIN
@@ -9,16 +8,12 @@ BEGIN
 
   DELETE FROM Milestones WHERE Id = @MilestoneId
 
-  IF(@@ROWCOUNT > 0)
-  BEGIN
-    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
-      [Delete] = 1,
-      [RowVersion] = DEFAULT
-    WHERE RepositoryId = @RepositoryId
-      AND [Type] = 'milestone'
-      AND ItemId = @MilestoneId
-
-    -- Return repository if updated
-    SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  END
+  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
+    SET
+    [Delete] = 1,
+    [RowVersion] = DEFAULT
+  OUTPUT NULL as OrganizationId, INSERTED.RepositoryId, NULL as UserId
+  WHERE [Type] = 'milestone'
+    AND ItemId = @MilestoneId
+    AND [Delete] = 0
 END

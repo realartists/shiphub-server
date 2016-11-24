@@ -1635,23 +1635,25 @@
       Common.DataModel.User user;
       Common.DataModel.Repository repo;
       Common.DataModel.Hook hook;
-      Common.DataModel.Milestone milestone;
+      MilestoneTableType milestone;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         user = TestUtil.MakeTestUser(context);
         repo = TestUtil.MakeTestRepo(context, user.Id);
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
-        milestone = context.Milestones.Add(new Common.DataModel.Milestone() {
+        await context.SaveChangesAsync();
+
+        // Have to use official methods to make the repo log entries.
+        milestone = new MilestoneTableType() {
           Id = 5001,
-          RepositoryId = repo.Id,
           Number = 1234,
           State = "open",
           Title = "some milestone",
           Description = "whatever",
           CreatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
           UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
-        });
-        await context.SaveChangesAsync();
+        };
+        await context.BulkUpdateMilestones(repo.Id, new[] { milestone });
       }
 
       var payload = new {

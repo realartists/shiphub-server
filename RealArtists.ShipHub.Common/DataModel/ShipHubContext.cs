@@ -588,9 +588,8 @@
       }
     }
 
-    public Task<ChangeSummary> DeleteMilestone(long repositoryId, long milestoneId) {
+    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
       return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
-        x.RepositoryId = repositoryId;
         x.MilestoneId = milestoneId;
      });
     }
