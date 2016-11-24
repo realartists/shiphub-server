@@ -119,7 +119,7 @@
           var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
 
           // first respond with purgeIdentifier
-          await SendJsonAsync(new HelloResponse() { PurgeIdentifier = _purgeId });
+          await SendJsonAsync(new HelloResponse() { PurgeIdentifier = Constants.PurgeIdentifier });
 
           // now start sync
           _syncContext = new SyncContext(_user, this, new SyncVersions(
