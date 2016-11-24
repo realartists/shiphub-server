@@ -14,6 +14,7 @@ BEGIN
 
   -- If this is null the app knows the token is invalid.
   SELECT @UserId as UserId
+
   IF (@UserId IS NULL) RETURN
 
   -- Inform the client of any repos and orgs they can no longer access
@@ -135,11 +136,17 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.[Type] = 'reaction'
 
+    -- Labels
+    SELECT l.ItemId as Id, e.RepositoryId, e.Color, e.Name, l.[Delete]
+    FROM @RepoLogs as l
+      LEFT OUTER JOIN Labels as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.[Type] = 'label'
+
     -- Begin Issues ---------------------------------------------
     -- Issue Labels
-    SELECT il.IssueId, labels.Name, labels.Color
-    FROM Labels as labels
-      INNER JOIN IssueLabels as il ON (labels.Id = il.LabelId)
+    SELECT il.IssueId, il.LabelId
+    FROM IssueLabels as il
       INNER JOIN @RepoLogs as l ON (il.IssueId = l.ItemId AND l.[Type] = 'issue')
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
 
@@ -159,12 +166,6 @@ BEGIN
     -- End Issues ---------------------------------------------
 
     -- Begin Repositories ---------------------------------------------
-    -- Repository Labels
-    SELECT labels.RepositoryId, labels.Name, labels.Color
-    FROM Labels as labels
-      INNER JOIN @RepoLogs as l ON (labels.RepositoryId = l.ItemId AND l.[Type] = 'repository')
-    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-
     -- Repository Assignable Users
     SELECT ra.RepositoryId, ra.AccountId
     FROM RepositoryAccounts as ra

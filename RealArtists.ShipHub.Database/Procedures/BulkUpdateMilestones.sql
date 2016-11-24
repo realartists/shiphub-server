@@ -36,7 +36,7 @@ BEGIN
       UpdatedAt = [Source].UpdatedAt,
       ClosedAt = [Source].ClosedAt,
       DueOn = [Source].DueOn
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
+  OUTPUT ISNULL(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
 
   -- Deleted or edited milestones
   UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET

@@ -72,9 +72,9 @@
       Hook hook = null;
 
       if (type == "org") {
-        hook = Context.Hooks.SingleOrDefault(x => x.OrganizationId == id);
+        hook = await Context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == id);
       } else if (type == "repo") {
-        hook = Context.Hooks.SingleOrDefault(x => x.RepositoryId == id);
+        hook = await Context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == id);
       }
 
       if (hook == null) {
@@ -274,7 +274,7 @@
 
     private async Task<ChangeSummary> HandleMilestone(WebhookIssuePayload payload) {
       if (payload.Action == "deleted") {
-        var summary = await Context.DeleteMilestone(payload.Repository.Id, payload.Milestone.Id);
+        var summary = await Context.DeleteMilestone(payload.Milestone.Id);
         return summary;
       } else {
         var summary = await Context.BulkUpdateMilestones(
@@ -315,8 +315,10 @@
     }
 
     private async Task<ChangeSummary> HandleLabel(WebhookIssuePayload payload) {
-      if (payload.Action == "created") {
-        return await Context.BulkUpdateLabels(
+      switch (payload.Action) {
+        case "created":
+        case "edited":
+          return await Context.BulkUpdateLabels(
           payload.Repository.Id,
           new[] {
             new LabelTableType() {
@@ -325,20 +327,10 @@
               Color = payload.Label.Color,
             },
           });
-      } else if (payload.Action == "deleted") {
-        return await Context.DeleteLabel(payload.Repository.Id, payload.Label.Id);
-      } else if (payload.Action == "edited") {
-        return await Context.BulkUpdateLabels(
-          payload.Repository.Id,
-          new[] {
-            new LabelTableType() {
-              Id = payload.Label.Id,
-              Name = payload.Label.Name,
-              Color = payload.Label.Color,
-            },
-          });
-      } else {
-        throw new ArgumentException("Unexpected action: " + payload.Action);
+        case "deleted":
+          return await Context.DeleteLabel(payload.Label.Id);
+        default:
+          throw new ArgumentException("Unexpected action: " + payload.Action);
       }
     }
   }

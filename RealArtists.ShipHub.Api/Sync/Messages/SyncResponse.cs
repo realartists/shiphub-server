@@ -41,6 +41,9 @@
 
     [EnumMember(Value = "reaction")]
     Reaction,
+
+    [EnumMember(Value = "label")]
+    Label,
   }
 
   public abstract class SyncEntity {

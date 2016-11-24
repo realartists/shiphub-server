@@ -359,7 +359,7 @@
     <Compile Include="Sync\Messages\Entries\CommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\IssueEventEntry.cs" />
     <Compile Include="Sync\Messages\Entries\IssueEntry.cs" />
-    <Compile Include="Sync\Messages\Entries\Label.cs" />
+    <Compile Include="Sync\Messages\Entries\LabelEntry.cs" />
     <Compile Include="Sync\Messages\Entries\MilestoneEntry.cs" />
     <Compile Include="Sync\Messages\Entries\OrganizationEntry.cs" />
     <Compile Include="Sync\Messages\Entries\RepositoryEntry.cs" />

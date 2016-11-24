@@ -20,6 +20,6 @@
     public ReactionSummary ShipReactionSummary { get; set; }
 
     public IEnumerable<long> Assignees { get; set; }
-    public IEnumerable<Label> Labels { get; set; }
+    public IEnumerable<long> Labels { get; set; }
   }
 }

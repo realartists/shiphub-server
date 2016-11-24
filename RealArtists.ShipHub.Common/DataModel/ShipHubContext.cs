@@ -588,16 +588,14 @@
       }
     }
 
-    public Task<ChangeSummary> DeleteMilestone(long repositoryId, long milestoneId) {
+    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
       return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
-        x.RepositoryId = repositoryId;
         x.MilestoneId = milestoneId;
      });
     }
 
-    public Task<ChangeSummary> DeleteLabel(long repositoryId, long labelId) {
+    public Task<ChangeSummary> DeleteLabel(long labelId) {
       return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
-        x.RepositoryId = repositoryId;
         x.LabelId = labelId;
       });
     }
