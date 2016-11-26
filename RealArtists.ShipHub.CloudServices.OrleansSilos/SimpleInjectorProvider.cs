@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Diagnostics.CodeAnalysis;
-  using Api.Sync.Messages;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -47,7 +46,6 @@
       container.Register(
         () => new MapperConfiguration(cfg => {
           cfg.AddProfile<GitHubToDataModelProfile>();
-          cfg.AddProfile<DataModelToApiModelProfile>();
         }).CreateMapper(),
         Lifestyle.Singleton);
 
