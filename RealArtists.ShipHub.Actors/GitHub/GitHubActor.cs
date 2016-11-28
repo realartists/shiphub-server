@@ -20,6 +20,7 @@
 
     private long _userId;
     private GitHubClient _github;
+    private DateTimeOffset? _retryAfter;
 
     // TODO: Overhaul this code and trim/eliminate the pipeline
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
@@ -101,12 +102,29 @@
     private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(4);
 
     public async Task<object> Invoke(MethodInfo method, InvokeMethodRequest request, IGrainMethodInvoker invoker) {
+      if (_retryAfter != null && _retryAfter.Value > DateTimeOffset.UtcNow) {
+        throw new GitHubException($"Abuse reported. Dropping requests until {_retryAfter}");
+      }
+
       await _maxConcurrentRequests.WaitAsync();
+
+      object result;
       try {
-        return await invoker.Invoke(this, request);
+        result = await invoker.Invoke(this, request);
       } finally {
         _maxConcurrentRequests.Release();
       }
+
+      var response = result as GitHubResponse;
+      if (response.Error?.IsAbuse == true) {
+        var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
+
+        if (_retryAfter == null || _retryAfter < retryAfter) {
+          _retryAfter = retryAfter;
+        }
+      }
+
+      return result;
     }
 
     ////////////////////////////////////////////////////////////
