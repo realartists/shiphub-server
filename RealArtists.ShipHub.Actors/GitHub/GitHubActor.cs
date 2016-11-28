@@ -98,7 +98,7 @@
     // Cute hack to limit concurrency.
     ////////////////////////////////////////////////////////////
 
-    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(8);
+    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(4);
 
     public async Task<object> Invoke(MethodInfo method, InvokeMethodRequest request, IGrainMethodInvoker invoker) {
       await _maxConcurrentRequests.WaitAsync();
