@@ -30,6 +30,7 @@
 
   public class SyncConnection : WebSocketHandler, ISyncConnection {
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
+    private const int _MinimumClientBuild = 338;
 
     // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
@@ -117,6 +118,16 @@
 
           // parse message, update local versions
           var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
+
+          // Validate version
+          if (hello.ClientBuild < _MinimumClientBuild) {
+            await SendJsonAsync(new HelloResponse() {
+              Upgrade = new UpgradeDetails() {
+                Required = true
+              }
+            });
+            return;
+          }
 
           // first respond with purgeIdentifier
           await SendJsonAsync(new HelloResponse() { PurgeIdentifier = Constants.PurgeIdentifier });
