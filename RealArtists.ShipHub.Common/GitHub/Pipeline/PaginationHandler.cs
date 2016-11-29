@@ -23,7 +23,7 @@
       return _next.Fetch<T>(client, request);
     }
 
-    public async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector) {
+    public async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
       if (request.Method != HttpMethod.Get) {
         throw new InvalidOperationException("Only GETs are supported for pagination.");
       }
@@ -36,22 +36,31 @@
       // Fetch has the retry logic.
       var result = await _next.Fetch<IEnumerable<T>>(client, request);
 
-      if (result.IsOk && result.Pagination != null) {
-        result = await EnumerateParallel<IEnumerable<T>, T>(client, result);
+      if (result.IsOk
+        && result.Pagination != null
+        && (maxPages == null || maxPages > 1)) {
+        result = await EnumerateParallel<IEnumerable<T>, T>(client, result, maxPages);
       }
 
       return result.Distinct(keySelector);
     }
 
-    private async Task<GitHubResponse<TCollection>> EnumerateParallel<TCollection, TItem>(GitHubClient client, GitHubResponse<TCollection> firstPage)
+    private async Task<GitHubResponse<TCollection>> EnumerateParallel<TCollection, TItem>(GitHubClient client, GitHubResponse<TCollection> firstPage, ushort? maxPages)
       where TCollection : IEnumerable<TItem> {
       var results = new List<TItem>(firstPage.Result);
       IEnumerable<GitHubResponse<TCollection>> batch;
+      var partial = false;
 
       // TODO: Cancellation (for when errors are encountered)?
 
       if (InterpolationEnabled && firstPage.Pagination?.CanInterpolate == true) {
         var pages = firstPage.Pagination.Interpolate();
+
+        if (maxPages < pages.Count()) {
+          partial = true;
+          pages = pages.Take((int)maxPages - 1);
+        }
+
         var pageRequestors = pages
           .Select(page => {
             Func<Task<GitHubResponse<TCollection>>> requestor = () => {
@@ -61,7 +70,6 @@
 
             return requestor;
           }).ToArray();
-
 
         // Check if we can request all the pages within the limit.
         if (firstPage.RateLimit.RateLimitRemaining < pageRequestors.Length) {
@@ -75,21 +83,34 @@
         foreach (var response in batch) {
           if (response.IsOk) {
             results.AddRange(response.Result);
+          } else if (maxPages != null) {
+            // Return results up to this point.
+            partial = true;
+            break;
           } else {
             return response;
           }
         }
       } else { // Walk in order
         var current = firstPage;
-        while (current.Pagination?.Next != null) {
+        ushort page = 0;
+        while (current.Pagination?.Next != null
+          && (maxPages == null || page < maxPages)) {
+
           var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
           current = await _next.Fetch<TCollection>(client, nextReq);
 
           if (current.IsOk) {
             results.AddRange(current.Result);
+          } else if (maxPages != null) {
+            // Return results up to this point.
+            partial = true;
+            break;
           } else {
             return current;
           }
+
+          ++page;
         }
         // Just use the last request.
         batch = new[] { current };
@@ -98,6 +119,11 @@
       // Keep cache and other headers from first page.
       var final = firstPage;
       final.Result = (TCollection)(IEnumerable<TItem>)results;
+
+      // Clear cache data if partial result
+      if (partial) {
+        final.CacheData = null;
+      }
 
       var rateLimit = final.RateLimit;
       foreach (var req in batch) {
@@ -114,14 +140,25 @@
       return final;
     }
 
-    public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batchTasks) {
+    public async Task<IEnumerable<T>> Batch<T>(IEnumerable<Func<Task<T>>> batchTasks)
+      where T : GitHubResponse {
       var tasks = new List<Task<T>>();
+      var abort = false;
       using (var limit = new SemaphoreSlim(PerFetchConcurrencyLimit, PerFetchConcurrencyLimit)) {
         foreach (var item in batchTasks) {
           await limit.WaitAsync();
 
+          if (abort) {
+            break;
+          }
+
           tasks.Add(Task.Run(async delegate {
             var response = await item();
+
+            if (!response.Succeeded) {
+              abort = true;
+            }
+
             limit.Release();
             return response;
           }));

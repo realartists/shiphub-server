@@ -50,8 +50,8 @@
       return Handler.Fetch<T>(this, request);
     }
 
-    private Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector) {
-      return Handler.FetchPaged(this, request, keySelector);
+    private Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
+      return Handler.FetchPaged(this, request, keySelector, maxPages);
     }
 
     /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
