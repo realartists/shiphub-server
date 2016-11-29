@@ -47,7 +47,13 @@
           .Where(x => x.AccessToken == client.AccessToken)
           .Where(x => x.Key == key)
           .SingleOrDefaultAsync();
-        request.CacheOptions = cacheOptions?.Metadata;
+
+        if (cacheOptions != null) {
+          // End goal is to handle caching explicitly and deprecate this handler.
+          // To start, log when it's used.
+          Log.Info($"Injecting sneaky cache data for ({client.UserInfo}) GET {key}");
+          request.CacheOptions = cacheOptions.Metadata;
+        }
       }
     }
 
