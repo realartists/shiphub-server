@@ -216,7 +216,7 @@
         var env = await MakeEnvironment(context);
 
         env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
-        env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
 
         await context.SaveChangesAsync();
 
