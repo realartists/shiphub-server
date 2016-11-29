@@ -88,7 +88,7 @@
 
     private Lazy<ISet<string>> _chargeBeeWebhookIncludeOnlyList = new Lazy<ISet<string>>(() => {
       var list = GetSetting("ChargeBeeWebhookIncludeOnlyList");
-      if (list != null) {
+      if (!string.IsNullOrWhiteSpace(list)) {
         return list.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
       }
       return null;
@@ -97,7 +97,7 @@
 
     private Lazy<ISet<string>> _chargeBeeWebhookExcludeList = new Lazy<ISet<string>>(() => {
       var list = GetSetting("ChargeBeeWebhookExcludeList");
-      if (list != null) {
+      if (!string.IsNullOrWhiteSpace(list)) {
         return list.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToHashSet();
       }
       return null;
