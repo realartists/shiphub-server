@@ -17,6 +17,8 @@
   using QueueClient;
 
   public class RepositoryActor : Grain, IRepositoryActor {
+    private const int ChunkMaxPages = 75;
+
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
@@ -91,19 +93,19 @@
 
     public override async Task OnDeactivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
-        // I think all we need to persist is the metadata.
-        await context.UpdateMetadata("Repositories", _repoId, _metadata);
-        await context.UpdateMetadata("Repositories", "AssignableMetadataJson", _repoId, _assignableMetadata);
-        await context.UpdateMetadata("Repositories", "IssueMetadataJson", _repoId, _issueMetadata);
-        await context.UpdateMetadata("Repositories", "LabelMetadataJson", _repoId, _labelMetadata);
-        await context.UpdateMetadata("Repositories", "MilestoneMetadataJson", _repoId, _milestoneMetadata);
-        await context.UpdateMetadata("Repositories", "ContentsRootMetadataJson", _repoId, _contentsRootMetadata);
-        await context.UpdateMetadata("Repositories", "ContentsDotGithubMetadataJson", _repoId, _contentsDotGithubMetadata);
-        await context.UpdateMetadata("Repositories", "ContentsIssueTemplateMetadataJson", _repoId, _contentsIssueTemplateMetadata);
-      }
+        var repo = await context.Repositories.SingleAsync(x => x.Id == _repoId);
+        repo.Metadata = _metadata;
+        repo.AssignableMetadata = _assignableMetadata;
+        repo.IssueMetadata = _issueMetadata;
+        repo.IssueSince = _issueSince;
+        repo.LabelMetadata = _labelMetadata;
+        repo.MilestoneMetadata = _milestoneMetadata;
+        repo.ContentsRootMetadata = _contentsRootMetadata;
+        repo.ContentsDotGitHubMetadata = _contentsDotGithubMetadata;
+        repo.ContentsIssueTemplateMetadata = _contentsIssueTemplateMetadata;
 
-      // TODO: Look into how agressively Orleans deactivates "inactive" grains.
-      // We may need to delay deactivation based on sync interest.
+        await context.SaveChangesAsync();
+      }
 
       await base.OnDeactivateAsync();
     }
@@ -414,7 +416,7 @@
       var changes = new ChangeSummary();
 
       if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
-        var issueResponse = await github.Issues(_fullName, null, _issueMetadata);
+        var issueResponse = await github.Issues(_fullName, _issueSince, ChunkMaxPages, _issueMetadata);
         if (issueResponse.IsOk) {
           var issues = issueResponse.Result;
 
@@ -441,6 +443,12 @@
               issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
               issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
           ));
+
+          if (issues.Any()) {
+            // Ensure we don't miss any when we hit the page limit.
+            _issueSince = issues.Max(x => x.UpdatedAt).AddSeconds(-1);
+            await context.UpdateRepositoryIssueSince(_repoId, _issueSince);
+          }
         }
 
         _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
