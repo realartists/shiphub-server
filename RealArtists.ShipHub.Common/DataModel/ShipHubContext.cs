@@ -206,6 +206,14 @@
         new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
     }
 
+    public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
+      return Database.ExecuteSqlCommandAsync(
+        TransactionalBehavior.DoNotEnsureTransaction,
+        $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",
+        new SqlParameter("IssueSince", SqlDbType.DateTimeOffset) { Value = issueSince },
+        new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
+    }
+
     public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
       // This can happen sometimes and doesn't make sense to handle until here.
       // Obviously, don't update.

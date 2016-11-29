@@ -40,6 +40,9 @@
     private GitHubMetadata _contentsDotGithubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
 
+    // Issue chunk tracking
+    private DateTimeOffset _issueSince;
+
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
@@ -70,6 +73,7 @@
         _metadata = repo.Metadata;
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
+        _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
         _contentsRootMetadata = repo.ContentsRootMetadata;
