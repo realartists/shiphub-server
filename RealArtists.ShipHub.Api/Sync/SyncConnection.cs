@@ -208,6 +208,7 @@
     }
 
     private IObservable<T> LogError<T>(Exception exception) {
+      Log.Exception(exception, _user.Login);
 #if DEBUG
       Debugger.Break();
 #endif
