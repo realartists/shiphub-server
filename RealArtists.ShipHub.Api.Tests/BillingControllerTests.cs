@@ -569,7 +569,7 @@
           });
 
           var controller = new BillingController(Configuration, null);
-          var response = await controller.Reactivate("someHostedPageId", "succeeded");
+          var response = controller.Reactivate("someHostedPageId", "succeeded");
           Assert.IsInstanceOf<RedirectResult>(response);
           Assert.AreEqual("https://realartists-test.chargebee.com/pages/v2/someHostedPageId/thank_you", ((RedirectResult)response).Location.AbsoluteUri);
 

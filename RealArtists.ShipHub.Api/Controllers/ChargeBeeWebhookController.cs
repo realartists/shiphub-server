@@ -41,7 +41,6 @@
   }
 
   public class ChargeBeeWebhookSubscription {
-    public long ActivatedAt { get; set; }
     public long CurrentTermEnd { get; set; }
     public string PlanId { get; set; }
     public string Status { get; set; }
@@ -459,12 +458,6 @@
 
       if (payload.EventType == "customer_deleted") {
         incomingVersion = payload.Content.Customer.ResourceVersion;
-      } else if (payload.EventType == "subscription_reactivated") {
-        // The "resource_version" field on "subscription_reactivatd" events
-        // is bogus - ChargeBee says they'll work on a fix.  In the meantime, we
-        // can use the "activated_at" column to get a timestamp - it just doesn't
-        // have millis resolution.
-        incomingVersion = payload.Content.Subscription.ActivatedAt * 1000;
       } else {
         incomingVersion = payload.Content.Subscription.ResourceVersion;
       }
