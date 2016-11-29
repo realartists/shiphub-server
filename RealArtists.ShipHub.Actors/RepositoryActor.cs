@@ -103,16 +103,9 @@
       await base.OnDeactivateAsync();
     }
 
-    public Task SyncIssueTemplate() {
-      this.Trace();
-
-      if (_syncIssueTemplateTimer != null) {
-        _syncIssueTemplateTimer.Dispose();
-      }
-      _needsIssueTemplateSync = true;
-      _syncIssueTemplateTimer = RegisterTimer(SyncIssueTemplateCallback, null, SyncIssueTemplateHysteresis, TimeSpan.MaxValue);
-      return Task.CompletedTask;
-    }
+    // ////////////////////////////////////////////////////////////
+    // Utility Functions
+    // ////////////////////////////////////////////////////////////
 
     private async Task<GitHubActorPool> GetRepositoryActorPool(ShipHubContext context) {
       // TODO: Keep this cached and current instead of looking it up every time.
@@ -129,30 +122,9 @@
       return new GitHubActorPool(_grainFactory, syncUserIds);
     }
 
-    private async Task SyncIssueTemplateCallback(object state) {
-      this.Trace();
-
-      _syncIssueTemplateTimer.Dispose();
-      _syncIssueTemplateTimer = null;
-
-      if (!_needsIssueTemplateSync) {
-        return;
-      }
-
-      using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRepositoryActorPool(context);
-
-        if (github == null) {
-          DeactivateOnIdle(); // Sync may not even be running.
-          return; 
-        }
-
-        var changes = await UpdateIssueTemplate(context, github);
-        if (!changes.Empty) {
-          await _queueClient.NotifyChanges(changes);
-        }
-      }
-    }
+    // ////////////////////////////////////////////////////////////
+    // Sync
+    // ////////////////////////////////////////////////////////////
 
     public Task Sync(long forUserId) {
       // For now, calls to sync just indicate interest in syncing.
@@ -188,102 +160,15 @@
           return;
         }
 
-        // Update repo
-        if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
-          var repo = await github.Repository(_fullName, _metadata);
-
-          if (repo.IsOk) {
-            changes.UnionWith(
-              await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }))
-            );
-          }
-
-          // Don't update until saved.
-          _metadata = GitHubMetadata.FromResponse(repo);
-        }
-
-        var issueTemplateChanges = await UpdateIssueTemplate(context, github);
-        changes.UnionWith(issueTemplateChanges);
-
-        // Update Assignees
-        if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
-          var assignees = await github.Assignable(_fullName, _assignableMetadata);
-          if (assignees.IsOk) {
-            changes.UnionWith(
-              await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)),
-              await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id))
-            );
-          }
-
-          _assignableMetadata = GitHubMetadata.FromResponse(assignees);
-        }
-
-        // Update Labels
-        if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
-          var labels = await github.Labels(_fullName, _labelMetadata);
-          if (labels.IsOk) {
-            changes.UnionWith(
-              await context.BulkUpdateLabels(
-                _repoId,
-                labels.Result.Select(x => new LabelTableType() {
-                  Id = x.Id,
-                  Color = x.Color,
-                  Name = x.Name
-                }),
-                complete: true)
-            );
-          }
-
-          _labelMetadata = GitHubMetadata.FromResponse(labels);
-        }
-
-        // Update Milestones
-        if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
-          var milestones = await github.Milestones(_fullName, _milestoneMetadata);
-          if (milestones.IsOk) {
-            changes.UnionWith(
-              await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result))
-            );
-          }
-
-          _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
-        }
-
-        // Update Issues
-        // TODO: Do this incrementally (since, or skipping to last page, etc)
-        if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
-          var issueResponse = await github.Issues(_fullName, null, _issueMetadata);
-          if (issueResponse.IsOk) {
-            var issues = issueResponse.Result;
-
-            var accounts = issues
-              .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
-              .Where(x => x != null)
-              .Distinct(x => x.Id);
-
-            // TODO: Store (hashes? modified date?) in this object and only apply changes.
-            var milestones = issues
-              .Select(x => x.Milestone)
-              .Where(x => x != null)
-              .Distinct(x => x.Id);
-
-            changes.UnionWith(
-              await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)),
-              await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)),
-              await context.BulkUpdateLabels(
-                _repoId,
-                issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)),
-              await context.BulkUpdateIssues(
-                _repoId,
-                _mapper.Map<IEnumerable<IssueTableType>>(issues),
-                issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
-                issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
-            ));
-          }
-
-          _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
-        }
-
+        changes.UnionWith(
+          await UpdateRepositoryDetails(context, github),
+          await UpdateIssueTemplate(context, github),
+          await UpdateRepositoryAssignees(context, github),
+          await UpdateRepositoryLabels(context, github),
+          await UpdateRepositoryMilestones(context, github),
+          await UpdateRepositoryIssues(context, github)
+        );
+        
         /* Comments
          * 
          * For now primary population is on demand.
@@ -308,8 +193,59 @@
       if (!changes.IsEmpty) {
         await _queueClient.NotifyChanges(changes);
       }
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryDetails(ShipHubContext context, GitHubActorPool github) {
+      var changes = ChangeSummary.Empty;
+
+      if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
+        var repo = await github.Repository(_fullName, _metadata);
+
+        if (repo.IsOk) {
+          changes = await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }));
+        }
+
+        // Don't update until saved.
+        _metadata = GitHubMetadata.FromResponse(repo);
       }
 
+      return changes;
+    }
+
+    public Task SyncIssueTemplate() {
+      this.Trace();
+
+      if (_syncIssueTemplateTimer != null) {
+        _syncIssueTemplateTimer.Dispose();
+      }
+      _needsIssueTemplateSync = true;
+      _syncIssueTemplateTimer = RegisterTimer(SyncIssueTemplateCallback, null, SyncIssueTemplateHysteresis, TimeSpan.MaxValue);
+      return Task.CompletedTask;
+    }
+
+    private async Task SyncIssueTemplateCallback(object state) {
+      this.Trace();
+
+      _syncIssueTemplateTimer.Dispose();
+      _syncIssueTemplateTimer = null;
+
+      if (!_needsIssueTemplateSync) {
+        return;
+      }
+
+      using (var context = _contextFactory.CreateInstance()) {
+        var github = await GetRepositoryActorPool(context);
+
+        if (github == null) {
+          DeactivateOnIdle(); // Sync may not even be running.
+          return;
+        }
+
+        var changes = await UpdateIssueTemplate(context, github);
+        if (!changes.IsEmpty) {
+          await _queueClient.NotifyChanges(changes);
+        }
+      }
     }
 
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
@@ -319,7 +255,7 @@
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
-      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount-1 % PollIssueTemplateSkip == 0))) {
+      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount - 1 % PollIssueTemplateSkip == 0))) {
         this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
         return new ChangeSummary();
       }
@@ -410,6 +346,102 @@
       }
 
       return context.SetRepositoryIssueTemplate(_repoId, templateStr);
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryAssignees(ShipHubContext context, GitHubActorPool github) {
+      var changes = new ChangeSummary();
+
+      // Update Assignees
+      if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
+        var assignees = await github.Assignable(_fullName, _assignableMetadata);
+        if (assignees.IsOk) {
+          changes.UnionWith(
+            await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)),
+            await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id))
+          );
+        }
+
+        _assignableMetadata = GitHubMetadata.FromResponse(assignees);
+      }
+
+      return changes;
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryLabels(ShipHubContext context, GitHubActorPool github) {
+      var changes = ChangeSummary.Empty;
+
+      if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
+        var labels = await github.Labels(_fullName, _labelMetadata);
+        if (labels.IsOk) {
+          changes = await context.BulkUpdateLabels(
+            _repoId,
+            labels.Result.Select(x => new LabelTableType() {
+              Id = x.Id,
+              Color = x.Color,
+              Name = x.Name
+            }),
+            complete: true
+          );
+        }
+
+        _labelMetadata = GitHubMetadata.FromResponse(labels);
+      }
+
+      return changes;
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryMilestones(ShipHubContext context, GitHubActorPool github) {
+      var changes = ChangeSummary.Empty;
+
+      if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
+        var milestones = await github.Milestones(_fullName, _milestoneMetadata);
+        if (milestones.IsOk) {
+          changes = await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result));
+        }
+
+        _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
+      }
+
+      return changes;
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryIssues(ShipHubContext context, GitHubActorPool github) {
+      var changes = new ChangeSummary();
+
+      if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
+        var issueResponse = await github.Issues(_fullName, null, _issueMetadata);
+        if (issueResponse.IsOk) {
+          var issues = issueResponse.Result;
+
+          var accounts = issues
+            .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
+            .Where(x => x != null)
+            .Distinct(x => x.Id);
+
+          // TODO: Store (hashes? modified date?) in this object and only apply changes.
+          var milestones = issues
+            .Select(x => x.Milestone)
+            .Where(x => x != null)
+            .Distinct(x => x.Id);
+
+          changes.UnionWith(
+            await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)),
+            await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)),
+            await context.BulkUpdateLabels(
+              _repoId,
+              issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)),
+            await context.BulkUpdateIssues(
+              _repoId,
+              _mapper.Map<IEnumerable<IssueTableType>>(issues),
+              issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
+              issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
+          ));
+        }
+
+        _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
+      }
+
+      return changes;
     }
   }
 }
