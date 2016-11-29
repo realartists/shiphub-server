@@ -129,12 +129,6 @@
 
     ////////////////////////////////////////////////////////////
 
-    public Task<GitHubRateLimit> GetLatestRateLimit() {
-      return Task.FromResult(_github.RateLimit);
-    }
-
-    ////////////////////////////////////////////////////////////
-
     public Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook) {
       return _github.AddOrganizationWebhook(orgName, hook);
     }

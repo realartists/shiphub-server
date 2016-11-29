@@ -55,9 +55,6 @@
   /// Interacts with GitHub on behalf of a user, using their credentials.
   /// </summary>
   public interface IGitHubActor : Orleans.IGrainWithIntegerKey, IGitHubPoolable, IGitHubOrganizationAdmin, IGitHubRepositoryAdmin {
-    [SuppressMessage("Microsoft.Design", "CA1024:UsePropertiesWhereAppropriate", Justification = "Can't have properties on grain interfaces.")]
-    Task<GitHubRateLimit> GetLatestRateLimit();
-
     Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login);
 
     // Implict user scope and permissions (My _)
