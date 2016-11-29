@@ -123,6 +123,7 @@
       }
     }
 
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "state")]
     [AllowAnonymous]
     [HttpGet]
     [Route("reactivate")]
