@@ -6,6 +6,7 @@
   using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces;
+  using ActorInterfaces.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -107,7 +108,7 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<GitHubActorPool> GetRepositoryActorPool(ShipHubContext context) {
+    private async Task<IGitHubPoolable> GetRepositoryActorPool(ShipHubContext context) {
       // TODO: Keep this cached and current instead of looking it up every time.
       var syncUserIds = await context.AccountRepositories
           .Where(x => x.RepositoryId == _repoId)
@@ -168,7 +169,7 @@
           await UpdateRepositoryMilestones(context, github),
           await UpdateRepositoryIssues(context, github)
         );
-        
+
         /* Comments
          * 
          * For now primary population is on demand.
@@ -195,7 +196,7 @@
       }
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryDetails(ShipHubContext context, GitHubActorPool github) {
+    private async Task<IChangeSummary> UpdateRepositoryDetails(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
@@ -254,7 +255,7 @@
             && GitHubClient.IssueTemplateRegex.IsMatch(file.Name);
     }
 
-    private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
+    private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
       if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount - 1 % PollIssueTemplateSkip == 0))) {
         this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
         return new ChangeSummary();
@@ -278,7 +279,7 @@
       }
     }
 
-    private async Task<ChangeSummary> _UpdateIssueTemplate(ShipHubContext context, GitHubActorPool github) {
+    private async Task<ChangeSummary> _UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
       if (_contentsIssueTemplateMetadata == null) {
         // then we don't have any known IssueTemplate, we have to search for it
         var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
@@ -348,7 +349,7 @@
       return context.SetRepositoryIssueTemplate(_repoId, templateStr);
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryAssignees(ShipHubContext context, GitHubActorPool github) {
+    private async Task<IChangeSummary> UpdateRepositoryAssignees(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
       // Update Assignees
@@ -367,7 +368,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryLabels(ShipHubContext context, GitHubActorPool github) {
+    private async Task<IChangeSummary> UpdateRepositoryLabels(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
@@ -390,7 +391,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryMilestones(ShipHubContext context, GitHubActorPool github) {
+    private async Task<IChangeSummary> UpdateRepositoryMilestones(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
@@ -405,7 +406,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryIssues(ShipHubContext context, GitHubActorPool github) {
+    private async Task<IChangeSummary> UpdateRepositoryIssues(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
       if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
