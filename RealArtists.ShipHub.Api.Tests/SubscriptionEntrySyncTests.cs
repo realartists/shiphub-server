@@ -94,6 +94,24 @@
     }
 
     [Test]
+    public async Task ModeIsFreeWhenTrialHasEnded() {
+      using (var context = new ShipHubContext()) {
+        Environment env = await MakeEnvironment(context);
+
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = env.user1.Id,
+          State = SubscriptionState.InTrial,
+          TrialEndDate = DateTimeOffset.UtcNow.AddHours(-1),
+        });
+        await context.SaveChangesAsync();
+
+        var entry = await GetSubscriptionResponse(env.user1);
+        Assert.AreEqual(SubscriptionMode.Free, entry.Mode, "Mode is free if trial has passed.");
+        Assert.Null(entry.TrialEndDate, "should have no trial end date");
+      }
+    }
+
+    [Test]
     public async Task ModeIsTrialWhenInTrial() {
       using (var context = new ShipHubContext()) {
         Environment env = await MakeEnvironment(context);
@@ -101,6 +119,7 @@
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
           State = SubscriptionState.InTrial,
+          TrialEndDate = DateTimeOffset.UtcNow.AddDays(15),
         });
         await context.SaveChangesAsync();
 
@@ -175,7 +194,7 @@
       using (var context = new ShipHubContext()) {
         Environment env = await MakeEnvironment(context);
 
-        var trialEndDate = DateTimeOffset.Parse("10/1/2016 08:00:00 PM +00:00", null, DateTimeStyles.AssumeUniversal);
+        var trialEndDate = DateTimeOffset.UtcNow.AddDays(15);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
