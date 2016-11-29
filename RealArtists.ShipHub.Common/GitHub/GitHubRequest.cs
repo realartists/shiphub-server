@@ -90,6 +90,13 @@
     }
   }
 
+  /// <summary>
+  /// Used to represent a GitHub API request with a body.
+  /// 
+  /// Special care has been taken to ensure all member variables are simple objects
+  /// that can be serialized across Orleans process boundaries.
+  /// </summary>
+  /// <typeparam name="T">The type of the body content.</typeparam>
   public class GitHubRequest<T> : GitHubRequest
     where T : class {
     public GitHubRequest(HttpMethod method, string path, T body)

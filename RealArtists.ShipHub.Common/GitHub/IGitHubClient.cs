@@ -6,7 +6,6 @@
     Uri ApiRoot { get; }
     Guid CorrelationId { get; }
     string AccessToken { get; }
-    IGitHubHandler Handler { get; set; }
     GitHubRateLimit RateLimit { get; }
     ProductInfoHeaderValue UserAgent { get; }
     string UserInfo { get; }

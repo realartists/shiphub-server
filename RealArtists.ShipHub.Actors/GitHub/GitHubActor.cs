@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Net;
   using System.Reflection;
   using System.Threading;
   using System.Threading.Tasks;
@@ -68,16 +69,9 @@
           };
         }
 
-        // TODO: Orleans has a concept of state/correlation that we can use
-        // instead of this hack or adding parameters to every call.
         var handler = GetOrCreateHandlerPipeline(_shipContextFactory);
-        // Revoke expired and invalid tokens
-        handler = new TokenRevocationHandler(handler, async token => {
-          using (var ctx = _shipContextFactory.CreateInstance()) {
-            await ctx.RevokeAccessToken(token);
-          }
-          DeactivateOnIdle();
-        });
+        // TODO: Orleans has a concept of state/correlation that we can use
+        // instead of Guid.NewGuid() or adding parameters to every call.
         _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
       }
 
@@ -96,7 +90,10 @@
     }
 
     ////////////////////////////////////////////////////////////
-    // Cute hack to limit concurrency.
+    // All per request limiting and checking
+    // * Limit concurrency
+    // * Clear invalid tokens
+    // * More?
     ////////////////////////////////////////////////////////////
 
     private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(4);
@@ -116,12 +113,22 @@
       }
 
       var response = result as GitHubResponse;
+
+      // Abuse detection and throttling.
       if (response.Error?.IsAbuse == true) {
         var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
 
         if (_retryAfter == null || _retryAfter < retryAfter) {
           _retryAfter = retryAfter;
         }
+      }
+
+      // Token revocation handling.
+      if (response?.Status == HttpStatusCode.Unauthorized) {
+        using (var ctx = _shipContextFactory.CreateInstance()) {
+          await ctx.RevokeAccessToken(_github.AccessToken);
+        }
+        DeactivateOnIdle();
       }
 
       return result;
