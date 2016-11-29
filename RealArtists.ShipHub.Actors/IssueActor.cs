@@ -403,7 +403,7 @@
         }
       }
 
-      if (!changes.Empty) {
+      if (!changes.IsEmpty) {
         tasks.Add(_queueClient.NotifyChanges(changes));
       }
 

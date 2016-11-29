@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel.Types {
+  using System;
   using System.Collections.Generic;
   using System.Linq;
 
@@ -9,11 +10,18 @@
   }
 
   public class ChangeSummary : IChangeSummary {
+    public static IChangeSummary Empty { get; } = new EmptyChangeSummary();
+    private class EmptyChangeSummary : IChangeSummary {
+      public IEnumerable<long> Organizations { get; } = Array.Empty<long>();
+      public IEnumerable<long> Repositories { get; } = Array.Empty<long>();
+      public IEnumerable<long> Users { get; } = Array.Empty<long>();
+    }
+
     public ISet<long> Organizations { get; private set; } = new HashSet<long>();
     public ISet<long> Repositories { get; private set; } = new HashSet<long>();
     public ISet<long> Users { get; private set; } = new HashSet<long>();
 
-    public bool Empty { get { return Organizations.Count == 0 && Repositories.Count == 0 && Users.Count == 0; } }
+    public bool IsEmpty { get { return Organizations.Count == 0 && Repositories.Count == 0 && Users.Count == 0; } }
 
     IEnumerable<long> IChangeSummary.Organizations { get { return Organizations; } }
     IEnumerable<long> IChangeSummary.Repositories { get { return Repositories; } }
@@ -39,10 +47,16 @@
     }
 
     public void UnionWith(params IChangeSummary[] others) {
-      foreach (var other in others) {
-        Organizations.UnionWith(other.Organizations);
-        Repositories.UnionWith(other.Repositories);
-        Users.UnionWith(other.Users);
+      if (others != null) {
+        foreach (var other in others) {
+          if (other == null) {
+            continue;
+          }
+
+          Organizations.UnionWith(other.Organizations);
+          Repositories.UnionWith(other.Repositories);
+          Users.UnionWith(other.Users);
+        }
       }
     }
 

@@ -149,7 +149,7 @@
             var userOrgChanges = await context.SetUserOrganizations(_userId, orgs.Result.Select(x => x.Organization.Id));
             changes.UnionWith(userOrgChanges);
 
-            if (!userOrgChanges.Empty) {
+            if (!userOrgChanges.IsEmpty) {
               // When this user's org membership changes, re-evaluate whether or not they
               // should have a complimentary personal subscription.
               tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
@@ -209,7 +209,7 @@
       }
 
       // Send Changes.
-      if (!changes.Empty) {
+      if (!changes.IsEmpty) {
         tasks.Add(_queueClient.NotifyChanges(changes));
       }
 

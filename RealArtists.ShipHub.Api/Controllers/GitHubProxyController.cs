@@ -137,7 +137,7 @@
             );
           }
 
-          if (!changes.Empty) {
+          if (!changes.IsEmpty) {
             await _queueClient.NotifyChanges(changes);
           }
         }

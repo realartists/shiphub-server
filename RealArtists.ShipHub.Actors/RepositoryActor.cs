@@ -179,7 +179,6 @@
 
       _syncCount++;
 
-      var tasks = new List<Task>();
       var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
         var github = await GetRepositoryActorPool(context);
@@ -306,12 +305,11 @@
       }
 
       // Send Changes.
-      if (!changes.Empty) {
-        tasks.Add(_queueClient.NotifyChanges(changes));
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
       }
 
-      // Await all outstanding operations.
-      await Task.WhenAll(tasks);
     }
 
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {

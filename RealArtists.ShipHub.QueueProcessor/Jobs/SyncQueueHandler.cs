@@ -136,7 +136,7 @@
 
   public static class SyncHandlerExtensions {
     public static Task Send(this IAsyncCollector<ChangeMessage> topic, ChangeSummary summary) {
-      if (summary != null && !summary.Empty) {
+      if (summary != null && !summary.IsEmpty) {
         return topic.AddAsync(new ChangeMessage(summary));
       }
       return Task.CompletedTask;

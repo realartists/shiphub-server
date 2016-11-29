@@ -186,7 +186,7 @@
                 _members.Select(x => Tuple.Create(x, false))
                   .Concat(_admins.Select(x => Tuple.Create(x, true))));
 
-            if (!orgMemberChanges.Empty) {
+            if (!orgMemberChanges.IsEmpty) {
               // Check for subscription changes
               var subscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _orgId);
 
@@ -220,7 +220,7 @@
       }
 
       // Send Changes.
-      if (!changes.Empty) {
+      if (!changes.IsEmpty) {
         tasks.Add(_queueClient.NotifyChanges(changes));
       }
 

@@ -170,7 +170,7 @@
       hook.LastPing = null;
       await Context.SaveChangesAsync();
 
-      if (_queueClient != null && changeSummary != null && !changeSummary.Empty) {
+      if (_queueClient != null && changeSummary != null && !changeSummary.IsEmpty) {
         await _queueClient.NotifyChanges(changeSummary);
       }
 
