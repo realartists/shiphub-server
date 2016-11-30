@@ -78,11 +78,11 @@
     }
 
     public GitHubRequest AddParameter(string key, DateTime value) {
-      return AddParameter(key, value.ToUniversalTime().ToString("o"));
+      return AddParameter(key, value.ToUniversalTime().ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"));
     }
 
     public GitHubRequest AddParameter(string key, DateTimeOffset value) {
-      return AddParameter(key, value.ToString("o"));
+      return AddParameter(key, value.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"));
     }
 
     public virtual HttpContent CreateBodyContent() {
