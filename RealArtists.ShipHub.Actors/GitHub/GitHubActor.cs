@@ -8,16 +8,19 @@
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
   using Orleans.CodeGeneration;
   using Orleans.Concurrency;
+  using QueueClient;
   using dm = Common.DataModel;
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor, IDisposable {
     private IFactory<dm.ShipHubContext> _shipContextFactory;
+    private IShipHubQueueClient _queueClient;
 
     private long _userId;
     private GitHubClient _github;
@@ -40,8 +43,9 @@
       return (_handler = handler);
     }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory) {
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient) {
       _shipContextFactory = shipContextFactory;
+      _queueClient = queueClient;
     }
 
     public override async Task OnActivateAsync() {
@@ -79,7 +83,6 @@
     }
 
     public override async Task OnDeactivateAsync() {
-      // Save state
       using (var context = _shipContextFactory.CreateInstance()) {
         await context.UpdateRateLimit(_github.RateLimit);
       }
@@ -112,23 +115,41 @@
         _maxConcurrentRequests.Release();
       }
 
+      DateTimeOffset? limitUntil = null;
       var response = result as GitHubResponse;
 
-      // Abuse detection and throttling.
-      if (response.Error?.IsAbuse == true) {
-        var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
-
-        if (_retryAfter == null || _retryAfter < retryAfter) {
-          _retryAfter = retryAfter;
-        }
-      }
-
-      // Token revocation handling.
+      // Token revocation handling and abuse.
       if (response?.Status == HttpStatusCode.Unauthorized) {
         using (var ctx = _shipContextFactory.CreateInstance()) {
           await ctx.RevokeAccessToken(_github.AccessToken);
         }
         DeactivateOnIdle();
+      } else if (response.Error?.IsAbuse == true) {
+        var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
+
+        if (_retryAfter == null || _retryAfter < retryAfter) {
+          _retryAfter = retryAfter;
+        }
+
+        limitUntil = _retryAfter;
+      } else if (_github.RateLimit.IsUnder(GitHubHandler.RateLimitFloor)) {
+        limitUntil = _github.RateLimit.RateLimitReset;
+      }
+
+      if (limitUntil != null) {
+        using (var context = _shipContextFactory.CreateInstance()) {
+          var rate = _github.RateLimit;
+          await context.UpdateRateLimit(new GitHubRateLimit() {
+            AccessToken = rate.AccessToken,
+            RateLimit = rate.RateLimit,
+            RateLimitRemaining = Math.Min(rate.RateLimitRemaining, GitHubHandler.RateLimitFloor - 1),
+            RateLimitReset = limitUntil.Value,
+          });
+        }
+
+        var changes = new ChangeSummary();
+        changes.Users.Add(_userId);
+        await _queueClient.NotifyChanges(changes);
       }
 
       return result;
