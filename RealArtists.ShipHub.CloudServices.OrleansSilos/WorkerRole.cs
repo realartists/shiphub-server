@@ -38,7 +38,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       }
 
       // Set the maximum number of concurrent connections
-      ServicePointManager.DefaultConnectionLimit = 12;
+      ServicePointManager.DefaultConnectionLimit = 4096;
+      var github = ServicePointManager.FindServicePoint(new Uri("https://api.github.com"));
+      github.ConnectionLimit = 32768;
 
       // For information on handling configuration changes
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.
