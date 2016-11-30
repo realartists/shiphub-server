@@ -9,8 +9,7 @@
 
   public class PaginationHandler : IGitHubHandler {
     public const int PerFetchConcurrencyLimit = 4;
-    //public const int PageSize = 100;
-    public const int PageSize = 10;
+    public const int PageSize = 100;
     public const bool InterpolationEnabled = true;
 
     private IGitHubHandler _next;

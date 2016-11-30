@@ -95,6 +95,7 @@
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions);
       request.AddParameter("since", since);
       request.AddParameter("state", "all");
+      request.AddParameter("per_page", "10");
 
       return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
