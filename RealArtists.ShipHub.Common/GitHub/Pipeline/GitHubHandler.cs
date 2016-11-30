@@ -21,16 +21,10 @@
   /// </summary>
   public class GitHubHandler : IGitHubHandler {
     public const int MaxRetries = 2;
+    public const int RateLimitFloor = 500;
+    public const int RetryMilliseconds = 1000;
 
     public static HttpClient HttpClient { get; } = CreateGitHubHttpClient();
-    public static int RetryMilliseconds { get; } = 1000;
-
-    public uint RateLimitFloor { get; set; }
-
-    public GitHubHandler() : this(500) { }
-    public GitHubHandler(uint rateLimitFloor) {
-      RateLimitFloor = rateLimitFloor;
-    }
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
       if (client.RateLimit != null && client.RateLimit.IsUnder(RateLimitFloor)) {

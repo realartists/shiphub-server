@@ -9,11 +9,24 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DECLARE @UserId BIGINT
-  SELECT @UserId = Id FROM Accounts WHERE Token = @Token
+  DECLARE
+    @UserId BIGINT,
+    @RateLimit INT,
+    @RateLimitRemaining INT,
+    @RateLimitReset DATETIMEOFFSET
 
-  -- If this is null the app knows the token is invalid.
-  SELECT @UserId as UserId
+  SELECT
+    @UserId = Id,
+    @RateLimit = RateLimit,
+    @RateLimitRemaining = RateLimitRemaining,
+    @RateLimitReset = RateLimitReset
+  FROM Accounts WHERE Token = @Token
+
+  SELECT
+    @UserId as UserId,  -- If this is null the app knows the token is invalid.
+    @RateLimit as RateLimit,
+    @RateLimitRemaining as RateLimitRemaining,
+    @RateLimitReset as RateLimitReset
 
   IF (@UserId IS NULL) RETURN
 
