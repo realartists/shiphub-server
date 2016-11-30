@@ -50,8 +50,8 @@
       return Handler.Fetch<T>(this, request);
     }
 
-    private Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector) {
-      return Handler.FetchPaged(this, request, keySelector);
+    private Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
+      return Handler.FetchPaged(this, request, keySelector, maxPages);
     }
 
     /// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,15 +91,12 @@
       return Fetch<Issue>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions);
-      if (since != null) {
-        request.AddParameter("since", since);
-      }
+      request.AddParameter("since", since);
       request.AddParameter("state", "all");
-      request.AddParameter("sort", "updated");
 
-      return FetchPaged(request, (Issue x) => x.Id);
+      return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
 
     public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {

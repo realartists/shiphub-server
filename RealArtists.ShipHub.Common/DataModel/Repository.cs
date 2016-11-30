@@ -68,6 +68,8 @@
     [NotMapped]
     public GitHubMetadata IssueMetadata { get; set; }
 
+    public DateTimeOffset? IssueSince { get; set; }
+
     public string LabelMetadataJson {
       get { return LabelMetadata.SerializeObject(); }
       set { LabelMetadata = value.DeserializeObject<GitHubMetadata>(); }

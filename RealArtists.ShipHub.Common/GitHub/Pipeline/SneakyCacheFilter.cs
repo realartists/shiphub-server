@@ -30,7 +30,7 @@
       return response;
     }
 
-    public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector) {
+    public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
       throw new NotSupportedException($"{nameof(SneakyCacheFilter)} only supports single fetches.");
     }
 

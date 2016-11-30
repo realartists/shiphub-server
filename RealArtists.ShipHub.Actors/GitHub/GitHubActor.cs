@@ -196,8 +196,8 @@
       return _github.IssueReactions(repoFullName, issueNumber, cacheOptions);
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
-      return _github.Issues(repoFullName, since, cacheOptions);
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
+      return _github.Issues(repoFullName, since, maxPages, cacheOptions);
     }
 
     public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null) {

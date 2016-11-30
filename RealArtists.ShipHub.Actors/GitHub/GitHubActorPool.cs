@@ -150,9 +150,9 @@
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
       return TryWithFallback(
-        (actor, cache) => actor.Issues(repoFullName, since, cache),
+        (actor, cache) => actor.Issues(repoFullName, since, maxPages, cache),
         cacheOptions
       );
     }
