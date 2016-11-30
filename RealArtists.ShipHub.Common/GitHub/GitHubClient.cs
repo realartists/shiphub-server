@@ -93,8 +93,12 @@
 
     public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions);
-      request.AddParameter("since", since);
       request.AddParameter("state", "all");
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      request.AddParameter("since", since);
+
+      // HACK! REMOVE REMOVE
       request.AddParameter("per_page", "10");
 
       return FetchPaged(request, (Issue x) => x.Id, maxPages);
