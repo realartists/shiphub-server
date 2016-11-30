@@ -113,17 +113,16 @@
     }
 
     private byte[] ZipBytesForPdf(byte[] pdfBytes, string entryName) {
-      var outStream = new MemoryStream();
-
+      using (var outStream = new MemoryStream())
       using (var archive = new ZipArchive(outStream, ZipArchiveMode.Create, true)) {
         var entry = archive.CreateEntry(entryName);
 
         using (var entryStream = entry.Open()) {
           entryStream.Write(pdfBytes, 0, pdfBytes.Length);
         }
-      }
 
-      return outStream.ToArray();
+        return outStream.ToArray();
+      }
     }
 
     public async Task PaymentFailed(PaymentFailedMailMessage model) {
