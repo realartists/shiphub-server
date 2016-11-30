@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.IO;
+  using System.IO.Compression;
   using System.Net;
   using System.Net.Mail;
   using System.Text;
@@ -111,50 +112,70 @@
       return SendMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
     }
 
+    private byte[] ZipBytesForPdf(byte[] pdfBytes, string entryName) {
+      var outStream = new MemoryStream();
+
+      using (var archive = new ZipArchive(outStream, ZipArchiveMode.Create, true)) {
+        var entry = archive.CreateEntry(entryName);
+
+        using (var entryStream = entry.Open()) {
+          entryStream.Write(pdfBytes, 0, pdfBytes.Length);
+        }
+      }
+
+      return outStream.ToArray();
+    }
+
     public async Task PaymentFailed(PaymentFailedMailMessage model) {
-      using (var stream = new MemoryStream(model.InvoicePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed", attachment);
       }
     }
 
     public async Task PaymentRefunded(PaymentRefundedMailMessage model) {
-      using (var stream = new MemoryStream(model.CreditNotePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-credit-{model.CreditNoteDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.CreditNotePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded", attachment);
       }
     }
 
     public async Task PurchasePersonal(PurchasePersonalMailMessage model) {
-      using (var stream = new MemoryStream(model.InvoicePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal", attachment);
       }
     }
 
     public async Task PurchaseOrganization(PurchaseOrganizationMailMessage model) {
-      using (var stream = new MemoryStream(model.InvoicePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization", attachment);
       }
     }
 
     public async Task PaymentSucceededPersonal(PaymentSucceededPersonalMailMessage model) {
-      using (var stream = new MemoryStream(model.InvoicePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal", attachment);
       }
     }
 
     public async Task PaymentSucceededOrganization(PaymentSucceededOrganizationMailMessage model) {
-      using (var stream = new MemoryStream(model.InvoicePdfBytes))
-      using (var attachment = new Attachment(stream, $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}.pdf",
-        "application/pdf")) {
+      var baseName = $"ship-invoice-{model.InvoiceDate.ToString("yyyy-MM-dd")}";
+      var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
+      using (var stream = new MemoryStream(zipBytes))
+      using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization", attachment);
       }
     }

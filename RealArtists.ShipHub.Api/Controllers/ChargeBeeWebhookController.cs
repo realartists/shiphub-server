@@ -41,7 +41,6 @@
   }
 
   public class ChargeBeeWebhookSubscription {
-    public long ActivatedAt { get; set; }
     public long CurrentTermEnd { get; set; }
     public string PlanId { get; set; }
     public string Status { get; set; }
@@ -128,6 +127,21 @@
       return invoiceBytes;
     }
 
+    private async Task<string> GitHubUserNameFromWebhookPayload(ChargeBeeWebhookPayload payload) {
+      // Most events include the customer portion which gives us the GitHub username.
+      if (payload.Content.Customer?.GitHubUserName != null) {
+        return payload.Content.Customer?.GitHubUserName;
+      } else {
+        // Invoice events (and maybe others, TBD) don't include the Customer portion so
+        // we have to find the customer id in the invoice section.
+        string customerId = payload.Content.Invoice?.CustomerId;
+        var matches = CustomerIdRegex.Match(customerId);
+        var accountId = long.Parse(matches.Groups[2].ToString());
+        var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
+        return account.Login;
+      }
+    }
+
     /// <summary>
     /// When testing ChargeBee webhooks on your local server, you want to prevent shiphub-dev
     /// from handling the same hook.  Sometimes it's harmless for shiphub-dev and your local server
@@ -148,14 +162,14 @@
     /// </summary>
     /// <param name="gitHubUserName">Github user or organization name</param>
     /// <returns>True if we should reject this webhook event</returns>
-    private bool ShouldIgnoreWebhook(string gitHubUserName) {
+    private async Task<bool> ShouldIgnoreWebhook(ChargeBeeWebhookPayload payload) {
       if (_configuration.ChargeBeeWebhookIncludeOnlyList != null
-        && !_configuration.ChargeBeeWebhookIncludeOnlyList.Contains(gitHubUserName)) {
+        && !_configuration.ChargeBeeWebhookIncludeOnlyList.Contains(await GitHubUserNameFromWebhookPayload(payload))) {
         return true;
       }
 
       if (_configuration.ChargeBeeWebhookExcludeList != null
-        && _configuration.ChargeBeeWebhookExcludeList.Contains(gitHubUserName)) {
+        && _configuration.ChargeBeeWebhookExcludeList.Contains(await GitHubUserNameFromWebhookPayload(payload))) {
         return true;
       }
 
@@ -174,8 +188,8 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
 
-      if (ShouldIgnoreWebhook(payload.Content.Customer.GitHubUserName)) {
-        return BadRequest($"Rejecting webhook because username '{payload.Content.Customer.GitHubUserName}' is on the exclude list, or not on the include list.");
+      if (await ShouldIgnoreWebhook(payload)) {
+        return BadRequest($"Rejecting webhook because customer's GitHub username is on the exclude list, or not on the include list.");
       }
 
       switch (payload.EventType) {
@@ -444,12 +458,6 @@
 
       if (payload.EventType == "customer_deleted") {
         incomingVersion = payload.Content.Customer.ResourceVersion;
-      } else if (payload.EventType == "subscription_reactivated") {
-        // The "resource_version" field on "subscription_reactivatd" events
-        // is bogus - ChargeBee says they'll work on a fix.  In the meantime, we
-        // can use the "activated_at" column to get a timestamp - it just doesn't
-        // have millis resolution.
-        incomingVersion = payload.Content.Subscription.ActivatedAt * 1000;
       } else {
         incomingVersion = payload.Content.Subscription.ResourceVersion;
       }

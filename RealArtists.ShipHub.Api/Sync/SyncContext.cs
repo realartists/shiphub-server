@@ -64,8 +64,12 @@
         } else if (personalSub.State == SubscriptionState.Subscribed) {
           mode = SubscriptionMode.Paid;
         } else if (personalSub.State == SubscriptionState.InTrial) {
-          mode = SubscriptionMode.Trial;
-          trialEndDate = personalSub.TrialEndDate;
+          if (personalSub.TrialEndDate > DateTimeOffset.UtcNow) {
+            mode = SubscriptionMode.Trial;
+            trialEndDate = personalSub.TrialEndDate;
+          } else {
+            mode = SubscriptionMode.Free;
+          }
         } else {
           mode = SubscriptionMode.Free;
         }

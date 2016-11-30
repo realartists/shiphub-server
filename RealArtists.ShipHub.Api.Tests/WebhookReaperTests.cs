@@ -205,7 +205,44 @@
         await mock.Object.Run("correlationId");
 
         context.Entry(env.org1Hook).Reload();
-        Assert.AreEqual(1, env.org1Hook.PingCount);
+        Assert.Null(env.org1Hook.PingCount);
+        Assert.AreEqual(0, pings.Keys.Count);
+      }
+    }
+
+    [Test]
+    public async Task WillNotPingOrgHooksWhenWeCannotFindAdminsWithTokens() {
+      using (var context = new ShipHubContext()) {
+        var env = await MakeEnvironment(context);
+
+        // org1's hook is stale; org2's hook is fresh.
+        env.org1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.org2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-23);
+
+        // No tokens!
+        env.user1.Token = null;
+        env.user2.Token = null;
+
+        await context.SaveChangesAsync();
+
+        // Both users are admins.
+        await context.SetOrganizationUsers(env.org1.Id, new[] {
+          Tuple.Create(env.user1.Id, true),
+          Tuple.Create(env.user2.Id, true),
+        });
+        await context.SetOrganizationUsers(env.org2.Id, new[] {
+          Tuple.Create(env.user1.Id, true),
+          Tuple.Create(env.user2.Id, true),
+        });
+
+        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var mock = MockReaper(pings);
+
+        await mock.Object.Run("correlationId");
+
+        context.Entry(env.org1Hook).Reload();
+        Assert.Null(env.org1Hook.PingCount,
+          "ping attempt should not count since admins had no tokens");
         Assert.AreEqual(0, pings.Keys.Count);
       }
     }
@@ -216,7 +253,7 @@
         var env = await MakeEnvironment(context);
 
         env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
-        env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
 
         await context.SaveChangesAsync();
 
@@ -235,7 +272,7 @@
         await mock.Object.Run("correlationId");
 
         context.Entry(env.repo1Hook).Reload();
-        Assert.AreEqual(1, env.repo1Hook.PingCount);
+        Assert.Null(env.repo1Hook.PingCount, "ping should not have counted because we could not find an admin.");
       }
     }
 
@@ -268,5 +305,40 @@
         Assert.AreEqual(new[] { env.repo2Hook.Id, env.org1Hook.Id }, remainingHookIds);
       }
     }
+
+    [Test]
+    public async Task WillNotPingRepoHooksWhenWeCannotFindAdminsWithTokens() {
+      using (var context = new ShipHubContext()) {
+        var env = await MakeEnvironment(context);
+
+        env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+
+        // No tokens!
+        env.user1.Token = null;
+        env.user2.Token = null;
+
+        await context.SaveChangesAsync();
+
+        // Both are admins.
+        await context.SetAccountLinkedRepositories(env.user1.Id, new[] {
+          Tuple.Create(env.repo1.Id, true),
+          Tuple.Create(env.repo2.Id, true),
+        });
+        await context.SetAccountLinkedRepositories(env.user2.Id, new[] {
+          Tuple.Create(env.repo1.Id, true),
+          Tuple.Create(env.repo2.Id, true),
+        });
+
+        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var mock = MockReaper(pings);
+
+        await mock.Object.Run("correlationId");
+
+        context.Entry(env.repo1Hook).Reload();
+        Assert.Null(env.repo1Hook.PingCount, "ping attempt should not be counted since we had no tokens to ping with.");
+      }
+    }
+
   }
 }

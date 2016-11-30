@@ -67,9 +67,6 @@
               // another sync.
               context.Hooks.Remove(hook);
             } else if (hook.RepositoryId != null) {
-              hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
-              hook.LastPing = now;
-
               // Find some account with admin privileges for this repo that we can
               // use to ping.
               var accountRepository = await context.AccountRepositories
@@ -82,11 +79,11 @@
               if (accountRepository != null) {
                 var client = CreateGitHubClient(accountRepository.Account, Guid.NewGuid());
                 pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
+
+                hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
+                hook.LastPing = now;
               }
             } else if (hook.OrganizationId != null) {
-              hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
-              hook.LastPing = now;
-
               var accountOrganization = await context.OrganizationAccounts
                 .Include(x => x.User)
                 .Include(x => x.Organization)
@@ -97,6 +94,9 @@
               if (accountOrganization != null) {
                 var client = CreateGitHubClient(accountOrganization.User, Guid.NewGuid());
                 pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
+
+                hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
+                hook.LastPing = now;
               }
             } else {
               throw new InvalidOperationException("RepositoryId or OrganizationId should be non null");

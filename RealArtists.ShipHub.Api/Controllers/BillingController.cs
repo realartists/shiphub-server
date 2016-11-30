@@ -123,31 +123,17 @@
       }
     }
 
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "state")]
     [AllowAnonymous]
     [HttpGet]
     [Route("reactivate")]
-    public async Task<IHttpActionResult> Reactivate(string id, string state) {
+    public IHttpActionResult Reactivate(string id, string state) {
       var hostedPage = HostedPage.Retrieve(id).Request().HostedPage;
 
       if (hostedPage.State != HostedPage.StateEnum.Succeeded) {
         // ChargeBee should never send the user here unless checkout was successufl.
         throw new ArgumentException("Asked to reactivate a subscription when checkout did not complete.");
       }
-
-      // ChargeBee bug workaround - the "resource_version" value we get in the
-      // "subscription_reactivated" event is bogus.  ChargeBee's working on a fix.
-      // The resource version is supposed to give us a timestamp of millis since
-      // 1970, and we use this in the webhook handler to ignore events with out-dated
-      // info.
-      //
-      // We can use another timestamp field in the webhook event to workaround, but
-      // unfortunately there are no others with millis resolution - only seconds.
-      // To make this work, we'll delay reactivation by 1 second so we're guaranteed
-      // that the "subscription_reactivated" event has a greater timestamp than the
-      // "subscription_changed" event.
-      //
-      // ChargeBee says they'll work on a fix.
-      await Task.Delay(1000);
 
       ChargeBee.Models.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
       var host = new Uri(hostedPage.Url).Host;
