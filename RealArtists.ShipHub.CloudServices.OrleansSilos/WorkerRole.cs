@@ -19,7 +19,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   public class WorkerRole : RoleEntryPoint {
     private bool _abort;
     private AzureSilo _silo;
-    private ManualResetEvent _stopped = new ManualResetEvent(false);
 
     public override bool OnStart() {
       Log.Trace();
@@ -85,7 +84,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
           Log.Exception(e, "Error while running silo. Restarting within Run method.");
         }
       }
-      _stopped.Set();
+      Log.Info("Run loop exiting.");
     }
 
     public override void OnStop() {
@@ -97,8 +96,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         _silo.Stop();
         Log.Info("Stopped silo.");
       }
-
-      _stopped.WaitOne();
 
       base.OnStop();
     }
