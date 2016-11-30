@@ -17,7 +17,8 @@
   using QueueClient;
 
   public class RepositoryActor : Grain, IRepositoryActor {
-    private const int ChunkMaxPages = 75;
+    //private const int ChunkMaxPages = 75;
+    private const int ChunkMaxPages = 3;
 
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
