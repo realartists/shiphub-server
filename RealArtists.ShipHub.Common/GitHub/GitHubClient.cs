@@ -98,9 +98,6 @@
       request.AddParameter("direction", "asc");
       request.AddParameter("since", since);
 
-      // HACK! REMOVE REMOVE
-      request.AddParameter("per_page", "10");
-
       return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
 
