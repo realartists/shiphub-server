@@ -112,15 +112,16 @@
       return SendMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = "It's not.")]
     private byte[] ZipBytesForPdf(byte[] pdfBytes, string entryName) {
-      using (var outStream = new MemoryStream())
-      using (var archive = new ZipArchive(outStream, ZipArchiveMode.Create, true)) {
-        var entry = archive.CreateEntry(entryName);
+      using (var outStream = new MemoryStream()) {
+        using (var archive = new ZipArchive(outStream, ZipArchiveMode.Create, true)) {
+          var entry = archive.CreateEntry(entryName);
 
-        using (var entryStream = entry.Open()) {
-          entryStream.Write(pdfBytes, 0, pdfBytes.Length);
+          using (var entryStream = entry.Open()) {
+            entryStream.Write(pdfBytes, 0, pdfBytes.Length);
+          }
         }
-
         return outStream.ToArray();
       }
     }
