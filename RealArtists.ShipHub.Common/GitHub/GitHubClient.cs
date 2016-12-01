@@ -83,7 +83,7 @@
         AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json",
       };
       // Ugh. Uniqueness here is hard because IDs aren't.
-      return FetchPaged(request, (IssueEvent x) => Tuple.Create(x.Event, x.Id, x.ExtensionDataDictionary.Val("url")));
+      return FetchPaged(request, (IssueEvent x) => x.UniqueKey);
     }
 
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
