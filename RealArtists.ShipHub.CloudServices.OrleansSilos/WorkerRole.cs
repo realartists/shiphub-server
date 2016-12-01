@@ -13,27 +13,27 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
+  using Orleans.TelemetryConsumers.AI;
 
   // For lifecycle details see https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-role-lifecycle-dotnet
   [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
     private bool _abort;
     private AzureSilo _silo;
+    private ShipHubCloudConfiguration _config = new ShipHubCloudConfiguration();
 
     public override bool OnStart() {
       Log.Trace();
 
       LogTraceListener.Configure();
 
-      var aiKey = ShipHubCloudConfiguration.Instance.ApplicationInsightsKey;
-      if (!aiKey.IsNullOrWhiteSpace()) {
-        TelemetryConfiguration.Active.InstrumentationKey = aiKey;
-        LogManager.TelemetryConsumers.Add(new Orleans.TelemetryConsumers.AI.AITelemetryConsumer());
+      if (!_config.ApplicationInsightsKey.IsNullOrWhiteSpace()) {
+        TelemetryConfiguration.Active.InstrumentationKey = _config.ApplicationInsightsKey;
+        LogManager.TelemetryConsumers.Add(new AITelemetryConsumer(_config.ApplicationInsightsKey));
       }
 
-      var raygunKey = ShipHubCloudConfiguration.Instance.RaygunApiKey;
-      if (!raygunKey.IsNullOrWhiteSpace()) {
-        LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(raygunKey));
+      if (!_config.RaygunApiKey.IsNullOrWhiteSpace()) {
+        LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(_config.RaygunApiKey));
       }
 
       // Set the maximum number of concurrent connections
@@ -61,17 +61,16 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
       while (!_abort) {
         try {
-          var shipHubConfig = new ShipHubCloudConfiguration();
           var siloConfig = AzureSilo.DefaultConfiguration();
 
           // This allows App Services and Cloud Services to agree on a deploymentId.
-          siloConfig.Globals.DeploymentId = shipHubConfig.DeploymentId;
+          siloConfig.Globals.DeploymentId = _config.DeploymentId;
 
           // Dependency Injection
           siloConfig.UseStartupType<SimpleInjectorProvider>();
 
           siloConfig.AddMemoryStorageProvider();
-          siloConfig.AddAzureTableStorageProvider("AzureStore", shipHubConfig.DataConnectionString);
+          siloConfig.AddAzureTableStorageProvider("AzureStore", _config.DataConnectionString);
 
           // It is IMPORTANT to start the silo not in OnStart but in Run.
           // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
