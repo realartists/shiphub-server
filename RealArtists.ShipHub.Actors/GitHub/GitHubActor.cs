@@ -289,6 +289,14 @@
       return _github.FileContents(repoFullName, filePath, cacheOptions);
     }
 
+    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      return _github.RepositoryProjects(repoFullName, cacheOptions);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions = null) {
+      return _github.OrganizationProjects(organizationLogin, cacheOptions);
+    }
+
     private bool disposedValue = false;
     protected virtual void Dispose(bool disposing) {
       if (!disposedValue) {

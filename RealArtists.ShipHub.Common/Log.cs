@@ -313,6 +313,8 @@ namespace RealArtists.ShipHub.Common {
             Cleanup();
           } catch (IOException) {
             Cleanup();
+          } catch (System.Security.Authentication.AuthenticationException) {
+            Cleanup();
           }
         }
       }

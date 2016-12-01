@@ -44,6 +44,9 @@
 
     [EnumMember(Value = "label")]
     Label,
+
+    [EnumMember(Value = "project")]
+    Project,
   }
 
   public abstract class SyncEntity {

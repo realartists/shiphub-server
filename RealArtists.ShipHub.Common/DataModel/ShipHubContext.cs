@@ -5,6 +5,7 @@
   using System.Data.Common;
   using System.Data.Entity;
   using System.Data.SqlClient;
+  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Threading.Tasks;
@@ -43,6 +44,7 @@
     public virtual DbSet<Issue> Issues { get; set; }
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
+    public virtual DbSet<Project> Projects { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
@@ -130,6 +132,11 @@
         .WillCascadeOnDelete(false);
 
       modelBuilder.Entity<Repository>()
+        .HasMany(e => e.Projects)
+        .WithOptional(e => e.Repository)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Repository>()
         .HasMany(e => e.Labels)
         .WithRequired(e => e.Repository)
         .WillCascadeOnDelete(false);
@@ -142,6 +149,11 @@
       modelBuilder.Entity<User>()
         .HasMany(e => e.LinkedRepositories)
         .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Organization>()
+        .HasMany(e => e.Projects)
+        .WithOptional(e => e.Organization)
         .WillCascadeOnDelete(false);
     }
 
@@ -442,6 +454,57 @@
         x.Milestones = tableParam;
         x.Complete = complete;
       });
+    }
+
+    private Task<ChangeSummary> BulkUpdateProjects(IEnumerable<ProjectTableType> projects, long? repositoryId = null, long? organizationId = null) {
+      Debug.Assert(repositoryId != null || organizationId != null, "Must specify either repositoryId or organizationId");
+      Debug.Assert(!(repositoryId != null && organizationId != null), "Must specify exactly one of repositoryId or organizationId");
+      var tableParam = CreateTableParameter(
+        "Projects",
+        "[dbo].[ProjectTableType]",
+        new[] {
+          Tuple.Create("Id", typeof(long)),
+          Tuple.Create("Name", typeof(string)),
+          Tuple.Create("Number", typeof(long)),
+          Tuple.Create("Body", typeof(string)),
+          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          Tuple.Create("CreatorId", typeof(long)),
+        },
+        x => new object[] {
+          x.Id,
+          x.Name,
+          x.Number,
+          x.Body,
+          x.CreatedAt,
+          x.UpdatedAt,
+          x.CreatorId,
+        },
+        projects);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateProjects]", x => {
+        x.RepositoryId = new SqlParameter("RepositoryId", SqlDbType.BigInt);
+        if (repositoryId != null) {
+          x.RepositoryId.Value = repositoryId.Value;
+        } else {
+          x.RepositoryId.Value = DBNull.Value;
+        }
+        x.OrganizationId = new SqlParameter("OrganizationId", SqlDbType.BigInt);
+        if (organizationId != null) {
+          x.OrganizationId.Value = organizationId.Value;
+        } else {
+          x.OrganizationId.Value = DBNull.Value;
+        }
+        x.Projects = tableParam;
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateRepositoryProjects(long repositoryId, IEnumerable<ProjectTableType> projects) {
+      return BulkUpdateProjects(projects, repositoryId: repositoryId);
+    }
+
+    public Task<ChangeSummary> BulkUpdateOrganizationProjects(long organizationId, IEnumerable<ProjectTableType> projects) {
+      return BulkUpdateProjects(projects, organizationId: organizationId);
     }
 
     public Task<ChangeSummary> BulkUpdateLabels(long repositoryId, IEnumerable<LabelTableType> labels, bool complete = false) {

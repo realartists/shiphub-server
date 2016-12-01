@@ -10,11 +10,11 @@
   [RepositoryId]   AS IIF([OwnerType] = 'repo', [OwnerId], NULL) PERSISTED,
   CONSTRAINT [FK_SyncLog_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
   CONSTRAINT [FK_SyncLog_OrganizationId_Accounts_Id] FOREIGN KEY ([OrganizationId]) REFERENCES [dbo].[Accounts] ([Id]),
-  CONSTRAINT [CK_SyncLog_ItemType_Delete] CHECK ([Delete] = 0 OR ItemType IN ('comment', 'label', 'milestone', 'reaction')),
+  CONSTRAINT [CK_SyncLog_ItemType_Delete] CHECK ([Delete] = 0 OR ItemType IN ('comment', 'label', 'milestone', 'project', 'reaction')),
   -- End validation
   CONSTRAINT [PK_SyncLog] PRIMARY KEY CLUSTERED ([RowVersion]),
   CONSTRAINT [CK_SyncLog_OrganizationId_OwnerType] CHECK ([OwnerType] IN ('org', 'repo')),
-  CONSTRAINT [CK_SyncLog_OrganizationId_ItemType] CHECK ([ItemType] IN ('account', 'comment', 'event', 'issue', 'label', 'milestone', 'reaction', 'repository')),
+  CONSTRAINT [CK_SyncLog_OrganizationId_ItemType] CHECK ([ItemType] IN ('account', 'comment', 'event', 'issue', 'label', 'milestone', 'project', 'reaction', 'repository')),
 )
 GO
 

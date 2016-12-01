@@ -86,6 +86,14 @@
     [NotMapped]
     public GitHubMetadata MilestoneMetadata { get; set; }
 
+    public string ProjectMetadataJson {
+      get { return ProjectMetadata.SerializeObject(); }
+      set { ProjectMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata ProjectMetadata { get; set; }
+
     public string ContentsRootMetadataJson {
       get { return ContentsRootMetadata.SerializeObject(); }
       set { ContentsRootMetadata = value.DeserializeObject<GitHubMetadata>(); }
@@ -130,5 +138,8 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Label> Labels { get; set; } = new HashSet<Label>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Project> Projects { get; set; } = new HashSet<Project>();
   }
 }

@@ -15,7 +15,18 @@
     [NotMapped]
     public GitHubMetadata MemberMetadata { get; set; }
 
+    public string ProjectMetadataJson {
+      get { return ProjectMetadata.SerializeObject(); }
+      set { ProjectMetadata = value.DeserializeObject<GitHubMetadata>(); }
+    }
+
+    [NotMapped]
+    public GitHubMetadata ProjectMetadata { get; set; }
+
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<OrganizationAccount> OrganizationAccounts { get; set; } = new HashSet<OrganizationAccount>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<Project> Projects { get; set; } = new HashSet<Project>();
   }
 }

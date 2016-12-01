@@ -186,6 +186,14 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'milestone'
 
+    -- Projects
+    SELECT l.ItemId as Id, e.Name, e.Number, e.Body, e.CreatedAt, e.UpdatedAt,
+           e.CreatorId, e.OrganizationId, e.RepositoryId, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN Projects as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'project'
+
     -- Reactions
     SELECT l.ItemId as Id, e.UserId, e.IssueId, e.CommentId, e.Content, e.CreatedAt, l.[Delete]
     FROM @Logs as l

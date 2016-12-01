@@ -6,6 +6,7 @@
   using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces;
+  using ActorInterfaces.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -31,6 +32,7 @@
     private GitHubMetadata _metadata;
     private GitHubMetadata _adminMetadata;
     private GitHubMetadata _memberMetadata;
+    private GitHubMetadata _projectMetadata;
 
     // Data
     private HashSet<long> _members = new HashSet<long>();
@@ -79,6 +81,7 @@
         _metadata = org.Metadata;
         _memberMetadata = org.MemberMetadata; // RepoMetadataJson behind the scenes
         _adminMetadata = org.OrganizationMetadata;
+        _projectMetadata = org.ProjectMetadata;
       }
 
       await base.OnActivateAsync();
@@ -98,6 +101,7 @@
       // RepoMetadataJson here IS NOT A BUG, just a nasty hack
       await context.UpdateMetadata("Accounts", "RepoMetadataJson", _orgId, _memberMetadata);
       await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
+      await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
     }
 
     public Task Sync(long forUserId) {
@@ -220,6 +224,9 @@
           var randmin = activeAdmins[_random.Next(activeAdmins.Length)];
           tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin));
         }
+
+        // Projects
+        changes.UnionWith(await UpdateProjects(context, github));
       }
 
       // Send Changes.
@@ -229,6 +236,21 @@
 
       // Await all outstanding operations.
       await Task.WhenAll(tasks);
+    }
+
+    private async Task<IChangeSummary> UpdateProjects(ShipHubContext context, IGitHubPoolable github) {
+      var changes = ChangeSummary.Empty;
+
+      if (_projectMetadata == null || _projectMetadata.Expires < DateTimeOffset.UtcNow) {
+        var projects = await github.OrganizationProjects(_login, _projectMetadata);
+        if (projects.IsOk) {
+          changes = await context.BulkUpdateOrganizationProjects(_orgId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
+        }
+
+        _projectMetadata = GitHubMetadata.FromResponse(projects);
+      }
+
+      return changes;
     }
   }
 }

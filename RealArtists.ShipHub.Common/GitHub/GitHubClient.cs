@@ -294,6 +294,20 @@
       return Fetch<byte[]>(request);
     }
 
+    private Task<GitHubResponse<IEnumerable<Project>>> Projects(string endpoint, GitHubCacheDetails cacheOptions) {
+      var request = new GitHubRequest(endpoint, cacheOptions);
+      request.AcceptHeaderOverride = "application/vnd.github.inertia-preview+json";
+      return FetchPaged(request, (Project p) => p.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions) {
+      return Projects($"repos/{repoFullName}/projects", cacheOptions);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions) {
+      return Projects($"orgs/{organizationLogin}/projects", cacheOptions);
+    }
+
     public static Regex IssueTemplateRegex { get; } = new Regex(
       @"^issue_template(?:\.\w+)?$",
       RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
