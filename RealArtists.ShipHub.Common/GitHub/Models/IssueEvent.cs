@@ -8,7 +8,7 @@
   /// IssueEvents and TimelineEvents and close enough that I want to share some logic.
   /// </summary>
   public class IssueEvent {
-    public long Id { get; set; }
+    public long? Id { get; set; }
     public Account Actor { get; set; }
     public string Event { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -60,6 +60,15 @@
         } else {
           ExtensionDataDictionary.Clear();
         }
+      }
+    }
+    
+    [JsonIgnore]
+    public IComparable UniqueKey {
+      get {
+        var id = Id ?? Source?.CommentId;
+        var url = ExtensionDataDictionary.Val("url")?.ToObject<string>() ?? Source?.IssueUrl;
+        return Tuple.Create(Event, id, url);
       }
     }
   }
