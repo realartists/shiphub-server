@@ -87,12 +87,18 @@
     }
 
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/{number}", cacheOptions);
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{number}", cacheOptions) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
       return Fetch<Issue>(request);
     }
 
     public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions);
+      var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
