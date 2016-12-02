@@ -24,6 +24,7 @@
 
     public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
     public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";
+    public const string WebhooksEvent = "hooks-event";
 
     public const string BillingGetOrCreatePersonalSubscription = "billing-get-or-create-personal-subscription";
     public const string BillingSyncOrgSubscriptionState = "billing-sync-org-subscription-state";

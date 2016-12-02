@@ -7,6 +7,7 @@
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Security.Cryptography;
   using System.Text;
+  using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
   using System.Web.Http.Controllers;
@@ -20,12 +21,16 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Controllers;
+  using Microsoft.Azure.WebJobs;
   using Moq;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
   using Orleans;
   using QueueClient;
+  using QueueClient.Messages;
+  using QueueProcessor.Jobs;
+  using QueueProcessor.Tracing;
 
   [TestFixture]
   [AutoRollback]
@@ -84,28 +89,6 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static Task<IChangeSummary> ChangeSummaryFromIssuesHook(JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
-      return ChangeSummaryFromHook("issues", obj, repoOrOrg, repoOrOrgId, secret);
-    }
-
-    private static async Task<IChangeSummary> ChangeSummaryFromHook(string eventName, JObject obj, string repoOrOrg, long repoOrOrgId, string secret) {
-      IChangeSummary changeSummary = null;
-
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
-        .Returns(Task.CompletedTask)
-        .Callback((IChangeSummary arg) => { changeSummary = arg; });
-
-      var controller = new GitHubWebhookController(mockBusClient.Object, AutoMapper, null);
-      ConfigureController(controller, eventName, obj, secret);
-
-      IHttpActionResult result = await controller.HandleHook(repoOrOrg, repoOrOrgId);
-      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-      Assert.AreEqual(HttpStatusCode.Accepted, (result as StatusCodeResult).StatusCode);
-
-      return changeSummary;
-    }
-
     private static JObject IssueChange(string action, Issue issue, long repositoryId) {
       var obj = new {
         action = action,
@@ -158,6 +141,92 @@
     }
 
     [Test]
+    public async Task QueueHookWillQueueWebhookEvent() {
+      using (var context = new Common.DataModel.ShipHubContext()) {
+        var obj = JObject.FromObject(new {
+          hook_id = 1234,
+          repository = new {
+            id = 5001,
+          },
+        }, GitHubSerialization.JsonSerializer);
+
+        GitHubWebhookEventMessage message = null;
+        var mockBusClient = new Mock<IShipHubQueueClient>();
+        mockBusClient.Setup(x => x.QueueWebhookEvent(It.IsAny<GitHubWebhookEventMessage>()))
+          .Returns((GitHubWebhookEventMessage arg) => {
+            message = arg;
+            return Task.CompletedTask;
+          });
+
+        var controller = new GitHubWebhookController(mockBusClient.Object);
+        ConfigureController(controller, "ping", obj, "somesecret");
+        var result = await controller.QueueHook("repo", 5001);
+        Assert.IsInstanceOf(typeof(OkResult), result);
+
+        var expectedJson = JsonConvert.SerializeObject(obj, GitHubSerialization.JsonSerializerSettings);
+        var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("somesecret"));
+        byte[] expectedSignature = hmac.ComputeHash(Encoding.UTF8.GetBytes(expectedJson));
+        
+        Assert.NotNull(message, "Should have queued a message to process the webhook event");
+        Assert.AreEqual(5001, message.EntityId);
+        Assert.AreEqual("repo", message.EntityType);
+        Assert.AreEqual(expectedSignature, message.Signature);
+        Assert.AreEqual("ping", message.EventName);
+        Assert.NotNull(message.DeliveryId);
+        Assert.AreEqual(expectedJson, message.Payload);
+      }
+    }
+
+    private GitHubWebhookEventMessage CreateMessage(Common.DataModel.Hook hook, string eventName, JObject payload) {
+      return CreateMessage(
+        (hook.RepositoryId != null) ? "repo" : "org",
+        (hook.RepositoryId != null) ? hook.RepositoryId.Value : hook.OrganizationId.Value,
+        eventName,
+        hook.Secret.ToString(),
+        payload);
+    }
+
+    private GitHubWebhookEventMessage CreateMessage(string entityType, long entityId, string eventName, string secret, JObject payload) {
+      var json = JsonConvert.SerializeObject(
+        payload,
+        GitHubSerialization.JsonSerializerSettings);
+
+      var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(secret));
+      byte[] signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(json));
+
+      return new GitHubWebhookEventMessage() {
+        EntityType = entityType,
+        EntityId = entityId,
+        EventName = eventName,
+        DeliveryId = Guid.NewGuid(),
+        Payload = json,
+        Signature = signature,
+      };
+    }
+
+    private async Task<ChangeMessage> ProcessEvent(GitHubWebhookEventMessage message, IGrainFactory grainFactory = null) {
+      var changeMessages = new List<ChangeMessage>();
+      var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+      collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+        .Returns((ChangeMessage msg, CancellationToken token) => {
+          changeMessages.Add(msg);
+          return Task.CompletedTask;
+        });
+
+      var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() { InvocationId = Guid.NewGuid() };
+      var handler = new GitHubWebhookQueueHandler(grainFactory, AutoMapper, new DetailedExceptionLogger());
+      await handler.ProcessEvent(message, collectorMock.Object, Console.Out, executionContext);
+
+      if (changeMessages.Count == 0) {
+        return null;
+      } else if (changeMessages.Count == 1) {
+        return changeMessages.Single();
+      } else {
+        throw new Exception("Should only send a single change message");
+      }
+    }
+
+    [Test]
     public async Task TestPingSucceedsIfSignatureMatchesRepoHook() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -173,11 +242,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper, null);
-        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook("repo", repo.Id);
-        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+        await ProcessEvent(CreateMessage(hook, "ping", obj));
       }
     }
 
@@ -204,11 +269,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper, null);
-        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook("org", org.Id);
-        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+        await ProcessEvent(CreateMessage(hook, "ping", obj));
       }
     }
 
@@ -233,13 +294,10 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper, null);
-        ConfigureController(controller, "ping", obj, "someIncorrectSignature");
         try {
-          await controller.HandleHook("repo", repo.Id);
-          Assert.Fail("Should throw exception.");
-        } catch (Exception ex) {
-          Assert.IsInstanceOf<HttpResponseException>(ex);
+          await ProcessEvent(CreateMessage("repo", repo.Id, "ping", "someIncorrectSignature", obj));
+          Assert.Fail("should have thrown exception due to invalid signature");
+        } catch (Exception) {
         }
       }
     }
@@ -266,11 +324,7 @@
           new JProperty("id", repo.Id)
           )));
 
-        var controller = new GitHubWebhookController(null, AutoMapper, null);
-        ConfigureController(controller, "ping", obj, hook.Secret.ToString());
-        var result = await controller.HandleHook("repo", repo.Id);
-        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+        await ProcessEvent(CreateMessage(hook, "ping", obj));
 
         context.Entry(hook).Reload();
         Assert.Greater(hook.LastSeen, DateTimeOffset.Parse("1/1/2000"));
@@ -280,7 +334,7 @@
     }
 
     [Test]
-    public async Task WillReturnNotFoundWhenCallDoesNotMatchKnownRepoOrOrg() {
+    public async Task WillSilentlyFailIfEventDoesNotMatchKnownRepoOrOrg() {
       using (var context = new Common.DataModel.ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var repo = TestUtil.MakeTestRepo(context, user.Id);
@@ -294,13 +348,7 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        var controller = new GitHubWebhookController(null, AutoMapper, null);
-        ConfigureController(controller, "ping", obj, "someIncorrectSignature");
-
-        Assert.IsInstanceOf<NotFoundResult>(
-          await controller.HandleHook("repo", repo.Id),
-          "Webhook does not match any known repository or organization."
-        );
+        await ProcessEvent(CreateMessage("repo", repo.Id, "ping", "someSignature", obj));
       }
     }
 
@@ -351,7 +399,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("milestoned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("milestoned", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -408,7 +456,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("demilestoned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("demilestoned", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -449,7 +497,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -497,7 +545,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("closed", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("closed", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -543,7 +591,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("reopened", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("reopened", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -597,7 +645,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("edited", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -648,7 +696,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("assigned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("assigned", issue, testRepo.Id)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -694,7 +742,7 @@
         Assignees = new Account[0],
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unassigned", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unassigned", issue, testRepo.Id)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -747,7 +795,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("labeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("labeled", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -812,7 +860,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("edited", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("edited", issue, testRepo.Id)));
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -826,7 +874,7 @@
 
       // Then remove the Red label.
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
-      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unlabeled", issue, testRepo.Id)));
 
       // Adding or removing a label changes the issue
       Assert.NotNull(changeSummary, "should have generated change notification");
@@ -843,7 +891,7 @@
 
       // Then remove the last label.
       issue.Labels = new Label[] { };
-      changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("unlabeled", issue, testRepo.Id), "repo", testRepo.Id, testHook.Secret.ToString());
+      changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unlabeled", issue, testRepo.Id)));
 
       // Adding or removing a label changes the issue
       Assert.NotNull(changeSummary, "should have generated change notification");
@@ -902,7 +950,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -960,7 +1008,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1002,7 +1050,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1046,7 +1094,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromIssuesHook(IssueChange("opened", issue, repo.Id), "repo", repo.Id, hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1114,11 +1162,7 @@
           return userMock.Object;
         });
 
-      var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
-      ConfigureController(controller, "repository", obj, hook.Secret.ToString());
-      var result = await controller.HandleHook("org", org.Id);
-      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-      Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      await ProcessEvent(CreateMessage(hook, "repository", obj), mockGrainFactory.Object);
 
       Assert.AreEqual(
         new List<long> {
@@ -1205,17 +1249,13 @@
       // We register for the "repository" event on both the org and repo levels.
       // When a deletion happens, we'll get a webhook call for both the repo and
       // org, but we want to ignore the org one.
-      var tests = new Tuple<string, long, Common.DataModel.Hook>[] {
-        Tuple.Create("repo", repo.Id, repoHook),
-        Tuple.Create("org", org.Id, orgHook),
+      var tests = new[] {
+        repoHook,
+        orgHook,
       };
 
-      foreach (var test in tests) {
-        var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
-        ConfigureController(controller, "repository", obj, test.Item3.Secret.ToString());
-        var result = await controller.HandleHook(test.Item1, test.Item2);
-        Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-        Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      foreach (var hook in tests) {
+        await ProcessEvent(CreateMessage(hook, "repository", obj), mockGrainFactory.Object);
       }
 
       Assert.AreEqual(2, forceRepoSyncCalls.Count,
@@ -1271,11 +1311,7 @@
           return userMock.Object;
         });
 
-      var controller = new GitHubWebhookController(null, AutoMapper, mockGrainFactory.Object);
-      ConfigureController(controller, "repository", obj, repoHook.Secret.ToString());
-      var result = await controller.HandleHook("repo", repo.Id);
-      Assert.IsInstanceOf(typeof(StatusCodeResult), result);
-      Assert.AreEqual(HttpStatusCode.Accepted, ((StatusCodeResult)result).StatusCode);
+      await ProcessEvent(CreateMessage(repoHook, "repository", obj), mockGrainFactory.Object);
 
       Assert.AreEqual(
         new List<long> {
@@ -1344,7 +1380,7 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
         var comment = context.Comments.SingleOrDefault(x => x.IssueId == issue.Id);
         Assert.NotNull(comment, "should have created comment");
@@ -1394,7 +1430,7 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
         context.Entry(comment).Reload();
 
@@ -1437,7 +1473,7 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
         var comment = context.Comments.SingleOrDefault(x => x.Id == 9001);
         Assert.NotNull(comment, "should have created comment");
@@ -1503,7 +1539,7 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
         Assert.AreEqual(
           new long[] { 9002 },
@@ -1560,7 +1596,7 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/1234",
           });
-        IChangeSummary changeSummary = await ChangeSummaryFromHook("issue_comment", obj, "repo", repo.Id, hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
         var issue = context.Issues.SingleOrDefault(x => x.Number == 1234);
         Assert.NotNull(issue, "should have created issue referenced by comment.");
@@ -1605,13 +1641,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
-
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1677,12 +1707,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1692,12 +1717,7 @@
         Assert.Null(deletedMilestone);
       }
 
-      changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
       Assert.Null(changeSummary,
         "if we try to delete an already deleted milestone, should see no change");
     }
@@ -1747,12 +1767,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1808,12 +1823,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1869,12 +1879,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "milestone",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1911,12 +1916,7 @@
           },
         };
 
-        IChangeSummary changeSummary = await ChangeSummaryFromHook(
-          "label",
-          JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-          "repo",
-          repo.Id,
-          hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
         Assert.AreEqual(0, changeSummary.Organizations.Count());
         Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
@@ -1958,12 +1958,7 @@
           },
         };
 
-        IChangeSummary changeSummary = await ChangeSummaryFromHook(
-          "label",
-          JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-          "repo",
-          repo.Id,
-          hook.Secret.ToString());
+        var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
         Assert.Null(changeSummary);
 
@@ -2018,11 +2013,7 @@
       // Make an issue with label purple.  We're not going to send
       // any changes related to this issue - we just want to make sure
       // it doesn't get disturbed by changes to other issues.
-      await ChangeSummaryFromIssuesHook(
-        IssueChange("opened", issueToNotDisturb, repo.Id),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issueToNotDisturb, repo.Id)));
 
       var blueLabel = new Label() {
         Id = 2002,
@@ -2053,11 +2044,7 @@
         },
       };
 
-      await ChangeSummaryFromIssuesHook(
-        IssueChange("opened", githubIssue, repo.Id),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
 
       var payload = new {
         action = "deleted",
@@ -2066,12 +2053,7 @@
           id = repo.Id,
         },
       };
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "label",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
@@ -2124,13 +2106,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "label",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
-
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
       Assert.Null(changeSummary);
 
       using (var context = new Common.DataModel.ShipHubContext()) {
@@ -2178,11 +2154,7 @@
 
       // Create an issue only to make sure its labels don't get disturbed
       // by our other edits.
-      await ChangeSummaryFromIssuesHook(
-        IssueChange("opened", issueNotToDisturb, repo.Id),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issueNotToDisturb, repo.Id)));
 
       var redLabel = new Label() {
         Id = 2001,
@@ -2211,11 +2183,7 @@
           Type = GitHubAccountType.User,
         },
       };
-      await ChangeSummaryFromIssuesHook(
-        IssueChange("opened", githubIssue, repo.Id),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
 
       // Change "blue" label to a "green"
       var payload = new {
@@ -2229,13 +2197,8 @@
           id = repo.Id,
         },
       };
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "label",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
 
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
 
@@ -2306,11 +2269,7 @@
           Type = GitHubAccountType.User,
         },
       };
-      await ChangeSummaryFromIssuesHook(
-        IssueChange("opened", githubIssue, repo.Id),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
+      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
 
       var payload = new {
         action = "edited",
@@ -2320,13 +2279,7 @@
         },
       };
 
-      IChangeSummary changeSummary = await ChangeSummaryFromHook(
-        "label",
-        JObject.FromObject(payload, GitHubSerialization.JsonSerializer),
-        "repo",
-        repo.Id,
-        hook.Secret.ToString());
-
+      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
       Assert.Null(changeSummary);
 
       using (var context = new Common.DataModel.ShipHubContext()) {

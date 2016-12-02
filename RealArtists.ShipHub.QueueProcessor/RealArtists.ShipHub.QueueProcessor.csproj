@@ -244,6 +244,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Jobs\GitHubWebhookQueueHandler.cs" />
     <Compile Include="Jobs\LoggingHandlerBase.cs" />
     <Compile Include="Tracing\DetailedExceptionLogger.cs" />
     <Compile Include="Jobs\BillingQueueHandler.cs" />
