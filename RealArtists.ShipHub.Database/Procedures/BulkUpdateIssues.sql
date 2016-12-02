@@ -29,7 +29,16 @@ BEGIN
     INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
     VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
   -- Update (this bumps for label only changes too)
-  WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
+  WHEN MATCHED AND 
+    ([Target].[UpdatedAt] < [Source].[UpdatedAt] 
+      OR ([Target].[UpdatedAt] = [Source].[UpdatedAt] 
+        AND (
+          ([Source].[Reactions] IS NOT NULL AND ISNULL([Target].[Reactions], '') <> ISNULL([Source].[Reactions], ''))
+          OR 
+          ([Source].[ClosedById] IS NOT NULL AND ISNULL([Target].[ClosedById], 0) <> ISNULL([Source].[ClosedById], 0))
+        )
+      )
+    ) THEN
     UPDATE SET
       [UserId] = [Source].[UserId], -- This can change to ghost
       [State] = [Source].[State],
@@ -39,9 +48,9 @@ BEGIN
       [Locked] = [Source].[Locked],
       [UpdatedAt] = [Source].[UpdatedAt],
       [ClosedAt] = [Source].[ClosedAt],
-      [ClosedById] = [Source].[ClosedById],
+      [ClosedById] = ISNULL([Source].[ClosedById], [Target].[ClosedById]),
       [PullRequest] = [Source].[PullRequest],
-      [Reactions] = [Source].[Reactions]
+      [Reactions] = ISNULL([Source].[Reactions], [Target].[Reactions])
   OUTPUT INSERTED.Id INTO @Changes (IssueId);
 
   MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
