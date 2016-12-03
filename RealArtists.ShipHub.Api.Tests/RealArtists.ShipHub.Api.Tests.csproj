@@ -194,6 +194,7 @@
     <Fakes Include="Fakes\ChargeBee.fakes" />
     <Fakes Include="Fakes\System.fakes" />
     <None Include="packages.config" />
+    <None Include="PrepareAzureTest.ps1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">
