@@ -6,10 +6,10 @@
   [ItemId]         BIGINT       NOT NULL,
   [Delete]         BIT          NOT NULL,
   -- Keep for validation until we're sure things work
-  --[OrganizationId] AS IIF([OwnerType] = 'org', [OwnerId], NULL) PERSISTED,
-  --[RepositoryId]   AS IIF([OwnerType] = 'repo', [OwnerId], NULL) PERSISTED,
-  --CONSTRAINT [FK_SyncLog_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
-  --CONSTRAINT [FK_SyncLog_OrganizationId_Accounts_Id] FOREIGN KEY ([OrganizationId]) REFERENCES [dbo].[Accounts] ([Id]),
+  [OrganizationId] AS IIF([OwnerType] = 'org', [OwnerId], NULL) PERSISTED,
+  [RepositoryId]   AS IIF([OwnerType] = 'repo', [OwnerId], NULL) PERSISTED,
+  CONSTRAINT [FK_SyncLog_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
+  CONSTRAINT [FK_SyncLog_OrganizationId_Accounts_Id] FOREIGN KEY ([OrganizationId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [CK_SyncLog_ItemType_Delete] CHECK ([Delete] = 0 OR ItemType IN ('comment', 'label', 'milestone', 'reaction')),
   -- End validation
   CONSTRAINT [PK_SyncLog] PRIMARY KEY CLUSTERED ([RowVersion]),
