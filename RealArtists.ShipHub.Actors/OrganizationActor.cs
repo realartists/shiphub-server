@@ -156,11 +156,13 @@
           // to only get admins or non-admins on each request.
 
           var updated = false;
+          var newUsers = new List<gh.Account>();
 
           var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
           if (members.IsOk) {
             updated = true;
             _members = members.Result.Select(x => x.Id).ToHashSet();
+            newUsers.AddRange(members.Result);
             this.Info($"Changed. Members: [{string.Join(",", _members.OrderBy(x => x))}]");
           } else if (!members.Succeeded) {
             throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
@@ -170,6 +172,7 @@
           if (admins.IsOk) {
             updated = true;
             _admins = admins.Result.Select(x => x.Id).ToHashSet();
+            newUsers.AddRange(admins.Result);
             this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
           } else if (!admins.Succeeded) {
             throw new Exception($"Unexpected response: OrganizationAdmins {admins.Status}");
@@ -179,7 +182,7 @@
             changes.UnionWith(
               await context.BulkUpdateAccounts(
                 members.Date,
-                _mapper.Map<IEnumerable<AccountTableType>>(members.Result.Concat(admins.Result))));
+                _mapper.Map<IEnumerable<AccountTableType>>(newUsers)));
 
             var orgMemberChanges = await context.SetOrganizationUsers(
                 _orgId,
