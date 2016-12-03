@@ -36,7 +36,7 @@ BEGIN
   -- Update repo record in log
   UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE)
     SET [RowVersion] = DEFAULT
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as Item
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
   WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'repository' AND ItemId = @RepositoryId
     AND @Changes > 0
 END
