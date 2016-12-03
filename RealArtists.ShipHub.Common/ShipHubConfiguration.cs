@@ -128,6 +128,12 @@
     });
     public bool UseFiddler { get { return _useFiddler.Value; } }
 
+    private Lazy<bool> _useSqlAzureExecutionStrategy = new Lazy<bool>(() => {
+      bool result;
+      return bool.TryParse(GetSetting("UseSqlAzureExecutionStrategy"), out result) && result;
+    });
+    public bool UseSqlAzureExecutionStrategy { get { return _useSqlAzureExecutionStrategy.Value; } }
+
     private static string GetSetting(string key, bool required = false) {
       string value = CloudConfigurationManager.GetSetting(key);
       if (value == null && required) {
