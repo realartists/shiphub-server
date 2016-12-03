@@ -10,6 +10,7 @@
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(long targetId, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
+    Task QueueWebhookEvent(GitHubWebhookEventMessage message);
   }
 
   public class ShipHubQueueClient : IShipHubQueueClient {
@@ -36,6 +37,9 @@
 
     public Task NotifyChanges(IChangeSummary changeSummary)
       => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
+
+    public Task QueueWebhookEvent(GitHubWebhookEventMessage message)
+      => SendIt(ShipHubQueueNames.WebhooksEvent, message);
 
     private async Task SendIt<T>(string queueName, T message) {
       var sender = await _factory.MessageSenderForName(queueName);

@@ -66,6 +66,7 @@
     <Compile Include="Messages\UserIdMessage.cs" />
     <Compile Include="Messages\TargetMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
+    <Compile Include="Messages\GitHubWebhookEventMessage.cs" />
     <Compile Include="ShipHubQueueClient.cs" />
     <Compile Include="ServiceBusFactory.cs" />
     <Compile Include="ShipHubTopicNames.cs" />

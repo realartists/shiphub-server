@@ -175,13 +175,14 @@
     <Compile Include="BillingQueueTests.cs" />
     <Compile Include="ChargeBeeTestUtil.cs" />
     <Compile Include="ChargeBeeWebHookControllerTests.cs" />
+    <Compile Include="GitHubWebhookControllerTests.cs" />
     <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SubscriptionEntrySyncTests.cs" />
     <Compile Include="SyncContextTests.cs" />
     <Compile Include="WebhookHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />
     <Compile Include="WebhookReaperTests.cs" />
-    <Compile Include="WebhookTests.cs" />
+    <Compile Include="GitHubWebhookQueueHandlerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

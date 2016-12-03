@@ -111,16 +111,21 @@
       }
     }
 
-    private async Task EnsureQueues() {
-      var checks = ShipHubQueueNames.AllQueues
-        .Select(x => new { QueueName = x, ExistsTask = NamespaceManager.QueueExistsAsync(x) })
-        .ToArray();
-
-      await Task.WhenAll(checks.Select(x => x.ExistsTask));
-
-      var creations = checks
-        .Where(x => !x.ExistsTask.Result)
-        .Select(x => NamespaceManager.CreateQueueAsync(new QueueDescription(x.QueueName) {
+    private QueueDescription GetQueueDescription(string queueName) {
+      if (queueName == ShipHubQueueNames.WebhooksEvent) {
+        return new QueueDescription(queueName) {
+          // Set TTL lower if we find we find the DB is overwhelmed by webhook events.
+          DefaultMessageTimeToLive = TimeSpan.FromSeconds(30),
+          EnableExpress = false,
+          EnableBatchedOperations = true,
+          EnablePartitioning = true,
+          IsAnonymousAccessible = false,
+          MaxDeliveryCount = 1, //Prevent explosions of errors.
+          MaxSizeInMegabytes = 1024,
+          RequiresDuplicateDetection = false,
+        };
+      } else {
+        return new QueueDescription(queueName) {
           DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
           DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
           EnableExpress = true,
@@ -131,7 +136,20 @@
           MaxDeliveryCount = 2, // Prevent explosions of errors.
           MaxSizeInMegabytes = 5120,
           RequiresDuplicateDetection = false,
-        }));
+        };
+      }
+    }
+
+    private async Task EnsureQueues() {
+      var checks = ShipHubQueueNames.AllQueues
+        .Select(x => new { QueueName = x, ExistsTask = NamespaceManager.QueueExistsAsync(x) })
+        .ToArray();
+
+      await Task.WhenAll(checks.Select(x => x.ExistsTask));
+
+      var creations = checks
+        .Where(x => !x.ExistsTask.Result)
+        .Select(x => NamespaceManager.CreateQueueAsync(GetQueueDescription(x.QueueName)));
 
       await Task.WhenAll(creations);
     }
