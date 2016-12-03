@@ -17,9 +17,10 @@ BEGIN
   DELETE FROM RepositoryAccounts
   WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-  --RepositoryLog
-  DELETE FROM RepositoryLog
-  WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+  --SyncLog
+  DELETE FROM SyncLog
+  WHERE OwnerType = 'repo'
+    AND EXISTS (SELECT * FROM @Repositories WHERE Item = OwnerId)
 
   --AccountRepositories
   DELETE FROM AccountRepositories

@@ -7,16 +7,10 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [Id]   BIGINT      NOT NULL PRIMARY KEY CLUSTERED,
     [Type] NVARCHAR(4) NOT NULL
-  )
-
-  -- For sync events
-  DECLARE @Updates TABLE (
-    [OrganizationId] BIGINT NULL,
-    [RepositoryId]   BIGINT NULL
   )
 
   MERGE INTO Accounts WITH (UPDLOCK SERIALIZABLE) as [Target]
@@ -43,24 +37,15 @@ BEGIN
       [Date] = @Date
   OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
 
-  -- New Organizations reference themselves
-  INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId)
-  OUTPUT INSERTED.OrganizationId INTO @Updates (OrganizationId)
-  SELECT c.Id, c.Id
-  FROM @Changes as c
-  WHERE c.[Type] = 'org'
-    AND NOT EXISTS (SELECT * FROM OrganizationLog WITH (UPDLOCK) WHERE OrganizationId = c.Id AND AccountId = c.Id)
+  -- Ensuring organizations reference themselves is handled by
+  -- [SetUserOrganizations]
 
   -- Other actions manage adding user references to repos.
   -- Our only job here is to mark still valid references as changed.
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT -- Bump version
-  OUTPUT INSERTED.RepositoryId INTO @Updates (RepositoryId)
-  WHERE [Type] = 'account'
-    AND [Delete] = 0
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  WHERE [ItemType] = 'account'
     AND ItemId IN (SELECT Id FROM @Changes)
     AND ItemId != 10137 -- Ghost user (present in most repos. Do not ever mark as updated.)
-
-  -- Return updated organizations and repositories
-  SELECT DISTINCT OrganizationId, RepositoryId, NULL as UserId FROM @Updates
 END

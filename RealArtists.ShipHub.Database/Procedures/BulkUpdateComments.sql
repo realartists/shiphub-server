@@ -7,7 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [Id]     BIGINT NOT NULL PRIMARY KEY CLUSTERED,
     [UserId] BIGINT NOT NULL
@@ -15,7 +15,7 @@ BEGIN
 
   MERGE INTO Comments WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
-    SELECT c.Id, ISNULL(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
+    SELECT c.Id, COALESCE(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
     FROM @Comments as c
       LEFT OUTER JOIN Issues as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.IssueNumber AND c.IssueId IS NULL)
   ) as [Source]
@@ -30,32 +30,31 @@ BEGIN
       [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
       [Body] = [Source].[Body],
       [UpdatedAt] = [Source].[UpdatedAt]
-  OUTPUT INSERTED.Id, INSERTED.UserId INTO @Changes (Id, UserId);
+  OUTPUT INSERTED.Id, INSERTED.UserId INTO @Changes;
 
   -- Edited comments
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
-  FROM @Changes as c
-    INNER JOIN RepositoryLog ON (ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  WHERE ItemType = 'comment'
+    AND ItemId IN (SELECT Id FROM @Changes)
 
   -- New comments
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'comment', c.Id, 0
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'comment', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WITH (UPDLOCK) WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'comment')
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'comment' AND ItemId = c.Id)
 
-  -- Add new account references to log
-  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (SELECT DISTINCT(UserId) FROM @Changes) as [Source]
-  ON ([Target].ItemId = [Source].UserId
-    AND [Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'account')
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
+  -- New Accounts
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'account', c.UserId, 0
+  FROM (SELECT DISTINCT UserId FROM @Changes) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.UserId)
 
-  -- Return repository if updated
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
+  -- Return sync notifications
+  SELECT 'repo' as ItemType, @RepositoryId as ItemId
   WHERE EXISTS (SELECT * FROM @Changes)
 END

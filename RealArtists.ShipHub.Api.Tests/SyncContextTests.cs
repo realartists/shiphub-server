@@ -150,6 +150,7 @@
           });
         }
         await context.SaveChangesAsync();
+        await context.SetUserOrganizations(user.Id, new[] { orgAccount.Id });
         await context.SetOrganizationUsers(orgAccount.Id, new[] { Tuple.Create(user.Id, isAdmin) });
 
         var logs = new List<SyncLogEntry>();
@@ -175,7 +176,12 @@
         logs.Clear();
         await syncContext.Sync();
 
-        return ((OrganizationEntry)logs.Single(x => x.Entity == SyncEntityType.Organization).Data).ShipNeedsWebhookHelp;
+        var orgEntry = logs
+          .Where(x => x.Entity == SyncEntityType.Organization)
+          .Select(x => x.Data)
+          .OfType<OrganizationEntry>()
+          .Single();
+        return orgEntry.ShipNeedsWebhookHelp;
       }
     }
 

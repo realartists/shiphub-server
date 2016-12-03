@@ -7,45 +7,36 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DECLARE @Changes BIT = 0
-
-  MERGE INTO RepositoryAccounts WITH (UPDLOCK SERIALIZABLE) as Target
+  MERGE INTO RepositoryAccounts WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT Item as AccountId, @RepositoryId as RepositoryId
-      FROM @AssignableAccountIds) as Source
-  ON Target.AccountId = Source.AccountId
-    AND Target.RepositoryId = Source.RepositoryId
+    FROM @AssignableAccountIds
+  ) as [Source]
+  ON [Target].AccountId = [Source].AccountId
+    AND [Target].RepositoryId = [Source].RepositoryId
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
     INSERT (AccountId, RepositoryId)
     VALUES (AccountId, RepositoryId)
   -- Delete
   WHEN NOT MATCHED BY SOURCE
-    AND Target.RepositoryId = @RepositoryId
+    AND [Target].RepositoryId = @RepositoryId
     THEN DELETE;
 
-  IF(@@ROWCOUNT > 0) -- Not a NOP
-  BEGIN
-    SET @Changes = 1
+  DECLARE @Changes INT = @@ROWCOUNT
 
-    -- Update repo record in log
-    UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
-      SET [RowVersion] = DEFAULT
-    WHERE RepositoryId = @RepositoryId
-      AND [Type] = 'repository'
-      -- AND ItemId = @RepositoryId
+  -- New Accounts
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'account', a.Item, 0
+  FROM @AssignableAccountIds as a
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = a.Item)
 
-    -- Add any missing accounts to the log
-    MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
-    USING (SELECT Item as AccountId FROM @AssignableAccountIds) as [Source]
-    ON ([Target].RepositoryId = @RepositoryId
-      AND [Target].[Type] = 'account'
-      AND [Target].ItemId = AccountId)
-    WHEN NOT MATCHED BY TARGET THEN
-      INSERT (RepositoryId, [Type], ItemId, [Delete])
-      VALUES (@RepositoryId, 'account', AccountId, 0);
-  END
-
-  -- Return updated organizations and repositories
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId WHERE @Changes = 1
+  -- Update repo record in log
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE)
+    SET [RowVersion] = DEFAULT
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as Item
+  WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'repository' AND ItemId = @RepositoryId
+    AND @Changes > 0
 END

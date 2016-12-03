@@ -7,41 +7,69 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- This may appear redundant when compared to SetOrganizationUsers
+  -- That's not the case. SetOrganizationUsers is only called by the
+  -- OrganizationActor, which only works when there's at least one
+  -- organization member with a valid token.
+
+  -- This stored proc ensures that the first member of an organization
+  -- is added, and that the last member is removed, despite having no
+  -- organization members with valid tokens at either time.
+
+  -- Adding the initial member *SHOULD NOT* trigger a sync, since
+  -- SetOrganizationUsers will take care of it.
+  
+  -- Any removed member *MUST* trigger a sync, since there may
+  -- no longer be any valid tokens for the OrganizationActor to use.
+
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [OrganizationId] BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [Action]         NVARCHAR(10) NOT NULL
   )
 
   MERGE INTO OrganizationAccounts WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (SELECT Item as OrganizationId FROM @OrganizationIds) as [Source]
+  USING (
+    SELECT Item as OrganizationId FROM @OrganizationIds
+  ) as [Source]
   ON ([Target].OrganizationId = [Source].OrganizationId AND [Target].UserId = @UserId)
   -- Add
   WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([UserId], [OrganizationId], [Admin])
-    VALUES (@UserId, [OrganizationId], 0) -- Safe to default to false, will update if wrong.
+    INSERT (UserId, OrganizationId, [Admin])
+    VALUES (@UserId, OrganizationId, 0) -- Default to admin = false, will update if wrong.
   -- Delete
-  WHEN NOT MATCHED BY SOURCE AND [Target].[UserId] = @UserId
+  WHEN NOT MATCHED BY SOURCE AND [Target].UserId = @UserId
     THEN DELETE
-  OUTPUT COALESCE(INSERTED.OrganizationId, DELETED.OrganizationId), $action INTO @Changes (OrganizationId, [Action]);
+  OUTPUT COALESCE(INSERTED.OrganizationId, DELETED.OrganizationId), $action INTO @Changes;
 
-  IF (@@ROWCOUNT > 0)
-  BEGIN
-    -- If user added or removed from orgs, bump the org
-    UPDATE OrganizationLog WITH (UPDLOCK SERIALIZABLE) SET
-      [RowVersion] = DEFAULT
-    FROM @Changes as c
-      INNER JOIN OrganizationLog as ol ON (ol.OrganizationId = c.OrganizationId AND ol.AccountId = c.OrganizationId)
+  -- New organizations reference themselves
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'org', c.OrganizationId, 'account', c.OrganizationId, 0
+  FROM @Changes as c
+  WHERE c.[Action] = 'INSERT'
+    AND NOT EXISTS (
+      SELECT * FROM SyncLog WITH (UPDLOCK)
+      WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
 
-    -- New org memberships
-    INSERT INTO OrganizationLog WITH (SERIALIZABLE) (OrganizationId, AccountId)
-    SELECT c.OrganizationId, @UserId
-    FROM @Changes as c
-    WHERE c.[Action] = 'INSERT'
-      AND NOT EXISTS (SELECT * FROM OrganizationLog WITH (UPDLOCK) WHERE OrganizationId = c.OrganizationId AND AccountId = @UserId)
-  END
+  -- For new members, add a reference but don't notify.
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'org', c.OrganizationId, 'account', @UserId, 0
+  FROM @Changes as c
+  WHERE c.[Action] = 'INSERT'
+    AND NOT EXISTS (
+      SELECT * FROM SyncLog WITH (UPDLOCK)
+      WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = @UserId)
+    
+  -- If user deleted from the org, bump the version and trigger org sync
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
+    [RowVersion] = DEFAULT
+  -- Notify orgs with deletions
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  FROM @Changes as c
+    INNER JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+  WHERE c.[Action] = 'DELETE'
 
-  -- Return updated organizations and users
-  SELECT OrganizationId, NULL as RepositoryId, @UserId as UserId
-  FROM @Changes
+  -- Notify user
+  SELECT 'user' as ItemType, @UserId as ItemId
+  WHERE EXISTS (SELECT * FROM @Changes)
 END

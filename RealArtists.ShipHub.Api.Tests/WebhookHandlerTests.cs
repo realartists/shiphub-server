@@ -179,7 +179,7 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id);
         await context.SaveChangesAsync();
 
-        var repoLogItem = context.RepositoryLog.Single(x => x.Type.Equals("repository") && x.ItemId == repo.Id);
+        var repoLogItem = context.SyncLogs.Single(x => x.OwnerType == "repo" && x.OwnerId == repo.Id && x.ItemType == "repository" && x.ItemId == repo.Id);
         var repoLogItemRowVersion = repoLogItem.RowVersion;
 
         var mock = new Mock<IGitHubActor>();
@@ -234,7 +234,7 @@
         Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
 
-        context.Entry(repoLogItem).Reload();
+        repoLogItem = context.SyncLogs.Single(x => x.OwnerType == "repo" && x.OwnerId == repo.Id && x.ItemType == "repository" && x.ItemId == repo.Id);
         Assert.Greater(repoLogItem.RowVersion, repoLogItemRowVersion,
           "row version should get bumped so the repo gets synced");
         Assert.AreEqual(new long[] { repo.Id }, changeMessages[0].Repositories.ToArray());
@@ -304,13 +304,10 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.OrganizationAccounts.Add(new OrganizationAccount() {
-          UserId = user.Id,
-          OrganizationId = org.Id,
-        });
         await context.SaveChangesAsync();
+        await context.SetUserOrganizations(user.Id, new[] { org.Id });
 
-        var orgLogItem = context.OrganizationLog.Single(x => x.OrganizationId == org.Id && x.AccountId == org.Id);
+        var orgLogItem = context.SyncLogs.Single(x => x.OwnerType == "org" && x.OwnerId == org.Id && x.ItemType == "account" && x.ItemId == org.Id);
         var orgLogItemRowVersion = orgLogItem.RowVersion;
 
         var mock = new Mock<IGitHubActor>();
@@ -365,7 +362,7 @@
         Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
 
-        context.Entry(orgLogItem).Reload();
+        orgLogItem = context.SyncLogs.Single(x => x.OwnerType == "org" && x.OwnerId == org.Id && x.ItemType == "account" && x.ItemId == org.Id);
         Assert.Greater(orgLogItem.RowVersion, orgLogItemRowVersion,
           "row version should get bumped so the org gets synced");
         Assert.AreEqual(new long[] { org.Id }, changeMessages[0].Organizations.ToArray());

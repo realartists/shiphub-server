@@ -7,13 +7,14 @@ BEGIN
   SET NOCOUNT ON
 
   DELETE FROM Comments WITH (UPDLOCK SERIALIZABLE)
-  WHERE EXISTS (SELECT * FROM @Comments WHERE Item = Id)
+  WHERE Id IN (SELECT Item FROM @Comments)
 
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = 1,
     [RowVersion] = DEFAULT
   -- Crafty change output
-  OUTPUT NULL as OrganizationId, INSERTED.RepositoryId, NULL as UserId
-  WHERE [Type] = 'comment'
-    AND EXISTS (SELECT * FROM @Comments WHERE Item = ItemId)
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  WHERE ItemType = 'comment'
+    AND [Delete] = 0
+    AND ItemId IN (SELECT Item FROM @Comments)
 END

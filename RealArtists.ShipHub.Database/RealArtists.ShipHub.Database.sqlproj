@@ -113,10 +113,9 @@
     <Build Include="Procedures\BulkUpdateComments.sql" />
     <Build Include="User Defined Types\IssueEventTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssueEvents.sql" />
-    <Build Include="Tables\RepositoryLog.sql" />
+    <Build Include="Tables\SyncLog.sql" />
     <Build Include="Procedures\WhatsNew.sql" />
     <Build Include="User Defined Types\VersionTableType.sql" />
-    <Build Include="Tables\OrganizationLog.sql" />
     <Build Include="Tables\IssueEventAccess.sql" />
     <Build Include="Tables\Reactions.sql" />
     <Build Include="User Defined Types\ReactionTableType.sql" />
