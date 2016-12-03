@@ -15,6 +15,7 @@
       <Setting name="UseFiddler" />
       <Setting name="GitHubLoggingStorage" />
       <Setting name="RAYGUN_APIKEY" />
+      <Setting name="UseSqlAzureExecutionStrategy" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

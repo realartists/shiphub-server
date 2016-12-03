@@ -27,6 +27,8 @@
                value=""/>
       <Setting name="RAYGUN_APIKEY"
                value="" />
+      <Setting name="UseSqlAzureExecutionStrategy"
+               value="false" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>
