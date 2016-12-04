@@ -9,12 +9,14 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces;
   using AutoMapper;
   using Common;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Filters;
+  using Orleans;
   using QueueClient;
   using dm = Common.DataModel;
 
@@ -31,10 +33,12 @@
 
     private IMapper _mapper;
     private IShipHubQueueClient _queueClient;
+    private IGrainFactory _grainFactory;
 
-    public GitHubProxyController(IMapper mapper, IShipHubQueueClient queueClient) {
+    public GitHubProxyController(IMapper mapper, IShipHubQueueClient queueClient, IGrainFactory grainFactory) {
       _mapper = mapper;
       _queueClient = queueClient;
+      _grainFactory = grainFactory;
     }
 
     [HttpDelete]
@@ -136,6 +140,10 @@
               issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
             );
           }
+
+          // Trigger issue event and comment sync.
+          var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}" , grainClassNamePrefix: null);
+          await issueGrain.SyncInteractive(user.UserId);
 
           if (!changes.IsEmpty) {
             await _queueClient.NotifyChanges(changes);
