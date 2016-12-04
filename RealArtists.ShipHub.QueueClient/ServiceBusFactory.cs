@@ -4,7 +4,6 @@
   using System.Linq;
   using System.Threading.Tasks;
   using Common;
-  using Microsoft.Azure;
   using Microsoft.ServiceBus;
   using Microsoft.ServiceBus.Messaging;
 

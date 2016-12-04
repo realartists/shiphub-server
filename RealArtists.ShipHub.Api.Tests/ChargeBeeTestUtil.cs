@@ -5,6 +5,8 @@
   using System.IO;
   using System.Net;
   using System.Net.Fakes;
+  using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Web;
   using ChargeBee.Api;
   using ChargeBee.Api.Fakes;
@@ -43,15 +45,15 @@
           NameValueCollection nvc;
 
           if (req.Method.Equals("POST")) {
-            var stream = req.GetRequestStream();
-            stream.Position = 0;
-            string body;
-            using (var reader = new StreamReader(stream)) {
-              body = reader.ReadToEnd();
+            using (var stream = req.GetRequestStream()) {
+              stream.Position = 0;
+              using (var postContent = new StreamContent(stream)) {
+                postContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
+                nvc = postContent.ReadAsFormDataAsync().GetAwaiter().GetResult();
+              }
             }
-            nvc = HttpUtility.ParseQueryString(body);
           } else {
-            nvc = HttpUtility.ParseQueryString(req.RequestUri.Query);
+            nvc = req.RequestUri.ParseQueryString();
           }
 
           var data = new Dictionary<string, string>();
