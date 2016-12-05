@@ -210,7 +210,6 @@
       HttpMessageHandler handler = new HttpClientHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AllowAutoRedirect = false,
-        MaxRequestContentBufferSize = 4 * 1024 * 1024,
         UseCookies = false,
         UseDefaultCredentials = false,
 #if DEBUG
