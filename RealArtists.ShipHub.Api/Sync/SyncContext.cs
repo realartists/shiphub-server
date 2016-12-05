@@ -266,14 +266,21 @@
           // Accounts
           // Orgs sent here will have null members, which the client ignores.
           while (reader.Read()) {
-            entries.Add(new SyncLogEntry() {
-              Action = SyncLogAction.Set,
-              Entity = (string)ddr.Type == "user" ? SyncEntityType.User : SyncEntityType.Organization,
-              Data = new AccountEntry() {
-                Identifier = ddr.Id,
-                Login = ddr.Login,
-              },
-            });
+            var type = (string)ddr.Type == "user" ? SyncEntityType.User : SyncEntityType.Organization;
+            var accountId = (long)ddr.Id;
+            if (type == SyncEntityType.Organization && orgAccounts.ContainsKey(accountId)) {
+              // We've already sent that information
+              --totalLogs;
+            } else {
+              entries.Add(new SyncLogEntry() {
+                Action = SyncLogAction.Set,
+                Entity = type,
+                Data = new AccountEntry() {
+                  Identifier = accountId,
+                  Login = ddr.Login,
+                },
+              });
+            }
           }
 
           // Comments (can be deleted)
