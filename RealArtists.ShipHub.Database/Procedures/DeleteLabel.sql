@@ -10,11 +10,10 @@ BEGIN
 
   DELETE FROM Labels WHERE Id = @LabelId
 
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = 1,
     [RowVersion] = DEFAULT
-  OUTPUT NULL as OrganizationId, INSERTED.RepositoryId, NULL as UserId
-  WHERE [Type] = 'label'
-    AND ItemId = @LabelId
-    AND [Delete] = 0
+  -- Crafty change output
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  WHERE ItemType = 'label' AND [Delete] = 0 AND ItemId = @LabelId
 END

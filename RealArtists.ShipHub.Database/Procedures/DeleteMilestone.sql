@@ -8,12 +8,10 @@ BEGIN
 
   DELETE FROM Milestones WHERE Id = @MilestoneId
 
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE)
-    SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [Delete] = 1,
     [RowVersion] = DEFAULT
-  OUTPUT NULL as OrganizationId, INSERTED.RepositoryId, NULL as UserId
-  WHERE [Type] = 'milestone'
-    AND ItemId = @MilestoneId
-    AND [Delete] = 0
+  -- Crafty change output
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  WHERE ItemType = 'milestone' AND [Delete] = 0 AND ItemId = @MilestoneId
 END

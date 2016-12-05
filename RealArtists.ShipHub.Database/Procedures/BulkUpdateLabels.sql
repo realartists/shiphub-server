@@ -8,7 +8,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [Action] NVARCHAR(10) NOT NULL
@@ -40,23 +40,24 @@ BEGIN
     UPDATE SET
       Name = [Source].Name,
       Color = [Source].Color
-  OUTPUT ISNULL(INSERTED.Id, DELETED.Id), $action INTO @Changes (Id, [Action]);
+  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
 
   -- Deleted or edited labels
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = CAST(CASE WHEN [Action] = 'DELETE' THEN 1 ELSE 0 END as BIT),
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
+    [Delete] = IIF([Action] = 'DELETE', 1, 0),
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (c.Id = rl.ItemId)
-  WHERE RepositoryId = @RepositoryId AND [Type] = 'label'
-
-  -- New milestones
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'label', c.Id, 0
   FROM @Changes as c
-  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WITH (UPDLOCK) WHERE ItemId = c.Id AND RepositoryId = @RepositoryId AND [Type] = 'label')
+    INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'label' AND ItemId = c.Id)
 
-  -- Return repository if updated
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
+  -- New labels
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'label', c.Id, 0
+  FROM @Changes as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'label' AND ItemId = c.Id)
+
+  -- Return sync notifications
+  SELECT 'repo' as ItemType, @RepositoryId as ItemId
   WHERE EXISTS (SELECT * FROM @Changes)
 END

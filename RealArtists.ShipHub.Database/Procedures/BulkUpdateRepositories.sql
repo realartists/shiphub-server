@@ -7,7 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED,
     [AccountId] BIGINT NOT NULL INDEX IX_Account NONCLUSTERED
@@ -26,7 +26,6 @@ BEGIN
     EXEC [dbo].[DeleteRepositories] @Repositories = @DeletedRepositories
   END
 
-  -- It's business time
   MERGE INTO Repositories WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
     SELECT [Id], [AccountId], [Private], [Name], [FullName]
@@ -49,33 +48,30 @@ BEGIN
       [Name] = [Source].[Name],
       [FullName] = [Source].[FullName],
       [Date] = @Date
-  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes (Id, AccountId);
+  OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes;
 
   -- Bump existing repos
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (rl.[Type] = 'repository' AND rl.ItemId = c.Id)
+  WHERE ItemType = 'repository'
+    AND ItemId IN (SELECT Id FROM @Changes)
 
   -- New repositories reference themselves
-  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT Id, 'repository', Id, 0
-    FROM @Changes as c
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', Id, 'repository', Id, 0
+  FROM @Changes as c
   WHERE NOT EXISTS (
-    SELECT *
-    FROM RepositoryLog
-    WHERE RepositoryId = c.Id AND [Type] = 'repository' AND ItemId = c.Id)
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = c.Id AND ItemType = 'repository' AND ItemId = c.Id)
 
   -- Best to inline owners too
-  INSERT INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT Id, 'account', AccountId, 0
-    FROM @Changes as c
+  INSERT INTO SyncLog WITH (UPDLOCK) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', Id, 'account', AccountId, 0
+  FROM @Changes as c
   WHERE NOT EXISTS (
-    SELECT *
-    FROM RepositoryLog
-    WHERE RepositoryId = c.Id AND [Type] = 'account' AND ItemId = c.AccountId)
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = c.Id AND ItemType = 'account' AND ItemId = c.AccountId)
 
-  -- Return updated repositories
-  SELECT NULL as OrganizationId, Id as RepositoryId, NULL as UserId
-  FROM @Changes
+  -- Return sync notifications
+  SELECT 'repo' as ItemType, Id as ItemId FROM @Changes
 END

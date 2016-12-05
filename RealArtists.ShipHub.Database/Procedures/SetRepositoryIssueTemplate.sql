@@ -7,23 +7,17 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DECLARE @Changes TABLE (
-	RepositoryId BIGINT NOT NULL
-  );
-
   -- Update the Repository with the new IssueTemplate
-  UPDATE Repositories WITH (UPDLOCK SERIALIZABLE)
-  SET IssueTemplate = @IssueTemplate
-  OUTPUT inserted.Id INTO @Changes
-  WHERE Id = @RepositoryId AND ISNULL(IssueTemplate, '') <> ISNULL(@IssueTemplate, '')
+  UPDATE Repositories WITH (UPDLOCK SERIALIZABLE) SET 
+    IssueTemplate = @IssueTemplate
+  WHERE Id = @RepositoryId AND NULLIF(IssueTemplate, @IssueTemplate) IS NOT NULL
+
+  DECLARE @Changes INT = @@ROWCOUNT
 
   -- Update the log with any changes
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (rl.[Type] = 'repository' AND rl.ItemId = c.RepositoryId)
-
-  -- Return whether or not we updated anything
-  SELECT NULL as OrganizationId, RepositoryId, NULL as UserId
-  FROM @Changes;
+  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+  WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'repository' AND ItemId = @RepositoryId
+    AND @Changes > 0
 END

@@ -9,13 +9,9 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [IssueId] BIGINT NOT NULL
-  )
-
-  DECLARE @UniqueChanges TABLE (
-    [IssueId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
   MERGE INTO Issues WITH (UPDLOCK SERIALIZABLE) as [Target]
@@ -48,10 +44,10 @@ BEGIN
       [Locked] = [Source].[Locked],
       [UpdatedAt] = [Source].[UpdatedAt],
       [ClosedAt] = [Source].[ClosedAt],
-      [ClosedById] = ISNULL([Source].[ClosedById], [Target].[ClosedById]),
+      [ClosedById] = COALESCE([Source].[ClosedById], [Target].[ClosedById]),
       [PullRequest] = [Source].[PullRequest],
-      [Reactions] = ISNULL([Source].[Reactions], [Target].[Reactions])
-  OUTPUT INSERTED.Id INTO @Changes (IssueId);
+      [Reactions] = COALESCE([Source].[Reactions], [Target].[Reactions])
+  OUTPUT INSERTED.Id INTO @Changes;
 
   MERGE INTO IssueLabels WITH (UPDLOCK SERIALIZABLE) as [Target]
   USING (
@@ -66,7 +62,7 @@ BEGIN
   WHEN NOT MATCHED BY SOURCE
     AND [Target].IssueId IN (SELECT Id FROM @Issues)
     THEN DELETE
-  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId);
+  OUTPUT COALESCE(INSERTED.IssueId, DELETED.IssueId) INTO @Changes;
 
   -- Assignees
   MERGE INTO IssueAssignees WITH(UPDLOCK SERIALIZABLE) as [Target]
@@ -80,46 +76,42 @@ BEGIN
     VALUES (IssueId, UserId)
   -- Delete
   WHEN NOT MATCHED BY SOURCE
-    AND [Target].IssueId IN (SELECT DISTINCT(Id) FROM @Issues)
+    AND [Target].IssueId IN (SELECT Id FROM @Issues)
     THEN DELETE
-  OUTPUT ISNULL(INSERTED.IssueId, DELETED.IssueId) INTO @Changes (IssueId);
-
-  INSERT INTO @UniqueChanges (IssueId)
-  SELECT DISTINCT(IssueId) FROM @Changes
+  OUTPUT COALESCE(INSERTED.IssueId, DELETED.IssueId) INTO @Changes;
 
   -- Update existing issues
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @UniqueChanges as c ON (rl.ItemId = c.IssueId)
-  WHERE RepositoryId = @RepositoryId AND [Type] = 'issue'
+  WHERE OwnerType = 'repo'
+    AND OwnerId = @RepositoryId
+    AND ItemType = 'issue'
+    AND ItemId IN (SELECT DISTINCT IssueId FROM @Changes)
 
   -- New issues
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'issue', c.IssueId, 0
-  FROM @UniqueChanges as c
-  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WITH (UPDLOCK) WHERE ItemId = c.IssueId AND RepositoryId = @RepositoryId AND [Type] = 'issue')
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'issue', c.IssueId, 0
+  FROM (SELECT DISTINCT IssueId FROM @Changes) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'issue' AND ItemId = c.IssueId)
 
-  -- Add new account references to log
-  -- Removed account references are leaked or GC'd later by another process.
-  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT Distinct(UPUserId) as UserId
+  -- New Accounts
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'account', c.UserId, 0
+  FROM (
+    SELECT DISTINCT(UPUserId) as UserId
     FROM Issues as c
-        INNER JOIN @UniqueChanges as ch ON (c.Id = ch.IssueId)
+        INNER JOIN @Changes as ch ON (c.Id = ch.IssueId)
       UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById)) as [Ignored]
     UNION
     SELECT Item2 FROM @Assignees
-  ) as [Source]
-  ON ([Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'account'
-    AND [Target].ItemId = [Source].UserId)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
+  ) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.UserId)
 
-  -- Return repository if updated
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
-  WHERE EXISTS (SELECT * FROM @UniqueChanges)
+  -- Return sync notifications
+  SELECT 'repo' as ItemType, @RepositoryId as ItemId
+  WHERE EXISTS (SELECT * FROM @Changes)
 END

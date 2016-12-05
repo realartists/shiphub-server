@@ -44,10 +44,9 @@
     public virtual DbSet<Label> Labels { get; set; }
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
-    public virtual DbSet<OrganizationLog> OrganizationLog { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
-    public virtual DbSet<RepositoryLog> RepositoryLog { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+    public virtual DbSet<SyncLog> SyncLogs { get; set; }
     public virtual DbSet<Usage> Usage { get; set; }
 
     public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
@@ -149,14 +148,14 @@
     public Task BumpRepositoryVersion(long repositoryId) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        "UPDATE RepositoryLog SET [RowVersion] = DEFAULT WHERE RepositoryId = @RepoId AND [Type] = 'repository' and ItemId = @RepoId",
+        "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'repo' AND OwnerId = @RepoId AND ItemType = 'repository' and ItemId = @RepoId",
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repositoryId });
     }
 
     public Task BumpOrganizationVersion(long organizationId) {
       return Database.ExecuteSqlCommandAsync(
         TransactionalBehavior.DoNotEnsureTransaction,
-        "UPDATE OrganizationLog SET [RowVersion] = DEFAULT WHERE OrganizationId = @OrgId AND AccountId = @OrgId",
+        "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'org' AND OwnerId = @OrgId AND ItemType = 'account' AND ItemId = @OrgId",
         new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
     }
 
@@ -238,7 +237,20 @@
           dynamic ddr = sdr;
           do {
             while (sdr.Read()) {
-              result.Add(ddr.OrganizationId, ddr.RepositoryId, ddr.UserId);
+              long itemId = ddr.ItemId;
+              switch ((string)ddr.ItemType) {
+                case "org":
+                  result.Organizations.Add(itemId);
+                  break;
+                case "repo":
+                  result.Repositories.Add(itemId);
+                  break;
+                case "user":
+                  result.Users.Add(itemId);
+                  break;
+                default:
+                  throw new Exception($"Unknown change ItemType {ddr.ItemType}");
+              }
             }
           } while (sdr.NextResult());
         }

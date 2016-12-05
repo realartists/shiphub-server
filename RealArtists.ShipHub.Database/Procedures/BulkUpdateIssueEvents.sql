@@ -10,13 +10,9 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- For tracking required updates to repo log
+  -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [IssueEventId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
-  )
-
-  DECLARE @AccessChanges TABLE (
-    [IssueEventId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+    [IssueEventId] BIGINT NOT NULL
   )
 
   MERGE INTO IssueEvents WITH (UPDLOCK SERIALIZABLE) as [Target]
@@ -41,48 +37,41 @@ BEGIN
       Restricted = [Source].Restricted,
       Timeline = @Timeline,
       ExtensionData = [Source].ExtensionData
-  OUTPUT INSERTED.Id INTO @Changes (IssueEventId);
+  OUTPUT INSERTED.Id INTO @Changes;
 
    -- Add access grants
   INSERT INTO IssueEventAccess WITH (SERIALIZABLE) (IssueEventId, UserId)
-  OUTPUT INSERTED.IssueEventId INTO @AccessChanges (IssueEventId)
+  OUTPUT INSERTED.IssueEventId INTO @Changes
   SELECT Id, @UserId
   FROM @IssueEvents as ie
   WHERE ie.Restricted = 1
     AND NOT EXISTS(SELECT * FROM IssueEventAccess WITH (UPDLOCK) WHERE IssueEventId = ie.Id AND UserId = @UserId)
 
-  INSERT INTO @Changes (IssueEventId)
-  SELECT ac.IssueEventId
-  FROM @AccessChanges as ac
-  WHERE NOT EXISTS (SELECT * FROM @Changes WHERE IssueEventId = ac.IssueEventId)
-
   -- Update existing events
-  UPDATE RepositoryLog WITH (UPDLOCK SERIALIZABLE) SET
+  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
     [RowVersion] = DEFAULT
-  FROM RepositoryLog as rl
-    INNER JOIN @Changes as c ON (rl.ItemId = c.IssueEventId)
-  WHERE RepositoryId = @RepositoryId AND [Type] = 'event'
+  WHERE OwnerType = 'repo'
+    AND OwnerId = @RepositoryId
+    AND ItemType = 'event'
+    AND ItemId IN (SELECT DISTINCT IssueEventId FROM @Changes)
 
   -- New events
-  INSERT INTO RepositoryLog WITH (SERIALIZABLE) (RepositoryId, [Type], ItemId, [Delete])
-  SELECT @RepositoryId, 'event', c.IssueEventId, 0
-  FROM @Changes as c
-  WHERE NOT EXISTS (SELECT * FROM RepositoryLog WITH (UPDLOCK) WHERE ItemId = c.IssueEventId AND RepositoryId = @RepositoryId AND [Type] = 'event')
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'event', c.IssueEventId, 0
+  FROM (SELECT DISTINCT IssueEventId FROM @Changes) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'event' AND ItemId = c.IssueEventId)
 
-  -- Add missing account references to log
-  MERGE INTO RepositoryLog WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT Item as UserId FROM @ReferencedAccounts
-  ) as [Source]
-  ON ([Target].RepositoryId = @RepositoryId
-    AND [Target].[Type] = 'account'
-    AND [Target].ItemId = [Source].UserId)
-  -- Insert
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (RepositoryId, [Type], ItemId, [Delete])
-    VALUES (@RepositoryId, 'account', [Source].UserId, 0);
+  -- New Accounts
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT 'repo', @RepositoryId, 'account', c.UserId, 0
+  FROM (SELECT DISTINCT Item as UserId FROM @ReferencedAccounts) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.UserId)
 
-  -- Return repository if updated
-  SELECT NULL as OrganizationId, @RepositoryId as RepositoryId, NULL as UserId
+  -- Return sync notifications
+  SELECT 'repo' as ItemType, @RepositoryId as ItemId
   WHERE EXISTS (SELECT * FROM @Changes)
 END
