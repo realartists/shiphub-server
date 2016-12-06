@@ -8,6 +8,7 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Hosting;
+  using Common;
   using Microsoft.Azure;
   using Models;
   using RazorEngine.Configuration;
@@ -36,7 +37,7 @@
     });
     private static string BaseDirectory { get { return _BaseDirectory.Value; } }
 
-    private IRazorEngineService GetRazorEngineService() {
+    public static void Register() {
       var config = new TemplateServiceConfiguration {
         CachingProvider = new DefaultCachingProvider(_ => { }),
         DisableTempFileLocking = true,
@@ -44,12 +45,16 @@
           Path.Combine(BaseDirectory, "Views"),
         })
       };
-      return RazorEngineService.Create(config);
+      RazorEngine.Engine.Razor = RazorEngineService.Create(config);
+
+      var files = Directory.GetFiles(Path.Combine(BaseDirectory, "Views"), "*.cshtml");
+      foreach (var file in files) {
+        RazorEngine.Engine.Razor.Compile(Path.GetFileNameWithoutExtension(file));
+      }
     }
 
     private async Task SendMailMessage(MailMessageBase model, string subject, string templateBaseName, Attachment attachment = null) {
-      var razor = GetRazorEngineService();
-      var text = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model);
+      var text = RazorEngine.Engine.Razor.Run(templateBaseName + "Plain", model.GetType(), model);
 
       var message = new MailMessage(
         new MailAddress("support@realartists.com", "Ship"),
@@ -64,12 +69,12 @@
         // pre-header text be sufficiently long so that the <img> tag's alt text and
         // the href URL don't leak into the pre-header.  The plain text version is long
         // enough for this.
-        var preheader = razor.RunCompile(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
+        var preheader = RazorEngine.Engine.Razor.Run(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
           { "SkipHeaderFooter", true }
         })).Trim();
         bag.AddValue("PreHeader", preheader);
 
-        var html = razor.RunCompile(templateBaseName + "Html", model.GetType(), model, bag);
+        var html = RazorEngine.Engine.Razor.Run(templateBaseName + "Html", model.GetType(), model, bag);
 
         using (var premailer = new PreMailer.Net.PreMailer(html)) {
           html = premailer.MoveCssInline(
