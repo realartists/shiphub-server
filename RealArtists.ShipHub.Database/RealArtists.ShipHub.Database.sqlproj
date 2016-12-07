@@ -134,6 +134,9 @@
     <Build Include="Procedures\DeleteMilestone.sql" />
     <Build Include="Procedures\BulkUpdateLabels.sql" />
     <Build Include="Procedures\DeleteLabel.sql" />
+    <Build Include="Procedures\BulkUpdateProjects.sql" />
+    <Build Include="Tables\Projects.sql" />
+    <Build Include="User Defined Types\ProjectTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

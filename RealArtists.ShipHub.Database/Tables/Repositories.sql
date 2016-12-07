@@ -14,6 +14,7 @@
   [IssueSince]                        DATETIMEOFFSET NULL,
   [LabelMetadataJson]                 NVARCHAR(MAX)  NULL,
   [MilestoneMetadataJson]             NVARCHAR(MAX)  NULL,
+  [ProjectMetadataJson]               NVARCHAR(MAX)  NULL,
   [ContentsRootMetadataJson]          NVARCHAR(MAX)  NULL,
   [ContentsDotGitHubMetadataJson]     NVARCHAR(MAX)  NULL,
   [ContentsIssueTemplateMetadataJson] NVARCHAR(MAX)  NULL

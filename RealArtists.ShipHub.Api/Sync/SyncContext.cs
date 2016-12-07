@@ -373,6 +373,33 @@
             entries.Add(entry);
           }
 
+          // Projects (can be deleted)
+          reader.NextResult();
+          while (reader.Read()) {
+            var entry = new SyncLogEntry() {
+              Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+              Entity = SyncEntityType.Project,
+            };
+
+            if (entry.Action == SyncLogAction.Set) {
+              entry.Data = new ProjectEntry() {
+                Identifier = ddr.Id,
+                Name = ddr.Name,
+                Number = ddr.Number,
+                Body = ddr.Body,
+                CreatedAt = ddr.CreatedAt,
+                UpdatedAt = ddr.UpdatedAt,
+                Creator = ddr.CreatorId,
+                Organization = ddr.OrganizationId,
+                Repository = ddr.RepositoryId
+              };
+            } else {
+              entry.Data = new ProjectEntry() { Identifier = ddr.Id };
+            }
+
+            entries.Add(entry);
+          }
+
           // Reactions (can be deleted)
           reader.NextResult();
           while (reader.Read()) {

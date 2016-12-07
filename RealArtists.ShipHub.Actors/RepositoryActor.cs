@@ -38,6 +38,7 @@
     private GitHubMetadata _issueMetadata;
     private GitHubMetadata _labelMetadata;
     private GitHubMetadata _milestoneMetadata;
+    private GitHubMetadata _projectMetadata;
     private GitHubMetadata _contentsRootMetadata;
     private GitHubMetadata _contentsDotGithubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
@@ -78,6 +79,7 @@
         _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
+        _projectMetadata = repo.ProjectMetadata;
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
@@ -100,6 +102,7 @@
         repo.IssueSince = _issueSince;
         repo.LabelMetadata = _labelMetadata;
         repo.MilestoneMetadata = _milestoneMetadata;
+        repo.ProjectMetadata = _projectMetadata;
         repo.ContentsRootMetadata = _contentsRootMetadata;
         repo.ContentsDotGitHubMetadata = _contentsDotGithubMetadata;
         repo.ContentsIssueTemplateMetadata = _contentsIssueTemplateMetadata;
@@ -173,6 +176,7 @@
           await UpdateRepositoryAssignees(context, github),
           await UpdateRepositoryLabels(context, github),
           await UpdateRepositoryMilestones(context, github),
+          await UpdateRepositoryProjects(context, github),
           await UpdateRepositoryIssues(context, github)
         );
 
@@ -407,6 +411,21 @@
         }
 
         _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
+      }
+
+      return changes;
+    }
+
+    private async Task<IChangeSummary> UpdateRepositoryProjects(ShipHubContext context, IGitHubPoolable github) {
+      var changes = ChangeSummary.Empty;
+
+      if (_projectMetadata == null || _projectMetadata.Expires < DateTimeOffset.UtcNow) {
+        var projects = await github.RepositoryProjects(_fullName, _projectMetadata);
+        if (projects.IsOk) {
+          changes = await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
+        }
+
+        _projectMetadata = GitHubMetadata.FromResponse(projects);
       }
 
       return changes;

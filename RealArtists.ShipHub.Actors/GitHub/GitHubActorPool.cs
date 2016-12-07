@@ -212,5 +212,19 @@
         cacheOptions
       );
     }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      return TryWithFallback(
+        (actor, cache) => actor.RepositoryProjects(repoFullName, cache),
+        cacheOptions
+      );
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions = null) {
+      return TryWithFallback(
+        (actor, cache) => actor.OrganizationProjects(organizationLogin, cache),
+        cacheOptions
+      );
+    }
   }
 }

@@ -28,6 +28,9 @@
 
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
 
+      CreateMap<g.Project, ProjectTableType>(MemberList.Destination)
+        .ForMember(x => x.CreatorId, o => o.MapFrom(x => x.Creator.Id));
+
       CreateMap<g.Repository, RepositoryTableType>(MemberList.Destination)
         .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
 
