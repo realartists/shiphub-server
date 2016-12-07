@@ -49,7 +49,8 @@
       // Sync Manager
       container.Register<ISyncManager, SyncManager>(Lifestyle.Singleton);
 
-      container.Register<IShipHubMailer, ShipHubMailer>(Lifestyle.Singleton);
+      // Mailer
+      container.Register<IShipHubMailer>(() => new ShipHubMailer(), Lifestyle.Singleton);
 
       // This is an extension method from the integration package.
       container.RegisterWebApiControllers(GlobalConfiguration.Configuration);

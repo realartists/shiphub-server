@@ -144,8 +144,6 @@
     }
 
     static void Main(string[] args) {
-      ShipHubMailer.Register();
-
       var toAddresses = new List<string>(args);
       if (toAddresses.Count == 0) {
         toAddresses.AddRange(new[] {

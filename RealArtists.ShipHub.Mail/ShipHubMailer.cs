@@ -23,38 +23,16 @@
     Task PurchaseOrganization(PurchaseOrganizationMailMessage model);
   }
 
-  public class ShipHubMailer : IShipHubMailer {
+  public class ShipHubMailer : IShipHubMailer, IDisposable {
+    private IRazorEngineService _razorEngine;
     public bool IncludeHtmlView { get; set; } = true;
 
-    private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
-      var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-      var binDir = new DirectoryInfo(Path.Combine(dir.FullName, "bin"));
-      if (binDir.Exists) {
-        return binDir.FullName;
-      } else {
-        return dir.FullName;
-      }
-    });
-    private static string BaseDirectory { get { return _BaseDirectory.Value; } }
-
-    public static void Register() {
-      var config = new TemplateServiceConfiguration {
-        CachingProvider = new DefaultCachingProvider(_ => { }),
-        DisableTempFileLocking = true,
-        TemplateManager = new ResolvePathTemplateManager(new[] {
-          Path.Combine(BaseDirectory, "Views"),
-        })
-      };
-      RazorEngine.Engine.Razor = RazorEngineService.Create(config);
-
-      var files = Directory.GetFiles(Path.Combine(BaseDirectory, "Views"), "*.cshtml");
-      foreach (var file in files) {
-        RazorEngine.Engine.Razor.Compile(Path.GetFileNameWithoutExtension(file));
-      }
+    public ShipHubMailer() {
+      _razorEngine = new ShipHubRazorEngine();
     }
 
     private async Task SendMailMessage(MailMessageBase model, string subject, string templateBaseName, Attachment attachment = null) {
-      var text = RazorEngine.Engine.Razor.Run(templateBaseName + "Plain", model.GetType(), model);
+      var text = _razorEngine.Run(templateBaseName + "Plain", model.GetType(), model);
 
       var message = new MailMessage(
         new MailAddress("support@realartists.com", "Ship"),
@@ -69,12 +47,12 @@
         // pre-header text be sufficiently long so that the <img> tag's alt text and
         // the href URL don't leak into the pre-header.  The plain text version is long
         // enough for this.
-        var preheader = RazorEngine.Engine.Razor.Run(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
+        var preheader = _razorEngine.Run(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
           { "SkipHeaderFooter", true }
         })).Trim();
         bag.AddValue("PreHeader", preheader);
 
-        var html = RazorEngine.Engine.Razor.Run(templateBaseName + "Html", model.GetType(), model, bag);
+        var html = _razorEngine.Run(templateBaseName + "Html", model.GetType(), model, bag);
 
         using (var premailer = new PreMailer.Net.PreMailer(html)) {
           html = premailer.MoveCssInline(
@@ -83,7 +61,7 @@
         }
 
         var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
-        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png");
+        var linkedResource = new LinkedResource(Path.Combine(ShipHubRazorEngine.BaseDirectory, "ShipLogo.png"), "image/png");
         linkedResource.ContentId = "ShipLogo.png";
         htmlView.LinkedResources.Add(linkedResource);
         message.AlternateViews.Add(htmlView);
@@ -182,6 +160,26 @@
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
         await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization", attachment);
       }
+    }
+
+    private bool disposedValue = false; // To detect redundant calls
+    protected virtual void Dispose(bool disposing) {
+      if (!disposedValue) {
+        if (disposing) {
+          if (_razorEngine != null) {
+            _razorEngine.Dispose();
+            _razorEngine = null;
+          }
+        }
+        disposedValue = true;
+      }
+    }
+
+    // This code added to correctly implement the disposable pattern.
+    public void Dispose() {
+      // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+      Dispose(true);
+      GC.SuppressFinalize(this);
     }
   }
 }

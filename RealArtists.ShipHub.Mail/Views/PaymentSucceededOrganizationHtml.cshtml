@@ -26,7 +26,7 @@
     @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for <strong>@(Model.PreviousMonthActiveUsersCount - 5) additional active users.</strong>
 </p>
 }
-@if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
+@if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
 <p>
     Active Ship users in your organization in the prior month were @(new RawString(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>")))).
 </p>
