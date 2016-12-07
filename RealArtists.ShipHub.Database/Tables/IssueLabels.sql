@@ -7,8 +7,5 @@
 )
 GO
 
-CREATE NONCLUSTERED INDEX [IX_IssueLabels_IssueId] ON [dbo].[IssueLabels]([IssueId])
-GO
-
 CREATE NONCLUSTERED INDEX [IX_IssueLabels_LabelId] ON [dbo].[IssueLabels]([LabelId])
 GO
