@@ -7,9 +7,7 @@
   using System.Net.Mail;
   using System.Text;
   using System.Threading.Tasks;
-  using System.Web.Hosting;
   using Common;
-  using Microsoft.Azure;
   using Models;
   using RazorEngine.Configuration;
   using RazorEngine.Templating;
@@ -29,11 +27,8 @@
     public bool IncludeHtmlView { get; set; } = true;
 
     private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
-      if (HostingEnvironment.IsHosted) {
-        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "bin");
-      } else {
-        return Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
-      }
+      var file = new FileInfo(typeof(ShipHubMailer).Assembly.Location);
+      return file.DirectoryName;
     });
     private static string BaseDirectory { get { return _BaseDirectory.Value; } }
 
@@ -93,8 +88,7 @@
         message.Attachments.Add(attachment);
       }
 
-      // TODO: Change this to use IShipHubConfiguration
-      var smtpPassword = CloudConfigurationManager.GetSetting("SmtpPassword");
+      var smtpPassword = ShipHubCloudConfiguration.Instance.SmtpPassword;
       if (string.IsNullOrWhiteSpace(smtpPassword)) {
         Console.WriteLine("SmtpPassword unset so will not send email.");
       } else {

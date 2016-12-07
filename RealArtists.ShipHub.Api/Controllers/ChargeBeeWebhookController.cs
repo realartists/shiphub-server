@@ -14,7 +14,6 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Mail;
-  using Microsoft.Azure;
   using Newtonsoft.Json;
   using QueueClient;
 

@@ -3,7 +3,6 @@
   using System.Web.Http;
   using Common;
   using Mail;
-  using Microsoft.Azure;
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {

@@ -9,7 +9,6 @@
   using Controllers;
   using Diagnostics;
   using Filters;
-  using Microsoft.Azure;
   using Mindscape.Raygun4Net.WebApi;
 
   public static class WebApiConfig {
