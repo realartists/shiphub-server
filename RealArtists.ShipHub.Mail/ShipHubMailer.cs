@@ -27,8 +27,13 @@
     public bool IncludeHtmlView { get; set; } = true;
 
     private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
-      var file = new FileInfo(typeof(ShipHubMailer).Assembly.Location);
-      return file.DirectoryName;
+      var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+      var binDir = new DirectoryInfo(Path.Combine(dir.FullName, "bin"));
+      if (binDir.Exists) {
+        return binDir.FullName;
+      } else {
+        return dir.FullName;
+      }
     });
     private static string BaseDirectory { get { return _BaseDirectory.Value; } }
 
