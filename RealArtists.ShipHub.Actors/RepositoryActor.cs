@@ -417,12 +417,20 @@
     }
 
     private async Task<IChangeSummary> UpdateRepositoryProjects(ShipHubContext context, IGitHubPoolable github) {
-      var changes = ChangeSummary.Empty;
+      var changes = new ChangeSummary();
 
       if (_projectMetadata == null || _projectMetadata.Expires < DateTimeOffset.UtcNow) {
         var projects = await github.RepositoryProjects(_fullName, _projectMetadata);
         if (projects.IsOk) {
-          changes = await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
+          var creators = projects.Result.Select(p => new AccountTableType() {
+            Type = Account.UserType,
+            Login = p.Creator.Login,
+            Id = p.Creator.Id
+          }).Distinct(t => t.Id);
+          if (creators.Any()) {
+            changes.UnionWith(await context.BulkUpdateAccounts(projects.Date, creators));
+          }
+          await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
         }
 
         _projectMetadata = GitHubMetadata.FromResponse(projects);

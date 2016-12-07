@@ -75,6 +75,18 @@ BEGIN
       AND OwnerId = @OwnerId
       AND OwnerType = @OwnerType)
 
+  -- Update SyncLog with any newly referenced accounts
+  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+  SELECT @OwnerType, @OwnerId, 'account', c.CreatorId, 0
+  FROM (
+    SELECT DISTINCT(CreatorId) as CreatorId
+    FROM @Projects as p
+    INNER JOIN @Changes as ch ON (ch.Id = p.Id)
+  ) as c
+  WHERE NOT EXISTS (
+    SELECT * FROM SyncLog WITH (UPDLOCK)
+    WHERE OwnerType = @OwnerType AND OwnerId = @OwnerId AND ItemType = 'account' AND ItemId = c.CreatorId)
+
   -- Return sync notifications
   SELECT @OwnerType as ItemType, @OwnerId as ItemId
   WHERE EXISTS (SELECT * FROM @Changes)
