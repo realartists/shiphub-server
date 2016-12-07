@@ -2,6 +2,7 @@
   using System.Web;
   using System.Web.Http;
   using Common;
+  using Mail;
   using Microsoft.Azure;
 
   public class WebApiApplication : HttpApplication {
@@ -10,6 +11,7 @@
       ApplicationInsightsConfig.Register(shipHubConfig.ApplicationInsightsKey);
       GlobalConfiguration.Configure((config) => WebApiConfig.Register(config, shipHubConfig.RaygunApiKey));
       GlobalConfiguration.Configure(SimpleInjectorConfig.Register);
+      ShipHubMailer.Register();
 
       var chargeBeeHostAndApiKey = shipHubConfig.ChargeBeeHostAndKey;
       if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
