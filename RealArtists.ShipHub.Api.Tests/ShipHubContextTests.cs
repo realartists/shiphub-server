@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
+  using System.Collections.Generic;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
@@ -685,6 +686,85 @@
         Assert.AreEqual(new long[] { 2001 }, updatedRepo1.Labels.Select(x => x.Id).ToArray());
         Assert.AreEqual(new long[] { 2201 }, updatedRepo2.Labels.Select(x => x.Id).ToArray());
       };
+    }
+  }
+
+  [TestFixture]
+  public class ShipHubContextStressTests {
+
+    [Test]
+    public async Task StressTestMilestonesAndIssues() {
+      try {
+        const int RepoCount = 50; // this is the amount of repos and amount of parallelization
+        const int MilestoneCount = 50;
+        const int IssueCount = 500;
+
+        User user = null;
+        IEnumerable<long> repoIds = null;
+        using (var context = new ShipHubContext()) {
+          user = TestUtil.MakeTestUser(context, 8675309, "stress");
+          repoIds = Enumerable.Range(1, RepoCount).Select(i => {
+            var repo = TestUtil.MakeTestRepo(context, user.Id, 1000 + i, $"stress-repo-{i}");
+            return repo.Id;
+          }).ToList();
+          await context.SaveChangesAsync();
+        }
+
+        int result = (await Task.WhenAll(repoIds.AsParallel().Select(async (r) => {
+          using (var context = new ShipHubContext()) {
+            var milestones = Enumerable.Range(1, MilestoneCount).Select(i => {
+              var ms = new MilestoneTableType();
+              ms.Id = r * 10 + i;
+              ms.Number = i;
+              ms.Title = $"stress{i}.0";
+              ms.State = "open";
+              ms.UpdatedAt = DateTimeOffset.Now;
+              ms.CreatedAt = DateTimeOffset.Now;
+              return ms;
+            });
+            await context.BulkUpdateMilestones(r, milestones, true);
+
+            var issues = Enumerable.Range(1, IssueCount).Select(i => {
+              var iss = new IssueTableType();
+              iss.Id = (r * 100) + i;
+              iss.Body = iss.Title = $"Hello World {i}";
+              iss.UserId = user.Id;
+              iss.Number = i;
+              iss.PullRequest = false;
+              iss.State = "open";
+              iss.CreatedAt = DateTimeOffset.Now;
+              iss.UpdatedAt = DateTimeOffset.Now;
+              iss.MilestoneId = (new Random().Next((int)r * 10 + 1, (int)r * 10 + 1 + MilestoneCount));
+              return iss;
+            });
+            await context.BulkUpdateIssues(r, issues, null, null);
+          }
+          return IssueCount + MilestoneCount;
+        }))).Sum();
+
+        Assert.AreEqual(result, RepoCount * (IssueCount + MilestoneCount));
+      } finally {
+        using (var context = new ShipHubContext()) {
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE FROM SyncLog WHERE OwnerType = 'repo' AND OwnerId IN (SELECT r.Id FROM Repositories as r WHERE r.AccountId = 8675309)"
+          );
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE FROM SyncLog WHERE ItemType = 'account' AND ItemId = 8675309"
+          );
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE i FROM Issues as i INNER JOIN Repositories as r ON (r.Id = i.RepositoryId AND r.AccountId = 8675309)"
+          );
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE m FROM Milestones as m INNER JOIN Repositories as r ON (r.Id = m.RepositoryId AND r.AccountId = 8675309)"
+          );
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE FROM Repositories WHERE AccountId = 8675309"
+          );
+          await context.Database.ExecuteSqlCommandAsync(
+            @"DELETE FROM Accounts WHERE Id = 8675309"
+          );
+        }
+      }
     }
   }
 }
