@@ -58,13 +58,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\RealArtists.ShipHub.Email\RealArtists.ShipHub.Email.csproj">
-      <Project>{1083b6a7-8838-435c-b818-a3ce8ee757de}</Project>
-      <Name>RealArtists.ShipHub.Email</Name>
+    <ProjectReference Include="..\RealArtists.ShipHub.Mail\RealArtists.ShipHub.Mail.csproj">
+      <Project>{0e4e2509-0412-4bc2-a74a-96892bd3045e}</Project>
+      <Name>RealArtists.ShipHub.Mail</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

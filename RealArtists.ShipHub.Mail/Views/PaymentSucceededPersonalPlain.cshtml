@@ -1,0 +1,11 @@
+﻿@using RealArtists.ShipHub.Mail;
+@using RealArtists.ShipHub.Mail.Models;
+@inherits ShipHubTemplateBase<PaymentSucceededPersonalMailMessage>
+@{
+  Layout = "LayoutPlain";
+}
+We received payment for your personal Ship subscription.
+
+@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in @Model.LastCardDigits and covers service through @Model.ServiceThroughDate.ToString("yyyy-MM-dd").  Attached is a PDF invoice for your records.
+
+We appreciate your business!

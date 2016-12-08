@@ -1,0 +1,33 @@
+﻿@using RealArtists.ShipHub.Mail;
+@using RealArtists.ShipHub.Mail.Models;
+@inherits ShipHubTemplateBase<PaymentFailedMailMessage>
+@{
+  Layout = "LayoutHtml";
+}
+<p>
+    We tried to process a charge for <strong>@string.Format("{0:C}", Model.Amount)</strong> to your card ending
+    in <strong>@Model.LastCardDigits</strong>, but the transaction failed.
+</p>
+<p>
+    <strong>Reason:</strong> @Model.ErrorText
+</p>
+@if (Model.NextRetryDate != null) {
+    <p>
+        We'll automatically retry this charge on <strong>@(Model.NextRetryDate.Value.ToString("MMM d, yyyy"))</strong>.
+        If you need to update your payment information, follow the link below.
+    </p>
+    <p>
+        <a href="@Model.UpdatePaymentMethodUrl">Update Payment Information</a>
+    </p>
+    <p class="last">
+        Attached is an invoice for your review.
+    </p>
+} else {
+    <p>
+        We've failed to process this charge a few times now, so we'll go ahead and cancel your subscription.
+    </p>
+    <p class="last">
+        If you want to re-activate your subscription later, you can do so from the Ship application.  
+        From the <em>Ship</em> menu, choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for your account.
+    </p>
+}

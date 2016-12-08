@@ -1,0 +1,11 @@
+﻿@using RealArtists.ShipHub.Mail;
+@using RealArtists.ShipHub.Mail.Models;
+@inherits ShipHubTemplateBase<CardExpiryReminderMailMessage>
+@{
+  Layout = "LayoutPlain";
+}
+Your credit card ending in "@Model.LastCardDigits" @(Model.AlreadyExpired ? "expired on" : "will expire on") "@Model.ExpiryMonth/@Model.ExpiryYear".
+
+To prevent any interuption in your Ship service, please update your payment information using the link below.
+
+Link: @Model.UpdatePaymentMethodUrl

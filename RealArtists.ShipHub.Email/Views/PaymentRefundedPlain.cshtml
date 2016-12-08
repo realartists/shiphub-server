@@ -1,9 +1,0 @@
-﻿@using RealArtists.ShipHub.Email;
-@using RealArtists.ShipHub.Email.Models;
-@model PaymentRefundedMailMessage
-@{
-  Layout = "LayoutPlain";
-}
-We've issued a refund for @string.Format("{0:C}", Model.AmountRefunded) to your card ending in @Model.LastCardDigits.  Attached is a receipt for your records.
-
-Thanks for your business!
