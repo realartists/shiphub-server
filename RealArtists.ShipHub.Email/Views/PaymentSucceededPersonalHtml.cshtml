@@ -1,0 +1,17 @@
+﻿@using RealArtists.ShipHub.Email;
+@using RealArtists.ShipHub.Email.Models;
+@model PaymentSucceededPersonalMailMessage
+@{
+  Layout = "LayoutHtml";
+}
+<p>
+    We received payment for your personal Ship subscription.
+</p>
+<p>
+    <strong>@string.Format("{0:C}", Model.AmountPaid)</strong> was charged to your card ending
+    in <strong>@Model.LastCardDigits</strong> and covers service through <strong>@Model.ServiceThroughDate.ToString("MMM d, yyyy")</strong>.
+    Attached is a PDF invoice for your records.
+</p>
+<p class="last">
+    We appreciate your business!
+</p>

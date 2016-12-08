@@ -232,9 +232,9 @@
       <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
       <Name>RealArtists.ShipHub.Common</Name>
     </ProjectReference>
-    <ProjectReference Include="..\RealArtists.ShipHub.Mail\RealArtists.ShipHub.Mail.csproj">
-      <Project>{0e4e2509-0412-4bc2-a74a-96892bd3045e}</Project>
-      <Name>RealArtists.ShipHub.Mail</Name>
+    <ProjectReference Include="..\RealArtists.ShipHub.Email\RealArtists.ShipHub.Email.csproj">
+      <Project>{1083b6a7-8838-435c-b818-a3ce8ee757de}</Project>
+      <Name>RealArtists.ShipHub.Email</Name>
     </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
       <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>

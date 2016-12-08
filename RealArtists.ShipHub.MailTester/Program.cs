@@ -3,7 +3,7 @@
   using System.Collections.Generic;
   using System.IO;
   using System.Linq;
-  using Mail;
+  using Email;
 
   class Program {
     static void SendEmails(string toAddress, string toName, string githubUsername, bool includeHtmlVersion) {
@@ -13,7 +13,7 @@
       mailer.IncludeHtmlView = includeHtmlVersion;
 
       mailer.PurchasePersonal(
-        new Mail.Models.PurchasePersonalMailMessage() {
+        new Email.Models.PurchasePersonalMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
@@ -24,7 +24,7 @@
         }).Wait();
 
       mailer.PurchaseOrganization(
-        new Mail.Models.PurchaseOrganizationMailMessage() {
+        new Email.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
@@ -33,7 +33,7 @@
         }).Wait();
 
       mailer.PaymentSucceededPersonal(
-        new Mail.Models.PaymentSucceededPersonalMailMessage() {
+        new Email.Models.PaymentSucceededPersonalMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
@@ -46,7 +46,7 @@
 
       // Version with <= 5 active users
       mailer.PaymentSucceededOrganization(
-        new Mail.Models.PaymentSucceededOrganizationMailMessage() {
+        new Email.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
@@ -60,7 +60,7 @@
           PreviousMonthActiveUsersSample = Enumerable.Range(1, 4).Select(x => "user_" + x).ToArray()
         }).Wait();
       mailer.PaymentSucceededOrganization(
-        new Mail.Models.PaymentSucceededOrganizationMailMessage() {
+        new Email.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
@@ -74,7 +74,7 @@
           PreviousMonthActiveUsersSample = Enumerable.Range(1, 20).Select(x => "user_" + x).ToArray(),
         }).Wait();
 
-      mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+      mailer.PaymentRefunded(new Email.Models.PaymentRefundedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -85,7 +85,7 @@
       }).Wait();
 
       // Payment failed, but we'll try to retry later.
-      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+      mailer.PaymentFailed(new Email.Models.PaymentFailedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -99,7 +99,7 @@
       }).Wait();
 
       // Payment failed, no more retries, and service is cancelled.
-      mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
+      mailer.PaymentFailed(new Email.Models.PaymentFailedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -112,7 +112,7 @@
       }).Wait();
 
       // Card has already expired.
-      mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
+      mailer.CardExpiryReminder(new Email.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -124,7 +124,7 @@
       }).Wait();
 
       // Card will expire.
-      mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
+      mailer.CardExpiryReminder(new Email.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
@@ -135,7 +135,7 @@
         UpdatePaymentMethodUrl = "https://pretend.com/this/is/right",
       }).Wait();
 
-      mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+      mailer.CancellationScheduled(new Email.Models.CancellationScheduledMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,

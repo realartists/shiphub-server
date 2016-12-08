@@ -13,7 +13,7 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
-  using Mail;
+  using Email;
   using Newtonsoft.Json;
   using QueueClient;
 
@@ -256,7 +256,7 @@
     public async Task SendCancellationScheduled(ChargeBeeWebhookPayload payload) {
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
-      await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
+      await _mailer.CancellationScheduled(new Email.Models.CancellationScheduledMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -267,7 +267,7 @@
     public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
-      await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
+      await _mailer.CardExpiryReminder(new Email.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -283,7 +283,7 @@
       var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
-      var message = new Mail.Models.PaymentFailedMailMessage() {
+      var message = new Email.Models.PaymentFailedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -305,7 +305,7 @@
     public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {
       var pdfBytes = await GetCreditNotePdfBytes(payload.Content.CreditNote.Id);
 
-      await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
+      await _mailer.PaymentRefunded(new Email.Models.PaymentRefundedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -322,7 +322,7 @@
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
       await _mailer.PaymentSucceededPersonal(
-        new Mail.Models.PaymentSucceededPersonalMailMessage() {
+        new Email.Models.PaymentSucceededPersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -373,7 +373,7 @@
         .ToArrayAsync();
 
       await _mailer.PaymentSucceededOrganization(
-        new Mail.Models.PaymentSucceededOrganizationMailMessage() {
+        new Email.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -410,7 +410,7 @@
       var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
 
       await _mailer.PurchasePersonal(
-        new Mail.Models.PurchasePersonalMailMessage() {
+        new Email.Models.PurchasePersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
@@ -428,7 +428,7 @@
       var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
 
       await _mailer.PurchaseOrganization(
-        new Mail.Models.PurchaseOrganizationMailMessage() {
+        new Email.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,

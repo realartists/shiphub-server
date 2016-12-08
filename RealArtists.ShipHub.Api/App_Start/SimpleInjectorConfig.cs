@@ -5,7 +5,7 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
-  using Mail;
+  using Email;
   using Orleans;
   using QueueClient;
   using SimpleInjector;

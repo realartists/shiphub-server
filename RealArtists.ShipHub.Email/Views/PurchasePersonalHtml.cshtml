@@ -1,0 +1,35 @@
+﻿@using RealArtists.ShipHub.Email;
+@using RealArtists.ShipHub.Email.Models;
+@model PurchasePersonalMailMessage
+@{
+  Layout = "LayoutHtml";
+}
+<p>
+    Thanks for purchasing a subscription to Ship - we hope you enjoy using it!
+</p>
+<p>
+    Attached is an invoice receipt for your records.
+</p>
+
+@if (Model.WasGivenTrialCredit) {
+<p>
+    A discount was applied to your first invoice becuase you still had some time
+    remaining on your free trial.  Next month you'll see the regular price of $9/month.
+</p>
+}
+
+@if (Model.BelongsToOrganization) {
+<h4>Want to use Ship for free?</h4>
+<p>
+    Your personal Ship subscription is free as long as you belong
+    to an organization that subscribes to Ship.  Ask your organization to sign up.
+</p>
+}
+
+<h4>How to manage your account:</h4>
+<p class="last">
+    If you need to change billing or payment info, or need to cancel your account, you can do so
+    from within the Ship application. From the <em>Ship</em> menu,
+    choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for
+    your account.
+</p>

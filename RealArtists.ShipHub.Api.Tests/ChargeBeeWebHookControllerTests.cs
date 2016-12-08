@@ -15,8 +15,8 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Controllers;
-  using Mail;
-  using Mail.Models;
+  using Email;
+  using Email.Models;
   using Microsoft.Azure;
   using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
