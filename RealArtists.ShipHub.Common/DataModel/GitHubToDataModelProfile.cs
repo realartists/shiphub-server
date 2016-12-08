@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
+  using System.Diagnostics;
   using AutoMapper;
   using Newtonsoft.Json;
   using Types;
@@ -11,7 +12,16 @@
 
       // Table Types
       CreateMap<g.Account, AccountTableType>(MemberList.Destination)
-        .ForMember(x => x.Type, o => o.ResolveUsing(x => x.Type == g.GitHubAccountType.User ? Account.UserType : Account.OrganizationType));
+        .ForMember(x => x.Type, o => o.ResolveUsing(x => {
+          switch (x.Type) {
+            case g.GitHubAccountType.Organization: return Account.OrganizationType;
+            case g.GitHubAccountType.User: return Account.UserType;
+            default:
+              Log.Error("Mapping untyped account: " + Environment.StackTrace);
+              Debug.Assert(false, "Un-typed account");
+              return Account.UserType;
+          }
+        }));
 
       CreateMap<g.Comment, CommentTableType>(MemberList.Destination)
         .BeforeMap((from, to) => {
