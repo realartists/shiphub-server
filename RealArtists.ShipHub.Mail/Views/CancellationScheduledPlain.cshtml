@@ -1,8 +1,9 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
 @inherits ShipHubTemplateBase<CancellationScheduledMailMessage>
 @{
-  Layout = "LayoutPlain";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 }
 This is a confirmation that your Ship subscription will cancel on @(Model.CurrentTermEnd.ToString("MMM d, yyyy")).
 

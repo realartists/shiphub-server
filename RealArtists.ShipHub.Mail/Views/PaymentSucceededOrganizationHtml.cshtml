@@ -1,9 +1,9 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
-@using RazorEngine.Text;
 @inherits ShipHubTemplateBase<PaymentSucceededOrganizationMailMessage>
 @{
-  Layout = "LayoutHtml";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 }
 <p>
     We received payment for your organization Ship subscription.
@@ -28,11 +28,11 @@
 }
 @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
 <p>
-    Active Ship users in your organization in the prior month were @(new RawString(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>")))).
+    Active Ship users in your organization in the prior month were @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))).
 </p>
 } else {
 <p>
-    Active Ship users in your organization in the prior month included: @(new RawString(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>")))), and <strong>@(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others</strong>.
+    Active Ship users in your organization in the prior month included: @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))), and <strong>@(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others</strong>.
 </p>
 }
 <p class="last">

@@ -2,7 +2,6 @@
   using System.Web;
   using System.Web.Http;
   using Common;
-  using Mail;
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
