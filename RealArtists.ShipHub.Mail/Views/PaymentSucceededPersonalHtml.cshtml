@@ -1,8 +1,9 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
 @inherits ShipHubTemplateBase<PaymentSucceededPersonalMailMessage>
 @{
-  Layout = "LayoutHtml";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 }
 <p>
     We received payment for your personal Ship subscription.

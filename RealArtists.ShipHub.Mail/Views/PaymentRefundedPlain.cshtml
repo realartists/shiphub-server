@@ -1,8 +1,9 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
 @inherits ShipHubTemplateBase<PaymentRefundedMailMessage>
 @{
-  Layout = "LayoutPlain";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 }
 We've issued a refund for @string.Format("{0:C}", Model.AmountRefunded) to your card ending in @Model.LastCardDigits.  Attached is a receipt for your records.
 

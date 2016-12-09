@@ -1,10 +1,9 @@
 ﻿namespace RealArtists.ShipHub.Mail {
-  using System.Web;
-  using RazorEngine.Templating;
+  using RazorGenerator.Templating;
 
-  public class ShipHubTemplateBase<T> : TemplateBase<T> {
-    // This fixes the "The name 'Context' does not exist in this context' warning.
-    // More at: http://razorengine.codeplex.com/discussions/542559s
-    public HttpContextBase Context { get; set; }
+  public class ShipHubTemplateBase<T> : RazorTemplateBase {
+    public T Model { get; set; }
+    public bool SkipHeaderFooter { get; set; }
+    public string PreHeader { get; set; }
   }
 }

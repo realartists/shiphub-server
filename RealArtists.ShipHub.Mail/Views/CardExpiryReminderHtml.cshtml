@@ -1,10 +1,10 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
 @inherits ShipHubTemplateBase<CardExpiryReminderMailMessage>
 @{
-  Layout = "LayoutHtml";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 }
-
 <p>
     Your credit card ending in <strong>@Model.LastCardDigits</strong> @(Model.AlreadyExpired ? "expired on" : "will expire on") <strong>@Model.ExpiryMonth/@Model.ExpiryYear</strong>.
 </p>

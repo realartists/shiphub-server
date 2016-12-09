@@ -1,8 +1,9 @@
-﻿@using RealArtists.ShipHub.Mail;
+﻿@* Generator: Template GeneratePrettyNames: true *@
+@using RealArtists.ShipHub.Mail;
 @using RealArtists.ShipHub.Mail.Models;
 @inherits ShipHubTemplateBase<PaymentFailedMailMessage>
 @{
-  Layout = "LayoutHtml";
+  Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 }
 <p>
     We tried to process a charge for <strong>@string.Format("{0:C}", Model.Amount)</strong> to your card ending

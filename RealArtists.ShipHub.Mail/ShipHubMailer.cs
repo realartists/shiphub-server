@@ -8,9 +8,10 @@
   using System.Text;
   using System.Threading.Tasks;
   using Common;
+  using Mail;
   using Models;
-  using RazorEngine.Configuration;
-  using RazorEngine.Templating;
+  using RazorGenerator.Templating;
+  using Views;
 
   public interface IShipHubMailer {
     Task CancellationScheduled(CancellationScheduledMailMessage model);
@@ -23,36 +24,44 @@
     Task PurchaseOrganization(PurchaseOrganizationMailMessage model);
   }
 
-  public class ShipHubMailer : IShipHubMailer, IDisposable {
-    private IRazorEngineService _razorEngine;
+  public class ShipHubMailer : IShipHubMailer {
     public bool IncludeHtmlView { get; set; } = true;
 
-    public ShipHubMailer() {
-      _razorEngine = new ShipHubRazorEngine();
-    }
+    private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
+      var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+      var binDir = new DirectoryInfo(Path.Combine(dir.FullName, "bin"));
+      if (binDir.Exists) {
+        return binDir.FullName;
+      } else {
+        return dir.FullName;
+      }
+    });
+    private static string BaseDirectory { get { return _BaseDirectory.Value; } }
 
-    private async Task SendMailMessage(MailMessageBase model, string subject, string templateBaseName, Attachment attachment = null) {
-      var text = _razorEngine.Run(templateBaseName + "Plain", model.GetType(), model);
+    private async Task SendMailMessage<T>(
+      ShipHubTemplateBase<T> htmlTemplate,
+      ShipHubTemplateBase<T> plainTemplate,
+      string subject,
+      Attachment attachment = null) where T : MailMessageBase {
 
       var message = new MailMessage(
         new MailAddress("support@realartists.com", "Ship"),
-        new MailAddress(model.ToAddress, model.ToName));
+        new MailAddress(htmlTemplate.Model.ToAddress, htmlTemplate.Model.ToName));
       message.Subject = subject;
-      message.Body = text;
+      message.Body = plainTemplate.TransformText();
 
       if (IncludeHtmlView) {
-        var bag = new DynamicViewBag();
         // Let's just use the entire plain text version as the pre-header for now.
         // We don't need to do anything more clever.  Also, it's important that
         // pre-header text be sufficiently long so that the <img> tag's alt text and
         // the href URL don't leak into the pre-header.  The plain text version is long
         // enough for this.
-        var preheader = _razorEngine.Run(templateBaseName + "Plain", model.GetType(), model, new DynamicViewBag(new Dictionary<string, object>() {
-          { "SkipHeaderFooter", true }
-        })).Trim();
-        bag.AddValue("PreHeader", preheader);
+        plainTemplate.Clear();
+        plainTemplate.SkipHeaderFooter = true;
+        var preheader = plainTemplate.TransformText().Trim();
 
-        var html = _razorEngine.Run(templateBaseName + "Html", model.GetType(), model, bag);
+        htmlTemplate.PreHeader = preheader;
+        var html = htmlTemplate.TransformText();
 
         using (var premailer = new PreMailer.Net.PreMailer(html)) {
           html = premailer.MoveCssInline(
@@ -61,7 +70,7 @@
         }
 
         var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
-        var linkedResource = new LinkedResource(Path.Combine(ShipHubRazorEngine.BaseDirectory, "ShipLogo.png"), "image/png");
+        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png");
         linkedResource.ContentId = "ShipLogo.png";
         htmlView.LinkedResources.Add(linkedResource);
         message.AlternateViews.Add(htmlView);
@@ -87,11 +96,17 @@
     }
 
     public Task CancellationScheduled(CancellationScheduledMailMessage model) {
-      return SendMailMessage(model, $"Cancellation for {model.GitHubUserName}", "CancellationScheduled");
+      return SendMailMessage(
+        new CancellationScheduledHtml() { Model = model },
+        new CancellationScheduledPlain() { Model = model },
+        $"Cancellation for {model.GitHubUserName}");
     }
 
     public Task CardExpiryReminder(CardExpiryReminderMailMessage model) {
-      return SendMailMessage(model, $"Card expiration for {model.GitHubUserName}", "CardExpiryReminder");
+      return SendMailMessage(
+        new CardExpiryReminderHtml() { Model = model },
+        new CardExpiryReminderPlain() { Model = model },
+        $"Card expiration for {model.GitHubUserName}");
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times", Justification = "It's not.")]
@@ -113,7 +128,11 @@
       var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Payment failed for {model.GitHubUserName}", "PaymentFailed", attachment);
+        await SendMailMessage(
+          new PaymentFailedHtml() { Model = model },
+          new PaymentFailedPlain() { Model = model },
+          $"Payment failed for {model.GitHubUserName}",
+          attachment);
       }
     }
 
@@ -122,7 +141,11 @@
       var zipBytes = ZipBytesForPdf(model.CreditNotePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Payment refunded for {model.GitHubUserName}", "PaymentRefunded", attachment);
+        await SendMailMessage(
+          new PaymentRefundedHtml() { Model = model },
+          new PaymentRefundedPlain() { Model = model },
+          $"Payment refunded for {model.GitHubUserName}",
+          attachment);
       }
     }
 
@@ -131,7 +154,10 @@
       var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchasePersonal", attachment);
+        await SendMailMessage(
+          new PurchasePersonalHtml() { Model = model },
+          new PurchasePersonalPlain() { Model = model },
+          $"Ship subscription for {model.GitHubUserName}", attachment);
       }
     }
 
@@ -140,7 +166,11 @@
       var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Ship subscription for {model.GitHubUserName}", "PurchaseOrganization", attachment);
+        await SendMailMessage(
+          new PurchaseOrganizationHtml() { Model = model },
+          new PurchaseOrganizationPlain() { Model = model },
+          $"Ship subscription for {model.GitHubUserName}",
+          attachment);
       }
     }
 
@@ -149,7 +179,11 @@
       var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededPersonal", attachment);
+        await SendMailMessage(
+          new PaymentSucceededPersonalHtml() { Model = model },
+          new PaymentSucceededPersonalPlain() { Model = model },
+          $"Payment receipt for {model.GitHubUserName}",
+          attachment);
       }
     }
 
@@ -158,28 +192,12 @@
       var zipBytes = ZipBytesForPdf(model.InvoicePdfBytes, $"{baseName}.pdf");
       using (var stream = new MemoryStream(zipBytes))
       using (var attachment = new Attachment(stream, $"{baseName}.zip", "application/zip")) {
-        await SendMailMessage(model, $"Payment receipt for {model.GitHubUserName}", "PaymentSucceededOrganization", attachment);
+        await SendMailMessage(
+          new PaymentSucceededOrganizationHtml() { Model = model },
+          new PaymentSucceededOrganizationPlain() { Model = model },
+          $"Payment receipt for {model.GitHubUserName}",
+          attachment);
       }
-    }
-
-    private bool disposedValue = false; // To detect redundant calls
-    protected virtual void Dispose(bool disposing) {
-      if (!disposedValue) {
-        if (disposing) {
-          if (_razorEngine != null) {
-            _razorEngine.Dispose();
-            _razorEngine = null;
-          }
-        }
-        disposedValue = true;
-      }
-    }
-
-    // This code added to correctly implement the disposable pattern.
-    public void Dispose() {
-      // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-      Dispose(true);
-      GC.SuppressFinalize(this);
     }
   }
 }

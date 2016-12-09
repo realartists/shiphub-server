@@ -4,6 +4,7 @@
   using System.IO;
   using System.Linq;
   using Mail;
+  using Mail.Views;
 
   class Program {
     static void SendEmails(string toAddress, string toName, string githubUsername, bool includeHtmlVersion) {
