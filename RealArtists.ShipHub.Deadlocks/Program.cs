@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -54,16 +55,27 @@ namespace RealArtists.ShipHub.Deadlocks {
       var userName = "stress";
       var userId = generator.First();
       var repoIds = generator.Take(RepoCount).ToArray();
+      var milestoneSeq = generator.Take(RepoCount * MilestoneCount).ToArray();
+      var issueSeq = generator.Take(RepoCount * IssueCount).ToArray();
       var milestoneIds = repoIds
-        .Select(x => new {
+        .Select((x, idx) => new {
           Id = x,
-          MilestoneIds = generator.Take(MilestoneCount).ToArray()
+          MilestoneIds = milestoneSeq.Skip(idx * MilestoneCount).Take(MilestoneCount)
         })
         .ToDictionary(x => x.Id, x => x.MilestoneIds);
+      var h = new HashSet<long>();
+      foreach (var repoId in repoIds) {
+        var mids = milestoneIds[repoId];
+        foreach (var mid in mids) {
+          if (!h.Add(mid)) {
+            Debug.Assert(false);
+          }
+        }
+      }
       var issueIds = repoIds
-        .Select(x => new {
+        .Select((x, idx) => new {
           Id = x,
-          IssueIds = generator.Take(IssueCount).ToArray()
+          IssueIds = issueSeq.Skip(idx * IssueCount).Take(IssueCount)
         })
         .ToDictionary(x => x.Id, x => x.IssueIds);
 
@@ -99,10 +111,25 @@ namespace RealArtists.ShipHub.Deadlocks {
               ms.CreatedAt = DateTimeOffset.Now;
               return ms;
             });
+            Debug.Assert(milestones.Select(m => m.Id).Distinct().Count() == milestones.Count(), "Milestone Ids need to be unique");
             await context.BulkUpdateMilestones(r, milestones, true);
             await context.BulkUpdateMilestones(r, milestones.Take(MilestoneCount / 2), true);
             await context.BulkUpdateMilestones(r, milestones, true);
 
+            
+            var checkMilestones = await context.Milestones.Where(x => x.RepositoryId == r).OrderBy(x => x.Id).Select(x => x.Title).ToListAsync();
+            var myMilestones = milestones.OrderBy(x => x.Id);
+            Debug.Assert(checkMilestones.Count() == milestones.Count());
+
+            var recheck = checkMilestones.Zip(milestones.OrderBy(x => x.Id), (a, b) => {
+              if (a != b.Title) {
+                Console.WriteLine($"WHat? {a} != {b.Title}");
+              }
+              return a;
+            });
+            Debug.Assert(recheck.Count() == myMilestones.Count());
+
+#if false
             var issues = issueIds[r].Zip(Sequence(1), (id, index) => {
               var iss = new IssueTableType();
               iss.Id = id;
@@ -119,6 +146,7 @@ namespace RealArtists.ShipHub.Deadlocks {
             await context.BulkUpdateIssues(r, issues, null, null);
             await context.BulkUpdateIssues(r, issues, null, null);
             await context.BulkUpdateIssues(r, issues, null, null);
+#endif
           }
           return IssueCount + MilestoneCount;
         }))).Sum();
