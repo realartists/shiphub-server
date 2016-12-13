@@ -106,9 +106,6 @@
 
         var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
         controller.CallBase = true;
-        controller
-          .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
-          .Returns(Task.FromResult(new byte[0]));
 
         ConfigureController(
           controller.Object,
@@ -783,10 +780,6 @@
 
         var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
         controller.CallBase = true;
-        controller
-          .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
-          .Returns(Task.FromResult(new byte[0]));
-
 
         ConfigureController(
           controller.Object,
@@ -832,8 +825,7 @@
         Assert.AreEqual("Aroon", outgoingMessage.FirstName);
         Assert.AreEqual(43.00, outgoingMessage.AmountPaid);
         Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
-        Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
-        Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+        Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-myorg-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
         Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
         Assert.AreEqual(invoiceDate.AddMonths(-1), outgoingMessage.PreviousMonthStart);
         Assert.AreEqual(7, outgoingMessage.PreviousMonthActiveUsersCount);
@@ -864,9 +856,6 @@
 
       var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
       controller.CallBase = true;
-      controller
-        .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
-        .Returns(Task.FromResult(new byte[0]));
 
       var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -914,8 +903,7 @@
       Assert.AreEqual("Aroon", outgoingMessage.FirstName);
       Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
       Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
-      Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
-      Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+      Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
       Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
     }
 
@@ -994,9 +982,6 @@
 
       var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
       controller.CallBase = true;
-      controller
-        .Setup(x => x.GetInvoicePdfBytes(It.IsAny<string>()))
-        .Returns(Task.FromResult(new byte[0]));
 
       var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -1017,7 +1002,7 @@
               PlanId = "personal",
             },
             Invoice = new ChargeBeeWebhookInvoice() {
-              Id = "cn-1234",
+              Id = "inv-1234",
               Date = invoiceDate.ToUnixTimeSeconds(),
               NextRetryAt = invoiceDate.AddDays(3).ToUnixTimeSeconds(),
             },
@@ -1036,8 +1021,7 @@
       Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(9.00, outgoingMessage.Amount);
       Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
-      Assert.AreEqual(invoiceDate, outgoingMessage.InvoiceDate);
-      Assert.NotNull(outgoingMessage.InvoicePdfBytes);
+      Assert.AreEqual("/billing/invoice/inv-1234/50684b9b/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
       Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
       Assert.AreEqual(invoiceDate.AddDays(3), outgoingMessage.NextRetryDate);
     }

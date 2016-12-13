@@ -8,7 +8,7 @@
 
   class Program {
     static void SendEmails(string toAddress, string toName, string githubUsername, bool includeHtmlVersion) {
-      var dummyInvoicePdfBytes = File.ReadAllBytes(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "DummyInvoice.pdf"));
+      var dummyInvoiceUrl = "https://www.realartists.com/billing/invoice/123/ship-invoice-yourname-2016-12-01.pdf";
 
       var mailer = new ShipHubMailer();
       mailer.IncludeHtmlView = includeHtmlVersion;
@@ -20,8 +20,7 @@
           ToName = toName,
           BelongsToOrganization = true,
           WasGivenTrialCredit = true,
-          InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-          InvoicePdfBytes = dummyInvoicePdfBytes,
+          InvoicePdfUrl = dummyInvoiceUrl,
         }).Wait();
 
       mailer.PurchaseOrganization(
@@ -29,8 +28,7 @@
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
-          InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-          InvoicePdfBytes = dummyInvoicePdfBytes,
+          InvoicePdfUrl = dummyInvoiceUrl,
         }).Wait();
 
       mailer.PaymentSucceededPersonal(
@@ -38,8 +36,7 @@
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
-          InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-          InvoicePdfBytes = dummyInvoicePdfBytes,
+          InvoicePdfUrl = dummyInvoiceUrl,
           LastCardDigits = "1234",
           AmountPaid = 9.00,
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
@@ -51,8 +48,7 @@
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
-          InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-          InvoicePdfBytes = dummyInvoicePdfBytes,
+          InvoicePdfUrl = dummyInvoiceUrl,
           LastCardDigits = "1234",
           AmountPaid = 25.00,
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
@@ -65,8 +61,7 @@
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
           ToName = toName,
-          InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-          InvoicePdfBytes = dummyInvoicePdfBytes,
+          InvoicePdfUrl = dummyInvoiceUrl,
           LastCardDigits = "1234",
           AmountPaid = 25.00 + (9 * 25),
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
@@ -79,8 +74,7 @@
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
-        CreditNoteDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-        CreditNotePdfBytes = dummyInvoicePdfBytes,
+        CreditNotePdfUrl = dummyInvoiceUrl,
         AmountRefunded = 9.00,
         LastCardDigits = "5678",
       }).Wait();
@@ -90,8 +84,7 @@
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
-        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-        InvoicePdfBytes = dummyInvoicePdfBytes,
+        InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
         LastCardDigits = "5678",
         ErrorText = "Insufficient funds",
@@ -104,8 +97,7 @@
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
         ToName = toName,
-        InvoiceDate = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero),
-        InvoicePdfBytes = dummyInvoicePdfBytes,
+        InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
         LastCardDigits = "5678",
         ErrorText = "Insufficient funds",

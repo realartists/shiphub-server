@@ -11,7 +11,9 @@
 <p>
     <strong>@string.Format("{0:C}", Model.AmountPaid)</strong> was charged to your card ending
     in <strong>@Model.LastCardDigits</strong> and covers service through <strong>@Model.ServiceThroughDate.ToString("MMM d, yyyy")</strong>.
-    Attached is an invoice receipt for your records.
+</p>
+<p>
+    <a href="@Model.InvoicePdfUrl">Download a PDF receipt</a> for your records.
 </p>
 @if (Model.PreviousMonthActiveUsersCount <= 5) {
 <p>

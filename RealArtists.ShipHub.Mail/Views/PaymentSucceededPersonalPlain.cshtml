@@ -7,6 +7,9 @@
 }
 We received payment for your personal Ship subscription.
 
-@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in @Model.LastCardDigits and covers service through @Model.ServiceThroughDate.ToString("yyyy-MM-dd").  Attached is a PDF invoice for your records.
+@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in @Model.LastCardDigits and covers service through @Model.ServiceThroughDate.ToString("yyyy-MM-dd").
+
+Download a PDF receipt for your records:
+@Model.InvoicePdfUrl
 
 We appreciate your business!

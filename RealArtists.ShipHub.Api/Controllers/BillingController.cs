@@ -3,19 +3,49 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics.CodeAnalysis;
+  using System.IO;
   using System.Linq;
   using System.Net;
+  using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Security.Cryptography;
   using System.Text;
+  using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces.GitHub;
+  using ChargeBee.Api;
   using ChargeBee.Models;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Filters;
   using Orleans;
+
+  /// <summary>
+  /// Borrowed from: http://stackoverflow.com/posts/21609402/revisions
+  /// </summary>
+  public class FileActionResult : IHttpActionResult {
+    private byte[] _content;
+    private string _mimeType;
+    private string _fileName;
+
+    public FileActionResult(byte[] content, string mimeType, string fileName) {
+      _content = content;
+      _mimeType = mimeType;
+      _fileName = fileName;
+    }
+
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+    public Task<HttpResponseMessage> ExecuteAsync(CancellationToken cancellationToken) {
+      HttpResponseMessage response = new HttpResponseMessage();
+      response.Content = new ByteArrayContent(_content);
+      response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment");
+      response.Content.Headers.ContentDisposition.FileName = _fileName;
+      response.Content.Headers.ContentType = new MediaTypeHeaderValue(_mimeType);
+      return Task.FromResult(response);
+    }
+  }
 
   public class BillingAccount {
     public long Identifier { get; set; }
@@ -116,10 +146,14 @@
     }
 
     public static string CreateSignature(long actorId, long targetId) {
+      return CreateSignature(actorId.ToString(), targetId.ToString());
+    }
+
+    public static string CreateSignature(string actorId, string targetId) {
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("N7lowJKM71PgNdwfMTDHmNb82wiwFGl"))) {
         byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{actorId}|{targetId}"));
         var hashString = string.Join("", hash.Select(x => x.ToString("x2")));
-        return hashString;
+        return hashString.Substring(0, 8);
       }
     }
 
@@ -363,6 +397,33 @@
         .Request();
 
       return Redirect(result.HostedPage.Url);
+    }
+
+    private async Task<IHttpActionResult> DownloadEntity(EntityRequest<Type> entityResult, string entityId, string fileName, string signature) {
+      if (!CreateSignature(entityId, entityId).Equals(signature)) {
+        return BadRequest("Signature does not match.");
+      }
+
+      var downloadUrl = entityResult.Request().Download.DownloadUrl;
+
+      using (var client = new WebClient()) {
+        var bytes = await client.DownloadDataTaskAsync(downloadUrl);
+        return new FileActionResult(bytes, "application/pdf", fileName);
+      }
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("invoice/{invoiceId}/{signature}/{fileName}")]
+    public Task<IHttpActionResult> DownloadInvoice(string invoiceId, string fileName, string signature) {
+      return DownloadEntity(Invoice.Pdf(invoiceId), invoiceId, fileName, signature);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("credit/{creditNoteId}/{signature}/{fileName}")]
+    public Task<IHttpActionResult> DownloadCreditNote(string creditNoteId, string fileName, string signature) {
+      return DownloadEntity(CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature);
     }
   }
 }

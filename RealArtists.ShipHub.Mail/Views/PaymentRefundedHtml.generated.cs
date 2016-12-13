@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentRefundedHtml : ShipHubTemplateBase<PaymentRefundedMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentRefundedHtml.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\n<p>\r\n    We\'ve issued a refund for <strong>");
+WriteLiteral("<p>\r\n    We\'ve issued a refund for <strong>");
+
 
             
             #line 9 "..\..\Views\PaymentRefundedHtml.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\n<p>\r\n    We\'ve issued a refund for <strong>");
             #line hidden
 WriteLiteral("</strong> to your card ending\r\n    in <strong>");
 
+
             
             #line 10 "..\..\Views\PaymentRefundedHtml.cshtml"
           Write(Model.LastCardDigits);
@@ -62,11 +72,19 @@ WriteLiteral("</strong> to your card ending\r\n    in <strong>");
             
             #line default
             #line hidden
-WriteLiteral("</strong>.  Attached is a receipt for your records.\r\n</p>\r\n<p");
+WriteLiteral("</strong>.\r\n</p>\r\n<p>\r\n    <a href=\"");
 
-WriteLiteral(" class=\"last\"");
 
-WriteLiteral(">\r\n    Thanks for your business!\r\n</p>\r\n");
+            
+            #line 13 "..\..\Views\PaymentRefundedHtml.cshtml"
+        Write(Model.CreditNotePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\">Download a PDF receipt</a> for this transaction.\r\n</p>\r\n\r\n<p class=\"last\">\r\n   " +
+" Thanks for your business!\r\n</p>\r\n");
+
 
         }
     }

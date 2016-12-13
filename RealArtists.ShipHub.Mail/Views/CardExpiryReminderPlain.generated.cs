@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class CardExpiryReminderPlain : ShipHubTemplateBase<CardExpiryReminderMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\CardExpiryReminderPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nYour credit card ending in \"");
+WriteLiteral("Your credit card ending in \"");
+
 
             
             #line 8 "..\..\Views\CardExpiryReminderPlain.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\nYour credit card ending in \"");
             #line hidden
 WriteLiteral("\" ");
 
+
             
             #line 8 "..\..\Views\CardExpiryReminderPlain.cshtml"
                                                Write(Model.AlreadyExpired ? "expired on" : "will expire on");
@@ -64,6 +74,7 @@ WriteLiteral("\" ");
             #line hidden
 WriteLiteral(" \"");
 
+
             
             #line 8 "..\..\Views\CardExpiryReminderPlain.cshtml"
                                                                                                          Write(Model.ExpiryMonth);
@@ -72,6 +83,7 @@ WriteLiteral(" \"");
             #line default
             #line hidden
 WriteLiteral("/");
+
 
             
             #line 8 "..\..\Views\CardExpiryReminderPlain.cshtml"
@@ -83,6 +95,7 @@ WriteLiteral("/");
 WriteLiteral("\".\r\n\r\nTo prevent any interuption in your Ship service, please update your payment" +
 " information using the link below.\r\n\r\nLink: ");
 
+
             
             #line 12 "..\..\Views\CardExpiryReminderPlain.cshtml"
  Write(Model.UpdatePaymentMethodUrl);
@@ -91,6 +104,7 @@ WriteLiteral("\".\r\n\r\nTo prevent any interuption in your Ship service, please
             #line default
             #line hidden
 WriteLiteral("\r\n");
+
 
         }
     }

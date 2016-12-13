@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentFailedPlain : ShipHubTemplateBase<PaymentFailedMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentFailedPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nWe tried to process a charge for ");
+WriteLiteral("We tried to process a charge for ");
+
 
             
             #line 8 "..\..\Views\PaymentFailedPlain.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\nWe tried to process a charge for ");
             #line hidden
 WriteLiteral(" to your card ending in ");
 
+
             
             #line 8 "..\..\Views\PaymentFailedPlain.cshtml"
                                                                                          Write(Model.LastCardDigits);
@@ -64,6 +74,7 @@ WriteLiteral(" to your card ending in ");
             #line hidden
 WriteLiteral(", but the transaction failed.\r\n\r\nReason: ");
 
+
             
             #line 10 "..\..\Views\PaymentFailedPlain.cshtml"
    Write(Model.ErrorText);
@@ -71,10 +82,21 @@ WriteLiteral(", but the transaction failed.\r\n\r\nReason: ");
             
             #line default
             #line hidden
-WriteLiteral("\r\n\r\n");
+WriteLiteral("\r\n\r\nDownload a PDF invoice for this transaction:\r\n");
+
 
             
-            #line 12 "..\..\Views\PaymentFailedPlain.cshtml"
+            #line 13 "..\..\Views\PaymentFailedPlain.cshtml"
+Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\r\n\r\n");
+
+
+            
+            #line 15 "..\..\Views\PaymentFailedPlain.cshtml"
  if (Model.NextRetryDate != null) {
 
             
@@ -82,8 +104,9 @@ WriteLiteral("\r\n\r\n");
             #line hidden
 WriteLiteral("We\'ll automatically retry this charge on ");
 
+
             
-            #line 13 "..\..\Views\PaymentFailedPlain.cshtml"
+            #line 16 "..\..\Views\PaymentFailedPlain.cshtml"
                                            Write(Model.NextRetryDate.Value.ToString("MMM d, yyyy"));
 
             
@@ -92,19 +115,19 @@ WriteLiteral("We\'ll automatically retry this charge on ");
 WriteLiteral(".  If you need to update your payment information, follow the link below.\r\n\r\nLink" +
 ": ");
 
+
             
-            #line 15 "..\..\Views\PaymentFailedPlain.cshtml"
+            #line 18 "..\..\Views\PaymentFailedPlain.cshtml"
  Write(Model.UpdatePaymentMethodUrl);
 
             
             #line default
             #line hidden
-WriteLiteral("\r\n\r\nAttached is an invoice for your review.");
-
 WriteLiteral("\r\n");
 
+
             
-            #line 18 "..\..\Views\PaymentFailedPlain.cshtml"
+            #line 19 "..\..\Views\PaymentFailedPlain.cshtml"
 } else {
 
             
@@ -116,13 +139,15 @@ If you want to re-activate your subscription later, you can do so from the Ship 
 
 WriteLiteral("\r\n");
 
+
             
-            #line 22 "..\..\Views\PaymentFailedPlain.cshtml"
+            #line 23 "..\..\Views\PaymentFailedPlain.cshtml"
 }
 
             
             #line default
             #line hidden
+
         }
     }
 }

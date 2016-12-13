@@ -20,9 +20,14 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class LayoutPlain : RealArtists.ShipHub.Mail.ShipHubTemplateBase<RealArtists.ShipHub.Mail.Models.MailMessageBase>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
 
             
             #line 3 "..\..\Views\LayoutPlain.cshtml"
@@ -34,6 +39,7 @@ WriteLiteral(" ");
 
 WriteLiteral("Hi ");
 
+
             
             #line 3 "..\..\Views\LayoutPlain.cshtml"
                               Write(Model.FirstName);
@@ -41,19 +47,21 @@ WriteLiteral("Hi ");
             
             #line default
             #line hidden
-WriteLiteral(",");
+WriteLiteral(",\r\n");
 
 WriteLiteral(" ");
 
+
             
-            #line 3 "..\..\Views\LayoutPlain.cshtml"
-                                                            }
+            #line 4 "..\..\Views\LayoutPlain.cshtml"
+        }
 
             
             #line default
             #line hidden
+
             
-            #line 4 "..\..\Views\LayoutPlain.cshtml"
+            #line 5 "..\..\Views\LayoutPlain.cshtml"
 Write(RenderBody());
 
             
@@ -61,8 +69,9 @@ Write(RenderBody());
             #line hidden
 WriteLiteral("\r\n");
 
+
             
-            #line 5 "..\..\Views\LayoutPlain.cshtml"
+            #line 6 "..\..\Views\LayoutPlain.cshtml"
  if (!SkipHeaderFooter) {
 
             
@@ -73,12 +82,14 @@ WriteLiteral("Reply to this email if you have any questions - we\'re happy to he
 
 WriteLiteral("\r\n");
 
+
             
-            #line 11 "..\..\Views\LayoutPlain.cshtml"
+            #line 12 "..\..\Views\LayoutPlain.cshtml"
 }
             
             #line default
             #line hidden
+
         }
     }
 }

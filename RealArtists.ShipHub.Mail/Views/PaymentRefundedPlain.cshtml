@@ -5,6 +5,9 @@
 @{
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 }
-We've issued a refund for @string.Format("{0:C}", Model.AmountRefunded) to your card ending in @Model.LastCardDigits.  Attached is a receipt for your records.
+We've issued a refund for @string.Format("{0:C}", Model.AmountRefunded) to your card ending in @Model.LastCardDigits.
+
+Download a PDF receipt for this transaction:
+@Model.CreditNotePdfUrl
 
 Thanks for your business!

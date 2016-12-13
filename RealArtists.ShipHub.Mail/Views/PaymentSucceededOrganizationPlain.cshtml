@@ -7,7 +7,10 @@
 }
 We received payment for your organization Ship subscription.
 
-@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in "@Model.LastCardDigits" and covers service through @Model.ServiceThroughDate.ToString("MMM d, yyyy"). Attached is an invoice receipt for your records.
+@string.Format("{0:C}", Model.AmountPaid) was charged to your card ending in "@Model.LastCardDigits" and covers service through @Model.ServiceThroughDate.ToString("MMM d, yyyy").
+
+Download a PDF receipt for your records:
+@Model.InvoicePdfUrl
 
 @if (Model.PreviousMonthActiveUsersCount <= 5) {
 <text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.</text>
