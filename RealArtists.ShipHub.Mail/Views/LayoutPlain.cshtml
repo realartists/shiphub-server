@@ -1,6 +1,7 @@
 ﻿@* Generator: Template GeneratePrettyNames: true *@
 @inherits RealArtists.ShipHub.Mail.ShipHubTemplateBase<RealArtists.ShipHub.Mail.Models.MailMessageBase>
-@if (!SkipHeaderFooter) { <text>Hi @Model.FirstName,</text> }
+@if (!SkipHeaderFooter) { <text>Hi @Model.FirstName,
+</text> }
 @RenderBody()
 @if (!SkipHeaderFooter) {
 <text>Reply to this email if you have any questions - we're happy to help.

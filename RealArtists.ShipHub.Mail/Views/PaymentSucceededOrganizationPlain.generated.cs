@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentSucceededOrganizationPlain : ShipHubTemplateBase<PaymentSucceededOrganizationMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nWe received payment for your organization Ship subscription.\r\n\r\n");
+WriteLiteral("We received payment for your organization Ship subscription.\r\n\r\n");
+
 
             
             #line 10 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
@@ -55,6 +64,7 @@ Write(string.Format("{0:C}", Model.AmountPaid));
             #line hidden
 WriteLiteral(" was charged to your card ending in \"");
 
+
             
             #line 10 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                          Write(Model.LastCardDigits);
@@ -64,6 +74,7 @@ WriteLiteral(" was charged to your card ending in \"");
             #line hidden
 WriteLiteral("\" and covers service through ");
 
+
             
             #line 10 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                            Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
@@ -71,10 +82,21 @@ WriteLiteral("\" and covers service through ");
             
             #line default
             #line hidden
-WriteLiteral(". Attached is an invoice receipt for your records.\r\n\r\n");
+WriteLiteral(".\r\n\r\nDownload a PDF receipt for your records:\r\n");
+
 
             
-            #line 12 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 13 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\r\n\r\n");
+
+
+            
+            #line 15 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
  if (Model.PreviousMonthActiveUsersCount <= 5) {
 
             
@@ -83,8 +105,9 @@ WriteLiteral(". Attached is an invoice receipt for your records.\r\n\r\n");
 WriteLiteral("The base monthly fee of your subscription covers the first 5 active Ship users pe" +
 "r month.  Your organization had ");
 
+
             
-            #line 13 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 16 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                   Write(Model.PreviousMonthActiveUsersCount);
 
             
@@ -92,8 +115,9 @@ WriteLiteral("The base monthly fee of your subscription covers the first 5 activ
             #line hidden
 WriteLiteral(" active Ship users in the prior month beginning on ");
 
+
             
-            #line 13 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 16 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                                                                                                          Write(Model.PreviousMonthStart.ToString("MMM d, yyyy"));
 
             
@@ -103,8 +127,9 @@ WriteLiteral(", so there were no additional usage charges.");
 
 WriteLiteral("\r\n");
 
+
             
-            #line 14 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 17 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
 } else {
 
             
@@ -113,8 +138,9 @@ WriteLiteral("\r\n");
 WriteLiteral("The base monthly fee of your subscription covers the first 5 active Ship users pe" +
 "r month.  Your organization had ");
 
+
             
-            #line 15 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 18 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                   Write(Model.PreviousMonthActiveUsersCount);
 
             
@@ -122,8 +148,9 @@ WriteLiteral("The base monthly fee of your subscription covers the first 5 activ
             #line hidden
 WriteLiteral(" active Ship users in the prior month beginning on ");
 
+
             
-            #line 15 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 18 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                                                                                                          Write(Model.PreviousMonthStart.ToString("MMM d, yyyy"));
 
             
@@ -131,8 +158,9 @@ WriteLiteral(" active Ship users in the prior month beginning on ");
             #line hidden
 WriteLiteral(", so you were billed for ");
 
+
             
-            #line 15 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 18 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                                                                                                                                                                                     Write(Model.PreviousMonthActiveUsersCount - 5);
 
             
@@ -142,8 +170,9 @@ WriteLiteral(" additional active users.");
 
 WriteLiteral("\r\n");
 
+
             
-            #line 16 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 19 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
 }
 
             
@@ -151,8 +180,9 @@ WriteLiteral("\r\n");
             #line hidden
 WriteLiteral("\r\n");
 
+
             
-            #line 18 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 21 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
  if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
 
             
@@ -160,8 +190,9 @@ WriteLiteral("\r\n");
             #line hidden
 WriteLiteral("Active Ship users in your organization in the prior month were ");
 
+
             
-            #line 19 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 22 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                  Write(string.Join(", ", Model.PreviousMonthActiveUsersSample));
 
             
@@ -171,8 +202,9 @@ WriteLiteral(").");
 
 WriteLiteral("\r\n");
 
+
             
-            #line 20 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 23 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
 } else {
 
             
@@ -180,8 +212,9 @@ WriteLiteral("\r\n");
             #line hidden
 WriteLiteral("Active Ship users in your organization in the prior month included: ");
 
+
             
-            #line 21 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 24 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                       Write(string.Join(", ", Model.PreviousMonthActiveUsersSample));
 
             
@@ -189,8 +222,9 @@ WriteLiteral("Active Ship users in your organization in the prior month included
             #line hidden
 WriteLiteral("), and ");
 
+
             
-            #line 21 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 24 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
                                                                                                                                        Write(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count());
 
             
@@ -200,14 +234,16 @@ WriteLiteral(" others.");
 
 WriteLiteral("\r\n");
 
+
             
-            #line 22 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+            #line 25 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
 }
 
             
             #line default
             #line hidden
 WriteLiteral("\r\nWe appreciate your business!\r\n");
+
 
         }
     }

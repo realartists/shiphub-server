@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class CancellationScheduledPlain : ShipHubTemplateBase<CancellationScheduledMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\CancellationScheduledPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nThis is a confirmation that your Ship subscription will cancel on ");
+WriteLiteral("This is a confirmation that your Ship subscription will cancel on ");
+
 
             
             #line 8 "..\..\Views\CancellationScheduledPlain.cshtml"
@@ -54,6 +63,7 @@ WriteLiteral("\r\nThis is a confirmation that your Ship subscription will cancel
             #line default
             #line hidden
 WriteLiteral(".\r\n\r\nThank you for your business.\r\n");
+
 
         }
     }

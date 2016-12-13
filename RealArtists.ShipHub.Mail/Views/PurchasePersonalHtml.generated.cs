@@ -32,23 +32,42 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PurchasePersonalHtml : ShipHubTemplateBase<PurchasePersonalMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PurchasePersonalHtml.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\n<p>\r\n    Thanks for purchasing a subscription to Ship - we hope you enjoy using" +
-" it!\r\n</p>\r\n<p>\r\n    Attached is an invoice receipt for your records.\r\n</p>\r\n\r\n");
+WriteLiteral("<p>\r\n    Thanks for purchasing a subscription to Ship - we hope you enjoy using i" +
+"t!\r\n</p>\r\n<p>\r\n    <a href=\"");
+
 
             
-            #line 15 "..\..\Views\PurchasePersonalHtml.cshtml"
+            #line 12 "..\..\Views\PurchasePersonalHtml.cshtml"
+        Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\">Download a PDF receipt</a> for your records.\r\n</p>\r\n");
+
+
+            
+            #line 14 "..\..\Views\PurchasePersonalHtml.cshtml"
  if (Model.WasGivenTrialCredit) {
 
             
@@ -58,8 +77,9 @@ WriteLiteral("<p>\r\n    A discount was applied to your first invoice becuase yo
 "time\r\n    remaining on your free trial.  Next month you\'ll see the regular price" +
 " of $9/month.\r\n</p>\r\n");
 
+
             
-            #line 20 "..\..\Views\PurchasePersonalHtml.cshtml"
+            #line 19 "..\..\Views\PurchasePersonalHtml.cshtml"
 }
 
             
@@ -67,8 +87,9 @@ WriteLiteral("<p>\r\n    A discount was applied to your first invoice becuase yo
             #line hidden
 WriteLiteral("\r\n");
 
+
             
-            #line 22 "..\..\Views\PurchasePersonalHtml.cshtml"
+            #line 21 "..\..\Views\PurchasePersonalHtml.cshtml"
  if (Model.BelongsToOrganization) {
 
             
@@ -76,27 +97,29 @@ WriteLiteral("\r\n");
             #line hidden
 WriteLiteral("<h4>Want to use Ship for free?</h4>\r\n");
 
+
+
 WriteLiteral("<p>\r\n    Your personal Ship subscription is free as long as you belong\r\n    to an" +
 " organization that subscribes to Ship.  Ask your organization to sign up.\r\n</p>\r" +
 "\n");
 
+
             
-            #line 28 "..\..\Views\PurchasePersonalHtml.cshtml"
+            #line 27 "..\..\Views\PurchasePersonalHtml.cshtml"
 }
 
             
             #line default
             #line hidden
-WriteLiteral("\r\n<h4>How to manage your account:</h4>\r\n<p");
-
-WriteLiteral(" class=\"last\"");
-
-WriteLiteral(@">
+WriteLiteral(@"
+<h4>How to manage your account:</h4>
+<p class=""last"">
     If you need to change billing or payment info, or need to cancel your account, you can do so
     from within the Ship application. From the <em>Ship</em> menu,
     choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for
     your account.
 </p>");
+
 
         }
     }

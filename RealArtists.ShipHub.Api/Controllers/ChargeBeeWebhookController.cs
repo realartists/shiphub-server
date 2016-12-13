@@ -102,16 +102,22 @@
       _mailer = mailer;
     }
 
-    public async virtual Task<byte[]> GetInvoicePdfBytes(string invoiceId) {
-      var downloadUrl = Invoice.Pdf(invoiceId).Request().Download.DownloadUrl;
+    private async Task<string> InvoiceUrl(ChargeBeeWebhookPayload payload) {
+      var invoiceId = payload.Content.Invoice.Id;
+      var githubUserName = await GitHubUserNameFromWebhookPayload(payload);
+      var filename = $"ship-invoice-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date).ToString("yyyy-MM-dd")}.pdf";
+      var signature = BillingController.CreateSignature(invoiceId, invoiceId);
+      var downloadUrl = $"https://{_configuration.ApiHostName}/billing/invoice/{invoiceId}/{signature}/{filename}";
+      return downloadUrl;
+    }
 
-      byte[] invoiceBytes;
-
-      using (var client = new WebClient()) {
-        invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
-      }
-
-      return invoiceBytes;
+    private async Task<string> CreditNoteUrl(ChargeBeeWebhookPayload payload) {
+      var creditNoteId = payload.Content.CreditNote.Id;
+      var githubUserName = await GitHubUserNameFromWebhookPayload(payload);
+      var filename = $"ship-credit-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date).ToString("yyyy-MM-dd")}.pdf";
+      var signature = BillingController.CreateSignature(creditNoteId, creditNoteId);
+      var downloadUrl = $"https://{_configuration.ApiHostName}/billing/credit/{creditNoteId}/{signature}/{filename}";
+      return downloadUrl;
     }
 
     public async virtual Task<byte[]> GetCreditNotePdfBytes(string creditNoteId) {
@@ -280,7 +286,6 @@
     }
 
     public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
-      var pdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
       var message = new Mail.Models.PaymentFailedMailMessage() {
@@ -288,8 +293,7 @@
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         Amount = payload.Content.Transaction.Amount / 100.0,
-        InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
-        InvoicePdfBytes = pdfBytes,
+        InvoicePdfUrl = await InvoiceUrl(payload),
         LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
         ErrorText = payload.Content.Transaction.ErrorText,
         UpdatePaymentMethodUrl = updateUrl,
@@ -310,15 +314,12 @@
         ToAddress = payload.Content.Customer.Email,
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
-        CreditNoteDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date),
-        CreditNotePdfBytes = pdfBytes,
+        CreditNotePdfUrl = await CreditNoteUrl(payload),
         LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
       });
     }
 
     public async Task SendPaymentSucceededPersonalMessage(ChargeBeeWebhookPayload payload) {
-      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
-
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
       await _mailer.PaymentSucceededPersonal(
@@ -326,8 +327,7 @@
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
-          InvoicePdfBytes = invoicePdfBytes,
+          InvoicePdfUrl = await InvoiceUrl(payload),
           AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
           LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
@@ -338,7 +338,6 @@
       var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
       var accountId = long.Parse(matches.Groups[2].ToString());
 
-      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
       var newInvoiceStartDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateFrom);
@@ -377,8 +376,7 @@
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
-          InvoicePdfBytes = invoicePdfBytes,
+          InvoicePdfUrl = await InvoiceUrl(payload),
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
           PreviousMonthActiveUsersCount = activeUsersCount,
           PreviousMonthActiveUsersSample = activeUsersSample,
@@ -407,7 +405,6 @@
 
       bool wasGivenTrialCredit = payload.Content.Invoice.Discounts?
         .Count(x => x.EntityType == "document_level_coupon" && x.EntityId.StartsWith("trial_days_left")) > 0;
-      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
 
       await _mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {
@@ -416,8 +413,7 @@
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           BelongsToOrganization = belongsToOrganization,
           WasGivenTrialCredit = wasGivenTrialCredit,
-          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
-          InvoicePdfBytes = invoicePdfBytes,
+          InvoicePdfUrl = await InvoiceUrl(payload),
         });
     }
 
@@ -425,15 +421,13 @@
       var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
 
       var accountId = long.Parse(matches.Groups[2].ToString());
-      var invoicePdfBytes = await GetInvoicePdfBytes(payload.Content.Invoice.Id);
 
       await _mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoiceDate = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date),
-          InvoicePdfBytes = invoicePdfBytes,
+          InvoicePdfUrl = await InvoiceUrl(payload),
         });
     }
 

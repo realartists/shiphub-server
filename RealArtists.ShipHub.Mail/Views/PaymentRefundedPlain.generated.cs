@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentRefundedPlain : ShipHubTemplateBase<PaymentRefundedMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentRefundedPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nWe\'ve issued a refund for ");
+WriteLiteral("We\'ve issued a refund for ");
+
 
             
             #line 8 "..\..\Views\PaymentRefundedPlain.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\nWe\'ve issued a refund for ");
             #line hidden
 WriteLiteral(" to your card ending in ");
 
+
             
             #line 8 "..\..\Views\PaymentRefundedPlain.cshtml"
                                                                                           Write(Model.LastCardDigits);
@@ -63,6 +73,7 @@ WriteLiteral(" to your card ending in ");
             #line default
             #line hidden
 WriteLiteral(".  Attached is a receipt for your records.\r\n\r\nThanks for your business!\r\n");
+
 
         }
     }
