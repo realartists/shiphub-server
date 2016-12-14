@@ -120,18 +120,6 @@
       return downloadUrl;
     }
 
-    public async virtual Task<byte[]> GetCreditNotePdfBytes(string creditNoteId) {
-      var downloadUrl = CreditNote.Pdf(creditNoteId).Request().Download.DownloadUrl;
-
-      byte[] invoiceBytes;
-
-      using (var client = new WebClient()) {
-        invoiceBytes = await client.DownloadDataTaskAsync(downloadUrl);
-      }
-
-      return invoiceBytes;
-    }
-
     private async Task<string> GitHubUserNameFromWebhookPayload(ChargeBeeWebhookPayload payload) {
       // Most events include the customer portion which gives us the GitHub username.
       if (payload.Content.Customer?.GitHubUserName != null) {
@@ -307,8 +295,6 @@
     }
 
     public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {
-      var pdfBytes = await GetCreditNotePdfBytes(payload.Content.CreditNote.Id);
-
       await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,

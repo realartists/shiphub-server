@@ -922,9 +922,6 @@
 
       var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
       controller.CallBase = true;
-      controller
-        .Setup(x => x.GetCreditNotePdfBytes(It.IsAny<string>()))
-        .Returns(Task.FromResult(new byte[0]));
 
       var creditNotDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
