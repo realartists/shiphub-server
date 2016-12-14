@@ -35,6 +35,7 @@
 
   public class ChargeBeeWebhookCreditNote {
     public int AmountRefunded { get; set; }
+    public string CustomerId { get; set; }
     public string Id { get; set; }
     public long Date { get; set; }
   }
@@ -132,8 +133,12 @@
         return payload.Content.Customer?.GitHubUserName;
       } else {
         // Invoice events (and maybe others, TBD) don't include the Customer portion so
-        // we have to find the customer id in the invoice section.
-        string customerId = payload.Content.Invoice?.CustomerId;
+        // we have to find the customer id in another section.
+        var candidates = new[] {
+          payload.Content.Invoice?.CustomerId,
+          payload.Content.CreditNote?.CustomerId,
+        };
+        var customerId = candidates.SkipWhile(string.IsNullOrEmpty).First();
         var matches = CustomerIdRegex.Match(customerId);
         var accountId = long.Parse(matches.Groups[2].ToString());
         var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
