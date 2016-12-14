@@ -22,31 +22,6 @@
   using Filters;
   using Orleans;
 
-  /// <summary>
-  /// Borrowed from: http://stackoverflow.com/posts/21609402/revisions
-  /// </summary>
-  public class FileActionResult : IHttpActionResult {
-    private byte[] _content;
-    private string _mimeType;
-    private string _fileName;
-
-    public FileActionResult(byte[] content, string mimeType, string fileName) {
-      _content = content;
-      _mimeType = mimeType;
-      _fileName = fileName;
-    }
-
-    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public Task<HttpResponseMessage> ExecuteAsync(CancellationToken cancellationToken) {
-      HttpResponseMessage response = new HttpResponseMessage();
-      response.Content = new ByteArrayContent(_content);
-      response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment");
-      response.Content.Headers.ContentDisposition.FileName = _fileName;
-      response.Content.Headers.ContentType = new MediaTypeHeaderValue(_mimeType);
-      return Task.FromResult(response);
-    }
-  }
-
   public class BillingAccount {
     public long Identifier { get; set; }
     public string Login { get; set; }
@@ -399,31 +374,40 @@
       return Redirect(result.HostedPage.Url);
     }
 
-    private async Task<IHttpActionResult> DownloadEntity(EntityRequest<Type> entityResult, string entityId, string fileName, string signature) {
+    private static HttpClient _HttpClient { get; } = new HttpClient();
+
+    private async Task<HttpResponseMessage> DownloadEntity(EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
       if (!CreateSignature(entityId, entityId).Equals(signature)) {
-        return BadRequest("Signature does not match.");
+        return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Signature does not match.");
       }
 
       var downloadUrl = entityResult.Request().Download.DownloadUrl;
+      var request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, downloadUrl);
 
-      using (var client = new WebClient()) {
-        var bytes = await client.DownloadDataTaskAsync(downloadUrl);
-        return new FileActionResult(bytes, "application/pdf", fileName);
+      try {
+        var response = await _HttpClient.SendAsync(request, cancellationToken);
+        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
+          FileName = fileName
+        };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        return response;
+      } catch (TaskCanceledException exception) {
+        return Request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
       }
     }
 
     [AllowAnonymous]
     [HttpGet]
     [Route("invoice/{invoiceId}/{signature}/{fileName}")]
-    public Task<IHttpActionResult> DownloadInvoice(string invoiceId, string fileName, string signature) {
-      return DownloadEntity(Invoice.Pdf(invoiceId), invoiceId, fileName, signature);
+    public Task<HttpResponseMessage> DownloadInvoice(string invoiceId, string fileName, string signature, CancellationToken cancellationToken) {
+      return DownloadEntity(Invoice.Pdf(invoiceId), invoiceId, fileName, signature, cancellationToken);
     }
 
     [AllowAnonymous]
     [HttpGet]
     [Route("credit/{creditNoteId}/{signature}/{fileName}")]
-    public Task<IHttpActionResult> DownloadCreditNote(string creditNoteId, string fileName, string signature) {
-      return DownloadEntity(CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature);
+    public Task<HttpResponseMessage> DownloadCreditNote(string creditNoteId, string fileName, string signature, CancellationToken cancellationToken) {
+      return DownloadEntity(CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature, cancellationToken);
     }
   }
 }
