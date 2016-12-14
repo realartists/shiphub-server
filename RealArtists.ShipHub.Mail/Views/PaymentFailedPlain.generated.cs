@@ -135,7 +135,7 @@ WriteLiteral("\r\n");
             #line hidden
 WriteLiteral(@"We've failed to process this charge a few times now, so we'll go ahead and cancel your subscription.
 
-If you want to re-activate your subscription later, you can do so from the Ship application.  From the ""Ship"" menu, choose ""Manage Subscription"".  Then click ""Manage"" for your account.");
+If you want to re-activate your subscription later, you can do so from the Ship application.  From the ""Ship"" menu, choose ""Manage Subscription"".  Then click ""Buy"" for your account.");
 
 WriteLiteral("\r\n");
 

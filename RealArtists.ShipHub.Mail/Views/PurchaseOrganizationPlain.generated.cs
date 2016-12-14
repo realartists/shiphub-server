@@ -53,7 +53,7 @@ WriteLiteral("\r\n");
             #line default
             #line hidden
 WriteLiteral("Thanks for purchasing a subscription to Ship - we hope you enjoy using it!\r\n\r\nDow" +
-"nload a PDF invoice for your records:\r\n");
+"nload a PDF receipt for your records:\r\n");
 
 
             

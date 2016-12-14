@@ -142,11 +142,10 @@ WriteLiteral("    <p>\r\n        We\'ve failed to process this charge a few time
 
 
 
-WriteLiteral(@"    <p class=""last"">
-        If you want to re-activate your subscription later, you can do so from the Ship application.  
-        From the <em>Ship</em> menu, choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for your account.
-    </p>
-");
+WriteLiteral("    <p class=\"last\">\r\n        If you want to re-activate your subscription later," +
+" you can do so from the Ship application.  \r\n        From the <em>Ship</em> menu" +
+", choose <em>Manage Subscription</em>.  Then click <em>Buy</em> for your account" +
+".\r\n    </p>\r\n");
 
 
             

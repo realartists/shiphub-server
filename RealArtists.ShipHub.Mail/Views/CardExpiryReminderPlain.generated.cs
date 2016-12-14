@@ -92,8 +92,8 @@ WriteLiteral("/");
             
             #line default
             #line hidden
-WriteLiteral("\".\r\n\r\nTo prevent any interuption in your Ship service, please update your payment" +
-" information using the link below.\r\n\r\nLink: ");
+WriteLiteral("\".\r\n\r\nTo prevent any interruption in your Ship service, please update your paymen" +
+"t information using the link below.\r\n\r\nLink: ");
 
 
             

@@ -77,7 +77,7 @@ WriteLiteral(" and covers service through ");
 
             
             #line 10 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
-                                                                                                                         Write(Model.ServiceThroughDate.ToString("yyyy-MM-dd"));
+                                                                                                                         Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
 
             
             #line default
