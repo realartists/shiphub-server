@@ -6,12 +6,22 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DELETE FROM Milestones WHERE Id = @MilestoneId
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = 1,
-    [RowVersion] = DEFAULT
-  -- Crafty change output
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-  WHERE ItemType = 'milestone' AND [Delete] = 0 AND ItemId = @MilestoneId
+    DELETE FROM Milestones WHERE Id = @MilestoneId
+
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    -- Crafty change output
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    WHERE ItemType = 'milestone' AND [Delete] = 0 AND ItemId = @MilestoneId
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 END

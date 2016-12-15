@@ -6,14 +6,24 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DELETE FROM IssueLabels WHERE LabelId = @LabelId
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  DELETE FROM Labels WHERE Id = @LabelId
+    DELETE FROM IssueLabels WHERE LabelId = @LabelId
 
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = 1,
-    [RowVersion] = DEFAULT
-  -- Crafty change output
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-  WHERE ItemType = 'label' AND [Delete] = 0 AND ItemId = @LabelId
+    DELETE FROM Labels WHERE Id = @LabelId
+
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    -- Crafty change output
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    WHERE ItemType = 'label' AND [Delete] = 0 AND ItemId = @LabelId
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 END

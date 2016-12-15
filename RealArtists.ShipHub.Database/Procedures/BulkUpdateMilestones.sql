@@ -14,44 +14,54 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO Milestones WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
-    FROM @Milestones
-  ) as [Source]
-  ON ([Target].Id = [Source].Id)
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
-    VALUES (Id, @RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
-  -- Delete
-  WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
-  -- Update
-  WHEN MATCHED AND [Target].UpdatedAt < [Source].UpdatedAt THEN
-    UPDATE SET
-      Number = [Source].Number,
-      [State] = [Source].[State], 
-      Title = [Source].Title,
-      [Description] = [Source].[Description],
-      UpdatedAt = [Source].UpdatedAt,
-      ClosedAt = [Source].ClosedAt,
-      DueOn = [Source].DueOn
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  -- Deleted or edited milestones
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = IIF([Action] = 'DELETE', 1, 0),
-    [RowVersion] = DEFAULT
-  FROM @Changes as c
-    INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'milestone' AND ItemId = c.Id)
+    MERGE INTO Milestones as [Target]
+    USING (
+      SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
+      FROM @Milestones
+    ) as [Source]
+    ON ([Target].Id = [Source].Id)
+    -- Add
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (Id, RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
+      VALUES (Id, @RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
+    -- Delete
+    WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
+    -- Update
+    WHEN MATCHED AND [Target].UpdatedAt < [Source].UpdatedAt THEN
+      UPDATE SET
+        Number = [Source].Number,
+        [State] = [Source].[State], 
+        Title = [Source].Title,
+        [Description] = [Source].[Description],
+        UpdatedAt = [Source].UpdatedAt,
+        ClosedAt = [Source].ClosedAt,
+        DueOn = [Source].DueOn
+    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
 
-  -- New milestones
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT 'repo', @RepositoryId, 'milestone', c.Id, 0
-  FROM @Changes as c
-  WHERE NOT EXISTS (
-    SELECT * FROM SyncLog WITH (UPDLOCK)
-    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'milestone' AND ItemId = c.Id)
+    -- Deleted or edited milestones
+    UPDATE SyncLog SET
+      [Delete] = IIF([Action] = 'DELETE', 1, 0),
+      [RowVersion] = DEFAULT
+    FROM @Changes as c
+      INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'milestone' AND ItemId = c.Id)
+
+    -- New milestones
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT 'repo', @RepositoryId, 'milestone', c.Id, 0
+    FROM @Changes as c
+    WHERE NOT EXISTS (
+      SELECT * FROM SyncLog
+      WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'milestone' AND ItemId = c.Id)
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   -- Return sync notifications
   SELECT 'repo' as ItemType, @RepositoryId as ItemId

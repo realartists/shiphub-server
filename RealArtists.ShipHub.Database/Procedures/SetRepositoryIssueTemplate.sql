@@ -7,17 +7,27 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- Update the Repository with the new IssueTemplate
-  UPDATE Repositories WITH (UPDLOCK SERIALIZABLE) SET 
-    IssueTemplate = @IssueTemplate
-  WHERE Id = @RepositoryId AND NULLIF(IssueTemplate, @IssueTemplate) IS NOT NULL
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  DECLARE @Changes INT = @@ROWCOUNT
+    -- Update the Repository with the new IssueTemplate
+    UPDATE Repositories SET 
+      IssueTemplate = @IssueTemplate
+    WHERE Id = @RepositoryId AND NULLIF(IssueTemplate, @IssueTemplate) IS NOT NULL
 
-  -- Update the log with any changes
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [RowVersion] = DEFAULT
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-  WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'repository' AND ItemId = @RepositoryId
-    AND @Changes > 0
+    DECLARE @Changes INT = @@ROWCOUNT
+
+    -- Update the log with any changes
+    UPDATE SyncLog SET
+      [RowVersion] = DEFAULT
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'repository' AND ItemId = @RepositoryId
+      AND @Changes > 0
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 END

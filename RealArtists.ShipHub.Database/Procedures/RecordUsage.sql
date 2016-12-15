@@ -7,9 +7,9 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  INSERT INTO Usage WITH (SERIALIZABLE) (AccountId, [Date])
+  INSERT INTO Usage (AccountId, [Date])
   SELECT @AccountId, @Date
   WHERE NOT EXISTS (
-    SELECT * FROM Usage WITH (UPDLOCK)
+    SELECT * FROM Usage
     WHERE AccountId = @AccountId AND [Date] = @Date)
 END

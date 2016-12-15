@@ -7,24 +7,34 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  MERGE INTO AccountRepositories WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT @AccountId as AccountId, Item1 as RepositoryId, Item2 as [Admin]
-      FROM @RepositoryIds
-  ) as [Source]
-  ON [Target].AccountId = [Source].AccountId
-    AND [Target].RepositoryId = [Source].RepositoryId
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (AccountId, RepositoryId, [Hidden], [Admin])
-    VALUES (AccountId, RepositoryId, 0, [Admin])
-  -- Update
-  WHEN MATCHED AND [Target].[Admin] != [Source].[Admin] THEN
-    UPDATE SET
-      [Admin] = [Source].[Admin]
-  -- Remove
-  WHEN NOT MATCHED BY SOURCE AND [Target].AccountId = @AccountId
-    THEN DELETE;
+  BEGIN TRY
+    BEGIN TRANSACTION
+
+    MERGE INTO AccountRepositories as [Target]
+    USING (
+      SELECT @AccountId as AccountId, Item1 as RepositoryId, Item2 as [Admin]
+        FROM @RepositoryIds
+    ) as [Source]
+    ON [Target].AccountId = [Source].AccountId
+      AND [Target].RepositoryId = [Source].RepositoryId
+    -- Add
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (AccountId, RepositoryId, [Hidden], [Admin])
+      VALUES (AccountId, RepositoryId, 0, [Admin])
+    -- Update
+    WHEN MATCHED AND [Target].[Admin] != [Source].[Admin] THEN
+      UPDATE SET
+        [Admin] = [Source].[Admin]
+    -- Remove
+    WHEN NOT MATCHED BY SOURCE AND [Target].AccountId = @AccountId
+      THEN DELETE;
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   DECLARE @Changes INT = @@ROWCOUNT
 
