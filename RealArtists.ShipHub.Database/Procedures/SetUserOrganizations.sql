@@ -28,46 +28,56 @@ BEGIN
     [Action]         NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO OrganizationAccounts WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT Item as OrganizationId FROM @OrganizationIds
-  ) as [Source]
-  ON ([Target].OrganizationId = [Source].OrganizationId AND [Target].UserId = @UserId)
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (UserId, OrganizationId, [Admin])
-    VALUES (@UserId, OrganizationId, 0) -- Default to admin = false, will update if wrong.
-  -- Delete
-  WHEN NOT MATCHED BY SOURCE AND [Target].UserId = @UserId
-    THEN DELETE
-  OUTPUT COALESCE(INSERTED.OrganizationId, DELETED.OrganizationId), $action INTO @Changes;
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  -- New organizations reference themselves
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT 'org', c.OrganizationId, 'account', c.OrganizationId, 0
-  FROM @Changes as c
-  WHERE c.[Action] = 'INSERT'
-    AND NOT EXISTS (
-      SELECT * FROM SyncLog WITH (UPDLOCK)
-      WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+    MERGE INTO OrganizationAccounts as [Target]
+    USING (
+      SELECT Item as OrganizationId FROM @OrganizationIds
+    ) as [Source]
+    ON ([Target].OrganizationId = [Source].OrganizationId AND [Target].UserId = @UserId)
+    -- Add
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (UserId, OrganizationId, [Admin])
+      VALUES (@UserId, OrganizationId, 0) -- Default to admin = false, will update if wrong.
+    -- Delete
+    WHEN NOT MATCHED BY SOURCE AND [Target].UserId = @UserId
+      THEN DELETE
+    OUTPUT COALESCE(INSERTED.OrganizationId, DELETED.OrganizationId), $action INTO @Changes;
 
-  -- For new members, add a reference but don't notify.
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT 'org', c.OrganizationId, 'account', @UserId, 0
-  FROM @Changes as c
-  WHERE c.[Action] = 'INSERT'
-    AND NOT EXISTS (
-      SELECT * FROM SyncLog WITH (UPDLOCK)
-      WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = @UserId)
+    -- New organizations reference themselves
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT 'org', c.OrganizationId, 'account', c.OrganizationId, 0
+    FROM @Changes as c
+    WHERE c.[Action] = 'INSERT'
+      AND NOT EXISTS (
+        SELECT * FROM SyncLog
+        WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+
+    -- For new members, add a reference but don't notify.
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT 'org', c.OrganizationId, 'account', @UserId, 0
+    FROM @Changes as c
+    WHERE c.[Action] = 'INSERT'
+      AND NOT EXISTS (
+        SELECT * FROM SyncLog
+        WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = @UserId)
     
-  -- If user deleted from the org, bump the version and trigger org sync
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [RowVersion] = DEFAULT
-  -- Notify orgs with deletions
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-  FROM @Changes as c
-    INNER JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
-  WHERE c.[Action] = 'DELETE'
+    -- If user deleted from the org, bump the version and trigger org sync
+    UPDATE SyncLog SET
+      [RowVersion] = DEFAULT
+    -- Notify orgs with deletions
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    FROM @Changes as c
+      INNER JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+    WHERE c.[Action] = 'DELETE'
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   -- Notify user
   SELECT 'user' as ItemType, @UserId as ItemId

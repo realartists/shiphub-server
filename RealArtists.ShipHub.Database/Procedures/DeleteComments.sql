@@ -6,15 +6,25 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  DELETE FROM Comments WITH (UPDLOCK SERIALIZABLE)
-  WHERE Id IN (SELECT Item FROM @Comments)
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = 1,
-    [RowVersion] = DEFAULT
-  -- Crafty change output
-  OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-  WHERE ItemType = 'comment'
-    AND [Delete] = 0
-    AND ItemId IN (SELECT Item FROM @Comments)
+    DELETE FROM Comments
+    WHERE Id IN (SELECT Item FROM @Comments)
+
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    -- Crafty change output
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    WHERE ItemType = 'comment'
+      AND [Delete] = 0
+      AND ItemId IN (SELECT Item FROM @Comments)
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 END

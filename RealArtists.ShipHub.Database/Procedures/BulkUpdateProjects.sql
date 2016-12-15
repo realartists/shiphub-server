@@ -27,65 +27,75 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   );
 
-  -- Update the Projects table
-  MERGE INTO Projects WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT [Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
-    FROM @Projects
-  ) as [Source]
-  ON ([Target].[Id] = [Source].[Id])
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], [OrganizationId], [RepositoryId])
-    VALUES ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId, @RepositoryId)
-  -- Delete
-  WHEN NOT MATCHED BY SOURCE AND 
-    ((@OrganizationId IS NOT NULL AND [Target].[OrganizationId] IS NOT NULL AND [Target].OrganizationId = @OrganizationId)
-     OR
-     (@RepositoryId IS NOT NULL AND [Target].[RepositoryId] IS NOT NULL AND [Target].RepositoryId = @RepositoryId))
-    THEN DELETE
-  -- Update
-  WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
-    UPDATE SET
-      [Name] = [Source].[Name],
-      [Number] = [Source].[Number],
-      [Body] = [Source].[Body],
-      [CreatedAt] = [Source].[CreatedAt],
-      [UpdatedAt] = [Source].[UpdatedAt],
-      [CreatorId] = [Source].[CreatorId],
-      [OrganizationId] = @OrganizationId,
-      [RepositoryId] = @RepositoryId
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  -- Update SyncLog with deleted or edited projects
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = IIF([Action] = 'DELETE', 1, 0),
-    [RowVersion] = DEFAULT
-  FROM @Changes as c
-  INNER JOIN SyncLog ON (OwnerType = @OwnerType AND OwnerId = @OwnerId AND ItemType = 'project' AND ItemId = c.Id)
+    -- Update the Projects table
+    MERGE INTO Projects as [Target]
+    USING (
+      SELECT [Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
+      FROM @Projects
+    ) as [Source]
+    ON ([Target].[Id] = [Source].[Id])
+    -- Add
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], [OrganizationId], [RepositoryId])
+      VALUES ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId, @RepositoryId)
+    -- Delete
+    WHEN NOT MATCHED BY SOURCE AND 
+      ((@OrganizationId IS NOT NULL AND [Target].[OrganizationId] IS NOT NULL AND [Target].OrganizationId = @OrganizationId)
+       OR
+       (@RepositoryId IS NOT NULL AND [Target].[RepositoryId] IS NOT NULL AND [Target].RepositoryId = @RepositoryId))
+      THEN DELETE
+    -- Update
+    WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
+      UPDATE SET
+        [Name] = [Source].[Name],
+        [Number] = [Source].[Number],
+        [Body] = [Source].[Body],
+        [CreatedAt] = [Source].[CreatedAt],
+        [UpdatedAt] = [Source].[UpdatedAt],
+        [CreatorId] = [Source].[CreatorId],
+        [OrganizationId] = @OrganizationId,
+        [RepositoryId] = @RepositoryId
+    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
 
-  -- Update SyncLog with new projects
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT @OwnerType, @OwnerId, 'project', c.Id, 0
-  FROM @Changes as c
-  WHERE NOT EXISTS (
-    SELECT * FROM SyncLog WITH (UPDLOCK) 
-    WHERE ItemId = c.Id 
-      AND ItemType = 'project' 
-      AND OwnerId = @OwnerId
-      AND OwnerType = @OwnerType)
+    -- Update SyncLog with deleted or edited projects
+    UPDATE SyncLog SET
+      [Delete] = IIF([Action] = 'DELETE', 1, 0),
+      [RowVersion] = DEFAULT
+    FROM @Changes as c
+    INNER JOIN SyncLog ON (OwnerType = @OwnerType AND OwnerId = @OwnerId AND ItemType = 'project' AND ItemId = c.Id)
 
-  -- Update SyncLog with any newly referenced accounts
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT @OwnerType, @OwnerId, 'account', c.CreatorId, 0
-  FROM (
-    SELECT DISTINCT(CreatorId) as CreatorId
-    FROM @Projects as p
-    INNER JOIN @Changes as ch ON (ch.Id = p.Id)
-  ) as c
-  WHERE NOT EXISTS (
-    SELECT * FROM SyncLog WITH (UPDLOCK)
-    WHERE OwnerType = @OwnerType AND OwnerId = @OwnerId AND ItemType = 'account' AND ItemId = c.CreatorId)
+    -- Update SyncLog with new projects
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT @OwnerType, @OwnerId, 'project', c.Id, 0
+    FROM @Changes as c
+    WHERE NOT EXISTS (
+      SELECT * FROM SyncLog 
+      WHERE ItemId = c.Id 
+        AND ItemType = 'project' 
+        AND OwnerId = @OwnerId
+        AND OwnerType = @OwnerType)
+
+    -- Update SyncLog with any newly referenced accounts
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT @OwnerType, @OwnerId, 'account', c.CreatorId, 0
+    FROM (
+      SELECT DISTINCT(CreatorId) as CreatorId
+      FROM @Projects as p
+      INNER JOIN @Changes as ch ON (ch.Id = p.Id)
+    ) as c
+    WHERE NOT EXISTS (
+      SELECT * FROM SyncLog
+      WHERE OwnerType = @OwnerType AND OwnerId = @OwnerId AND ItemType = 'account' AND ItemId = c.CreatorId)
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   -- Return sync notifications
   SELECT @OwnerType as ItemType, @OwnerId as ItemId

@@ -19,43 +19,53 @@ BEGIN
     [Action] NVARCHAR(10) NOT NULL
   )
 
-  MERGE INTO Reactions WITH (UPDLOCK SERIALIZABLE) as [Target]
-  USING (
-    SELECT Id, UserId, Content, CreatedAt
-    FROM @Reactions
-  ) as [Source]
-  ON ([Target].Id = [Source].Id)
-  -- Add
-  WHEN NOT MATCHED BY TARGET THEN
-    INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
-    VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
-  -- Delete
-  WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
-    THEN DELETE
-  OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes;
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  -- Deleted or edited reactions
-  UPDATE SyncLog WITH (UPDLOCK SERIALIZABLE) SET
-    [Delete] = IIF([Action] = 'DELETE', 1, 0),
-    [RowVersion] = DEFAULT
-  FROM @Changes as c
-    INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.Id)
+    MERGE INTO Reactions as [Target]
+    USING (
+      SELECT Id, UserId, Content, CreatedAt
+      FROM @Reactions
+    ) as [Source]
+    ON ([Target].Id = [Source].Id)
+    -- Add
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
+      VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
+    -- Delete
+    WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
+      THEN DELETE
+    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes;
 
-  -- New reactions
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT 'repo', @RepositoryId, 'reaction', c.Id, 0
-  FROM @Changes as c
-  WHERE NOT EXISTS (
-    SELECT * FROM SyncLog WITH (UPDLOCK)
-    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.Id)
+    -- Deleted or edited reactions
+    UPDATE SyncLog SET
+      [Delete] = IIF([Action] = 'DELETE', 1, 0),
+      [RowVersion] = DEFAULT
+    FROM @Changes as c
+      INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.Id)
 
-  -- New Accounts
-  INSERT INTO SyncLog WITH (SERIALIZABLE) (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-  SELECT 'repo', @RepositoryId, 'account', c.UserId, 0
-  FROM (SELECT DISTINCT UserId FROM @Changes WHERE [Action] = 'INSERT') as c
-  WHERE NOT EXISTS (
-    SELECT * FROM SyncLog WITH (UPDLOCK)
-    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.UserId)
+    -- New reactions
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT 'repo', @RepositoryId, 'reaction', c.Id, 0
+    FROM @Changes as c
+    WHERE NOT EXISTS (
+      SELECT * FROM SyncLog
+      WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.Id)
+
+    -- New Accounts
+    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
+    SELECT 'repo', @RepositoryId, 'account', c.UserId, 0
+    FROM (SELECT DISTINCT UserId FROM @Changes WHERE [Action] = 'INSERT') as c
+    WHERE NOT EXISTS (
+      SELECT * FROM SyncLog
+      WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.UserId)
+
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   -- Return sync notifications
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
