@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentFailedHtml : ShipHubTemplateBase<PaymentFailedMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentFailedHtml.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\n<p>\r\n    We tried to process a charge for <strong>");
+WriteLiteral("<p>\r\n    We tried to process a charge for <strong>");
+
 
             
             #line 9 "..\..\Views\PaymentFailedHtml.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\n<p>\r\n    We tried to process a charge for <strong>");
             #line hidden
 WriteLiteral("</strong> to your card ending\r\n    in <strong>");
 
+
             
             #line 10 "..\..\Views\PaymentFailedHtml.cshtml"
           Write(Model.LastCardDigits);
@@ -64,6 +74,7 @@ WriteLiteral("</strong> to your card ending\r\n    in <strong>");
             #line hidden
 WriteLiteral("</strong>, but the transaction failed.\r\n</p>\r\n<p>\r\n    <strong>Reason:</strong> ");
 
+
             
             #line 13 "..\..\Views\PaymentFailedHtml.cshtml"
                         Write(Model.ErrorText);
@@ -71,10 +82,21 @@ WriteLiteral("</strong>, but the transaction failed.\r\n</p>\r\n<p>\r\n    <stro
             
             #line default
             #line hidden
-WriteLiteral("\r\n</p>\r\n");
+WriteLiteral("\r\n</p>\r\n<p>\r\n    <a href=\"");
+
 
             
-            #line 15 "..\..\Views\PaymentFailedHtml.cshtml"
+            #line 16 "..\..\Views\PaymentFailedHtml.cshtml"
+        Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\">Download a PDF invoice</a> for this transaction.\r\n</p>\r\n");
+
+
+            
+            #line 18 "..\..\Views\PaymentFailedHtml.cshtml"
  if (Model.NextRetryDate != null) {
 
             
@@ -82,8 +104,9 @@ WriteLiteral("\r\n</p>\r\n");
             #line hidden
 WriteLiteral("    <p>\r\n        We\'ll automatically retry this charge on <strong>");
 
+
             
-            #line 17 "..\..\Views\PaymentFailedHtml.cshtml"
+            #line 20 "..\..\Views\PaymentFailedHtml.cshtml"
                                                      Write(Model.NextRetryDate.Value.ToString("MMM d, yyyy"));
 
             
@@ -92,25 +115,20 @@ WriteLiteral("    <p>\r\n        We\'ll automatically retry this charge on <stro
 WriteLiteral("</strong>.\r\n        If you need to update your payment information, follow the li" +
 "nk below.\r\n    </p>\r\n");
 
-WriteLiteral("    <p>\r\n        <a");
 
-WriteAttribute("href", Tuple.Create(" href=\"", 805), Tuple.Create("\"", 841)
+
+WriteLiteral("    <p class=\"last\">\r\n        <a href=\"");
+
+
             
-            #line 21 "..\..\Views\PaymentFailedHtml.cshtml"
-, Tuple.Create(Tuple.Create("", 812), Tuple.Create<System.Object, System.Int32>(Model.UpdatePaymentMethodUrl
+            #line 24 "..\..\Views\PaymentFailedHtml.cshtml"
+            Write(Model.UpdatePaymentMethodUrl);
+
             
             #line default
             #line hidden
-, 812), false)
-);
+WriteLiteral("\">Update Payment Information</a>\r\n    </p>\r\n");
 
-WriteLiteral(">Update Payment Information</a>\r\n    </p>\r\n");
-
-WriteLiteral("    <p");
-
-WriteLiteral(" class=\"last\"");
-
-WriteLiteral(">\r\n        Attached is an invoice for your review.\r\n    </p>\r\n");
 
             
             #line 26 "..\..\Views\PaymentFailedHtml.cshtml"
@@ -122,13 +140,13 @@ WriteLiteral(">\r\n        Attached is an invoice for your review.\r\n    </p>\r
 WriteLiteral("    <p>\r\n        We\'ve failed to process this charge a few times now, so we\'ll go" +
 " ahead and cancel your subscription.\r\n    </p>\r\n");
 
-WriteLiteral("    <p");
 
-WriteLiteral(" class=\"last\"");
 
-WriteLiteral(">\r\n        If you want to re-activate your subscription later, you can do so from" +
-" the Ship application.  \r\n        From the <em>Ship</em> menu, choose <em>Manage" +
-" Subscription</em>.  Then click <em>Manage</em> for your account.\r\n    </p>\r\n");
+WriteLiteral("    <p class=\"last\">\r\n        If you want to re-activate your subscription later," +
+" you can do so from the Ship application.  \r\n        From the <em>Ship</em> menu" +
+", choose <em>Manage Subscription</em>.  Then click <em>Buy</em> for your account" +
+".\r\n    </p>\r\n");
+
 
             
             #line 34 "..\..\Views\PaymentFailedHtml.cshtml"
@@ -137,6 +155,7 @@ WriteLiteral(">\r\n        If you want to re-activate your subscription later, y
             
             #line default
             #line hidden
+
         }
     }
 }

@@ -3,13 +3,18 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Diagnostics.CodeAnalysis;
+  using System.IO;
   using System.Linq;
   using System.Net;
+  using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Security.Cryptography;
   using System.Text;
+  using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces.GitHub;
+  using ChargeBee.Api;
   using ChargeBee.Models;
   using Common;
   using Common.DataModel;
@@ -116,10 +121,14 @@
     }
 
     public static string CreateSignature(long actorId, long targetId) {
+      return CreateSignature(actorId.ToString(), targetId.ToString());
+    }
+
+    public static string CreateSignature(string actorId, string targetId) {
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("N7lowJKM71PgNdwfMTDHmNb82wiwFGl"))) {
         byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{actorId}|{targetId}"));
         var hashString = string.Join("", hash.Select(x => x.ToString("x2")));
-        return hashString;
+        return hashString.Substring(0, 8);
       }
     }
 
@@ -363,6 +372,42 @@
         .Request();
 
       return Redirect(result.HostedPage.Url);
+    }
+
+    private static HttpClient _HttpClient { get; } = new HttpClient();
+
+    private async Task<HttpResponseMessage> DownloadEntity(EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
+      if (!CreateSignature(entityId, entityId).Equals(signature)) {
+        return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Signature does not match.");
+      }
+
+      var downloadUrl = entityResult.Request().Download.DownloadUrl;
+      var request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, downloadUrl);
+
+      try {
+        var response = await _HttpClient.SendAsync(request, cancellationToken);
+        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
+          FileName = fileName
+        };
+        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        return response;
+      } catch (TaskCanceledException exception) {
+        return Request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      }
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("invoice/{invoiceId}/{signature}/{fileName}")]
+    public Task<HttpResponseMessage> DownloadInvoice(string invoiceId, string fileName, string signature, CancellationToken cancellationToken) {
+      return DownloadEntity(Invoice.Pdf(invoiceId), invoiceId, fileName, signature, cancellationToken);
+    }
+
+    [AllowAnonymous]
+    [HttpGet]
+    [Route("credit/{creditNoteId}/{signature}/{fileName}")]
+    public Task<HttpResponseMessage> DownloadCreditNote(string creditNoteId, string fileName, string signature, CancellationToken cancellationToken) {
+      return DownloadEntity(CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature, cancellationToken);
     }
   }
 }

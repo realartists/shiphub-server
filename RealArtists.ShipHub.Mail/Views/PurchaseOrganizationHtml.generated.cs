@@ -32,30 +32,48 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PurchaseOrganizationHtml : ShipHubTemplateBase<PurchaseOrganizationMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PurchaseOrganizationHtml.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\n<p>\r\n    Thanks for purchasing a subscription to Ship - we hope your\r\n    team " +
-"enjoys using it.\r\n</p>\r\n<p>\r\n    Attached is an invoice receipt for your records" +
-".\r\n</p>\r\n\r\n<h4>How to manage your account:</h4>\r\n<p");
+WriteLiteral("<p>\r\n    Thanks for purchasing a subscription to Ship - we hope your\r\n    team en" +
+"joys using it.\r\n</p>\r\n<p>\r\n    <a href=\"");
 
-WriteLiteral(" class=\"last\"");
 
-WriteLiteral(@">
+            
+            #line 13 "..\..\Views\PurchaseOrganizationHtml.cshtml"
+        Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral(@""">Download a PDF receipt</a> for your records.
+</p>
+
+<h4>How to manage your account:</h4>
+<p class=""last"">
     If you need to change billing or payment info, or need to cancel your account, you can do so
     from within the Ship application. From the <em>Ship</em> menu,
     choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for
     your account.
 </p>");
+
 
         }
     }

@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class CardExpiryReminderHtml : ShipHubTemplateBase<CardExpiryReminderMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\CardExpiryReminderHtml.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\n<p>\r\n    Your credit card ending in <strong>");
+WriteLiteral("<p>\r\n    Your credit card ending in <strong>");
+
 
             
             #line 9 "..\..\Views\CardExpiryReminderHtml.cshtml"
@@ -55,6 +64,7 @@ WriteLiteral("\r\n<p>\r\n    Your credit card ending in <strong>");
             #line hidden
 WriteLiteral("</strong> ");
 
+
             
             #line 9 "..\..\Views\CardExpiryReminderHtml.cshtml"
                                                                   Write(Model.AlreadyExpired ? "expired on" : "will expire on");
@@ -63,6 +73,7 @@ WriteLiteral("</strong> ");
             #line default
             #line hidden
 WriteLiteral(" <strong>");
+
 
             
             #line 9 "..\..\Views\CardExpiryReminderHtml.cshtml"
@@ -73,6 +84,7 @@ WriteLiteral(" <strong>");
             #line hidden
 WriteLiteral("/");
 
+
             
             #line 9 "..\..\Views\CardExpiryReminderHtml.cshtml"
                                                                                                                                                       Write(Model.ExpiryYear);
@@ -80,24 +92,20 @@ WriteLiteral("/");
             
             #line default
             #line hidden
-WriteLiteral("</strong>.\r\n</p>\r\n<p>\r\n    To prevent any interuption in your Ship service, pleas" +
-"e update your payment information using the link below.\r\n</p>\r\n<p");
+WriteLiteral("</strong>.\r\n</p>\r\n<p>\r\n    To prevent any interruption in your Ship service, plea" +
+"se update your payment information using the link below.\r\n</p>\r\n<p class=\"last\">" +
+"\r\n    <a href=\"");
 
-WriteLiteral(" class=\"last\"");
 
-WriteLiteral(">\r\n    <a");
-
-WriteAttribute("href", Tuple.Create(" href=\"", 621), Tuple.Create("\"", 657)
             
             #line 15 "..\..\Views\CardExpiryReminderHtml.cshtml"
-, Tuple.Create(Tuple.Create("", 628), Tuple.Create<System.Object, System.Int32>(Model.UpdatePaymentMethodUrl
+        Write(Model.UpdatePaymentMethodUrl);
+
             
             #line default
             #line hidden
-, 628), false)
-);
+WriteLiteral("\">Update Payment Information</a>\r\n</p>\r\n");
 
-WriteLiteral(">Update Payment Information</a>\r\n</p>\r\n");
 
         }
     }

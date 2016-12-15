@@ -32,19 +32,28 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PaymentSucceededPersonalPlain : ShipHubTemplateBase<PaymentSucceededPersonalMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
+
+
 
             
             #line 5 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
   
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nWe received payment for your personal Ship subscription.\r\n\r\n");
+WriteLiteral("We received payment for your personal Ship subscription.\r\n\r\n");
+
 
             
             #line 10 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
@@ -55,6 +64,7 @@ Write(string.Format("{0:C}", Model.AmountPaid));
             #line hidden
 WriteLiteral(" was charged to your card ending in ");
 
+
             
             #line 10 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
                                                                         Write(Model.LastCardDigits);
@@ -64,14 +74,26 @@ WriteLiteral(" was charged to your card ending in ");
             #line hidden
 WriteLiteral(" and covers service through ");
 
+
             
             #line 10 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
-                                                                                                                         Write(Model.ServiceThroughDate.ToString("yyyy-MM-dd"));
+                                                                                                                         Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
 
             
             #line default
             #line hidden
-WriteLiteral(".  Attached is a PDF invoice for your records.\r\n\r\nWe appreciate your business!\r\n");
+WriteLiteral(".\r\n\r\nDownload a PDF receipt for your records:\r\n");
+
+
+            
+            #line 13 "..\..\Views\PaymentSucceededPersonalPlain.cshtml"
+Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\r\n\r\nWe appreciate your business!\r\n");
+
 
         }
     }

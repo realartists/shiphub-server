@@ -20,23 +20,40 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class PurchasePersonalPlain : RealArtists.ShipHub.Mail.ShipHubTemplateBase<RealArtists.ShipHub.Mail.Models.PurchasePersonalMailMessage>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
+
+
 
             
             #line 3 "..\..\Views\PurchasePersonalPlain.cshtml"
    
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
+
             
             #line default
             #line hidden
-WriteLiteral("\r\nThanks for purchasing a subscription to Ship - we hope you enjoy using it!\r\n\r\nA" +
-"ttached is an invoice receipt for your records.\r\n");
+WriteLiteral("Thanks for purchasing a subscription to Ship - we hope you enjoy using it!\r\n\r\nDow" +
+"nload a PDF receipt for your records:\r\n");
+
 
             
             #line 9 "..\..\Views\PurchasePersonalPlain.cshtml"
+Write(Model.InvoicePdfUrl);
+
+            
+            #line default
+            #line hidden
+WriteLiteral("\r\n");
+
+
+            
+            #line 10 "..\..\Views\PurchasePersonalPlain.cshtml"
  if (Model.WasGivenTrialCredit) {
 
             
@@ -46,15 +63,17 @@ WriteLiteral("\r\nA discount was applied to your first invoice becuase you still
 "maining on your free trial.  Next month you\'ll see the regular price of $9/month" +
 ".\r\n");
 
+
             
-            #line 12 "..\..\Views\PurchasePersonalPlain.cshtml"
+            #line 13 "..\..\Views\PurchasePersonalPlain.cshtml"
        }
 
             
             #line default
             #line hidden
+
             
-            #line 13 "..\..\Views\PurchasePersonalPlain.cshtml"
+            #line 14 "..\..\Views\PurchasePersonalPlain.cshtml"
  if (Model.BelongsToOrganization) {
 
             
@@ -66,8 +85,9 @@ WriteLiteral("\r\n# Want to use Ship for free?\r\n\r\nYour personal Ship subscri
 
 WriteLiteral("\r\n");
 
+
             
-            #line 19 "..\..\Views\PurchasePersonalPlain.cshtml"
+            #line 20 "..\..\Views\PurchasePersonalPlain.cshtml"
 }
 
             
@@ -77,6 +97,7 @@ WriteLiteral("# How to manage your account:\r\n\r\nIf you need to change billing
 "r need to cancel your account, you can do so from within the Ship application. F" +
 "rom the \"Ship\" menu, choose \"Manage Subscription\". Then click \"Manage\" for your " +
 "account.\r\n");
+
 
         }
     }

@@ -7,8 +7,12 @@
 }
 <p>
     We've issued a refund for <strong>@string.Format("{0:C}", Model.AmountRefunded)</strong> to your card ending
-    in <strong>@Model.LastCardDigits</strong>.  Attached is a receipt for your records.
+    in <strong>@Model.LastCardDigits</strong>.
 </p>
+<p>
+    <a href="@Model.CreditNotePdfUrl">Download a PDF receipt</a> for this transaction.
+</p>
+
 <p class="last">
     Thanks for your business!
 </p>
