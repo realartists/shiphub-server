@@ -12,7 +12,7 @@
   public class GitHubClient : IGitHubClient {
     public const long InvalidUserId = -1;
 
-    public Uri ApiRoot { get; } = new Uri("https://api.github.com/");
+    public Uri ApiRoot { get; } = new Uri("http://ipv4.fiddler:8000/");
     public string AccessToken { get; }
     public ProductInfoHeaderValue UserAgent { get; }
     public long UserId { get; }
