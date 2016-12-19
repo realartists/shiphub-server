@@ -209,7 +209,10 @@
           break;
       }
 
-      if (payload.EventType == "subscription_activated") {
+      if (
+        (payload.EventType == "subscription_activated" ||
+         payload.EventType == "subscription_reactivated") &&
+        payload.Content.Subscription.PlanId == "personal") {
         await SendPurchasePersonalMessage(payload);
       } else if (
         payload.EventType == "subscription_created" &&
