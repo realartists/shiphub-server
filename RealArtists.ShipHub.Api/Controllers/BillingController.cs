@@ -43,6 +43,8 @@
     private IShipHubConfiguration _configuration;
     private IGrainFactory _grainFactory;
 
+    private const string SignupThankYouUrl = "https://beta.realartists.com/signup-thankyou.html";
+
     public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory) {
       _configuration = config;
       _grainFactory = grainFactory;
@@ -146,7 +148,7 @@
 
       ChargeBee.Models.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
       var host = new Uri(hostedPage.Url).Host;
-      return Redirect($"https://{host}/pages/v2/{id}/thank_you");
+      return Redirect(SignupThankYouUrl);
     }
 
     public virtual IGitHubActor CreateGitHubActor(User user) {
@@ -201,7 +203,8 @@
         pageRequest
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
-          .SubscriptionTrialEnd(0);
+          .SubscriptionTrialEnd(0)
+          .RedirectUrl("https://beta.realartists.com/signup-thankyou.html");
       } else if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Cancelled) {
         // This case would happen if the customer was a subscriber in the past, cancelled,
         // and is now returning to signup again.
@@ -296,7 +299,8 @@
        .CustomerEmail(primaryEmail.Email)
        .SubscriptionPlanId("organization")
        .Param("customer[cf_github_username]", ghcOrg.Login)
-       .Embed(false);
+       .Embed(false)
+       .RedirectUrl(SignupThankYouUrl);
 
         if (!ghcOrg.Name.IsNullOrWhiteSpace()) {
           checkoutRequest.CustomerCompany(ghcOrg.Name);
