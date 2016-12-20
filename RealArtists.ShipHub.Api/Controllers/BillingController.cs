@@ -43,7 +43,7 @@
     private IShipHubConfiguration _configuration;
     private IGrainFactory _grainFactory;
 
-    private const string SignupThankYouUrl = "https://beta.realartists.com/signup-thankyou.html";
+    public const string SignupThankYouUrl = "https://beta.realartists.com/signup-thankyou.html";
 
     public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory) {
       _configuration = config;

@@ -242,7 +242,11 @@
         beginTrialEndDate: null,
         expectedState: SubscriptionState.Subscribed,
         expectedTrialEndDate: null,
-        notifyExpected: true);
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        });
     }
 
     [Test]
@@ -257,7 +261,11 @@
         beginTrialEndDate: null,
         expectedState: SubscriptionState.InTrial,
         expectedTrialEndDate: DateTimeOffset.Parse("2020-09-22T00:00:00+00:00"),
-        notifyExpected: true);
+        notifyExpected: true,
+        invoicePayload: new ChargeBeeWebhookInvoice() {
+          Id = "inv_1234",
+          Date = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds(),
+        });
     }
 
     [Test]

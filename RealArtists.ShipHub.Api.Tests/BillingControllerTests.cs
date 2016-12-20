@@ -249,9 +249,9 @@
               }
 
               if (expectRedirectToReactivation) {
-                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should have set redirect url");
+                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should bounce to reactivate page");
               } else {
-                Assert.IsFalse(data.ContainsKey("redirect_url"), "should not have set redirect url");
+                Assert.AreEqual(BillingController.SignupThankYouUrl, data["redirect_url"], "should go to thank you page.");
               }
 
               return new {
@@ -571,7 +571,7 @@
           var controller = new BillingController(Configuration, null);
           var response = controller.Reactivate("someHostedPageId", "succeeded");
           Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/pages/v2/someHostedPageId/thank_you", ((RedirectResult)response).Location.AbsoluteUri);
+          Assert.AreEqual(BillingController.SignupThankYouUrl, ((RedirectResult)response).Location.AbsoluteUri);
 
           Assert.IsTrue(doesReactivate);
         }
