@@ -1,4 +1,4 @@
-# shiphub-server
+# shiphub-server ![Build Status](https://realartists.visualstudio.com/_apis/public/build/definitions/88275168-cb10-4b52-bf29-9eb07b033ef7/3/badge)
 Aspires to be as good as GHSyncConnection.
 
 ##Deployment
