@@ -31,5 +31,5 @@ GO
 -- Used regularly for sync
 CREATE NONCLUSTERED INDEX [IX_SyncLog_OwnerType_OwnerId_RowVersion_ItemType]
   ON [dbo].[SyncLog]([OwnerType], [OwnerId], [RowVersion], [ItemType])
-  INCLUDE(ItemId)
+  INCLUDE([ItemId])
 GO

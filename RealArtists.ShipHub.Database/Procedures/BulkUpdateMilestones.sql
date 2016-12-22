@@ -17,6 +17,8 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- LOOP JOIN, FORCE ORDER prevents scans
+    -- This is (non-obviously) important when acquiring locks during foreign key validation
     MERGE INTO Milestones as [Target]
     USING (
       SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
@@ -39,7 +41,8 @@ BEGIN
         UpdatedAt = [Source].UpdatedAt,
         ClosedAt = [Source].ClosedAt,
         DueOn = [Source].DueOn
-    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
+    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Deleted or edited milestones
     UPDATE SyncLog SET
