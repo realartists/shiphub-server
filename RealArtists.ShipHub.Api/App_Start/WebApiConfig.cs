@@ -1,7 +1,12 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System;
+  using System.IO;
   using System.Net.Http;
   using System.Net.Http.Formatting;
+  using System.Net.Http.Headers;
+  using System.Text;
+  using System.Threading;
+  using System.Threading.Tasks;
   using System.Web;
   using System.Web.Http;
   using System.Web.Http.ExceptionHandling;
@@ -21,8 +26,7 @@
       RaygunWebApiClient.Attach(config, RaygunClientFactory(raygunApiKey));
 
       config.Formatters.Clear();
-      config.Formatters.Add(new JsonMediaTypeFormatter());
-      config.Formatters.JsonFormatter.SerializerSettings = JsonUtility.SaneDefaults;
+      config.Formatters.Add(new ChunkedJsonMediaTypeFormatter() { SerializerSettings = JsonUtility.SaneDefaults });
 
       config.MapHttpAttributeRoutes();
 
@@ -58,6 +62,19 @@
 
         return client;
       };
+    }
+  }
+
+  public class ChunkedJsonMediaTypeFormatter : JsonMediaTypeFormatter {
+    public override Task<object> ReadFromStreamAsync(Type type, Stream readStream, HttpContent content, IFormatterLogger formatterLogger) {
+      // Work around WebApi bug that can't handle Chunked Transfer Encoding.
+      // http://stackoverflow.com/questions/26111850/asp-net-web-api-the-framework-is-not-converting-json-to-object-when-using-chun
+      // https://gist.github.com/cobysy/578302d0f4f5b895f459
+      // https://github.com/ASP-NET-MVC/aspnetwebstack/blob/master/src/System.Net.Http.Formatting/Formatting/BaseJsonMediaTypeFormatter.cs#L206
+      if (content?.Headers?.ContentType != null && content?.Headers?.ContentLength == 0) {
+        content.Headers.ContentLength = null;
+      }
+      return base.ReadFromStreamAsync(type, readStream, content, formatterLogger);
     }
   }
 }
