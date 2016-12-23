@@ -195,7 +195,13 @@
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
         }
       } else if (response.Content != null) {
-        result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
+        var mediaType = response.Content.Headers.ContentType.MediaType;
+        if (mediaType.Contains("github") || mediaType.Contains("json")) {
+          result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
+        } else {
+          var body = await response.Content.ReadAsStringAsync();
+          throw new GitHubException($"Invalid GitHub Response:\n\n{body}");
+        }
       }
 
       return result;
