@@ -14,7 +14,7 @@
   using Common.GitHub;
   using Orleans;
 
-  public class HelloRequest {
+  public class LoginRequest {
     public string AccessToken { get; set; }
     public string ClientName { get; set; }
   }
@@ -49,8 +49,8 @@
 
     [HttpPost]
     [Route("login")]
-    public async Task<IHttpActionResult> Hello([FromBody] HelloRequest request) {
-      if (request.AccessToken.IsNullOrWhiteSpace()) {
+    public async Task<IHttpActionResult> Login([FromBody] LoginRequest request) {
+      if ((request?.AccessToken).IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(request.AccessToken)} is required.");
       }
       if (request.ClientName.IsNullOrWhiteSpace()) {
