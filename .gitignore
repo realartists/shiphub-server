@@ -199,7 +199,8 @@ UpgradeLog*.htm
 *.bim_*.settings
 
 # Microsoft Fakes
-FakesAssemblies/
+# We need these for the build server
+#FakesAssemblies/
 
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
