@@ -147,6 +147,7 @@
     <None Include="RealArtists.ShipHub.Database.publish.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="EnableContainedDatabaseAuthentication.sql" />
   </ItemGroup>
   <ItemGroup>
     <RefactorLog Include="RealArtists.ShipHub.Database.refactorlog" />
