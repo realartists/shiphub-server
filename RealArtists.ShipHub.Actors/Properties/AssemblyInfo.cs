@@ -34,7 +34,3 @@ using Orleans.CodeGeneration;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
-
-// For Orleans Serialization
-[assembly:KnownType(typeof(System.Net.Http.HttpRequestException))]
-[assembly:KnownType(typeof(System.Net.Http.UnsupportedMediaTypeException))]
