@@ -147,7 +147,6 @@
       }
 
       ChargeBee.Models.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
-      var host = new Uri(hostedPage.Url).Host;
       return Redirect(SignupThankYouUrl);
     }
 
