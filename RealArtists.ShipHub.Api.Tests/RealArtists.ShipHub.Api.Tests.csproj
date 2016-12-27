@@ -65,6 +65,7 @@
     <Fakes Include="Fakes\ChargeBee.fakes" />
     <Fakes Include="Fakes\System.fakes" />
     <None Include="packages.config" />
+    <None Include="PrepareAppVeyorTest.ps1" />
     <None Include="PrepareAzureTest.ps1" />
   </ItemGroup>
   <ItemGroup>
