@@ -9,7 +9,6 @@
   using Common.GitHub;
   using Controllers;
   using Filters;
-  using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using NUnit.Framework;
 
@@ -46,7 +45,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null);
+        var controller = new BillingController(Configuration, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
@@ -83,7 +82,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null);
+        var controller = new BillingController(Configuration, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = await controller.Accounts();
@@ -209,15 +208,14 @@
 
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              // Pretend we find an existing subscription
-              return new {
-                list = new object[] {
+            // Pretend we find an existing subscription
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -233,44 +231,43 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
-              if (expectCoupon != null) {
-                Assert.AreEqual(expectCoupon, data["subscription[coupon]"], "should have set coupon");
-              } else {
-                Assert.IsFalse(data.ContainsKey("subscription[coupon]"), "should not have applied coupon");
-              }
-
-              if (expectTrialToEndImmediately) {
-                Assert.AreEqual("0", data["subscription[trial_end]"], "should have set trial to end");
-              } else {
-                Assert.IsFalse(data.ContainsKey("subscription[trial_end]"), "should not have set trial to end");
-              }
-
-              if (expectRedirectToReactivation) {
-                Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should bounce to reactivate page");
-              } else {
-                Assert.AreEqual(BillingController.SignupThankYouUrl, data["redirect_url"], "should go to thank you page.");
-              }
-
-              return new {
-                hosted_page = new {
-                  id = "hosted-page-id",
-                  url = "https://realartists-test.chargebee.com/some/path/123",
-                },
-              };
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
+            if (expectCoupon != null) {
+              Assert.AreEqual(expectCoupon, data["subscription[coupon]"], "should have set coupon");
             } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
+              Assert.IsFalse(data.ContainsKey("subscription[coupon]"), "should not have applied coupon");
             }
-          });
 
-          var controller = new BillingController(Configuration, null);
-          var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
-        }
+            if (expectTrialToEndImmediately) {
+              Assert.AreEqual("0", data["subscription[trial_end]"], "should have set trial to end");
+            } else {
+              Assert.IsFalse(data.ContainsKey("subscription[trial_end]"), "should not have set trial to end");
+            }
+
+            if (expectRedirectToReactivation) {
+              Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should bounce to reactivate page");
+            } else {
+              Assert.AreEqual(BillingController.SignupThankYouUrl, data["redirect_url"], "should go to thank you page.");
+            }
+
+            return new {
+              hosted_page = new {
+                id = "hosted-page-id",
+                url = "https://realartists-test.chargebee.com/some/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var controller = new BillingController(Configuration, null, api);
+        var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
     }
 
@@ -281,27 +278,25 @@
         user.Token = Guid.NewGuid().ToString();
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("POST") && path.Equals("/api/v2/portal_sessions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer[id]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("POST") && path.Equals("/api/v2/portal_sessions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer[id]"]);
 
-              return new {
-                portal_session = new {
-                  access_url = "https://realartists-test.chargebee.com/some/portal/path/123",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+            return new {
+              portal_session = new {
+                access_url = "https://realartists-test.chargebee.com/some/portal/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          var controller = new BillingController(Configuration, null);
-          var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
-        }
+        var controller = new BillingController(Configuration, null, api);
+        var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
     }
 
@@ -312,27 +307,25 @@
         var org = TestUtil.MakeTestOrg(context);
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("POST") && path.Equals("/api/v2/portal_sessions")) {
-              Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("POST") && path.Equals("/api/v2/portal_sessions")) {
+            Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
 
-              return new {
-                portal_session = new {
-                  access_url = "https://realartists-test.chargebee.com/some/portal/path/123",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+            return new {
+              portal_session = new {
+                access_url = "https://realartists-test.chargebee.com/some/portal/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          var controller = new BillingController(Configuration, null);
-          var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
-        }
+        var controller = new BillingController(Configuration, null, api);
+        var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
     }
 
@@ -375,7 +368,36 @@
             },
           });
 
-        var mock = new Mock<BillingController>(Configuration, null) { CallBase = true };
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("organization", data["plan_id[is]"]);
+
+            // Pretend no past subscriptions.
+            return new {
+              list = new object[0] {
+                },
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_new")) {
+            Assert.AreEqual("organization", data["subscription[plan_id]"]);
+            Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
+            Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
+            Assert.AreEqual("pureimaginary", data["customer[cf_github_username]"]);
+
+            return new {
+              hosted_page = new {
+                id = "hosted-page-id",
+                url = "https://realartists-test.chargebee.com/some/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var mock = new Mock<BillingController>(Configuration, null, api) { CallBase = true };
         mock
           .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
           .Returns((User forUser) => {
@@ -383,41 +405,9 @@
             return mockClient.Object;
           });
 
-
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("organization", data["plan_id[is]"]);
-
-              // Pretend no past subscriptions.
-              return new {
-                list = new object[0] {
-                },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_new")) {
-              Assert.AreEqual("organization", data["subscription[plan_id]"]);
-              Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
-              Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
-              Assert.AreEqual("pureimaginary", data["customer[cf_github_username]"]);
-
-              return new {
-                hosted_page = new {
-                  id = "hosted-page-id",
-                  url = "https://realartists-test.chargebee.com/some/path/123",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
-
-          var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
-        }
+        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
     }
 
@@ -460,27 +450,17 @@
             },
           });
 
-        var mock = new Mock<BillingController>(Configuration, null) { CallBase = true };
-        mock
-          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
-          .Returns((User forUser) => {
-            Assert.AreEqual(user.Id, forUser.Id);
-            return mockClient.Object;
-          });
+        bool doesCustomerUpdate = false;
+        bool doesCheckoutExisting = false;
 
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("organization", data["plan_id[is]"]);
 
-        using (ShimsContext.Create()) {
-          bool doesCustomerUpdate = false;
-          bool doesCheckoutExisting = false;
-
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("organization", data["plan_id[is]"]);
-
-              // Pretend we have an expired subscription.
-              return new {
-                list = new object[] {
+            // Pretend we have an expired subscription.
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -488,45 +468,52 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/org-{org.Id}")) {
-              doesCustomerUpdate = true;
-              Assert.AreEqual("Aroon", data["first_name"]);
-              Assert.AreEqual("Pahwa", data["last_name"]);
-              Assert.AreEqual("Pure Imaginary LLC", data["company"]);
-              Assert.AreEqual("pureimaginary", data["cf_github_username"]);
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/org-{org.Id}")) {
+            doesCustomerUpdate = true;
+            Assert.AreEqual("Aroon", data["first_name"]);
+            Assert.AreEqual("Pahwa", data["last_name"]);
+            Assert.AreEqual("Pure Imaginary LLC", data["company"]);
+            Assert.AreEqual("pureimaginary", data["cf_github_username"]);
 
-              return new {
-                customer = new {
-                  id = $"org-{org.Id}",
-                },
-              };
-            } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
-              doesCheckoutExisting = true;
-              Assert.AreEqual("existing-sub-id", data["subscription[id]"]);
-              Assert.AreEqual("organization", data["subscription[plan_id]"]);
-              Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
+            return new {
+              customer = new {
+                id = $"org-{org.Id}",
+              },
+            };
+          } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
+            doesCheckoutExisting = true;
+            Assert.AreEqual("existing-sub-id", data["subscription[id]"]);
+            Assert.AreEqual("organization", data["subscription[plan_id]"]);
+            Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
 
-              return new {
-                hosted_page = new {
-                  id = "hosted-page-id",
-                  url = "https://realartists-test.chargebee.com/some/path/123",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
+            return new {
+              hosted_page = new {
+                id = "hosted-page-id",
+                url = "https://realartists-test.chargebee.com/some/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var mock = new Mock<BillingController>(Configuration, null, api) { CallBase = true };
+        mock
+          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
+          .Returns((User forUser) => {
+            Assert.AreEqual(user.Id, forUser.Id);
+            return mockClient.Object;
           });
 
-          var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
 
-          Assert.IsTrue(doesCustomerUpdate);
-          Assert.IsTrue(doesCheckoutExisting);
-        }
+        Assert.IsTrue(doesCustomerUpdate);
+        Assert.IsTrue(doesCheckoutExisting);
       }
     }
 
@@ -538,43 +525,41 @@
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          bool doesReactivate = false;
+        bool doesReactivate = false;
 
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
-              return new {
-                hosted_page = new {
-                  state = "succeeded",
-                  url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
-                  content = new {
-                    subscription = new {
-                      id = "someSubId",
-                    }
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
+            return new {
+              hosted_page = new {
+                state = "succeeded",
+                url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
+                content = new {
+                  subscription = new {
+                    id = "someSubId",
                   }
-                },
-              };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/someSubId/reactivate")) {
-              doesReactivate = true;
+                }
+              },
+            };
+          } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/someSubId/reactivate")) {
+            doesReactivate = true;
 
-              return new {
-                subscription = new {
-                  id = "someSubId",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+            return new {
+              subscription = new {
+                id = "someSubId",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          var controller = new BillingController(Configuration, null);
-          var response = controller.Reactivate("someHostedPageId", "succeeded");
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual(BillingController.SignupThankYouUrl, ((RedirectResult)response).Location.AbsoluteUri);
+        var controller = new BillingController(Configuration, null, api);
+        var response = await controller.Reactivate("someHostedPageId", "succeeded");
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual(BillingController.SignupThankYouUrl, ((RedirectResult)response).Location.AbsoluteUri);
 
-          Assert.IsTrue(doesReactivate);
-        }
+        Assert.IsTrue(doesReactivate);
       }
     }
 
@@ -585,27 +570,25 @@
         var org = TestUtil.MakeTestOrg(context);
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/update_payment_method")) {
-              Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/update_payment_method")) {
+            Assert.AreEqual($"org-{org.Id}", data["customer[id]"]);
 
-              return new {
-                hosted_page = new {
-                  url = "https://realartists-test.chargebee.com/some/page/path/123",
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+            return new {
+              hosted_page = new {
+                url = "https://realartists-test.chargebee.com/some/page/path/123",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          var controller = new BillingController(Configuration, null);
-          var response = await controller.UpdatePaymentMethod(org.Id, BillingController.CreateSignature(org.Id, org.Id));
-          Assert.IsInstanceOf<RedirectResult>(response);
-          Assert.AreEqual("https://realartists-test.chargebee.com/some/page/path/123", ((RedirectResult)response).Location.AbsoluteUri);
-        }
+        var controller = new BillingController(Configuration, null, api);
+        var response = await controller.UpdatePaymentMethod(org.Id, BillingController.CreateSignature(org.Id, org.Id));
+        Assert.IsInstanceOf<RedirectResult>(response);
+        Assert.AreEqual("https://realartists-test.chargebee.com/some/page/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
     }
   }

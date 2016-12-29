@@ -5,6 +5,7 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Kogir.ChargeBee;
   using Mail;
   using Orleans;
   using QueueClient;
@@ -14,7 +15,7 @@
 
   public static class SimpleInjectorConfig {
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void Register(HttpConfiguration config) {
+    public static void Register(string chargeBeeHostAndKey) {
       var container = new Container();
       container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();
 
@@ -51,6 +52,12 @@
 
       // Mailer
       container.Register<IShipHubMailer>(() => new ShipHubMailer(), Lifestyle.Singleton);
+
+      // ChargeBee
+      if (!chargeBeeHostAndKey.IsNullOrWhiteSpace()) {
+        var parts = chargeBeeHostAndKey.Split(':');
+        container.Register(() => new ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
+      }
 
       // This is an extension method from the integration package.
       container.RegisterWebApiControllers(GlobalConfiguration.Configuration);

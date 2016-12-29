@@ -14,13 +14,14 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces.GitHub;
-  using ChargeBee.Api;
-  using ChargeBee.Models;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Filters;
   using Orleans;
+  using cb = Kogir.ChargeBee;
+  using cba = Kogir.ChargeBee.Api;
+  using cbm = Kogir.ChargeBee.Models;
 
   public class BillingAccount {
     public long Identifier { get; set; }
@@ -42,12 +43,14 @@
   public class BillingController : ShipHubController {
     private IShipHubConfiguration _configuration;
     private IGrainFactory _grainFactory;
+    private cb.ChargeBeeApi _chargeBee;
 
     public const string SignupThankYouUrl = "https://beta.realartists.com/signup-thankyou.html";
 
-    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory) {
+    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee) {
       _configuration = config;
       _grainFactory = grainFactory;
+      _chargeBee = chargeBee;
     }
 
     private static IEnumerable<string> GetActionLines(Account account) {
@@ -138,15 +141,15 @@
     [AllowAnonymous]
     [HttpGet]
     [Route("reactivate")]
-    public IHttpActionResult Reactivate(string id, string state) {
-      var hostedPage = HostedPage.Retrieve(id).Request().HostedPage;
+    public async Task<IHttpActionResult> Reactivate(string id, string state) {
+      var hostedPage = (await _chargeBee.HostedPage.Retrieve(id).Request()).HostedPage;
 
-      if (hostedPage.State != HostedPage.StateEnum.Succeeded) {
+      if (hostedPage.State != cbm.HostedPage.StateEnum.Succeeded) {
         // ChargeBee should never send the user here unless checkout was successufl.
         throw new ArgumentException("Asked to reactivate a subscription when checkout did not complete.");
       }
 
-      ChargeBee.Models.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
+      await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
       return Redirect(SignupThankYouUrl);
     }
 
@@ -155,12 +158,12 @@
     }
 
     private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {
-      var subList = ChargeBee.Models.Subscription.List()
+      var subList = (await _chargeBee.Subscription.List()
         .CustomerId().Is($"user-{targetId}")
         .PlanId().Is("personal")
         .Limit(1)
-        .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
-        .Request().List;
+        .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
+        .Request()).List;
 
       if (subList.Count == 0) {
         throw new ArgumentException("Could not find existing subscription");
@@ -168,11 +171,11 @@
 
       var sub = subList.First().Subscription;
 
-      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Active) {
+      if (sub.Status == cbm.Subscription.StatusEnum.Active) {
         throw new ArgumentException("Existing subscription is already active");
       }
 
-      var pageRequest = HostedPage.CheckoutExisting()
+      var pageRequest = _chargeBee.HostedPage.CheckoutExisting()
         .SubscriptionId(sub.Id)
         .SubscriptionPlanId("personal")
         .Embed(false);
@@ -184,7 +187,7 @@
 
       string couponToAdd = null;
 
-      if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.InTrial) {
+      if (sub.Status == cbm.Subscription.StatusEnum.InTrial) {
         if (isMemberOfPaidOrg) {
           // If you belong to a paid organization, your personal subscription
           // is complimentary.
@@ -204,7 +207,7 @@
           // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0)
           .RedirectUrl("https://beta.realartists.com/signup-thankyou.html");
-      } else if (sub.Status == ChargeBee.Models.Subscription.StatusEnum.Cancelled) {
+      } else if (sub.Status == cbm.Subscription.StatusEnum.Cancelled) {
         // This case would happen if the customer was a subscriber in the past, cancelled,
         // and is now returning to signup again.
         //
@@ -227,7 +230,7 @@
         pageRequest.SubscriptionCoupon(couponToAdd);
       }
 
-      var result = pageRequest.Request().HostedPage;
+      var result = (await pageRequest.Request()).HostedPage;
 
       return Redirect(result.Url);
     }
@@ -253,17 +256,17 @@
         lastName = nameParts.Last();
       }
 
-      var sub = ChargeBee.Models.Subscription.List()
+      var sub = (await _chargeBee.Subscription.List()
         .CustomerId().Is($"org-{targetId}")
         .PlanId().Is("organization")
         .Limit(1)
-        .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
-        .Request().List.FirstOrDefault()?.Subscription;
+        .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
+        .Request()).List.FirstOrDefault()?.Subscription;
 
       if (sub != null) {
         // Customers with past subscriptions have to use the checkout existing flow.
-        var updateRequest = Customer.Update($"org-{targetId}")
-          .Param("cf_github_username", targetAccount.Login);
+        var updateRequest = _chargeBee.Customer.Update($"org-{targetId}")
+          .AddParam("cf_github_username", targetAccount.Login);
 
         if (firstName != null) {
           updateRequest.FirstName(firstName);
@@ -277,9 +280,9 @@
           updateRequest.Company(companyName);
         }
 
-        updateRequest.Request();
+        await updateRequest.Request();
 
-        var result = HostedPage.CheckoutExisting()
+        var result = (await _chargeBee.HostedPage.CheckoutExisting()
           .SubscriptionId(sub.Id)
           .SubscriptionPlanId("organization")
           .Embed(false)
@@ -289,15 +292,15 @@
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
           .RedirectUrl($"https://{_configuration.ApiHostName}/billing/reactivate")
-          .Request().HostedPage;
+          .Request()).HostedPage;
 
         return Redirect(result.Url);
       } else {
-        var checkoutRequest = HostedPage.CheckoutNew()
+        var checkoutRequest = _chargeBee.HostedPage.CheckoutNew()
        .CustomerId($"org-{targetId}")
        .CustomerEmail(primaryEmail.Email)
        .SubscriptionPlanId("organization")
-       .Param("customer[cf_github_username]", ghcOrg.Login)
+       .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
        .RedirectUrl(SignupThankYouUrl);
 
@@ -313,7 +316,7 @@
           checkoutRequest.CustomerLastName(lastName);
         }
 
-        var checkoutResult = checkoutRequest.Request().HostedPage;
+        var checkoutResult = (await checkoutRequest.Request()).HostedPage;
 
         return Redirect(checkoutResult.Url);
       }
@@ -349,10 +352,10 @@
       var account = await Context.Accounts.SingleAsync(x => x.Id == targetId);
       var customerIdPrefix = (account is Organization) ? "org" : "user";
 
-      var result = PortalSession.Create()
+      var result = (await _chargeBee.PortalSession.Create()
         .RedirectUrl("https://www.realartists.com")
         .CustomerId($"{customerIdPrefix}-{targetId}")
-        .Request().PortalSession;
+        .Request()).PortalSession;
 
       return Redirect(result.AccessUrl);
     }
@@ -369,7 +372,7 @@
       var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
       var customerIdPrefix = (account is Organization) ? "org" : "user";
 
-      var result = HostedPage.UpdatePaymentMethod()
+      var result = await _chargeBee.HostedPage.UpdatePaymentMethod()
         .CustomerId($"{customerIdPrefix}-{accountId}")
         .Embed(false)
         .Request();
@@ -379,13 +382,13 @@
 
     private static HttpClient _HttpClient { get; } = new HttpClient();
 
-    private async Task<HttpResponseMessage> DownloadEntity(EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
+    private async Task<HttpResponseMessage> DownloadEntity(cba.EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
       if (!CreateSignature(entityId, entityId).Equals(signature)) {
         return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Signature does not match.");
       }
 
-      var downloadUrl = entityResult.Request().Download.DownloadUrl;
-      var request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, downloadUrl);
+      var downloadUrl = (await entityResult.Request()).Download.DownloadUrl;
+      var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
 
       try {
         var response = await _HttpClient.SendAsync(request, cancellationToken);
@@ -403,14 +406,14 @@
     [HttpGet]
     [Route("invoice/{invoiceId}/{signature}/{fileName}")]
     public Task<HttpResponseMessage> DownloadInvoice(string invoiceId, string fileName, string signature, CancellationToken cancellationToken) {
-      return DownloadEntity(Invoice.Pdf(invoiceId), invoiceId, fileName, signature, cancellationToken);
+      return DownloadEntity(_chargeBee.Invoice.Pdf(invoiceId), invoiceId, fileName, signature, cancellationToken);
     }
 
     [AllowAnonymous]
     [HttpGet]
     [Route("credit/{creditNoteId}/{signature}/{fileName}")]
     public Task<HttpResponseMessage> DownloadCreditNote(string creditNoteId, string fileName, string signature, CancellationToken cancellationToken) {
-      return DownloadEntity(CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature, cancellationToken);
+      return DownloadEntity(_chargeBee.CreditNote.Pdf(creditNoteId), creditNoteId, fileName, signature, cancellationToken);
     }
   }
 }

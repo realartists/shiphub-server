@@ -5,23 +5,23 @@
   using System.Linq;
   using System.Threading;
   using System.Threading.Tasks;
+  using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
+  using Kogir.ChargeBee;
   using Microsoft.Azure.WebJobs;
-  using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using NUnit.Framework;
   using QueueClient.Messages;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
-  using ActorInterfaces.GitHub;
 
   [TestFixture]
   [AutoRollback]
   public class BillingQueueTests {
 
-    private static BillingQueueHandler CreateHandler() {
-      return new BillingQueueHandler(null, new DetailedExceptionLogger());
+    private static BillingQueueHandler CreateHandler(ChargeBeeApi api) {
+      return new BillingQueueHandler(null, new DetailedExceptionLogger(), api);
     }
 
     [Test]
@@ -63,68 +63,66 @@
         bool createdAccount = false;
         bool createdSubscription = false;
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[0],
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(
-                new Dictionary<string, string> {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[0],
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(
+              new Dictionary<string, string> {
                   { "id", $"user-{user.Id}" },
                   { "cf_github_username", "aroon" },
                   { "email", "aroon@pureimaginary.com" },
                   { "first_name", $"Aroon"},
                   { "last_name", $"Pahwa"},
-                },
-                data);
-              createdAccount = true;
-              // Fake response for customer creation.
-              return new {
-                customer = new {
-                  id = $"user-{user.Id}",
-                },
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              },
+              data);
+            createdAccount = true;
+            // Fake response for customer creation.
+            return new {
+              customer = new {
+                id = $"user-{user.Id}",
+              },
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              // Pretend no existing subscriptions found.
-              return new {
-                list = new object[0],
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
-              Assert.AreEqual(
-                new Dictionary<string, string> {
+            // Pretend no existing subscriptions found.
+            return new {
+              list = new object[0],
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
+            Assert.AreEqual(
+              new Dictionary<string, string> {
                       { "plan_id", "personal"},
-                },
-                data);
-              createdSubscription = true;
-              // Fake response for creating the subscription.
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                  status = "in_trial",
-                  trial_end = DateTimeOffset.Parse(
-                        "10/1/2016 08:00:00 PM +00:00",
-                        null,
-                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
-                  resource_version = 1234,
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              },
+              data);
+            createdSubscription = true;
+            // Fake response for creating the subscription.
+            return new {
+              subscription = new {
+                id = "some-sub-id",
+                status = "in_trial",
+                trial_end = DateTimeOffset.Parse(
+                      "10/1/2016 08:00:00 PM +00:00",
+                      null,
+                      DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                resource_version = 1234,
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
@@ -175,27 +173,26 @@
             }
           });
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[] {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[] {
                   new {
                     customer = new {
                       id = $"user-{user.Id}",
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              next_offset = null as string,
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              return new {
-                list = new object[] {
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -204,16 +201,15 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              next_offset = null as string,
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         context.Entry(subscription).Reload();
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
@@ -259,27 +255,26 @@
             }
           });
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[] {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[] {
                   new {
                     customer = new {
                       id = $"user-{user.Id}",
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              next_offset = null as string,
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              return new {
-                list = new object[] {
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -288,16 +283,15 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              next_offset = null as string,
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         Assert.AreEqual(0, changeMessages.Count(),
           "should NOT send a notification because state did not change.");
@@ -334,27 +328,26 @@
             }
           });
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[] {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[] {
                   new {
                     customer = new {
                       id = $"user-{user.Id}",
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              next_offset = null as string,
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              return new {
-                list = new object[] {
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -367,16 +360,15 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              next_offset = null as string,
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         context.Entry(subscription).Reload();
         Assert.AreEqual(SubscriptionState.InTrial, subscription.State,
@@ -417,72 +409,70 @@
         bool createdAccount = false;
         bool createdSubscription = false;
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[] {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[] {
                   new {
                     customer = new {
                       id = $"user-{user.Id}",
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(
-                new Dictionary<string, string> {
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(
+              new Dictionary<string, string> {
                       { "id", $"user-{user.Id}" },
                       { "first_name", $"Aroon"},
                       { "last_name", $"Pahwa"},
-                },
-                data);
-              createdAccount = true;
-              // Fake response for customer creation.
-              return new {
-                customer = new {
-                  id = $"user-{user.Id}",
-                },
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              },
+              data);
+            createdAccount = true;
+            // Fake response for customer creation.
+            return new {
+              customer = new {
+                id = $"user-{user.Id}",
+              },
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              // Pretend no existing subscriptions found.
-              return new {
-                list = new object[0],
-                next_offset = null as string,
-              };
-            } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
-              Assert.AreEqual(
-                new Dictionary<string, string> {
+            // Pretend no existing subscriptions found.
+            return new {
+              list = new object[0],
+              next_offset = null as string,
+            };
+          } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
+            Assert.AreEqual(
+              new Dictionary<string, string> {
                       { "plan_id", "personal"},
-                },
-                data);
-              createdSubscription = true;
-              // Fake response for creating the subscription.
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                  status = "in_trial",
-                  trial_end = DateTimeOffset.Parse(
-                        "10/1/2016 08:00:00 PM +00:00",
-                        null,
-                        DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
-                  resource_version = 1234,
-                },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              },
+              data);
+            createdSubscription = true;
+            // Fake response for creating the subscription.
+            return new {
+              subscription = new {
+                id = "some-sub-id",
+                status = "in_trial",
+                trial_end = DateTimeOffset.Parse(
+                      "10/1/2016 08:00:00 PM +00:00",
+                      null,
+                      DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                resource_version = 1234,
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
@@ -516,28 +506,27 @@
             }
           });
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
-              Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
-              // Pretend no existing customers found for this id.
-              return new {
-                list = new object[] {
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
+            Assert.AreEqual(new Dictionary<string, string>() { { "id[is]", $"user-{user.Id}" } }, data);
+            // Pretend no existing customers found for this id.
+            return new {
+              list = new object[] {
                   new {
                     customer = new {
                       id = $"user-{user.Id}",
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+              next_offset = null as string,
+            };
+          } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              // Pretend no existing subscriptions found.
-              return new {
-                list = new object[] {
+            // Pretend no existing subscriptions found.
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -546,16 +535,15 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              next_offset = null as string,
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
@@ -589,14 +577,13 @@
             }
           });
 
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-              Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("organization", data["plan_id[is]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
+            Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("organization", data["plan_id[is]"]);
 
-              return new {
-                list = new object[] {
+            return new {
+              list = new object[] {
                   new {
                     subscription = new {
                       id = "existing-sub-id",
@@ -605,21 +592,20 @@
                     },
                   },
                 },
-                next_offset = null as string,
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
+              next_offset = null as string,
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
 
-          await CreateHandler().SyncOrgSubscriptionStateHelper(
-            new TargetMessage() {
-              TargetId = org.Id,
-              ForUserId = user.Id,
-            },
-            collectorMock.Object, mockClient.Object, Console.Out);
-        }
+        await CreateHandler(api).SyncOrgSubscriptionStateHelper(
+          new TargetMessage() {
+            TargetId = org.Id,
+            ForUserId = user.Id,
+          },
+          collectorMock.Object, mockClient.Object, Console.Out);
 
         var subscription = context.Subscriptions.Single(x => x.AccountId == org.Id);
         Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
@@ -658,18 +644,17 @@
         });
         await context.SaveChangesAsync();
 
-        using (ShimsContext.Create()) {
-          bool didAddCoupon = false;
-          bool didRemoveCoupon = false;
+        bool didAddCoupon = false;
+        bool didRemoveCoupon = false;
 
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method == "GET" && path == "/api/v2/subscriptions") {
-              Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-              Assert.AreEqual("personal", data["plan_id[is]"]);
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method == "GET" && path == "/api/v2/subscriptions") {
+            Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
+            Assert.AreEqual("personal", data["plan_id[is]"]);
 
-              if (memberHasSub) {
-                return new {
-                  list = new object[] {
+            if (memberHasSub) {
+              return new {
+                list = new object[] {
                     new {
                       subscription = new {
                         id = "some-sub-id",
@@ -684,47 +669,46 @@
                       },
                     },
                   },
-                  next_offset = null as string,
-                };
-              } else {
-                return new {
-                  list = new object[0],
-                  next_offset = null as string,
-                };
-              }
-            } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id") {
-              didAddCoupon = true;
-              Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
-
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                },
-              };
-            } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id/remove_coupons") {
-              didRemoveCoupon = true;
-              Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
-
-              return new {
-                subscription = new {
-                  id = "some-sub-id",
-                },
+                next_offset = null as string,
               };
             } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
+              return new {
+                list = new object[0],
+                next_offset = null as string,
+              };
             }
-          });
+          } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id") {
+            didAddCoupon = true;
+            Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
 
-          var handler = new BillingQueueHandler(null, new DetailedExceptionLogger());
-          var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() {
-            InvocationId = Guid.NewGuid()
-          };
-          await handler.UpdateComplimentarySubscription(new UserIdMessage(user.Id), Console.Out, executionContext);
+            return new {
+              subscription = new {
+                id = "some-sub-id",
+              },
+            };
+          } else if (method == "POST" && path == "/api/v2/subscriptions/some-sub-id/remove_coupons") {
+            didRemoveCoupon = true;
+            Assert.AreEqual("member_of_paid_org", data["coupon_ids[0]"]);
 
-          Assert.AreEqual(expectCouponAddition, didAddCoupon);
-          Assert.AreEqual(expectCouponRemoval, didRemoveCoupon);
-        }
+            return new {
+              subscription = new {
+                id = "some-sub-id",
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var handler = new BillingQueueHandler(null, new DetailedExceptionLogger(), api);
+        var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() {
+          InvocationId = Guid.NewGuid()
+        };
+        await handler.UpdateComplimentarySubscription(new UserIdMessage(user.Id), Console.Out, executionContext);
+
+        Assert.AreEqual(expectCouponAddition, didAddCoupon);
+        Assert.AreEqual(expectCouponRemoval, didRemoveCoupon);
       }
     }
 

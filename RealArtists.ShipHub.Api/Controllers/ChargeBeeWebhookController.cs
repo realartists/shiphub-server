@@ -8,7 +8,6 @@
   using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using ChargeBee.Models;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
@@ -16,6 +15,8 @@
   using Mail;
   using Newtonsoft.Json;
   using QueueClient;
+  using cb = Kogir.ChargeBee;
+  using cbm = Kogir.ChargeBee.Models;
 
   public class ChargeBeeWebhookCard {
     public long ExpiryMonth { get; set; }
@@ -96,11 +97,13 @@
     private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
     private IShipHubMailer _mailer;
+    private cb.ChargeBeeApi _chargeBee;
 
-    public ChargeBeeWebhookController(IShipHubConfiguration configuration, IShipHubQueueClient queueClient, IShipHubMailer mailer) {
+    public ChargeBeeWebhookController(IShipHubConfiguration configuration, IShipHubQueueClient queueClient, IShipHubMailer mailer, cb.ChargeBeeApi chargeBee) {
       _configuration = configuration;
       _queueClient = queueClient;
       _mailer = mailer;
+      _chargeBee = chargeBee;
     }
 
     private async Task<string> InvoiceUrl(ChargeBeeWebhookPayload payload) {
@@ -540,14 +543,14 @@
           .CountAsync();
 
         if (activeUsers > 5) {
-          Invoice.AddAddonCharge(payload.Content.Invoice.Id)
+          await _chargeBee.Invoice.AddAddonCharge(payload.Content.Invoice.Id)
             .AddonId("additional-seats")
             .AddonQuantity(Math.Max(activeUsers - 5, 0))
             .Request();
         }
       }
 
-      Invoice.Close(payload.Content.Invoice.Id).Request();
+      await _chargeBee.Invoice.Close(payload.Content.Invoice.Id).Request();
     }
   }
 }
