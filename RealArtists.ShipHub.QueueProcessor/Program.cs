@@ -16,7 +16,7 @@
   using QueueClient;
   using SimpleInjector;
   using Tracing;
-  using cb = Kogir.ChargeBee;
+  using cb = RealArtists.ChargeBee;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";

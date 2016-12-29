@@ -19,9 +19,9 @@
   using Common.GitHub;
   using Filters;
   using Orleans;
-  using cb = Kogir.ChargeBee;
-  using cba = Kogir.ChargeBee.Api;
-  using cbm = Kogir.ChargeBee.Models;
+  using cb = RealArtists.ChargeBee;
+  using cba = RealArtists.ChargeBee.Api;
+  using cbm = RealArtists.ChargeBee.Models;
 
   public class BillingAccount {
     public long Identifier { get; set; }

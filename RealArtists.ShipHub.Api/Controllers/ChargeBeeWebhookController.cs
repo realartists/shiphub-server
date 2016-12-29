@@ -15,8 +15,8 @@
   using Mail;
   using Newtonsoft.Json;
   using QueueClient;
-  using cb = Kogir.ChargeBee;
-  using cbm = Kogir.ChargeBee.Models;
+  using cb = RealArtists.ChargeBee;
+  using cbm = RealArtists.ChargeBee.Models;
 
   public class ChargeBeeWebhookCard {
     public long ExpiryMonth { get; set; }

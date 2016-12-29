@@ -5,7 +5,7 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
-  using Kogir.ChargeBee;
+  using RealArtists.ChargeBee;
   using Mail;
   using Orleans;
   using QueueClient;

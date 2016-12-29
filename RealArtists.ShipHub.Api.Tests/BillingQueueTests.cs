@@ -8,7 +8,7 @@
   using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
-  using Kogir.ChargeBee;
+  using RealArtists.ChargeBee;
   using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;

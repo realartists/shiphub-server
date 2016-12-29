@@ -10,8 +10,8 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web;
-  using Kogir.ChargeBee;
-  using Kogir.ChargeBee.Api;
+  using RealArtists.ChargeBee;
+  using RealArtists.ChargeBee.Api;
   using Newtonsoft.Json.Linq;
 
   public class ChargeBeeTestUtil {
