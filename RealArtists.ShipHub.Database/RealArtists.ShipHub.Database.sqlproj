@@ -159,6 +159,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <PropertyGroup>
-    <PostBuildEvent>REM copy "$(ProjectDir)$(OutputPath)*" "$(SolutionDir)RealArtists.ShipHub.Database.Deployment\$(OutputPath)"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>
