@@ -5,7 +5,7 @@ Write-Host "Original: $old_string"
 Write-Host "Replacement: $new_string"
 Write-Host "Working Directory: $PSScriptRoot"
 
-Get-ChildItem *.config -Recurse -Path $PSScriptRoot | ForEach {
+Get-ChildItem *.config -Recurse -Path "$PSScriptRoot\bin" | ForEach {
   $fullPath = $_.FullName
   Write-Host $fullPath
   (Get-Content $fullPath | ForEach {$_ -replace [regex]::escape($old_string), $new_string}) | Set-Content $fullPath
