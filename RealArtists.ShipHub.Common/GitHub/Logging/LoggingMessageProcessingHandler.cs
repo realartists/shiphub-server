@@ -44,7 +44,6 @@
       if (_initialized) {
         return;
       }
-      _initialized = true;
 
       if (_blobClient == null) {
         return;
@@ -62,6 +61,8 @@
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequential evaluation
         .Subscribe();
+
+      _initialized = true;
     }
 
     public static void SetLogBlobName(HttpRequestMessage request, string blobName) {
