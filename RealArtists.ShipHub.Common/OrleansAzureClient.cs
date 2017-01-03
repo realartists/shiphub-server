@@ -3,12 +3,14 @@
   using System.Configuration;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
+  using System.Reflection;
   using System.Threading;
   using Microsoft.Azure;
   using Orleans;
   using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
+  using Orleans.Serialization;
 
   /// <summary>
   /// Utility class for initializing an Orleans client running inside Azure App Services.
@@ -88,6 +90,7 @@
         GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable,
         DeploymentId = GetDeploymentId(),
         DataConnectionString = GetDataConnectionString(),
+        FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo(),
       };
 
       return config;

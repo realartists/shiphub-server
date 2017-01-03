@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Microsoft.Orleans.TestingHost</id>
+    <version>1.4.0-Dev201612280202</version>
+    <title>Microsoft Orleans Testing Host Library</title>
+    <authors>Microsoft</authors>
+    <owners>Microsoft,Orleans</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/dotnet/Orleans#license</licenseUrl>
+    <projectUrl>https://github.com/dotnet/Orleans</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/dotnet/orleans/gh-pages/assets/logo_128.png</iconUrl>
+    <description>Microsoft Orleans library for hosting silo in a testing project.</description>
+    <summary>Microsoft Orleans library for hosting silo in a testing project.</summary>
+    <copyright>Copyright Microsoft 2016</copyright>
+    <tags>Orleans Cloud-Computing Actor-Model Actors Distributed-Systems C# .NET</tags>
+    <dependencies>
+      <dependency id="Microsoft.Orleans.Core" version="1.4.0-Dev201612280202" />
+      <dependency id="Microsoft.Orleans.OrleansRuntime" version="1.4.0-Dev201612280202" />
+      <dependency id="Microsoft.Orleans.OrleansProviders" version="1.4.0-Dev201612280202" />
+      <dependency id="Microsoft.Extensions.Configuration.Binder" version="1.0.0" />
+    </dependencies>
+  </metadata>
+</package>

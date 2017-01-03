@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Microsoft.Orleans.Core</id>
+    <version>1.4.0-Dev201612280202</version>
+    <title>Microsoft Orleans Core Library</title>
+    <authors>Microsoft</authors>
+    <owners>Microsoft,Orleans</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/dotnet/Orleans#license</licenseUrl>
+    <projectUrl>https://github.com/dotnet/Orleans</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/dotnet/orleans/gh-pages/assets/logo_128.png</iconUrl>
+    <description>Core library of Microsoft Orleans used both on the client and server.</description>
+    <summary>Core library of Microsoft Orleans - Orleans.dll</summary>
+    <copyright>Copyright Microsoft 2015</copyright>
+    <tags>Orleans Cloud-Computing Actor-Model Actors Distributed-Systems C# .NET</tags>
+    <dependencies>
+      <dependency id="Newtonsoft.Json" version="7.0.1" />
+      <dependency id="System.Collections.Immutable" version="1.1.37" />
+    </dependencies>
+  </metadata>
+</package>
