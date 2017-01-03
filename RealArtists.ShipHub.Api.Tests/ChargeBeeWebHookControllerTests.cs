@@ -18,7 +18,6 @@
   using Mail;
   using Mail.Models;
   using Microsoft.Azure;
-  using Microsoft.QualityTools.Testing.Fakes;
   using Moq;
   using Newtonsoft.Json;
   using NUnit.Framework;
@@ -31,8 +30,9 @@
       var json = JsonConvert.SerializeObject(payload, GitHubSerialization.JsonSerializerSettings);
 
       var config = new HttpConfiguration();
-      var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook");
-      request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
+      var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook") {
+        Content = new ByteArrayContent(Encoding.UTF8.GetBytes(json))
+      };
       var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Chargebee", "chargebee"));
 
       controller.ControllerContext = new HttpControllerContext(config, routeData, request);
@@ -104,8 +104,9 @@
           .Returns(Task.CompletedTask)
           .Callback((PurchaseOrganizationMailMessage message) => outgoingMessages?.Add(message));
 
-        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-        controller.CallBase = true;
+        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+          CallBase = true
+        };
 
         ConfigureController(
           controller.Object,
@@ -407,9 +408,22 @@
         });
         await context.SaveChangesAsync();
 
+        bool didCloseInvoice = false;
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
+            didCloseInvoice = true;
+            return new {
+              invoice = new { },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
         var mockBusClient = new Mock<IShipHubQueueClient>();
         var mockMailer = new Mock<IShipHubMailer>();
-        var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object);
+        var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, api);
         ConfigureController(
           controller,
           new ChargeBeeWebhookPayload() {
@@ -432,22 +446,7 @@
             },
           });
 
-        bool didCloseInvoice = false;
-
-        using (ShimsContext.Create()) {
-          ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-            if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
-              didCloseInvoice = true;
-              return new {
-                invoice = new { },
-              };
-            } else {
-              Assert.Fail($"Unexpected {method} to {path}");
-              return null;
-            }
-          });
-          await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
-        }
+        await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
 
         Assert.IsTrue(didCloseInvoice);
       };
@@ -474,37 +473,36 @@
         }
       };
 
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      var mockMailer = new Mock<IShipHubMailer>();
-      var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object);
-      ConfigureController(controller, payload);
-
       bool didCloseInvoice = false;
       var addons = new List<Tuple<string, int>>();
 
-      using (ShimsContext.Create()) {
-        ChargeBeeTestUtil.ShimChargeBeeWebApi((string method, string path, Dictionary<string, string> data) => {
-          if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
-            didCloseInvoice = true;
+      var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+        if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
+          didCloseInvoice = true;
 
-            // don't care about return values.
-            return new {
-              invoice = new { },
-            };
-          } else if (method == "POST" && path == $"/api/v2/invoices/{payload.Content.Invoice.Id}/add_addon_charge") {
-            addons.Add(Tuple.Create(data["addon_id"], int.Parse(data["addon_quantity"])));
+          // don't care about return values.
+          return new {
+            invoice = new { },
+          };
+        } else if (method == "POST" && path == $"/api/v2/invoices/{payload.Content.Invoice.Id}/add_addon_charge") {
+          addons.Add(Tuple.Create(data["addon_id"], int.Parse(data["addon_quantity"])));
 
-            // don't care about return values.
-            return new {
-              invoice = new { },
-            };
-          } else {
-            Assert.Fail($"Unexpected {method} to {path}");
-            return null;
-          }
-        });
-        await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
-      }
+          // don't care about return values.
+          return new {
+            invoice = new { },
+          };
+        } else {
+          Assert.Fail($"Unexpected {method} to {path}");
+          return null;
+        }
+      });
+
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      var mockMailer = new Mock<IShipHubMailer>();
+      var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, api);
+      ConfigureController(controller, payload);
+
+      await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
 
       Assert.IsTrue(didCloseInvoice);
 
@@ -648,7 +646,7 @@
         Func<ChargeBeeWebhookPayload, Task> fireEvent = (ChargeBeeWebhookPayload payload) => {
           var mockBusClient = new Mock<IShipHubQueueClient>();
           var mockMailer = new Mock<IShipHubMailer>();
-          var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object);
+          var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, null);
           ConfigureController(controller, payload);
           return controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
         };
@@ -735,7 +733,7 @@
           .Returns(Task.CompletedTask)
           .Callback((long userId) => { scheduledUserIds.Add(userId); });
         var mockMailer = new Mock<IShipHubMailer>();
-        var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object);
+        var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, null);
         ConfigureController(
           controller,
           new ChargeBeeWebhookPayload() {
@@ -786,8 +784,9 @@
           .Returns(Task.CompletedTask)
           .Callback((PaymentSucceededOrganizationMailMessage message) => outgoingMessages?.Add(message));
 
-        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-        controller.CallBase = true;
+        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+          CallBase = true
+        };
 
         ConfigureController(
           controller.Object,
@@ -862,8 +861,9 @@
         .Returns(Task.CompletedTask)
         .Callback((PaymentSucceededPersonalMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -928,8 +928,9 @@
         .Returns(Task.CompletedTask)
         .Callback((PaymentRefundedMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var creditNotDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -985,8 +986,9 @@
         .Returns(Task.CompletedTask)
         .Callback((PaymentFailedMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var invoiceDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -1044,8 +1046,9 @@
         .Returns(Task.CompletedTask)
         .Callback((CardExpiryReminderMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -1099,8 +1102,9 @@
         .Returns(Task.CompletedTask)
         .Callback((CardExpiryReminderMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -1154,8 +1158,9 @@
         .Returns(Task.CompletedTask)
         .Callback((CancellationScheduledMailMessage message) => outgoingMessages?.Add(message));
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object);
-      controller.CallBase = true;
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
 
       var termEndDate = new DateTimeOffset(2016, 11, 15, 0, 0, 0, TimeSpan.Zero);
 
@@ -1195,37 +1200,36 @@
       Type expectedResultType,
       string message
       ) {
-      using (ShimsContext.Create()) {
-        var mockBusClient = new Mock<IShipHubQueueClient>();
-        var mockMailer = new Mock<IShipHubMailer>();
+      var mockBusClient = new Mock<IShipHubQueueClient>();
+      var mockMailer = new Mock<IShipHubMailer>();
 
-        var config = new ShipHubConfiguration() {
-          ChargeBeeWebhookSecret = Configuration.ChargeBeeWebhookSecret,
-        };
-        if (includeOnlyList != null) {
-          config.ChargeBeeWebhookIncludeOnlyList = includeOnlyList.Split(',').ToHashSet();
-        }
-        if (excludeList != null) {
-          config.ChargeBeeWebhookExcludeList = excludeList.Split(',').ToHashSet();
-        }
-
-        var controller = new Mock<ChargeBeeWebhookController>(config, mockBusClient.Object, mockMailer.Object);
-        controller.CallBase = true;
-
-        ConfigureController(
-          controller.Object,
-          new ChargeBeeWebhookPayload() {
-            EventType = "some_bogus_event_name",
-            Content = new ChargeBeeWebhookContent() {
-              Customer = new ChargeBeeWebhookCustomer() {
-                GitHubUserName = "aroon",
-              },
-            },
-          });
-
-        var response = await controller.Object.HandleHook(Configuration.ChargeBeeWebhookSecret);
-        Assert.AreEqual(expectedResultType, response.GetType(), message);
+      var config = new ShipHubConfiguration() {
+        ChargeBeeWebhookSecret = Configuration.ChargeBeeWebhookSecret,
+      };
+      if (includeOnlyList != null) {
+        config.ChargeBeeWebhookIncludeOnlyList = includeOnlyList.Split(',').ToHashSet();
       }
+      if (excludeList != null) {
+        config.ChargeBeeWebhookExcludeList = excludeList.Split(',').ToHashSet();
+      }
+
+      var controller = new Mock<ChargeBeeWebhookController>(config, mockBusClient.Object, mockMailer.Object, null) {
+        CallBase = true
+      };
+
+      ConfigureController(
+        controller.Object,
+        new ChargeBeeWebhookPayload() {
+          EventType = "some_bogus_event_name",
+          Content = new ChargeBeeWebhookContent() {
+            Customer = new ChargeBeeWebhookCustomer() {
+              GitHubUserName = "aroon",
+            },
+          },
+        });
+
+      var response = await controller.Object.HandleHook(Configuration.ChargeBeeWebhookSecret);
+      Assert.AreEqual(expectedResultType, response.GetType(), message);
     }
 
     [Test]

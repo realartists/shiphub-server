@@ -7,23 +7,26 @@
   using System.Linq;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
-  using ChargeBee.Models;
   using Common;
-  using Common.DataModel;
   using Common.DataModel.Types;
-  using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Orleans;
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
+  using cb = RealArtists.ChargeBee;
+  using cbm = RealArtists.ChargeBee.Models;
+  using cm = Common.DataModel;
+  using gh = Common.GitHub;
 
   public class BillingQueueHandler : LoggingHandlerBase {
     private IGrainFactory _grainFactory;
+    private cb.ChargeBeeApi _chargeBee;
 
-    public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+    public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
       : base(logger) {
       _grainFactory = grainFactory;
+      _chargeBee = chargeBee;
     }
 
     public async Task GetOrCreatePersonalSubscriptionHelper(
@@ -31,7 +34,7 @@
       IAsyncCollector<ChangeMessage> notifyChanges,
       IGitHubActor gitHubClient,
       TextWriter logger) {
-      using (var context = new ShipHubContext()) {
+      using (var context = new cm.ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Id == message.UserId);
 
         var allowedBillingUsers = new[] {
@@ -46,18 +49,18 @@
         }
 
         var customerId = $"user-{message.UserId}";
-        var customerList = Customer.List().Id().Is(customerId).Request().List;
-        Customer customer = null;
+        var customerList = (await _chargeBee.Customer.List().Id().Is(customerId).Request()).List;
+        cbm.Customer customer = null;
         if (customerList.Count == 0) {
           // Cannot use cache because we need fields like Name + Email which
           // we don't currently save to the DB.
-          var githubUser = (await gitHubClient.User(GitHubCacheDetails.Empty)).Result;
-          var emails = (await gitHubClient.UserEmails(GitHubCacheDetails.Empty)).Result;
+          var githubUser = (await gitHubClient.User(gh.GitHubCacheDetails.Empty)).Result;
+          var emails = (await gitHubClient.UserEmails(gh.GitHubCacheDetails.Empty)).Result;
           var primaryEmail = emails.First(x => x.Primary);
 
-          var createRequest = Customer.Create()
+          var createRequest = _chargeBee.Customer.Create()
             .Id(customerId)
-            .Param("cf_github_username", githubUser.Login)
+            .AddParam("cf_github_username", githubUser.Login)
             .Email(primaryEmail.Email);
 
           // Name is optional for Github.
@@ -70,25 +73,25 @@
           }
 
           logger.WriteLine("Billing: Creating customer");
-          customer = createRequest.Request().Customer;
+          customer = (await createRequest.Request()).Customer;
         } else {
           logger.WriteLine("Billing: Customer already exists");
           customer = customerList.First().Customer;
         }
 
-        var subList = ChargeBee.Models.Subscription.List()
+        var subList = (await _chargeBee.Subscription.List()
           .CustomerId().Is(customerId)
           .PlanId().Is("personal")
           .Limit(1)
-          .SortByCreatedAt(ChargeBee.Filters.Enums.SortOrderEnum.Desc)
-          .Request().List;
-        ChargeBee.Models.Subscription sub = null;
+          .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
+          .Request()).List;
+        cbm.Subscription sub = null;
 
         if (subList.Count == 0) {
           logger.WriteLine("Billing: Creating personal subscription");
-          sub = ChargeBee.Models.Subscription.CreateForCustomer(customerId)
+          sub = (await _chargeBee.Subscription.CreateForCustomer(customerId)
             .PlanId("personal")
-            .Request().Subscription;
+            .Request()).Subscription;
         } else {
           logger.WriteLine("Billing: Subscription already exists");
           sub = subList.First().Subscription;
@@ -99,7 +102,7 @@
             var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
 
             if (accountSubscription == null) {
-              accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+              accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
                 AccountId = user.Id,
               });
             }
@@ -113,17 +116,17 @@
             }
 
             switch (sub.Status) {
-              case ChargeBee.Models.Subscription.StatusEnum.Active:
-              case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
-                accountSubscription.State = SubscriptionState.Subscribed;
+              case cbm.Subscription.StatusEnum.Active:
+              case cbm.Subscription.StatusEnum.NonRenewing:
+                accountSubscription.State = cm.SubscriptionState.Subscribed;
                 accountSubscription.TrialEndDate = null;
                 break;
-              case ChargeBee.Models.Subscription.StatusEnum.InTrial:
-                accountSubscription.State = SubscriptionState.InTrial;
+              case cbm.Subscription.StatusEnum.InTrial:
+                accountSubscription.State = cm.SubscriptionState.InTrial;
                 accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
                 break;
               default:
-                accountSubscription.State = SubscriptionState.NotSubscribed;
+                accountSubscription.State = cm.SubscriptionState.NotSubscribed;
                 accountSubscription.TrialEndDate = null;
                 break;
             }
@@ -152,7 +155,7 @@
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
         IGitHubActor gh;
-        using (var context = new ShipHubContext()) {
+        using (var context = new cm.ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.UserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
@@ -170,41 +173,41 @@
       IGitHubActor gitHubClient,
       TextWriter logger) {
 
-      using (var context = new ShipHubContext()) {
+      using (var context = new cm.ShipHubContext()) {
         var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
 
         var customerId = $"org-{message.TargetId}";
-        var sub = ChargeBee.Models.Subscription.List()
+        var sub = (await _chargeBee.Subscription.List()
           .CustomerId().Is(customerId)
           .PlanId().Is("organization")
-          .Status().Is(ChargeBee.Models.Subscription.StatusEnum.Active)
+          .Status().Is(cbm.Subscription.StatusEnum.Active)
           .Limit(1)
-          .Request().List.SingleOrDefault()?.Subscription;
+          .Request()).List.SingleOrDefault()?.Subscription;
 
         for (int attempt = 0; attempt < 2; ++attempt) {
           try {
             var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.TargetId);
 
             if (accountSubscription == null) {
-              accountSubscription = context.Subscriptions.Add(new Common.DataModel.Subscription() {
+              accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
                 AccountId = message.TargetId,
               });
             }
 
             if (sub != null) {
               switch (sub.Status) {
-                case ChargeBee.Models.Subscription.StatusEnum.Active:
-                case ChargeBee.Models.Subscription.StatusEnum.NonRenewing:
-                case ChargeBee.Models.Subscription.StatusEnum.Future:
-                  accountSubscription.State = SubscriptionState.Subscribed;
+                case cbm.Subscription.StatusEnum.Active:
+                case cbm.Subscription.StatusEnum.NonRenewing:
+                case cbm.Subscription.StatusEnum.Future:
+                  accountSubscription.State = cm.SubscriptionState.Subscribed;
                   break;
                 default:
-                  accountSubscription.State = SubscriptionState.NotSubscribed;
+                  accountSubscription.State = cm.SubscriptionState.NotSubscribed;
                   break;
               }
               accountSubscription.Version = sub.GetValue<long>("resource_version");
             } else {
-              accountSubscription.State = SubscriptionState.NotSubscribed;
+              accountSubscription.State = cm.SubscriptionState.NotSubscribed;
             }
 
             int recordsSaved = await context.SaveChangesAsync();
@@ -231,7 +234,7 @@
 
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
         IGitHubActor gh;
-        using (var context = new ShipHubContext()) {
+        using (var context = new cm.ShipHubContext()) {
           var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
           if (user == null || user.Token.IsNullOrWhiteSpace()) {
             return;
@@ -249,19 +252,19 @@
       TextWriter logger,
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        using (var context = new ShipHubContext()) {
+        using (var context = new cm.ShipHubContext()) {
           var couponId = "member_of_paid_org";
 
-          var sub = ChargeBee.Models.Subscription.List()
+          var sub = (await _chargeBee.Subscription.List()
             .CustomerId().Is($"user-{message.UserId}")
             .PlanId().Is("personal")
             .Limit(1)
-            .Request().List.FirstOrDefault()?.Subscription;
+            .Request()).List.FirstOrDefault()?.Subscription;
 
           var isMemberOfPaidOrg = await context.OrganizationAccounts
             .CountAsync(x =>
               x.UserId == message.UserId &&
-              x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
+              x.Organization.Subscription.StateName == cm.SubscriptionState.Subscribed.ToString()) > 0;
 
           bool shouldHaveCoupon = isMemberOfPaidOrg;
 
@@ -270,8 +273,8 @@
           // of term would be $0, and the subscription would automatically transition to
           // active even though no payment method is set.
           if (sub != null &&
-              sub.Status != ChargeBee.Models.Subscription.StatusEnum.Active &&
-              sub.Status != ChargeBee.Models.Subscription.StatusEnum.NonRenewing) {
+              sub.Status != cbm.Subscription.StatusEnum.Active &&
+              sub.Status != cbm.Subscription.StatusEnum.NonRenewing) {
             shouldHaveCoupon = false;
           }
 
@@ -283,11 +286,11 @@
             }
 
             if (shouldHaveCoupon && !hasCoupon) {
-              ChargeBee.Models.Subscription.Update(sub.Id)
+              await _chargeBee.Subscription.Update(sub.Id)
                 .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
                 .Request();
             } else if (!shouldHaveCoupon && hasCoupon) {
-              ChargeBee.Models.Subscription.RemoveCoupons(sub.Id)
+              await _chargeBee.Subscription.RemoveCoupons(sub.Id)
                 .CouponIds(new List<string>() { couponId })
                 .Request();
             }

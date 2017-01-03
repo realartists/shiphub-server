@@ -16,6 +16,7 @@
   using QueueClient;
   using SimpleInjector;
   using Tracing;
+  using cb = RealArtists.ChargeBee;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
@@ -57,13 +58,6 @@
 
       // Gross manual DI
       ConfigureGlobalLogging(config, telemetryClient, raygunClient);
-
-      // ChargeBee
-      var chargeBeeHostAndApiKey = shipHubConfig.ChargeBeeHostAndKey;
-      if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
-        var parts = chargeBeeHostAndApiKey.Split(':');
-        ChargeBee.Api.ApiConfig.Configure(parts[0], parts[1]);
-      }
 
       var azureWebJobsServiceBus = shipHubConfig.AzureWebJobsServiceBus;
       var sbConfig = new ServiceBusConfiguration() {
@@ -170,6 +164,13 @@
 
         // IDetailedExceptionLogger
         container.Register(() => detailedLogger, Lifestyle.Singleton);
+
+        // ChargeBee
+        var chargeBeeHostAndApiKey = ShipHubCloudConfiguration.Instance.ChargeBeeHostAndKey;
+        if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
+          var parts = chargeBeeHostAndApiKey.Split(':');
+          container.Register(() => new cb.ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
+        }
 
         container.Verify();
       } catch {
