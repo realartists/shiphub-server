@@ -19,7 +19,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		ShipHubAnalysis.ruleset = ShipHubAnalysis.ruleset
 		ShipHubDictionary.xml = ShipHubDictionary.xml
 		sync_protocol.txt = sync_protocol.txt
-		UpdateOrleans.ps1 = UpdateOrleans.ps1
 	EndProjectSection
 EndProject
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "RealArtists.ShipHub.Database", "RealArtists.ShipHub.Database\RealArtists.ShipHub.Database.sqlproj", "{10D8E4B1-08EC-4C3A-A018-ED7A398DA39D}"
