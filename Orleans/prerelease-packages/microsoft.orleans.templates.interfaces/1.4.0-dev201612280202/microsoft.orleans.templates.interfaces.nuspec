@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Microsoft.Orleans.Templates.Interfaces</id>
+    <version>1.4.0-Dev201612280202</version>
+    <title>Microsoft Orleans VS Templates for Grain Interfaces</title>
+    <authors>Microsoft</authors>
+    <owners>Microsoft,Orleans</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <licenseUrl>https://github.com/dotnet/Orleans#license</licenseUrl>
+    <projectUrl>https://github.com/dotnet/Orleans</projectUrl>
+    <iconUrl>https://raw.githubusercontent.com/dotnet/orleans/gh-pages/assets/logo_128.png</iconUrl>
+    <description>NuGet package deprecated, please use Microsoft.Orleans.OrleansCodeGenerator.Build instead.</description>
+    <summary>NuGet package deprecated, please use Microsoft.Orleans.OrleansCodeGenerator.Build instead.</summary>
+    <copyright>Copyright Microsoft 2015</copyright>
+    <dependencies>
+      <dependency id="Microsoft.Orleans.OrleansCodeGenerator.Build" version="1.4.0-Dev201612280202" />
+    </dependencies>
+  </metadata>
+</package>
