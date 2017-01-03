@@ -28,7 +28,7 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Issues_UserId] ON [dbo].[Issues]([UserId])
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_RepositoryId] ON [dbo].[Issues]([RepositoryId], [Number])
+CREATE UNIQUE NONCLUSTERED INDEX [UIX_Issues_RepositoryId_Number] ON [dbo].[Issues]([RepositoryId], [Number])
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId])

@@ -9,8 +9,7 @@ BEGIN
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [Id]   BIGINT      NOT NULL PRIMARY KEY CLUSTERED,
-    [Type] NVARCHAR(4) NOT NULL
+    [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
   BEGIN TRY
@@ -38,19 +37,21 @@ BEGIN
         [Type] = [Source].[Type],
         [Login] = [Source].[Login],
         [Date] = @Date
-    OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes (Id, [Type]);
+    OUTPUT INSERTED.Id INTO @Changes;
 
     -- Ensuring organizations reference themselves is handled by
     -- [SetUserOrganizations]
 
     -- Other actions manage adding user references to repos.
     -- Our only job here is to mark still valid references as changed.
+    -- The LOOP JOIN and FORCE ORDER prevent a scan and merge which deadlocks on PK_SyncLog
     UPDATE SyncLog SET
       [RowVersion] = DEFAULT -- Bump version
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-    WHERE [ItemType] = 'account'
-      AND ItemId IN (SELECT Id FROM @Changes)
-      AND ItemId != 10137 -- Ghost user (present in most repos. Do not ever mark as updated.)
+    FROM @Changes as c
+      INNER LOOP JOIN SyncLog as sl ON (sl.ItemType = 'account' AND sl.ItemId = c.Id)
+    WHERE sl.ItemId != 10137 -- Ghost user (present in most repos. Do not ever mark as updated.)
+    OPTION (FORCE ORDER)
 
     COMMIT TRANSACTION
   END TRY

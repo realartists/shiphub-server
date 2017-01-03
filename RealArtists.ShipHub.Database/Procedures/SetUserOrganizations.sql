@@ -64,13 +64,15 @@ BEGIN
         WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = @UserId)
     
     -- If user deleted from the org, bump the version and trigger org sync
+    -- The LOOP JOIN and FORCE ORDER prevent a scan and merge which deadlocks on PK_SyncLog
     UPDATE SyncLog SET
       [RowVersion] = DEFAULT
     -- Notify orgs with deletions
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
     FROM @Changes as c
-      INNER JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
     WHERE c.[Action] = 'DELETE'
+    OPTION (FORCE ORDER)
 
     COMMIT TRANSACTION
   END TRY

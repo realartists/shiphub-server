@@ -50,24 +50,37 @@ BEGIN
         [ClosedById] = COALESCE([Source].[ClosedById], [Target].[ClosedById]),
         [PullRequest] = [Source].[PullRequest],
         [Reactions] = COALESCE([Source].[Reactions], [Target].[Reactions])
-    OUTPUT INSERTED.Id INTO @Changes;
+    OUTPUT INSERTED.Id INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
+    -- LOOP JOIN, FORCE ORDER prevents scans
+    -- This is (non-obviously) important when acquiring locks during foreign key validation
+    -- Can't do the delete concurrently, as it'll insist on using a scan
     MERGE INTO IssueLabels as [Target]
     USING (
       SELECT Item1 AS IssueId, Item2 AS LabelId FROM @Labels
     ) as [Source]
-    ON ([Target].LabelId = [Source].LabelId AND [Target].IssueId = [Source].IssueId)
+    ON ([Target].IssueId = [Source].IssueId AND [Target].LabelId = [Source].LabelId)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (IssueId, LabelId)
       VALUES (IssueId, LabelId)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE
-      AND [Target].IssueId IN (SELECT Id FROM @Issues)
-      THEN DELETE
-    OUTPUT COALESCE(INSERTED.IssueId, DELETED.IssueId) INTO @Changes;
+    OUTPUT INSERTED.IssueId INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
+
+    -- Delete any extraneous mappings.
+    -- First, find all rows in IssueLabels for all issues in @Labels
+    -- Then join back on @Labels to find unmatched rows.
+    DELETE FROM IssueLabels
+    OUTPUT DELETED.IssueId INTO @Changes
+    FROM @Issues as i
+      INNER LOOP JOIN IssueLabels as il ON (il.IssueId = i.Id)
+      LEFT OUTER JOIN @Labels as ll ON (ll.Item1 = il.IssueId AND ll.Item2 = il.LabelId)
+    WHERE ll.Item1 IS NULL
+    OPTION (FORCE ORDER)
 
     -- Assignees
+    -- Have to use the same tricks as above for the same reasons.
     MERGE INTO IssueAssignees as [Target]
     USING (
       SELECT Item1 as IssueId, Item2 as UserId FROM @Assignees
@@ -77,11 +90,18 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (IssueId, UserId)
       VALUES (IssueId, UserId)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE
-      AND [Target].IssueId IN (SELECT Id FROM @Issues)
-      THEN DELETE
-    OUTPUT COALESCE(INSERTED.IssueId, DELETED.IssueId) INTO @Changes;
+    OUTPUT INSERTED.IssueId INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
+
+    -- Delete any extraneous mappings.
+    -- Same tricks, same justification
+    DELETE FROM IssueAssignees
+    OUTPUT DELETED.IssueId INTO @Changes
+    FROM @Issues as i
+      INNER LOOP JOIN IssueAssignees as ia ON (ia.IssueId = i.Id)
+      LEFT OUTER JOIN @Assignees as aa ON (aa.Item1 = ia.IssueId AND aa.Item2 = ia.UserId)
+    WHERE aa.Item1 IS NULL
+    OPTION (FORCE ORDER)
 
     -- Update existing issues
     UPDATE SyncLog SET
