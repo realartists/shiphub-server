@@ -209,25 +209,18 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
-#if DEBUG
-      var useFiddler = ShipHubCloudConfiguration.Instance.UseFiddler;
-#endif
-
-      var rootHandler = new HttpClientHandler() {
+      var rootHandler = new WinHttpHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-        AllowAutoRedirect = false,
-        UseCookies = false,
-        UseDefaultCredentials = false,
-#if DEBUG
-        UseProxy = useFiddler,
-        Proxy = useFiddler ? new WebProxy("127.0.0.1", 8888) : null,
-#endif
+        AutomaticRedirection = false,
+        CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
+        WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
       };
 
-      // This is a gross hack
 #if DEBUG
-      if (useFiddler) {
-        rootHandler.ServerCertificateCustomValidationCallback = (request, cert, chain, sslPolicyErrors) => { return true; };
+      if (ShipHubCloudConfiguration.Instance.UseFiddler) {
+        rootHandler.WindowsProxyUsePolicy = WindowsProxyUsePolicy.UseCustomProxy;
+        rootHandler.Proxy = new WebProxy("127.0.0.1", 8888);
+        rootHandler.ServerCertificateValidationCallback = (request, cert, chain, sslPolicyErrors) => { return true; };
       }
 #endif
 
