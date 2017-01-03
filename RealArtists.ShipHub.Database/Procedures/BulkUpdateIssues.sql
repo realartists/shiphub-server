@@ -73,8 +73,8 @@ BEGIN
     -- Then join back on @Labels to find unmatched rows.
     DELETE FROM IssueLabels
     OUTPUT DELETED.IssueId INTO @Changes
-    FROM @Labels as l
-      INNER LOOP JOIN IssueLabels as il ON (il.IssueId = l.Item1)
+    FROM @Issues as i
+      INNER LOOP JOIN IssueLabels as il ON (il.IssueId = i.Id)
       LEFT OUTER JOIN @Labels as ll ON (ll.Item1 = il.IssueId AND ll.Item2 = il.LabelId)
     WHERE ll.Item1 IS NULL
     OPTION (FORCE ORDER)
@@ -97,8 +97,8 @@ BEGIN
     -- Same tricks, same justification
     DELETE FROM IssueAssignees
     OUTPUT DELETED.IssueId INTO @Changes
-    FROM @Assignees as a
-      INNER LOOP JOIN IssueAssignees as ia ON (ia.IssueId = a.Item1)
+    FROM @Issues as i
+      INNER LOOP JOIN IssueAssignees as ia ON (ia.IssueId = i.Id)
       LEFT OUTER JOIN @Assignees as aa ON (aa.Item1 = ia.IssueId AND aa.Item2 = ia.UserId)
     WHERE aa.Item1 IS NULL
     OPTION (FORCE ORDER)
