@@ -66,7 +66,7 @@
     [JsonIgnore]
     public IComparable UniqueKey {
       get {
-        var id = Id ?? Source?.CommentId;
+        var id = Id ?? Source?.CommentId ?? Source?.Issue?.Id;
         var url = ExtensionDataDictionary.Val("url")?.ToObject<string>() ?? Source?.IssueUrl;
         return Tuple.Create(Event, id, url);
       }
@@ -81,8 +81,10 @@
   public class ReferenceSource {
     public Account Actor { get; set; }
 
+    public Issue Issue { get; set; }
+
     [JsonProperty("id")]
-    public long CommentId { get; set; }
+    public long? CommentId { get; set; }
 
     [JsonProperty("url")]
     public string IssueUrl { get; set; }
