@@ -163,7 +163,7 @@
     /// </summary>
     /// <param name="gitHubUserName">Github user or organization name</param>
     /// <returns>True if we should reject this webhook event</returns>
-    private async Task<bool> ShouldIgnoreWebhook(ChargeBeeWebhookPayload payload) {
+    public virtual async Task<bool> ShouldIgnoreWebhook(ChargeBeeWebhookPayload payload) {
       if (_configuration.ChargeBeeWebhookIncludeOnlyList != null
         && !_configuration.ChargeBeeWebhookIncludeOnlyList.Contains(await GitHubUserNameFromWebhookPayload(payload))) {
         return true;
@@ -177,6 +177,8 @@
       return false;
     }
 
+    private delegate Task EventHandlerMethod(ChargeBeeWebhookPayload payload);
+
     [HttpPost]
     [AllowAnonymous]
     [Route("chargebee/{secret}")]
@@ -189,9 +191,7 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
 
-      if (await ShouldIgnoreWebhook(payload)) {
-        return BadRequest($"Rejecting webhook because customer's GitHub username is on the exclude list, or not on the include list.");
-      }
+      EventHandlerMethod handlerMethod = null;
 
       switch (payload.EventType) {
         case "subscription_activated":
@@ -203,13 +203,21 @@
         case "subscription_scheduled_cancellation_removed":
         case "subscription_created":
         case "customer_deleted":
-          await HandleSubscriptionStateChange(payload);
+          handlerMethod = HandleSubscriptionStateChange;
           break;
         case "pending_invoice_created":
-          await HandlePendingInvoiceCreated(payload);
+          handlerMethod = HandlePendingInvoiceCreated;
           break;
         default:
           break;
+      }
+
+      if (handlerMethod != null) {
+        if (await ShouldIgnoreWebhook(payload)) {
+          return BadRequest($"Rejecting webhook because customer's GitHub username is on the exclude list, or not on the include list.");
+        }
+
+        await handlerMethod(payload);
       }
 
       if (
