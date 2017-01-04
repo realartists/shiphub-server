@@ -1,14 +1,10 @@
 namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System;
-  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
-  using System.Threading;
-  using System.Threading.Tasks;
   using Common;
   using Microsoft.ApplicationInsights.Extensibility;
-  using Microsoft.Azure;
   using Microsoft.WindowsAzure.ServiceRuntime;
   using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
@@ -18,7 +14,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   // For lifecycle details see https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-role-lifecycle-dotnet
   [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
-    private bool _abort;
     private AzureSilo _silo;
     private ShipHubCloudConfiguration _config = new ShipHubCloudConfiguration();
 
@@ -57,41 +52,40 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
     public override void Run() {
       Log.Trace();
 
-      while (!_abort) {
-        try {
-          var siloConfig = AzureSilo.DefaultConfiguration();
+      try {
+        var siloConfig = AzureSilo.DefaultConfiguration();
 
-          // This allows App Services and Cloud Services to agree on a deploymentId.
-          siloConfig.Globals.DeploymentId = _config.DeploymentId;
+        // This allows App Services and Cloud Services to agree on a deploymentId.
+        siloConfig.Globals.DeploymentId = _config.DeploymentId;
 
-          // Dependency Injection
-          siloConfig.UseStartupType<SimpleInjectorProvider>();
+        // Dependency Injection
+        siloConfig.UseStartupType<SimpleInjectorProvider>();
 
-          siloConfig.AddMemoryStorageProvider();
-          siloConfig.AddAzureTableStorageProvider("AzureStore", _config.DataConnectionString);
+        siloConfig.AddMemoryStorageProvider();
+        siloConfig.AddAzureTableStorageProvider("AzureStore", _config.DataConnectionString);
 
-          // It is IMPORTANT to start the silo not in OnStart but in Run.
-          // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
-          _silo = new AzureSilo();
-          _silo.Start(siloConfig);
+        // It is IMPORTANT to start the silo not in OnStart but in Run.
+        // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
+        _silo = new AzureSilo();
+        _silo.Start(siloConfig);
 
-          // Block until silo is shutdown
-          _silo.Run();
-        } catch (Exception e) {
-          Log.Exception(e, "Error while running silo. Restarting within Run method.");
-        }
+        // Block until silo is shutdown
+        _silo.Run();
+      } catch (Exception e) {
+        Log.Exception(e, "Error while running silo. Aborting.");
       }
+
       Log.Info("Run loop exiting.");
     }
 
     public override void OnStop() {
       Log.Trace();
 
-      _abort = true;
       if (_silo != null) {
         Log.Info("Stopping silo.");
         _silo.Stop();
         Log.Info("Stopped silo.");
+        _silo = null;
       }
 
       base.OnStop();
