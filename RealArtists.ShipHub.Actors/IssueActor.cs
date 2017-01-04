@@ -18,10 +18,6 @@
   using Newtonsoft.Json.Linq;
   using gm = Common.GitHub.Models;
 
-#if DEBUG
-  using System.Diagnostics;
-#endif
-
   public class IssueActor : Grain, IIssueActor {
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -142,6 +138,7 @@
             accounts.Add(tl.Actor);
             accounts.Add(tl.Assignee);
             accounts.Add(tl.Source?.Actor);
+            accounts.Add(tl.Source?.Issue?.User);
           }
 
           // Find all events with associated commits, and embed them.
@@ -266,12 +263,26 @@
             switch (item.Event) {
               case "cross-referenced":
                 // high bits 11
-                var commentPart = (item.Source.CommentId & ones31);
-                if (commentPart != item.Source.CommentId) {
-                  throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 31 bits!");
+                var ones30 = 0x3FFFFFFFL;
+                // cross-refernces can come from two (?) places: issue comments and issue bodies.
+                if (item.Source.CommentId.HasValue) { // Comment
+                  var commentPart = (item.Source.CommentId & ones30);
+                  if (commentPart != item.Source.CommentId) {
+                    throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 30 bits!");
+                  }
+                  // high bits 110
+                  item.Id = ((long)6) << 61 | commentPart << 30 | issuePart;
+                  item.Actor = item.Source.Actor;
+                } else if (item.Source.Issue != null) { // Issue body
+                  var otherIssuePart = (item.Source.Issue.Id & ones30);
+                  if (otherIssuePart != item.Source.Issue.Id) {
+                    throw new NotSupportedException($"IssueId {item.Source.Issue.Id} exceeds 30 bits!");
+                  }
+                  // high bits 111
+                  item.Id = ((long)7) << 61 | otherIssuePart << 30 | issuePart;
+                  item.Actor = item.Source.Issue.User;
                 }
-                item.Id = ((long)3) << 62 | commentPart << 31 | issuePart;
-                item.Actor = item.Source.Actor;
+                
                 break;
               case "committed":
                 // high bits 10
@@ -285,14 +296,12 @@
                 break;
             }
 
-#if DEBUG
-            // Sanity check whilst debugging
+            // Sanity check (this has burnt us on live now)
             if (item.Id == 0
               || item.CreatedAt == DateTimeOffset.MinValue) {
               // Ruh roh
-              Debugger.Break();
+              throw new Exception($"Unable to process event of type {item.Event} on {_repoFullName}/{_issueNumber} ({_issueId})");
             }
-#endif
           }
 
           // This conversion handles the restriction field and hash.
