@@ -188,7 +188,7 @@
             }
           }
 
-          var withSources = filteredEvents.Where(x => x.Source != null).ToArray();
+          var withSources = filteredEvents.Where(x => x.Source?.IssueUrl != null).ToArray();
           var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
 
           if (sources.Any()) {
