@@ -15,50 +15,56 @@ BEGIN
     [IssueEventId] BIGINT NOT NULL
   )
 
-  DECLARE @SyntheticIDs TABLE (
-    [UniqueKey] NVARCHAR(255) NOT NULL PRIMARY KEY CLUSTERED,
-    [Id] BIGINT NOT NULL DEFAULT (NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier])
-  );
+  DECLARE @WorkEvents IssueEventTableType
 
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- Procedure TVPs are read only :(
+    INSERT INTO @WorkEvents
+    SELECT * FROM @IssueEvents
+
+    -- Lookup already assigned IDs
+    UPDATE @WorkEvents
+      SET Id = ie.Id
+    FROM @WorkEvents as iie
+      INNER LOOP JOIN IssueEvents as ie ON (ie.UniqueKey = iie.UniqueKey)
+    WHERE iie.Id IS NULL
+    OPTION (FORCE ORDER)
+
     -- Allocate synthetic ids for every event that isn't already in IssueEvents and that didn't get one from GitHub
-    INSERT INTO @SyntheticIDs (UniqueKey)
-    SELECT src.UniqueKey FROM @IssueEvents AS src
-    LEFT OUTER JOIN IssueEvents AS dst ON (src.UniqueKey = dst.UniqueKey)
-    WHERE src.Id IS NULL AND dst.Id IS NULL;
+    UPDATE @WorkEvents
+      SET Id = NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier]
+    WHERE Id IS NULL
 
     MERGE INTO IssueEvents as [Target]
     USING (
       SELECT Id, UniqueKey, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
-      FROM @IssueEvents
+      FROM @WorkEvents
     ) as [Source]
-    ON ([Target].[UniqueKey] = [Source].[UniqueKey])
+    ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (Id, UniqueKey, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, Timeline, ExtensionData)
-      VALUES (COALESCE(Id, (SELECT Id FROM @SyntheticIDs AS Syn WHERE Syn.UniqueKey = [Source].UniqueKey)), UniqueKey, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, @Timeline, ExtensionData)
+      VALUES (Id, UniqueKey, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, @Timeline, ExtensionData)
     WHEN MATCHED AND (
-        [Source].[Hash] != [Target].[Hash] -- different
-        AND ([Target].Timeline = 0 OR @Timeline = 1) -- prefer timeline over bulk issues
-        AND ([Target].Restricted = 0 OR [Source].Restricted = 1) -- prefer more detailed events
-    ) THEN
-      UPDATE  SET
-        ActorId = [Source].ActorId,
-        [Event] = [Source].[Event],
-        CreatedAt = [Source].CreatedAt,
-        [Hash] = [Source].[Hash],
-        Restricted = [Source].Restricted,
-        Timeline = @Timeline,
-        ExtensionData = [Source].ExtensionData
+      [Source].[Hash] != [Target].[Hash] -- different
+      AND ([Target].Timeline = 0 OR @Timeline = 1) -- prefer timeline over bulk issues
+      AND ([Target].Restricted = 0 OR [Source].Restricted = 1) -- prefer more detailed events
+    ) THEN UPDATE SET
+      ActorId = [Source].ActorId,
+      [Event] = [Source].[Event],
+      CreatedAt = [Source].CreatedAt,
+      [Hash] = [Source].[Hash],
+      Restricted = [Source].Restricted,
+      Timeline = @Timeline,
+      ExtensionData = [Source].ExtensionData
     OUTPUT INSERTED.Id INTO @Changes;
 
      -- Add access grants
     INSERT INTO IssueEventAccess (IssueEventId, UserId)
     OUTPUT INSERTED.IssueEventId INTO @Changes
     SELECT ie.Id, @UserId
-    FROM @IssueEvents AS x
-    INNER JOIN IssueEvents AS ie ON (x.UniqueKey = ie.UniqueKey)
+    FROM @WorkEvents as ie
     WHERE ie.Restricted = 1
       AND NOT EXISTS(SELECT * FROM IssueEventAccess WHERE IssueEventId = ie.Id AND UserId = @UserId)
 

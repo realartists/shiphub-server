@@ -21,4 +21,8 @@
   <SuppressedFile FilePath="Procedures\SetRepositoryIssueTemplate.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0015" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\BulkUpdateIssueEvents.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0001" />
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
 </StaticCodeAnalysis>
