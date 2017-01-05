@@ -47,12 +47,12 @@ BEGIN
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, RepositoryId, Name, Color)
-      VALUES (Id, @RepositoryId, Name, Color)
+      INSERT (Id, RepositoryId, [Name], Color)
+      VALUES (Id, @RepositoryId, [Name], Color)
     -- Update
-    WHEN MATCHED AND ([Source].Name != [Target].Name OR [Source].Color != [Target].Color) THEN
+    WHEN MATCHED AND ([Source].[Name] != [Target].[Name] OR [Source].Color != [Target].Color) THEN
       UPDATE SET
-        Name = [Source].Name,
+        [Name] = [Source].[Name],
         Color = [Source].Color
     OUTPUT INSERTED.Id, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);

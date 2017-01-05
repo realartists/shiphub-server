@@ -49,25 +49,25 @@ BEGIN
     -- Update the Projects table
     MERGE INTO Projects as [Target]
     USING (
-      SELECT [Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
+      SELECT Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
       FROM @Projects
     ) as [Source]
-    ON ([Target].[Id] = [Source].[Id])
+    ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], [OrganizationId], [RepositoryId])
-      VALUES ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId, @RepositoryId)
+      INSERT (Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, OrganizationId, RepositoryId)
+      VALUES (Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, OrganizationId, RepositoryId)
     -- Update
-    WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
+    WHEN MATCHED AND [Target].UpdatedAt < [Source].UpdatedAt THEN
       UPDATE SET
         [Name] = [Source].[Name],
-        [Number] = [Source].[Number],
-        [Body] = [Source].[Body],
-        [CreatedAt] = [Source].[CreatedAt],
-        [UpdatedAt] = [Source].[UpdatedAt],
-        [CreatorId] = [Source].[CreatorId],
-        [OrganizationId] = @OrganizationId,
-        [RepositoryId] = @RepositoryId
+        Number = [Source].Number,
+        Body = [Source].Body,
+        CreatedAt = [Source].CreatedAt,
+        UpdatedAt = [Source].UpdatedAt,
+        CreatorId = [Source].CreatorId,
+        OrganizationId = [Source].OrganizationId,
+        RepositoryId = [Source].RepositoryId
     OUTPUT INSERTED.Id, $action INTO @Changes
     OPTION(LOOP JOIN, FORCE ORDER);
 
