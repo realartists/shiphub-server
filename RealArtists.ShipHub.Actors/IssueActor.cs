@@ -11,16 +11,11 @@
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
-  using Orleans;
-  using QueueClient;
-  using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using Common.GitHub;
   using Newtonsoft.Json.Linq;
+  using Orleans;
+  using QueueClient;
   using gm = Common.GitHub.Models;
-
-#if DEBUG
-  using System.Diagnostics;
-#endif
 
   public class IssueActor : Grain, IIssueActor {
     private IMapper _mapper;
@@ -141,7 +136,6 @@
           foreach (var tl in filteredEvents) {
             accounts.Add(tl.Actor);
             accounts.Add(tl.Assignee);
-            accounts.Add(tl.Source?.Actor);
           }
 
           // Find all events with associated commits, and embed them.
@@ -242,6 +236,28 @@
                 var pr = prLookups[refIssue.PullRequest.Url].Result.Result;
                 item.ExtensionDataDictionary["ship_pull_request_merged"] = pr.Merged;
               }
+            }
+          }
+
+          // Fixup and sanity checks
+          foreach (var item in filteredEvents) {
+            switch (item.Event) {
+              case "crossreferenced":
+                if (item.Actor != null) { // It's a comment reference
+                  accounts.Add(item.Source?.Actor);
+                  item.Actor = item.Source?.Actor;
+                } else { // It's an issue reference
+                  accounts.Add(item.Source?.Issue?.User);
+                  item.Actor = item.Source?.Issue?.User;
+                }
+                break;
+              case "committed":
+                item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
+                break;
+            }
+
+            if (item.CreatedAt == DateTimeOffset.MinValue) {
+              throw new Exception($"Unable to process event of type {item.Event} on {_repoFullName}/{_issueNumber} ({_issueId}). Invalid date.");
             }
           }
 
