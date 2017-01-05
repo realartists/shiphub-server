@@ -84,6 +84,9 @@
       }
     }
 
+    /// <summary>
+    /// Used for deduplicating paginated responses and detecting updates in the DB.
+    /// </summary>
     [JsonIgnore]
     public string UniqueKey {
       get {
@@ -109,16 +112,28 @@
     public string To { get; set; }
   }
 
+  /// <summary>
+  /// A poorly specified bag of frustration.
+  /// </summary>
   public class ReferenceSource {
-    public Account Actor { get; set; }
-
-    [JsonProperty("id")]
+    /// <summary>
+    /// Comment Id, only for cross-referenced comments
+    /// </summary>
     public long? Id { get; set; }
 
-    [JsonProperty("url")]
+    /// <summary>
+    /// Comment URL, only for cross-referenced comments
+    /// </summary>
     public string Url { get; set; }
 
-    [JsonProperty("issue")]
+    /// <summary>
+    /// Comment Author, only for cross-referenced comments
+    /// </summary>
+    public Account Actor { get; set; }
+
+    /// <summary>
+    /// Only for cross-referenced issue bodies
+    /// </summary>
     public Issue Issue { get; set; }
   }
 }

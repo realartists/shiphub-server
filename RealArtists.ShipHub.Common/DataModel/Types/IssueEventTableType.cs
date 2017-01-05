@@ -1,13 +1,10 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel.Types {
   using System;
   using System.Collections.Generic;
-  using System.ComponentModel.DataAnnotations;
   using System.Text;
   using Hashing;
 
   public class IssueEventTableType {
-    [Required]
-    [StringLength(255)]
     public string UniqueKey { get; set; }
     public long? Id { get; set; }
     public long IssueId { get; set; }
