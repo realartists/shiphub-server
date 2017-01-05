@@ -30,6 +30,22 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM Projects
+    OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+    FROM Projects as p
+      LEFT OUTER JOIN @Projects as pp ON (pp.Id = p.Id)
+    WHERE p.OrganizationId = @OrganizationId
+      AND pp.Id IS NULL
+    OPTION (FORCE ORDER)
+
+    DELETE FROM Projects
+    OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+    FROM Projects as p
+      LEFT OUTER JOIN @Projects as pp ON (pp.Id = p.Id)
+    WHERE p.RepositoryId = @RepositoryId
+      AND pp.Id IS NULL
+    OPTION (FORCE ORDER)
+
     -- Update the Projects table
     MERGE INTO Projects as [Target]
     USING (
@@ -41,12 +57,6 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], [OrganizationId], [RepositoryId])
       VALUES ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId, @RepositoryId)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND 
-      ((@OrganizationId IS NOT NULL AND [Target].[OrganizationId] IS NOT NULL AND [Target].OrganizationId = @OrganizationId)
-       OR
-       (@RepositoryId IS NOT NULL AND [Target].[RepositoryId] IS NOT NULL AND [Target].RepositoryId = @RepositoryId))
-      THEN DELETE
     -- Update
     WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
       UPDATE SET
@@ -58,7 +68,8 @@ BEGIN
         [CreatorId] = [Source].[CreatorId],
         [OrganizationId] = @OrganizationId,
         [RepositoryId] = @RepositoryId
-    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
+    OUTPUT INSERTED.Id, $action INTO @Changes
+    OPTION(LOOP JOIN, FORCE ORDER);
 
     -- Update SyncLog with deleted or edited projects
     UPDATE SyncLog SET

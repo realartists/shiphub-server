@@ -17,6 +17,17 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    IF (@Complete = 1)
+    BEGIN
+      DELETE FROM Milestones
+      OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+      FROM Milestones as m
+        LEFT OUTER JOIN @Milestones as mm ON (mm.Id = m.Id)
+      WHERE m.RepositoryId = @RepositoryId
+        AND mm.Id IS NULL
+      OPTION (FORCE ORDER)
+    END
+
     -- LOOP JOIN, FORCE ORDER prevents scans
     -- This is (non-obviously) important when acquiring locks during foreign key validation
     MERGE INTO Milestones as [Target]
@@ -29,8 +40,6 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (Id, RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
       VALUES (Id, @RepositoryId, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND (@Complete = 1 AND [Target].RepositoryId = @RepositoryId) THEN DELETE
     -- Update
     WHEN MATCHED AND [Target].UpdatedAt < [Source].UpdatedAt THEN
       UPDATE SET
@@ -41,7 +50,7 @@ BEGIN
         UpdatedAt = [Source].UpdatedAt,
         ClosedAt = [Source].ClosedAt,
         DueOn = [Source].DueOn
-    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes
+    OUTPUT INSERTED.Id, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Deleted or edited milestones

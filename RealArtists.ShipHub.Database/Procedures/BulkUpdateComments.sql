@@ -33,7 +33,8 @@ BEGIN
         [UserId] = [Source].[UserId], -- You'd think this couldn't change, but it can become the Ghost
         [Body] = [Source].[Body],
         [UpdatedAt] = [Source].[UpdatedAt]
-    OUTPUT INSERTED.Id, INSERTED.UserId INTO @Changes;
+    OUTPUT INSERTED.Id, INSERTED.UserId INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Edited comments
     UPDATE SyncLog SET
