@@ -1203,7 +1203,7 @@
       string gitHubUserName,
       string includeOnlyList,
       string excludeList,
-      Type expectedResultType,
+      bool expectToIgnore,
       string message
       ) {
       var mockBusClient = new Mock<IShipHubQueueClient>();
@@ -1236,16 +1236,20 @@
         });
 
       var response = await controller.Object.HandleHook(Configuration.ChargeBeeWebhookSecret);
-      Assert.AreEqual(expectedResultType, response.GetType(), message);
+      if (expectToIgnore) {
+        Assert.AreEqual(typeof(OkNegotiatedContentResult<string>), response.GetType(), message);
+      } else {
+        Assert.AreEqual(typeof(OkResult), response.GetType(), message);
+      }
     }
 
     [Test]
     public async Task CanIgnoreWebhookEventsViaSettings() {
-      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, null, typeof(OkResult), "should accept when include + exclude aren't set");
-      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar", null, typeof(BadRequestErrorMessageResult), "should reject since aroon not in include list.");
-      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, typeof(OkResult), "should accept since aroon is in the include list.");
-      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar", typeof(OkResult), "should accept since aroon not in exclude list.");
-      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", typeof(BadRequestErrorMessageResult), "should reject since aroon is in exclude list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, null, false, "should accept when include + exclude aren't set");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar", null, true, "should reject since aroon not in include list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", "foo,bar,aroon", null, false, "should accept since aroon is in the include list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar", false, "should accept since aroon not in exclude list.");
+      await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", true, "should reject since aroon is in exclude list.");
     }
 
     [Test]
