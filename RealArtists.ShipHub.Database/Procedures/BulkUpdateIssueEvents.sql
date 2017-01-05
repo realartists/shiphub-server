@@ -15,18 +15,29 @@ BEGIN
     [IssueEventId] BIGINT NOT NULL
   )
 
+  DECLARE @SyntheticIDs TABLE (
+    [UniqueKey] NVARCHAR(255) NOT NULL PRIMARY KEY CLUSTERED,
+    [Id] BIGINT NOT NULL DEFAULT (NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier])
+  );
+
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- Allocate synthetic ids for every event that isn't already in IssueEvents and that didn't get one from GitHub
+    INSERT INTO @SyntheticIDs (UniqueKey)
+    SELECT src.UniqueKey FROM @IssueEvents AS src
+    LEFT OUTER JOIN IssueEvents AS dst ON (src.UniqueKey = dst.UniqueKey)
+    WHERE src.Id IS NULL AND dst.Id IS NULL;
+
     MERGE INTO IssueEvents as [Target]
     USING (
-      SELECT Id, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
+      SELECT Id, UniqueKey, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
       FROM @IssueEvents
     ) as [Source]
-    ON ([Target].[Id] = [Source].[Id])
+    ON ([Target].[UniqueKey] = [Source].[UniqueKey])
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, Timeline, ExtensionData)
-      VALUES (Id, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, @Timeline, ExtensionData)
+      INSERT (Id, UniqueKey, RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, Timeline, ExtensionData)
+      VALUES (COALESCE(Id, (SELECT Id FROM @SyntheticIDs AS Syn WHERE Syn.UniqueKey = [Source].UniqueKey)), UniqueKey, @RepositoryId, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, @Timeline, ExtensionData)
     WHEN MATCHED AND (
         [Source].[Hash] != [Target].[Hash] -- different
         AND ([Target].Timeline = 0 OR @Timeline = 1) -- prefer timeline over bulk issues
@@ -45,8 +56,9 @@ BEGIN
      -- Add access grants
     INSERT INTO IssueEventAccess (IssueEventId, UserId)
     OUTPUT INSERTED.IssueEventId INTO @Changes
-    SELECT Id, @UserId
-    FROM @IssueEvents as ie
+    SELECT ie.Id, @UserId
+    FROM @IssueEvents AS x
+    INNER JOIN IssueEvents AS ie ON (x.UniqueKey = ie.UniqueKey)
     WHERE ie.Restricted = 1
       AND NOT EXISTS(SELECT * FROM IssueEventAccess WHERE IssueEventId = ie.Id AND UserId = @UserId)
 

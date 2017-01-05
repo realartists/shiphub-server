@@ -132,6 +132,10 @@
         if (timelineResponse.IsOk) {
           var timeline = timelineResponse.Result;
 
+          foreach (var ev in timeline) {
+            ev.IssueId = _issueId;
+          }
+
           // Now just filter
           var filteredEvents = timeline.Where(x => !_IgnoreTimelineEvents.Contains(x.Event)).ToArray();
 
@@ -188,8 +192,8 @@
             }
           }
 
-          var withSources = filteredEvents.Where(x => x.Source != null).ToArray();
-          var sources = withSources.Select(x => x.Source.IssueUrl).Distinct();
+          var withSources = filteredEvents.Where(x => x.Source?.Url != null).ToArray();
+          var sources = withSources.Select(x => x.Source.Url).Distinct();
 
           if (sources.Any()) {
             var sourceLookups = sources
@@ -225,7 +229,7 @@
             await Task.WhenAll(prLookups.Values);
 
             foreach (var item in withSources) {
-              var refIssue = sourceLookups[item.Source.IssueUrl].Result.Result;
+              var refIssue = sourceLookups[item.Source.Url].Result.Result;
               accounts.Add(item.Source.Actor);
               if (refIssue.Assignees.Any()) {
                 accounts.AddRange(refIssue.Assignees); // Do we need both assignee and assignees? I think yes.
@@ -252,56 +256,9 @@
           var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(uniqueAccounts);
           changes.UnionWith(await context.BulkUpdateAccounts(timelineResponse.Date, accountsParam));
 
-          // Cleanup the data
-          foreach (var item in filteredEvents) {
-            // Oh GitHub, how I hate thee. Why can't you provide ids?
-            // We're regularly seeing GitHub ids as large as 31 bits.
-            // We can only store four things this way because we only have two free bits :(
-            // TODO: HACK! THIS IS BRITTLE AND WILL BREAK!
-            var ones31 = 0x7FFFFFFFL;
-            var issuePart = (_issueId & ones31);
-            if (issuePart != _issueId) {
-              throw new NotSupportedException($"IssueId {_issueId} exceeds 31 bits!");
-            }
-            switch (item.Event) {
-              case "cross-referenced":
-                // high bits 11
-                var commentPart = (item.Source.CommentId & ones31);
-                if (commentPart != item.Source.CommentId) {
-                  throw new NotSupportedException($"CommentId {item.Source.CommentId} exceeds 31 bits!");
-                }
-                item.Id = ((long)3) << 62 | commentPart << 31 | issuePart;
-                item.Actor = item.Source.Actor;
-                break;
-              case "committed":
-                // high bits 10
-                var sha = item.ExtensionDataDictionary["sha"].ToObject<string>();
-                var shaBytes = SoapHexBinary.Parse(sha).Value;
-                var shaPart = BitConverter.ToInt64(shaBytes, 0) & ones31;
-                item.Id = ((long)2) << 62 | shaPart << 31 | issuePart;
-                item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
-                break;
-              default:
-                break;
-            }
-
-#if DEBUG
-            // Sanity check whilst debugging
-            if (item.Id == 0
-              || item.CreatedAt == DateTimeOffset.MinValue) {
-              // Ruh roh
-              Debugger.Break();
-            }
-#endif
-          }
-
           // This conversion handles the restriction field and hash.
           var events = _mapper.Map<IEnumerable<IssueEventTableType>>(filteredEvents);
 
-          // Set issueId
-          foreach (var item in events) {
-            item.IssueId = _issueId;
-          }
           changes.UnionWith(await context.BulkUpdateTimelineEvents(forUserId, _repoId, events, accountsParam.Select(x => x.Id)));
 
           // Issue Reactions
