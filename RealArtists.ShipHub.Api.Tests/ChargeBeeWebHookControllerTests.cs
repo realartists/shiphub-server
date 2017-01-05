@@ -40,7 +40,13 @@
       controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
     }
 
-    private static IShipHubConfiguration Configuration { get; } = new ShipHubCloudConfiguration();
+    private static IShipHubConfiguration Configuration {
+      get {
+        var config = new Mock<IShipHubConfiguration>();
+        config.Setup(x => x.ApiHostName).Returns("api.realartists.com");
+        return config.Object;
+      }
+    }
 
     private static async Task TestSubscriptionStateChangeHelper(
       string userOrOrg,
