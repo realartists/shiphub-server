@@ -62,13 +62,37 @@
         }
       }
     }
-    
+
+    private long _issueId = 0;
     [JsonIgnore]
-    public IComparable UniqueKey {
+    public long IssueId {
       get {
-        var id = Id ?? Source?.CommentId;
-        var url = ExtensionDataDictionary.Val("url")?.ToObject<string>() ?? Source?.IssueUrl;
-        return Tuple.Create(Event, id, url);
+        if (Issue != null)
+          return Issue.Id;
+        else
+          return _issueId;
+      }
+      set {
+        _issueId = value;
+      }
+    }
+
+    [JsonIgnore]
+    public string UniqueKey {
+      get {
+        if (Id.HasValue) {
+          // normal events that have ids
+          return $"N{Id}";
+        } else if (Source != null) {
+          if (!string.IsNullOrEmpty(Source.Url)) {
+            // cross-referenced by a comment (this is the comment URL)
+            return $"U{IssueId}.{Source.Url}";
+          } else if (Source.Issue != null) {
+            // cross-referenced by an issue body (this is the issue id)
+            return $"I{IssueId}.{Source.Issue.Id}";
+          }
+        }
+        throw new NotSupportedException($"Cannot determine a UniqueKey for this event {ExtensionData}");
       }
     }
   }
@@ -82,9 +106,12 @@
     public Account Actor { get; set; }
 
     [JsonProperty("id")]
-    public long CommentId { get; set; }
+    public long? Id { get; set; }
 
     [JsonProperty("url")]
-    public string IssueUrl { get; set; }
+    public string Url { get; set; }
+
+    [JsonProperty("issue")]
+    public Issue Issue { get; set; }
   }
 }

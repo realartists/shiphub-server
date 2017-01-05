@@ -1,5 +1,6 @@
 ﻿CREATE TYPE [dbo].[IssueEventTableType] AS TABLE (
-  [Id]            BIGINT           NOT NULL PRIMARY KEY CLUSTERED,
+  [UniqueKey]     NVARCHAR(255)    NOT NULL PRIMARY KEY CLUSTERED,
+  [Id]            BIGINT           NULL,
   [IssueId]       BIGINT           NOT NULL,
   [ActorId]       BIGINT           NULL,
   [Event]         NVARCHAR(64)     NOT NULL,

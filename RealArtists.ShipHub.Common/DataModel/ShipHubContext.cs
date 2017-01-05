@@ -333,6 +333,7 @@
         "IssueEvents",
         "[dbo].[IssueEventTableType]",
         new[] {
+          Tuple.Create("UniqueKey", typeof(string)),
           Tuple.Create("Id", typeof(long)),
           Tuple.Create("IssueId", typeof(long)),
           Tuple.Create("ActorId", typeof(long)),
@@ -343,6 +344,7 @@
           Tuple.Create("ExtensionData", typeof(string)),
         },
         x => new object[] {
+          x.UniqueKey,
           x.Id,
           x.IssueId,
           x.ActorId,
