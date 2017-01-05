@@ -22,6 +22,10 @@
     // Only present when requesting repository events.
     public Issue Issue { get; set; }
 
+    // Required for AutoMapper when Issue is null
+    [JsonIgnore]
+    public long IssueId { get { return Issue?.Id ?? FallbackIssueId; } }
+
     ///////////////////////////////////
     // We want these to be saved in _extensionData, so don't actually deserialize them.
     ///////////////////////////////////
@@ -63,17 +67,20 @@
       }
     }
 
-    private long _issueId = 0;
+    private long? _fallbackIssueId;
     [JsonIgnore]
-    public long IssueId {
+    public long FallbackIssueId {
       get {
-        if (Issue != null)
-          return Issue.Id;
-        else
-          return _issueId;
+        if (!_fallbackIssueId.HasValue) {
+          throw new InvalidOperationException("FallbackIssueId has not been set.");
+        }
+        return _fallbackIssueId.Value;
       }
       set {
-        _issueId = value;
+        if (Issue != null) {
+          throw new InvalidOperationException("Cannot override official Issue Id.");
+        }
+        _fallbackIssueId = value;
       }
     }
 
