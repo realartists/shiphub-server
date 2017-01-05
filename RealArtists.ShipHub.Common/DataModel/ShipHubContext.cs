@@ -242,7 +242,7 @@
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
       var result = new ChangeSummary();
 
-      for (int attempt = 0; ; ++attempt) {
+      for (int attempt = 1; ; ++attempt) {
         try {
           using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
             applyParams(dsp);
