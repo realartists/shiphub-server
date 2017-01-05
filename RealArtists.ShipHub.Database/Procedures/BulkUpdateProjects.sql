@@ -30,35 +30,46 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM Projects
+    OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+    FROM Projects as p
+      LEFT OUTER JOIN @Projects as pp ON (pp.Id = p.Id)
+    WHERE p.OrganizationId = @OrganizationId
+      AND pp.Id IS NULL
+    OPTION (FORCE ORDER)
+
+    DELETE FROM Projects
+    OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+    FROM Projects as p
+      LEFT OUTER JOIN @Projects as pp ON (pp.Id = p.Id)
+    WHERE p.RepositoryId = @RepositoryId
+      AND pp.Id IS NULL
+    OPTION (FORCE ORDER)
+
     -- Update the Projects table
     MERGE INTO Projects as [Target]
     USING (
-      SELECT [Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
+      SELECT Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
       FROM @Projects
     ) as [Source]
-    ON ([Target].[Id] = [Source].[Id])
+    ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], [OrganizationId], [RepositoryId])
-      VALUES ([Id], [Name], [Number], [Body], [CreatedAt], [UpdatedAt], [CreatorId], @OrganizationId, @RepositoryId)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND 
-      ((@OrganizationId IS NOT NULL AND [Target].[OrganizationId] IS NOT NULL AND [Target].OrganizationId = @OrganizationId)
-       OR
-       (@RepositoryId IS NOT NULL AND [Target].[RepositoryId] IS NOT NULL AND [Target].RepositoryId = @RepositoryId))
-      THEN DELETE
+      INSERT (Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, OrganizationId, RepositoryId)
+      VALUES (Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, OrganizationId, RepositoryId)
     -- Update
-    WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
+    WHEN MATCHED AND [Target].UpdatedAt < [Source].UpdatedAt THEN
       UPDATE SET
         [Name] = [Source].[Name],
-        [Number] = [Source].[Number],
-        [Body] = [Source].[Body],
-        [CreatedAt] = [Source].[CreatedAt],
-        [UpdatedAt] = [Source].[UpdatedAt],
-        [CreatorId] = [Source].[CreatorId],
-        [OrganizationId] = @OrganizationId,
-        [RepositoryId] = @RepositoryId
-    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), $action INTO @Changes;
+        Number = [Source].Number,
+        Body = [Source].Body,
+        CreatedAt = [Source].CreatedAt,
+        UpdatedAt = [Source].UpdatedAt,
+        CreatorId = [Source].CreatorId,
+        OrganizationId = [Source].OrganizationId,
+        RepositoryId = [Source].RepositoryId
+    OUTPUT INSERTED.Id, $action INTO @Changes
+    OPTION(LOOP JOIN, FORCE ORDER);
 
     -- Update SyncLog with deleted or edited projects
     UPDATE SyncLog SET

@@ -25,4 +25,10 @@
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0001" />
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\BulkUpdateProjects.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\BulkUpdateReactions.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
 </StaticCodeAnalysis>

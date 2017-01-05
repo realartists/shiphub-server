@@ -25,5 +25,6 @@ BEGIN
     AND [Target].LastRefresh < [Source].LastRefresh THEN
     UPDATE SET
       [Key] = [Source].[Key],
-      MetadataJson = [Source].MetadataJson;
+      MetadataJson = [Source].MetadataJson
+  OPTION (LOOP JOIN, FORCE ORDER);
 END

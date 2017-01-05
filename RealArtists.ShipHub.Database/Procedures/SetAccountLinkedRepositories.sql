@@ -10,6 +10,14 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM AccountRepositories
+    OUTPUT 'user' as ItemType, DELETED.AccountId as ItemId
+    FROM AccountRepositories as ar
+      LEFT OUTER JOIN @RepositoryIds as rids ON (rids.Item1 = ar.AccountId)
+    WHERE ar.AccountId = @AccountId
+      AND rids.Item1 IS NULL
+    OPTION (FORCE ORDER)
+
     MERGE INTO AccountRepositories as [Target]
     USING (
       SELECT @AccountId as AccountId, Item1 as RepositoryId, Item2 as [Admin]
@@ -25,9 +33,8 @@ BEGIN
     WHEN MATCHED AND [Target].[Admin] != [Source].[Admin] THEN
       UPDATE SET
         [Admin] = [Source].[Admin]
-    -- Remove
-    WHEN NOT MATCHED BY SOURCE AND [Target].AccountId = @AccountId
-      THEN DELETE;
+    OUTPUT 'user' as ItemType, INSERTED.AccountId as ItemId
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     COMMIT TRANSACTION
   END TRY
@@ -35,10 +42,4 @@ BEGIN
     IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
     THROW;
   END CATCH
-
-  DECLARE @Changes INT = @@ROWCOUNT
-
-  -- Return sync notifications
-  SELECT 'user' as ItemType, @AccountId as ItemId
-  WHERE @Changes > 0
 END

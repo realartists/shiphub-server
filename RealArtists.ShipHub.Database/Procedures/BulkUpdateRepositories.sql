@@ -51,7 +51,8 @@ BEGIN
         [Name] = [Source].[Name],
         [FullName] = [Source].[FullName],
         [Date] = @Date
-    OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes;
+    OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Bump existing repos
     UPDATE SyncLog SET

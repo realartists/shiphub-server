@@ -37,7 +37,8 @@ BEGIN
         [Type] = [Source].[Type],
         [Login] = [Source].[Login],
         [Date] = @Date
-    OUTPUT INSERTED.Id INTO @Changes;
+    OUTPUT INSERTED.Id INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Ensuring organizations reference themselves is handled by
     -- [SetUserOrganizations]

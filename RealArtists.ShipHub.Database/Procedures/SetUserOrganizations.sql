@@ -31,6 +31,14 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM OrganizationAccounts
+    OUTPUT DELETED.OrganizationId, 'DELETE' INTO @Changes
+    FROM OrganizationAccounts as oa
+      LEFT OUTER JOIN @OrganizationIds as oids ON (oids.Item = oa.OrganizationId)
+    WHERE oa.UserId = @UserId
+      AND oids.Item IS NULL
+    OPTION (FORCE ORDER)
+
     MERGE INTO OrganizationAccounts as [Target]
     USING (
       SELECT Item as OrganizationId FROM @OrganizationIds
@@ -40,10 +48,8 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (UserId, OrganizationId, [Admin])
       VALUES (@UserId, OrganizationId, 0) -- Default to admin = false, will update if wrong.
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND [Target].UserId = @UserId
-      THEN DELETE
-    OUTPUT COALESCE(INSERTED.OrganizationId, DELETED.OrganizationId), $action INTO @Changes;
+    OUTPUT INSERTED.OrganizationId, $action INTO @Changes
+    OPTION(LOOP JOIN, FORCE ORDER);
 
     -- New organizations reference themselves
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])

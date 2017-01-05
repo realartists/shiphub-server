@@ -10,6 +10,17 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DECLARE @Changes INT = 0
+
+    DELETE FROM RepositoryAccounts
+    FROM RepositoryAccounts as ra
+      LEFT OUTER JOIN @AssignableAccountIds as aids ON (aids.Item = ra.AccountId)
+    WHERE ra.RepositoryId = @RepositoryId
+      AND aids.Item IS NULL
+    OPTION (FORCE ORDER)
+
+    SET @Changes = @Changes + @@ROWCOUNT
+
     MERGE INTO RepositoryAccounts as [Target]
     USING (
       SELECT Item as AccountId, @RepositoryId as RepositoryId
@@ -21,12 +32,9 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (AccountId, RepositoryId)
       VALUES (AccountId, RepositoryId)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE
-      AND [Target].RepositoryId = @RepositoryId
-      THEN DELETE;
+    OPTION (LOOP JOIN, FORCE ORDER);
 
-    DECLARE @Changes INT = @@ROWCOUNT
+    SET @Changes = @Changes + @@ROWCOUNT
 
     -- New Accounts
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])

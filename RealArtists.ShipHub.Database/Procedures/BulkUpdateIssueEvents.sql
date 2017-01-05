@@ -58,7 +58,8 @@ BEGIN
       Restricted = [Source].Restricted,
       Timeline = @Timeline,
       ExtensionData = [Source].ExtensionData
-    OUTPUT INSERTED.Id INTO @Changes;
+    OUTPUT INSERTED.Id INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
      -- Add access grants
     INSERT INTO IssueEventAccess (IssueEventId, UserId)

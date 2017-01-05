@@ -22,6 +22,22 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM Reactions
+    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+    FROM Reactions as r
+      LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+    WHERE IssueId = @IssueId
+      AND rr.Id IS NULL
+    OPTION (FORCE ORDER)
+
+    DELETE FROM Reactions
+    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+    FROM Reactions as r
+      LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+    WHERE CommentId = @CommentId
+      AND rr.Id IS NULL
+    OPTION (FORCE ORDER)
+
     MERGE INTO Reactions as [Target]
     USING (
       SELECT Id, UserId, Content, CreatedAt
@@ -32,10 +48,8 @@ BEGIN
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
       VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND (IssueId = @IssueId OR CommentId = @CommentId)
-      THEN DELETE
-    OUTPUT COALESCE(INSERTED.Id, DELETED.Id), COALESCE(INSERTED.UserId, DELETED.UserId), $action INTO @Changes;
+    OUTPUT INSERTED.Id, INSERTED.UserId, $action INTO @Changes
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Deleted or edited reactions
     UPDATE SyncLog SET
