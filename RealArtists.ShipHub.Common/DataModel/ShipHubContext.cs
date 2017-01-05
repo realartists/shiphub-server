@@ -242,33 +242,43 @@
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
       var result = new ChangeSummary();
 
-      using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
-        applyParams(dsp);
+      for (int attempt = 0; ; ++attempt) {
+        try {
+          using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
+            applyParams(dsp);
 
-        using (var sdr = await dsp.ExecuteReaderAsync()) {
-          dynamic ddr = sdr;
-          do {
-            while (sdr.Read()) {
-              long itemId = ddr.ItemId;
-              switch ((string)ddr.ItemType) {
-                case "org":
-                  result.Organizations.Add(itemId);
-                  break;
-                case "repo":
-                  result.Repositories.Add(itemId);
-                  break;
-                case "user":
-                  result.Users.Add(itemId);
-                  break;
-                default:
-                  throw new Exception($"Unknown change ItemType {ddr.ItemType}");
-              }
+            using (var sdr = await dsp.ExecuteReaderAsync()) {
+              dynamic ddr = sdr;
+              do {
+                while (sdr.Read()) {
+                  long itemId = ddr.ItemId;
+                  switch ((string)ddr.ItemType) {
+                    case "org":
+                      result.Organizations.Add(itemId);
+                      break;
+                    case "repo":
+                      result.Repositories.Add(itemId);
+                      break;
+                    case "user":
+                      result.Users.Add(itemId);
+                      break;
+                    default:
+                      throw new Exception($"Unknown change ItemType {ddr.ItemType}");
+                  }
+                }
+              } while (sdr.NextResult());
             }
-          } while (sdr.NextResult());
+          }
+
+          return result;
+        } catch (SqlException ex) {
+          if (ex.Number == 1205 && attempt < 2) {
+            // Retry deadlock once
+            continue;
+          }
+          throw;
         }
       }
-
-      return result;
     }
 
     public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account) {
