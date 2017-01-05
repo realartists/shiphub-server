@@ -76,7 +76,7 @@
       return FetchPaged(request, (Repository x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/timeline", cacheOptions) {
         // Timeline support (application/vnd.github.mockingbird-preview+json)
         // https://developer.github.com/changes/2016-05-23-timeline-preview-api/

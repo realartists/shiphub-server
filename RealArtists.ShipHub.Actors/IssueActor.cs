@@ -128,13 +128,9 @@
         _metadata = GitHubMetadata.FromResponse(issueResponse);
 
         // This will be cached per-user by the ShipHubFilter.
-        var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber);
+        var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber, _issueId);
         if (timelineResponse.IsOk) {
           var timeline = timelineResponse.Result;
-
-          foreach (var ev in timeline) {
-            ev.IssueId = _issueId;
-          }
 
           // Now just filter
           var filteredEvents = timeline.Where(x => !_IgnoreTimelineEvents.Contains(x.Event)).ToArray();

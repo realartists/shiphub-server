@@ -269,8 +269,8 @@
       return _github.RepositoryWebhooks(repoFullName, cacheOptions);
     }
 
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
-      return _github.Timeline(repoFullName, issueNumber, cacheOptions);
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null) {
+      return _github.Timeline(repoFullName, issueNumber, issueId, cacheOptions);
     }
 
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {

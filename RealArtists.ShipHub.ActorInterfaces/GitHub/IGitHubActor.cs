@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces.GitHub {
   using System;
   using System.Collections.Generic;
-  using System.Diagnostics.CodeAnalysis;
   using System.Threading.Tasks;
   using Common.GitHub;
   using Common.GitHub.Models;
@@ -66,6 +65,6 @@
     Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null);
 
     // Not all users can see the same timeline events
-    Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null);
+    Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null);
   }
 }
