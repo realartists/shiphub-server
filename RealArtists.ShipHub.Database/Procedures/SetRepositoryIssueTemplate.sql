@@ -13,7 +13,7 @@ BEGIN
     -- Update the Repository with the new IssueTemplate
     UPDATE Repositories SET 
       IssueTemplate = @IssueTemplate
-    WHERE Id = @RepositoryId AND NULLIF(IssueTemplate, @IssueTemplate) IS NOT NULL
+    WHERE Id = @RepositoryId AND ISNULL(IssueTemplate, '') != ISNULL(@IssueTemplate, '')
 
     DECLARE @Changes INT = @@ROWCOUNT
 
