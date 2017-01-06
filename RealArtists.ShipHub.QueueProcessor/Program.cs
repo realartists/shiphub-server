@@ -48,6 +48,12 @@
 
       var container = CreateContainer(detailedLogger);
 
+      // Hack to address https://github.com/realartists/shiphub-server/issues/277
+      // I suspect that when DI occurs, the AzureBlobTraceListener is registered as a TraceListener
+      // but not initialized. To get around this, force Orleans to initialize now, before any
+      // TraceListeners get added.
+      container.GetInstance<IGrainFactory>();
+
       // Job Host Configuration
       var config = new JobHostConfiguration() {
         DashboardConnectionString = azureWebJobsDashboard,
