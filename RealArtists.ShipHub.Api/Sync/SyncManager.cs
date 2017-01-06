@@ -34,16 +34,16 @@
           }, new OnMessageOptions() {
             AutoComplete = true,
             AutoRenewTimeout = TimeSpan.FromMinutes(1), // Has to be less than 5 or subscription will idle and expire
-            // TODO: Increase this to at least be the number of partitions
-            MaxConcurrentCalls = 1
+            // Should be at least be the number of partitions
+            MaxConcurrentCalls = 16
           });
 
           // When disconnected, stop listening for changes.
           return Disposable.Create(() => client.Close());
         })
         .Buffer(_WindowTimeout)
+        .Where(x => x.Count > 0)
         .Select(x => ChangeSummary.UnionAll(x))
-        .Where(x => !x.IsEmpty)
         .SubscribeOn(TaskPoolScheduler.Default) // TODO: Is this the right scheduler?
         .Publish()
         .RefCount();
