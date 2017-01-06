@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.QueueClient {
   using System.Threading.Tasks;
+  using Common;
   using Common.DataModel.Types;
   using Messages;
 
@@ -42,6 +43,7 @@
       => SendIt(ShipHubQueueNames.WebhooksEvent, message);
 
     private async Task SendIt<T>(string queueName, T message) {
+      Log.Debug(() => $"{queueName} - {message}");
       var sender = await _factory.MessageSenderForName(queueName);
       using (var bm = WebJobInterop.CreateMessage(message)) {
         await sender.SendAsync(bm);

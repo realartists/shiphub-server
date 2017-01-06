@@ -35,14 +35,19 @@
       _versions = initialVersions;
     }
 
-    public bool ShouldSync(ChangeSummary changes) {
+    private bool ShouldSync(ChangeSummary changes) {
       // Check if this user is affected and if so, sync.
       return changes.Organizations.Overlaps(_versions.OrgVersions.Keys)
         || changes.Repositories.Overlaps(_versions.RepoVersions.Keys)
         || changes.Users.Contains(_user.UserId);
     }
 
-    public async Task Sync() {
+    public async Task Sync(ChangeSummary changes) {
+      if (!ShouldSync(changes)) {
+        Log.Debug(() => $"User {_user.UserId} not syncing for changes {changes}");
+        return;
+      }
+      Log.Debug(() => $"User {_user.UserId} is syncing for changes {changes}");
       using (var context = new ShipHubContext()) {
         await SendSyncResponse(context);
         await SendSubscriptionEntry(context);

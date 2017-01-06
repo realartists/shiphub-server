@@ -15,6 +15,7 @@
   using System.Threading.Tasks;
   using ActorInterfaces;
   using Common;
+  using Common.DataModel.Types;
   using Common.WebSockets;
   using Filters;
   using Messages;
@@ -183,14 +184,15 @@
         throw new InvalidOperationException("Already subscribed to changes.");
       }
 
+      var start = new ChangeSummary();
+      start.Add(null, null, _user.UserId);
+
       // Changes streamed from the queue
       _syncSubscription = _syncManager.Changes
         .ObserveOn(TaskPoolScheduler.Default)
-        .Where(c => _syncContext.ShouldSync(c))
-        .Select(x => Unit.Default)
-        .StartWith(Unit.Default) // Run an initial sync no matter what.
-        .Select(_ =>
-          Observable.FromAsync(_syncContext.Sync)
+        .StartWith(start) // Run an initial sync no matter what.
+        .Select(c => 
+          Observable.FromAsync(() => _syncContext.Sync(c))
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequential evaluation
         .Subscribe();

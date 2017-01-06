@@ -67,5 +67,9 @@
         Users = changes.SelectMany(x => x.Users).ToHashSet(),
       };
     }
+
+    public override string ToString() {
+      return $"ChangeSummary {{ Organizations: [{string.Join(", ", Organizations)}] Repositories: [{string.Join(", ", Repositories)}] Users: [{string.Join(", ", Users)}] }}";
+    }
   }
 }

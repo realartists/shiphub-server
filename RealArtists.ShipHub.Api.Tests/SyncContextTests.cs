@@ -92,13 +92,15 @@
 
         var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
-        await syncContext.Sync();
+        var changeSummary = new ChangeSummary();
+        changeSummary.Add(null, null, user.Id);
+        await syncContext.Sync(changeSummary);
 
         // Bump RowVersion for this repo.
         await context.BumpRepositoryVersion(repo.Id);
 
         logs.Clear();
-        await syncContext.Sync();
+        await syncContext.Sync(changeSummary);
 
         return ((RepositoryEntry)logs.Single(x => x.Entity == SyncEntityType.Repository).Data).ShipNeedsWebhookHelp;
       }
@@ -168,13 +170,15 @@
 
         var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
-        await syncContext.Sync();
+        var changeSummary = new ChangeSummary();
+        changeSummary.Add(null, null, user.Id);
+        await syncContext.Sync(changeSummary);
 
         // Bump RowVersion for this org.
         await context.BumpOrganizationVersion(orgAccount.Id);
 
         logs.Clear();
-        await syncContext.Sync();
+        await syncContext.Sync(changeSummary);
 
         var orgEntry = logs
           .Where(x => x.Entity == SyncEntityType.Organization)
@@ -237,7 +241,9 @@
 
         var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
-        await syncContext.Sync();
+        var changeSummary = new ChangeSummary();
+        changeSummary.Add(null, null, user.Id);
+        await syncContext.Sync(changeSummary);
         logs.Clear();
 
         var labels = new[] {
@@ -261,7 +267,7 @@
           new[] { issue },
           labels.Select(x => new MappingTableType() { Item1 = issue.Id, Item2 = x.Id }),
           new MappingTableType[0]);
-        await syncContext.Sync();
+        await syncContext.Sync(changeSummary);
 
         var labelEntries = logs.Where(x => x.Entity == SyncEntityType.Label).Select(x => (LabelEntry)x.Data);
         var repoLabels = labelEntries.Select(x => x.Identifier).OrderBy(x => x).ToArray();
