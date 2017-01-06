@@ -214,7 +214,7 @@
 
       if (handlerMethod != null) {
         if (await ShouldIgnoreWebhook(payload)) {
-          return BadRequest($"Rejecting webhook because customer's GitHub username is on the exclude list, or not on the include list.");
+          return Ok($"Ignoring webhook because customer's GitHub username is on the exclude list, or not on the include list.");
         }
 
         await handlerMethod(payload);
