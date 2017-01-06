@@ -38,6 +38,8 @@
         GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable,
         DeploymentId = CloudConfigurationManager.GetSetting(DeploymentIdSettingsKey),
         DataConnectionString = CloudConfigurationManager.GetSetting(DataConnectionSettingsKey),
+        TraceFilePattern = "false",
+        TraceToConsole = false,
       };
 
       return config;

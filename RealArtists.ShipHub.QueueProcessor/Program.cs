@@ -155,6 +155,7 @@
         // Orleans
         container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
           var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+          orleansConfig.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
           OrleansAzureClient.Initialize(orleansConfig);
           return GrainClient.GrainFactory;
         }));
