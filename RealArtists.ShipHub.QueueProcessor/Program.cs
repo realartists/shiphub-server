@@ -52,7 +52,12 @@
       // I suspect that when DI occurs, the AzureBlobTraceListener is registered as a TraceListener
       // but not initialized. To get around this, force Orleans to initialize now, before any
       // TraceListeners get added.
+      var timer = new Stopwatch();
+      timer.Restart();
+      Log.Info("[Orleans Client]: Initializing");
       container.GetInstance<IGrainFactory>();
+      timer.Stop();
+      Log.Info($"[Orleans Client]: Initialized in {timer.Elapsed}");
 
       // Job Host Configuration
       var config = new JobHostConfiguration() {
@@ -84,18 +89,11 @@
       var ratePerSecond = 1;
       sbConfig.PrefetchCount = sbConfig.MessageOptions.MaxConcurrentCalls * 20 * ratePerSecond;
 
-#if DEBUG
-      var timer = new Stopwatch();
-      Console.WriteLine($"Initializing Service Bus");
-      timer.Start();
-#endif
-
+      Log.Info($"[Service Bus]: Initializing");
+      timer.Restart();
       var sbFactory = container.GetInstance<IServiceBusFactory>();
-
-#if DEBUG
       timer.Stop();
-      Console.WriteLine($"Done in {timer.Elapsed}\n");
-#endif
+      Log.Info($"[Service Bus]: Initialized in {timer.Elapsed}");
 
       // Override default messaging provider to use pairing.
       sbConfig.MessagingProvider = new PairedMessagingProvider(sbConfig, sbFactory);
@@ -104,7 +102,7 @@
       config.UseTimers();
       config.UseCore(); // For ExecutionContext
 
-      Console.WriteLine("Starting job host...\n\n");
+      Log.Info("[Job Host]: Starting");
       using (var host = new JobHost(config)) {
 #if DEBUG
         host.Start();
@@ -115,6 +113,7 @@
 #else
         host.RunAndBlock();
 #endif
+        Log.Info("[Job Host]: Stopped");
       }
     }
 
