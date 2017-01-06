@@ -61,7 +61,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // Dependency Injection
         siloConfig.UseStartupType<SimpleInjectorProvider>();
 
-        siloConfig.AddMemoryStorageProvider();
         siloConfig.AddAzureTableStorageProvider("AzureStore", _config.DataConnectionString);
 
         // It is IMPORTANT to start the silo not in OnStart but in Run.
