@@ -1251,37 +1251,5 @@
       await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar", false, "should accept since aroon not in exclude list.");
       await CanIgnoreWebhookEventsViaSettingsHelper("aroon", null, "foo,bar,aroon", true, "should reject since aroon is in exclude list.");
     }
-
-    [Test]
-    public async Task ShouldIgnoreWebhookCheckDoesNotRunForIrrelevantEvents() {
-      var mockBusClient = new Mock<IShipHubQueueClient>();
-      var mockMailer = new Mock<IShipHubMailer>();
-
-      var config = new ShipHubConfiguration() {
-        ChargeBeeWebhookSecret = Configuration.ChargeBeeWebhookSecret,
-      };
-      var controller = new Mock<ChargeBeeWebhookController>(config, mockBusClient.Object, mockMailer.Object, null) {
-        CallBase = true
-      };
-
-      controller
-        .Setup(x => x.ShouldIgnoreWebhook(It.IsAny<ChargeBeeWebhookPayload>()))
-        .Callback(() => {
-          Assert.Fail("ShouldIgnoreWebhook should not be called - we don't care about this event.");
-        });
-
-      ConfigureController(
-        controller.Object,
-        new ChargeBeeWebhookPayload() {
-          // We use "plan_updated" because it's an event type we do NOT handle
-          // and therefore the ShouldIgnoreWebhook check should not run.
-          EventType = "plan_updated",
-          Content = new ChargeBeeWebhookContent() {
-          },
-        });
-
-      var response = await controller.Object.HandleHook(Configuration.ChargeBeeWebhookSecret);
-      Assert.AreEqual(typeof(OkResult), response.GetType());
-    }
   }
 }

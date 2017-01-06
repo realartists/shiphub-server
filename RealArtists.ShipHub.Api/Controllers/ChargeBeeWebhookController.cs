@@ -135,11 +135,15 @@
           payload.Content.Invoice?.CustomerId,
           payload.Content.CreditNote?.CustomerId,
         };
-        var customerId = candidates.SkipWhile(string.IsNullOrEmpty).First();
-        var matches = CustomerIdRegex.Match(customerId);
-        var accountId = long.Parse(matches.Groups[2].ToString());
-        var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
-        return account.Login;
+        var customerId = candidates.SkipWhile(string.IsNullOrEmpty).FirstOrDefault();
+        if (customerId != null) {
+          var matches = CustomerIdRegex.Match(customerId);
+          var accountId = long.Parse(matches.Groups[2].ToString());
+          var account = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == accountId);
+          return account?.Login;
+        } else {
+          return null;
+        }
       }
     }
 
@@ -177,8 +181,6 @@
       return false;
     }
 
-    private delegate Task EventHandlerMethod(ChargeBeeWebhookPayload payload);
-
     [HttpPost]
     [AllowAnonymous]
     [Route("chargebee/{secret}")]
@@ -191,7 +193,9 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
 
-      EventHandlerMethod handlerMethod = null;
+      if (await ShouldIgnoreWebhook(payload)) {
+        return Ok($"Ignoring webhook because customer's GitHub username is on the exclude list, or not on the include list.");
+      }
 
       switch (payload.EventType) {
         case "subscription_activated":
@@ -203,21 +207,13 @@
         case "subscription_scheduled_cancellation_removed":
         case "subscription_created":
         case "customer_deleted":
-          handlerMethod = HandleSubscriptionStateChange;
+          await HandleSubscriptionStateChange(payload);
           break;
         case "pending_invoice_created":
-          handlerMethod = HandlePendingInvoiceCreated;
+          await HandlePendingInvoiceCreated(payload);
           break;
         default:
           break;
-      }
-
-      if (handlerMethod != null) {
-        if (await ShouldIgnoreWebhook(payload)) {
-          return Ok($"Ignoring webhook because customer's GitHub username is on the exclude list, or not on the include list.");
-        }
-
-        await handlerMethod(payload);
       }
 
       if (
