@@ -15,7 +15,7 @@ Download a PDF receipt for your records:
 @if (Model.PreviousMonthActiveUsersCount <= 5) {
 <text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.</text>
 } else {
-<text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for @(Model.PreviousMonthActiveUsersCount - 5) additional active users.</text>
+<text>The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization had @Model.PreviousMonthActiveUsersCount active Ship users in the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for @(Model.PreviousMonthActiveUsersCount - 5) additional active user@((Model.PreviousMonthActiveUsersCount - 5) > 1 ? "s" : "").</text>
 }
 
 @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {

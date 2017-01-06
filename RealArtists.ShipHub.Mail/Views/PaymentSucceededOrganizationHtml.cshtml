@@ -25,7 +25,7 @@
 <p>
     The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization
     had <strong>@Model.PreviousMonthActiveUsersCount active Ship users</strong> in the prior month beginning on
-    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for <strong>@(Model.PreviousMonthActiveUsersCount - 5) additional active users.</strong>
+    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for <strong>@(Model.PreviousMonthActiveUsersCount - 5) additional active user@((Model.PreviousMonthActiveUsersCount - 5) > 1 ? "s" : "").</strong>
 </p>
 }
 @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {

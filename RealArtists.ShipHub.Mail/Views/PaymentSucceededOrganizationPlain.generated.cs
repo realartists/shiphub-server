@@ -166,7 +166,17 @@ WriteLiteral(", so you were billed for ");
             
             #line default
             #line hidden
-WriteLiteral(" additional active users.");
+WriteLiteral(" additional active user");
+
+
+            
+            #line 18 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
+                                                                                                                                                                                                                                                                                                                                                     Write((Model.PreviousMonthActiveUsersCount - 5) > 1 ? "s" : "");
+
+            
+            #line default
+            #line hidden
+WriteLiteral(".");
 
 WriteLiteral("\r\n");
 
