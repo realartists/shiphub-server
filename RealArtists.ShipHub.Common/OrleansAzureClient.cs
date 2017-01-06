@@ -2,8 +2,10 @@
   using System;
   using System.Collections.Generic;
   using System.Configuration;
+  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
+  using System.Linq;
   using System.Threading;
   using Microsoft.Azure;
   using Orleans;
@@ -68,24 +70,38 @@
         throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null connectionString. config.DataConnectionString = {config.DataConnectionString}");
       }
 
+      // Work around https://github.com/dotnet/orleans/issues/2152
+      var listeners = new TraceListener[Trace.Listeners.Count];
+      Trace.Listeners.CopyTo(listeners, 0);
+      Trace.Listeners.Clear();
+
+      Log.Info($"Initializing Orleans Client with configuration:\n{config.SerializeObject(Newtonsoft.Json.Formatting.Indented)}");
       Exception lastException = null;
       for (int i = 0; i < MaxRetries; i++) {
+        if (i > 0) {
+          // Pause to let Primary silo start up and register
+          Thread.Sleep(StartupRetryPause);
+        }
+
         try {
           // Initialize will throw if cannot find Gateways
           GrainClient.Initialize(config);
           return;
         } catch (Exception exc) {
           lastException = exc;
+          Log.Exception(exc, "Error initializing Orleans Client. Will retry.");
         }
-
-        // Pause to let Primary silo start up and register
-        Thread.Sleep(StartupRetryPause);
       }
 
-      OrleansException err;
-      err = lastException != null ? new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}. Last exception={lastException.Message}",
-        lastException) : new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}.");
-      throw err;
+      // Work around https://github.com/dotnet/orleans/issues/2152
+      // Restore trace listeners
+      Trace.Listeners.AddRange(listeners);
+
+      if (lastException != null) {
+        throw new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}.", lastException);
+      } else {
+        throw new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}.");
+      }
     }
   }
 }
