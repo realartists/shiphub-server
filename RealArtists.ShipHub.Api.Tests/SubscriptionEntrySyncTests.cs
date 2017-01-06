@@ -5,6 +5,7 @@
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Filters;
   using Moq;
   using NUnit.Framework;
@@ -52,7 +53,9 @@
 
       var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
       var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
-      await syncContext.Sync();
+      var changeSummary = new ChangeSummary();
+      changeSummary.Add(null, null, user.Id);
+      await syncContext.Sync(changeSummary);
 
       var result = messages
         .Where(x => x.MessageType.Equals("subscription"))

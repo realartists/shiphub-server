@@ -15,5 +15,9 @@
     public IEnumerable<long> Organizations { get; set; }
     public IEnumerable<long> Repositories { get; set; }
     public IEnumerable<long> Users { get; set; }
+
+    public override string ToString() {
+      return $"ChangeMessage {{ Organizations: [{string.Join(", ", Organizations)}] Repositories: [{string.Join(", ", Repositories)}] Users: [{string.Join(", ", Users)}] }}";
+    }
   }
 }

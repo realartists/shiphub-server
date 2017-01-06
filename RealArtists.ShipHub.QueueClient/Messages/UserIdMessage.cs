@@ -7,5 +7,9 @@
     }
 
     public long UserId { get; set; }
+
+    public override string ToString() {
+      return $"UserIdMessage {{${UserId}}}";
+    }
   }
 }

@@ -44,6 +44,7 @@
         .Buffer(_WindowTimeout)
         .Where(x => x.Any())
         .Select(x => ChangeSummary.UnionAll(x))
+        .Where(x => !x.IsEmpty)
         .SubscribeOn(TaskPoolScheduler.Default) // TODO: Is this the right scheduler?
         .Publish()
         .RefCount();

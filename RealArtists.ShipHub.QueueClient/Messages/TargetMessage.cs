@@ -9,5 +9,9 @@
 
     public long TargetId { get; set; }
     public long ForUserId { get; set; }
+
+    public override string ToString() {
+      return $"TargetMessage {{ TargetId: {TargetId} ForUserId: {ForUserId} }}";
+    }
   }
 }
