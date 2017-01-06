@@ -58,6 +58,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // This allows App Services and Cloud Services to agree on a deploymentId.
         siloConfig.Globals.DeploymentId = _config.DeploymentId;
 
+        // Ensure exceptions can be serialized
+        siloConfig.Globals.RegisterBootstrapProvider<ShipHubBootstrapProvider>("shipHubBootstrap");
+
         // Dependency Injection
         siloConfig.UseStartupType<SimpleInjectorProvider>();
 

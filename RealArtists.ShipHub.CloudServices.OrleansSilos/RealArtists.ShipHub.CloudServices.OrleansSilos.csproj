@@ -214,6 +214,7 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaygunTelemetryConsumer.cs" />
+    <Compile Include="ShipHubBootstrapProvider.cs" />
     <Compile Include="SimpleInjectorProvider.cs" />
     <Compile Include="WorkerRole.cs" />
   </ItemGroup>
