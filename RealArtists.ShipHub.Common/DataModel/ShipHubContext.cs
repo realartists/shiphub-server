@@ -242,11 +242,11 @@
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
       var result = new ChangeSummary();
 
-      for (int attempt = 1; ; ++attempt) {
-        try {
-          using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
-            applyParams(dsp);
+      using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
+        applyParams(dsp);
 
+        for (int attempt = 1; ; ++attempt) {
+          try {
             using (var sdr = await dsp.ExecuteReaderAsync()) {
               dynamic ddr = sdr;
               do {
@@ -267,16 +267,16 @@
                   }
                 }
               } while (sdr.NextResult());
-            }
-          }
 
-          return result;
-        } catch (SqlException ex) {
-          if (ex.Number == 1205 && attempt < 2) {
-            // Retry deadlock once
-            continue;
+              return result;
+            }
+          } catch (SqlException ex) {
+            if (ex.Number == 1205 && attempt < 2) {
+              // Retry deadlock once
+              continue;
+            }
+            throw;
           }
-          throw;
         }
       }
     }
@@ -686,7 +686,7 @@
     public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
       return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
         x.MilestoneId = milestoneId;
-     });
+      });
     }
 
     public Task<ChangeSummary> DeleteLabel(long labelId) {
