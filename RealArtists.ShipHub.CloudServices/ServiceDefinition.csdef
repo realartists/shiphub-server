@@ -31,12 +31,6 @@
       <Task commandLine="ServerGC.cmd"
             executionContext="elevated"
             taskType="simple">
-        <Environment>
-          <Variable name="ServerGCEnabled"
-                    value="true" />
-          <Variable name="ConcurrentGCEnabled"
-                    value="false" />
-        </Environment>
       </Task>
     </Startup>
   </WorkerRole>

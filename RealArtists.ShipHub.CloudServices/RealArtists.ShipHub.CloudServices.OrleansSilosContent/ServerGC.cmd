@@ -10,22 +10,6 @@ REM     PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 REM 
 REM *********************************************************
 
-REM Check if the script is running in the Azure emulator and if so do not run
-IF "%IsEmulated%"=="true" goto :EOF 
-
-If "%ServerGCEnabled%"=="false" GOTO :ValidateBackground
-If "%ServerGCEnabled%"=="False" GOTO :ValidateBackground
-If "%ServerGCEnabled%"=="0" GOTO :ValidateBackground
-SET ServerGCEnabled="true"
-
-:ValidateBackground
-If "%ConcurrentGCEnabled%"=="true" GOTO :CommandExecution
-If "%ConcurrentGCEnabled%"=="True" GOTO :CommandExecution
-If "%ConcurrentGCEnabled%"=="1" GOTO :CommandExecution
-SET ConcurrentGCEnabled="false"
-
-:CommandExecution
-
-PowerShell.exe -executionpolicy unrestricted -command ".\GCSettingsManagement.ps1" -serverGC %ServerGCEnabled% -concurrentGC %ConcurrentGCEnabled%
+PowerShell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ".\GCSettingsManagement.ps1 -serverGC $true -concurrentGC $false"
 
 Exit /b
