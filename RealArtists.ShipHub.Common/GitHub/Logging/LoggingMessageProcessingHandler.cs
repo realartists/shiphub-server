@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Logging {
   using System;
-  using System.Diagnostics;
   using System.IO;
   using System.Linq;
   using System.Net.Http;
@@ -40,29 +39,35 @@
     }
 
     private bool _initialized = false;
+    private SemaphoreSlim _initLock = new SemaphoreSlim(1, 1);
     public async Task Initialize() {
-      if (_initialized) {
-        return;
+      await _initLock.WaitAsync();
+      try {
+        if (_initialized) {
+          return; // Race and someone else won.
+        }
+
+        if (_blobClient == null) {
+          throw new InvalidOperationException("Cannot initialize LoggingMessageProcessingHandler without CloudStorageAccount.");
+        }
+
+        _container = _blobClient.GetContainerReference(_containerName);
+        await _container.CreateIfNotExistsAsync();
+
+        _appendBlobs = new Subject<AppendBlobEntry>();
+
+        _logSubscription = _appendBlobs
+          .ObserveOn(TaskPoolScheduler.Default)
+          .Select(entry =>
+            Observable.FromAsync(async () => await WriteEntry(entry))
+            .Catch<Unit, Exception>(LogError<Unit>))
+          .Concat() // Force sequential evaluation
+          .Subscribe();
+
+        _initialized = true;
+      } finally {
+        _initLock.Release();
       }
-
-      if (_blobClient == null) {
-        return;
-      }
-
-      _container = _blobClient.GetContainerReference(_containerName);
-      await _container.CreateIfNotExistsAsync();
-
-      _appendBlobs = new Subject<AppendBlobEntry>();
-
-      _logSubscription = _appendBlobs
-        .ObserveOn(TaskPoolScheduler.Default)
-        .Select(entry =>
-          Observable.FromAsync(async () => await WriteEntry(entry))
-          .Catch<Unit, Exception>(LogError<Unit>))
-        .Concat() // Force sequential evaluation
-        .Subscribe();
-
-      _initialized = true;
     }
 
     public static void SetLogBlobName(HttpRequestMessage request, string blobName) {
@@ -70,9 +75,7 @@
     }
 
     private IObservable<T> LogError<T>(Exception exception) {
-#if DEBUG
-      Debugger.Break();
-#endif
+      Log.Exception(exception);
       return Observable.Empty<T>();
     }
 
@@ -168,6 +171,11 @@
       base.Dispose(disposing);
 
       if (disposing) {
+        if (_initLock != null) {
+          _initLock.Dispose();
+          _initLock = null;
+        }
+
         if (_logSubscription != null) {
           _logSubscription.Dispose();
           _logSubscription = null;

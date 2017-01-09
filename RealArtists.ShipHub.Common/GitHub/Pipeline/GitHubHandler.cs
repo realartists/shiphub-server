@@ -227,6 +227,7 @@
       HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
+      // Always enable even if not storing bodies for generic request logging.
       var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
       var logHandler = new LoggingMessageProcessingHandler(
         gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
