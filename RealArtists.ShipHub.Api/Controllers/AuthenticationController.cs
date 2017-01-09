@@ -97,7 +97,11 @@
       await Context.SaveChangesAsync();
 
       var userGrain = _grainFactory.GetGrain<IUserActor>(user.Id);
-      await userGrain.Sync();
+      userGrain.Sync().ContinueWith(x => {
+        if (x.IsFaulted) {
+          Log.Exception(x.Exception);
+        }
+      }).Ignore();
 
       return Ok(userInfo);
     }
