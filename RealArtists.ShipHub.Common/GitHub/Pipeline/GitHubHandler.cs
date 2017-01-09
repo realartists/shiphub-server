@@ -174,7 +174,7 @@
       }
 
       // Scopes
-      var scopes = response.ParseHeader<IEnumerable<string>>("X-OAuth-Scopes", x => (x == null) ? null : x.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries));
+      var scopes = response.ParseHeader<IEnumerable<string>>("X-OAuth-Scopes", x => x?.Split(new[] { ' ', ',' }, StringSplitOptions.RemoveEmptyEntries));
       if (scopes != null) {
         result.Scopes.UnionWith(scopes);
       }
