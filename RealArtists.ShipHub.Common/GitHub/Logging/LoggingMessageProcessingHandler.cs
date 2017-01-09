@@ -95,14 +95,21 @@
 
       using (var ms = new MemoryStream())
       using (var sw = new StreamWriter(ms, Encoding.UTF8)) {
-        await WriteRequest(ms, sw, request);
-        var response = await base.SendAsync(request, cancellationToken);
-        await WriteResponse(ms, sw, response);
-
-        _appendBlobs.OnNext(new AppendBlobEntry() {
-          BlobName = blobName,
-          Content = Encoding.UTF8.GetString(ms.ToArray()),
-        });
+        HttpResponseMessage response;
+        try {
+          await WriteRequest(ms, sw, request);
+          response = await base.SendAsync(request, cancellationToken);
+          await WriteResponse(ms, sw, response);
+        } catch (Exception e) {
+          sw.WriteLine("\n\nError reading response:\n\n");
+          sw.WriteLine(e.ToString());
+          throw;
+        } finally {
+          _appendBlobs.OnNext(new AppendBlobEntry() {
+            BlobName = blobName,
+            Content = Encoding.UTF8.GetString(ms.ToArray()),
+          });
+        }
 
         long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
         Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase} - {blobName} - {contentLength} bytes");
