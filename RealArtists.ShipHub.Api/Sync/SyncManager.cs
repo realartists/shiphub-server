@@ -14,7 +14,6 @@
   }
 
   public class SyncManager : ISyncManager {
-    // TODO: Pick a real value for these
     private const int _BatchSize = 1024;
     private static readonly TimeSpan _WindowTimeout = TimeSpan.FromSeconds(2);
 
@@ -22,7 +21,7 @@
 
     public SyncManager(IServiceBusFactory serviceBusFactory) {
       Changes = Observable
-        .Create<ChangeSummary>(async observer => { // TODO: Support cancellation? 
+        .Create<ChangeSummary>(async observer => {
           
           var client = await serviceBusFactory.SubscriptionClientForName(ShipHubTopicNames.Changes);
           client.PrefetchCount = _BatchSize;

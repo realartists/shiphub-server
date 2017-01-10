@@ -33,7 +33,6 @@
     private const int _MaxMessageSize = 64 * 1024; // 64 KB
     private const int _MinimumClientBuild = 338;
 
-    // TODO: Fix for production.
     private static readonly IObservable<long> _PollInterval =
       Observable.Interval(TimeSpan.FromMinutes(2))
       .Publish()
@@ -135,8 +134,9 @@
 
           // now start sync
           _syncContext = new SyncContext(_user, this, new SyncVersions(
-          hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
-          hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version)));
+            hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
+            hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version))
+          );
           Subscribe(); // Also performs the initial sync
           return;
         case "viewing":
@@ -191,7 +191,7 @@
       _syncSubscription = _syncManager.Changes
         .ObserveOn(TaskPoolScheduler.Default)
         .StartWith(start) // Run an initial sync no matter what.
-        .Select(c => 
+        .Select(c =>
           Observable.FromAsync(() => _syncContext.Sync(c))
           .Catch<Unit, Exception>(LogError<Unit>))
         .Concat() // Force sequential evaluation

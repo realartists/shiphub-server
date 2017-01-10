@@ -85,7 +85,6 @@ BEGIN
   SELECT RowNumber, OwnerType, OwnerId, [RowVersion]
   FROM @AllLogs
 
-  -- Note: Delete is global, not reference scoped.
   -- Only select the first occurrence of each entity.
   ;WITH PartitionedLogs AS (
     SELECT
