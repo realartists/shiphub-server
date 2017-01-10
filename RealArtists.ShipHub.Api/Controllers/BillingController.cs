@@ -247,7 +247,7 @@
 
       string firstName = null;
       string lastName = null;
-      string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? null : ghcOrg.Name;
+      string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? ghcOrg.Login : ghcOrg.Name;
 
       // Name is optional for Github.
       if (!ghcUser.Name.IsNullOrWhiteSpace()) {
@@ -266,7 +266,8 @@
       if (sub != null) {
         // Customers with past subscriptions have to use the checkout existing flow.
         var updateRequest = _chargeBee.Customer.Update($"org-{targetId}")
-          .AddParam("cf_github_username", targetAccount.Login);
+          .AddParam("cf_github_username", targetAccount.Login)
+          .Company(companyName);
 
         if (firstName != null) {
           updateRequest.FirstName(firstName);
@@ -274,10 +275,6 @@
 
         if (lastName != null) {
           updateRequest.LastName(lastName);
-        }
-
-        if (companyName != null) {
-          updateRequest.Company(companyName);
         }
 
         await updateRequest.Request();
@@ -299,14 +296,11 @@
         var checkoutRequest = _chargeBee.HostedPage.CheckoutNew()
        .CustomerId($"org-{targetId}")
        .CustomerEmail(primaryEmail.Email)
+       .CustomerCompany(companyName)
        .SubscriptionPlanId("organization")
        .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
        .RedirectUrl(SignupThankYouUrl);
-
-        if (!ghcOrg.Name.IsNullOrWhiteSpace()) {
-          checkoutRequest.CustomerCompany(ghcOrg.Name);
-        }
 
         if (!firstName.IsNullOrWhiteSpace()) {
           checkoutRequest.CustomerFirstName(firstName);
