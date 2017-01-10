@@ -205,21 +205,6 @@
       return FetchPaged(request, (Account x) => x.Id);
     }
 
-    public async Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login) {
-      // Pass empty cache options to ensure we get a response. We need the result.
-      var request = new GitHubRequest($"repos/{repoFullName}/assignees/{login}", GitHubCacheDetails.Empty);
-      var response = await Fetch<bool>(request);
-      switch (response.Status) {
-        case HttpStatusCode.NotFound:
-          response.Result = false;
-          break;
-        case HttpStatusCode.NoContent:
-          response.Result = true;
-          break;
-      }
-      return response;
-    }
-
     public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"orgs/{name}/hooks", cacheOptions);
       return FetchPaged(request, (Webhook x) => x.Id);
