@@ -37,17 +37,6 @@
       using (var context = new cm.ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Id == message.UserId);
 
-        var allowedBillingUsers = new[] {
-          "fpotter",
-          "kogir",
-          "james-howard",
-          "fpotter-test",
-          "aroon", // used in tests
-        };
-        if (!allowedBillingUsers.Contains(user.Login)) {
-          return;
-        }
-
         var customerId = $"user-{message.UserId}";
         var customerList = (await _chargeBee.Customer.List().Id().Is(customerId).Request()).List;
         cbm.Customer customer = null;
