@@ -34,7 +34,15 @@
       GitHubResponse<T> result = null;
 
       for (int i = 0; i <= MaxRetries; ++i) {
-        result = await MakeRequest<T>(client, request, null);
+        try {
+          result = await MakeRequest<T>(client, request, null);
+        } catch (HttpRequestException) {
+          result = new GitHubResponse<T>(request) {
+            Status = HttpStatusCode.InternalServerError
+          };
+          await Task.Delay(RetryMilliseconds);
+          continue;
+        }
 
         if (result.RateLimit != null) {
           client.UpdateInternalRateLimit(result.RateLimit);

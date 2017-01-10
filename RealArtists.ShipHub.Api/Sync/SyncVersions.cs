@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System.Collections.Generic;
+  using Newtonsoft.Json.Linq;
 
   public class SyncVersions {
     public SyncVersions() {
@@ -14,5 +15,9 @@
 
     public IDictionary<long, long> RepoVersions { get; }
     public IDictionary<long, long> OrgVersions { get; }
+
+    public override string ToString() {
+      return $"SyncVersions RepoVersion: {JObject.FromObject(RepoVersions)} OrgVersions: {JObject.FromObject(OrgVersions)}";
+    }
   }
 }
