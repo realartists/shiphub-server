@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
   using System.Collections.Generic;
-  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.IO.Compression;
@@ -211,9 +210,6 @@
 
     private IObservable<T> LogError<T>(Exception exception) {
       Log.Exception(exception, _user.Login);
-#if DEBUG
-      Debugger.Break();
-#endif
       return Observable.Empty<T>();
     }
 
