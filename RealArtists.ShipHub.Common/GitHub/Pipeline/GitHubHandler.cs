@@ -20,7 +20,7 @@
   /// Currently supports redirects, pagination, rate limits and limited retry logic.
   /// </summary>
   public class GitHubHandler : IGitHubHandler {
-    public const int MaxRetries = 2;
+    public const int LastAttempt = 2; // Make three attempts
     public const int RateLimitFloor = 500;
     public const int RetryMilliseconds = 1000;
 
@@ -33,11 +33,19 @@
 
       GitHubResponse<T> result = null;
 
-      for (int i = 0; i <= MaxRetries; ++i) {
-        result = await MakeRequest<T>(client, request, null);
+      for (int attempt = 0; attempt <= LastAttempt; ++attempt) {
+        if (attempt > 0) {
+          await Task.Delay(RetryMilliseconds * attempt);
+        }
 
-        if (result.RateLimit != null) {
-          client.UpdateInternalRateLimit(result.RateLimit);
+        try {
+          result = await MakeRequest<T>(client, request, null);
+        } catch (HttpRequestException hre) {
+          if (attempt < LastAttempt) {
+            Log.Exception(hre);
+            continue;
+          }
+          throw;
         }
 
         switch (result.Status) {
@@ -45,15 +53,14 @@
           case HttpStatusCode.GatewayTimeout:
           case HttpStatusCode.InternalServerError:
           case HttpStatusCode.ServiceUnavailable:
-            // retry after delay
-            await Task.Delay(RetryMilliseconds * (i + 1));
-            continue;
+            continue; // retry after delay
           default:
-            // Abort
-            break; // switch
+            break;
         }
+      }
 
-        break; // for
+      if (result.RateLimit != null) {
+        client.UpdateInternalRateLimit(result.RateLimit);
       }
 
       return result;
