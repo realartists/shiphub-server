@@ -25,7 +25,6 @@
     private IShipHubQueueClient _queueClient;
 
     private long _userId;
-    private string _login;
     private IGitHubActor _github;
 
     // MetaData
@@ -59,7 +58,6 @@
           throw new InvalidOperationException($"User {_userId} has an invalid token and cannot be activated.");
         }
 
-        _login = user.Login;
         _metadata = user.Metadata;
         _repoMetadata = user.RepositoryMetadata;
         _orgMetadata = user.OrganizationMetadata;
@@ -176,11 +174,7 @@
           var repos = await _github.Repositories(_repoMetadata);
 
           if (repos.IsOk) {
-            var reposWithIssues = repos.Result.Where(x => x.HasIssues);
-            // The next batch of calls is not cached. Maybe we should, but it's complicated because we need the results.
-            var assignableRepos = reposWithIssues.ToDictionary(x => x.FullName, x => _github.IsAssignable(x.FullName, _login));
-            await Task.WhenAll(assignableRepos.Values);
-            var keepRepos = reposWithIssues.Where(x => assignableRepos[x.FullName].Result.Result).ToArray();
+            var keepRepos = repos.Result.Where(x => x.HasIssues && x.Permissions.Push);
 
             var owners = keepRepos
               .Select(x => x.Owner)
