@@ -201,6 +201,10 @@
       return _github.Events(repoFullName, cacheOptions);
     }
 
+    public Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login) {
+      return _github.IsAssignable(repoFullName, login);
+    }
+
     public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
       return _github.Issue(repoFullName, number, cacheOptions);
     }

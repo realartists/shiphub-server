@@ -12,7 +12,7 @@
   public class GitHubClient : IGitHubClient {
     public const long InvalidUserId = -1;
 
-    public Uri ApiRoot { get; } = new Uri("https://localhost:8443/");
+    public Uri ApiRoot { get; } = new Uri("https://api.github.com/");
     public string AccessToken { get; }
     public ProductInfoHeaderValue UserAgent { get; }
     public long UserId { get; }
@@ -203,6 +203,21 @@
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null) {
       var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions);
       return FetchPaged(request, (Account x) => x.Id);
+    }
+
+    public async Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login) {
+      // Pass empty cache options to ensure we get a response. We need the result.
+      var request = new GitHubRequest($"repos/{repoFullName}/assignees/{login}", GitHubCacheDetails.Empty);
+      var response = await Fetch<bool>(request);
+      switch (response.Status) {
+        case HttpStatusCode.NotFound:
+          response.Result = false;
+          break;
+        case HttpStatusCode.NoContent:
+          response.Result = true;
+          break;
+      }
+      return response;
     }
 
     public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null) {

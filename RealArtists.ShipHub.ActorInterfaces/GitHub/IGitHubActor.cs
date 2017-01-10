@@ -56,6 +56,8 @@
   /// Interacts with GitHub on behalf of a user, using their credentials.
   /// </summary>
   public interface IGitHubActor : Orleans.IGrainWithIntegerKey, IGitHubPoolable, IGitHubOrganizationAdmin, IGitHubRepositoryAdmin {
+    Task<GitHubResponse<bool>> IsAssignable(string repoFullName, string login);
+
     // Implict user scope and permissions (My _)
     Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null);
     Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null);
