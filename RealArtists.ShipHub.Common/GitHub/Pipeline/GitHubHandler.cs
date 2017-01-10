@@ -55,8 +55,10 @@
           case HttpStatusCode.ServiceUnavailable:
             continue; // retry after delay
           default:
-            break;
+            break; // switch
         }
+
+        break; //for
       }
 
       if (result.RateLimit != null) {
