@@ -586,6 +586,7 @@
           Tuple.Create("Private", typeof(bool)),
           Tuple.Create("Name", typeof(string)),
           Tuple.Create("FullName", typeof(string)),
+          Tuple.Create("Size", typeof(long)),
         },
         x => new object[] {
           x.Id,
@@ -593,6 +594,7 @@
           x.Private,
           x.Name,
           x.FullName,
+          x.Size
         },
         repositories);
 
