@@ -4,6 +4,7 @@
   using System.Linq;
   using System.Runtime.CompilerServices;
   using Microsoft.ApplicationInsights;
+  using Microsoft.ApplicationInsights.Extensibility;
   using Mindscape.Raygun4Net;
 
   public static class ExceptionUtilities {
@@ -22,11 +23,20 @@
     }
 
     private static Lazy<RaygunClient> _raygunClient = new Lazy<RaygunClient>(() => {
-      return new RaygunClient(ShipHubCloudConfiguration.Instance.RaygunApiKey);
+      if (!ShipHubCloudConfiguration.Instance.RaygunApiKey.IsNullOrWhiteSpace()) {
+        return new RaygunClient(ShipHubCloudConfiguration.Instance.RaygunApiKey);
+      } else {
+        return null;
+      }
     });
 
     private static Lazy<TelemetryClient> _aiClient = new Lazy<TelemetryClient>(() => {
-      return new TelemetryClient();
+      if (!ShipHubCloudConfiguration.Instance.ApplicationInsightsKey.IsNullOrWhiteSpace()) {
+        TelemetryConfiguration.Active.InstrumentationKey = ShipHubCloudConfiguration.Instance.ApplicationInsightsKey;
+        return new TelemetryClient();
+      } else {
+        return null;
+      }
     });
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
@@ -41,7 +51,7 @@
           }
           Log.Exception(ex, message);
         }
-        
+
         var props = new Dictionary<string, string>() {
           { "forUserId", forUserId?.ToString() },
           { "timestamp", DateTime.UtcNow.ToString("o") },
@@ -51,8 +61,8 @@
           { "sourceLineNumber", lineNumber.ToString() },
         };
 
-        _raygunClient.Value.SendInBackground(ex, null, props);
-        _aiClient.Value.TrackException(ex, props);
+        _raygunClient.Value?.SendInBackground(ex, null, props);
+        _aiClient.Value?.TrackException(ex, props);
       } catch { /*nah*/ }
     }
   }
