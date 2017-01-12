@@ -143,7 +143,7 @@
 
           // Trigger issue event and comment sync.
           var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}" , grainClassNamePrefix: null);
-          issueGrain.SyncInteractive(user.UserId).Ignore();
+          issueGrain.SyncInteractive(user.UserId).LogFailure();
 
           if (!changes.IsEmpty) {
             await _queueClient.NotifyChanges(changes);
