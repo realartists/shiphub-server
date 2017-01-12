@@ -609,6 +609,21 @@
     }
 
     [Test]
+    public async Task SetIssueTemplateToNull() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
+        await context.SaveChangesAsync();
+
+        await context.SetRepositoryIssueTemplate(repo.Id, null);
+        await context.SaveChangesAsync();
+
+        var updatedRepo1 = context.Repositories.Single(x => x.Id == repo.Id);
+        Assert.Null(updatedRepo1.IssueTemplate);
+      }
+    }
+
+    [Test]
     public async Task BulkUpdateIssuesDoesNotDistrurbIssueLabelAssociationsInOtherRepos() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
