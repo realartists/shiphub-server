@@ -62,6 +62,11 @@
         var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
         var apiHostName = _configuration.ApiHostName;
 
+        if (repo.Disabled) {
+          // all requests to it will fail
+          return;
+        }
+
         var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
 
         if (hook != null && hook.GitHubId == null) {

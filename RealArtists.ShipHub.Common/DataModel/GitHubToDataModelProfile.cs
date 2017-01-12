@@ -42,7 +42,8 @@
         .ForMember(x => x.CreatorId, o => o.MapFrom(x => x.Creator.Id));
 
       CreateMap<g.Repository, RepositoryTableType>(MemberList.Destination)
-        .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id));
+        .ForMember(x => x.AccountId, o => o.MapFrom(x => x.Owner.Id))
+        .ForMember(x => x.Disabled, o => o.UseValue(false));
 
       CreateMap<g.Reaction, ReactionTableType>(MemberList.Destination);
     }
