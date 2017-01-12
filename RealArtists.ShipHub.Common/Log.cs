@@ -297,6 +297,7 @@ namespace RealArtists.ShipHub.Common {
         }
       }
 
+      [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
       public void WriteLines(LogLine[] lines) {
         bool sent = false;
         for (int i = 0; i < 2 && !sent; i++) {
@@ -309,11 +310,7 @@ namespace RealArtists.ShipHub.Common {
             _ssl.Write(LogLineBytes(lines));
             _ssl.Flush();
             sent = true;
-          } catch (SocketException) {
-            Cleanup();
-          } catch (IOException) {
-            Cleanup();
-          } catch (System.Security.Authentication.AuthenticationException) {
+          } catch {
             Cleanup();
           }
         }
