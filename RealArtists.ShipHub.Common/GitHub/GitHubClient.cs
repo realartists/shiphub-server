@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub {
   using System;
   using System.Collections.Generic;
-  using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Text.RegularExpressions;
@@ -12,7 +11,7 @@
   public class GitHubClient : IGitHubClient {
     public const long InvalidUserId = -1;
 
-    public Uri ApiRoot { get; } = new Uri("http://ipv4.fiddler:8000/");
+    public Uri ApiRoot { get; } = new Uri("http://127.0.0.1:8000/");
     public string AccessToken { get; }
     public ProductInfoHeaderValue UserAgent { get; }
     public long UserId { get; }

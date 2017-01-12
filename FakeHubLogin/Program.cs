@@ -20,18 +20,15 @@
     private static HttpClient _client;
 
     static void Main(string[] args) {
+      Console.WriteLine("Press any key to start.");
+      Console.ReadKey();
+
       var handler = new WinHttpHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AutomaticRedirection = false,
         CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
         WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
       };
-
-      if (ShipHubCloudConfiguration.Instance.UseFiddler) {
-        handler.WindowsProxyUsePolicy = WindowsProxyUsePolicy.UseCustomProxy;
-        handler.Proxy = new WebProxy("127.0.0.1", 8888);
-        handler.ServerCertificateValidationCallback = (request, cert, chain, sslPolicyErrors) => { return true; };
-      }
 
       _client = new HttpClient(handler, true) {
         BaseAddress = new Uri($"https://{ApiRoot}/"),
