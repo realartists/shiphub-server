@@ -152,7 +152,7 @@
           } catch (Exception e) {
             // swallow db exceptions, since if we're here github has created the issue.
             // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.
-            Log.Exception(e);
+            e.Report($"request: {request.RequestUri} response: {response} user: {user.UserId}", user.UserId);
           }
         }
 
