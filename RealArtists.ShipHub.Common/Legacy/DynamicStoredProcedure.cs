@@ -110,11 +110,10 @@
       var value = prop.Value;
 
       if (value == null) {
-        _command.Parameters.AddWithValue(key, value);
+        _command.Parameters.AddWithValue(key, DBNull.Value);
         return;
       }
 
-      // TODO: Hash table based on type instead of nested if?
       var type = value.GetType();
       if (type == typeof(bool))
         _command.Parameters.Add(key, SqlDbType.Bit).Value = value;
