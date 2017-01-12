@@ -100,53 +100,59 @@
 
         // Process the response
         if (response.StatusCode == HttpStatusCode.Created) {
-          await response.Content.LoadIntoBufferAsync();
-          var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
+          try {
+            await response.Content.LoadIntoBufferAsync();
+            var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
 
-          // TODO: Unify this code with other issue update places to reduce bugs.
+            // TODO: Unify this code with other issue update places to reduce bugs.
 
-          var accounts = new[] { issue.User, issue.ClosedBy }
-            .Concat(issue.Assignees)
-            .Where(x => x != null)
-            .Distinct(x => x.Id);
+            var accounts = new[] { issue.User, issue.ClosedBy }
+              .Concat(issue.Assignees)
+              .Where(x => x != null)
+              .Distinct(x => x.Id);
 
-          ChangeSummary changes = null;
-          var repoName = $"{owner}/{repo}";
-          using (var context = new dm.ShipHubContext()) {
-            var repoId = await context.Repositories
-              .Where(x => x.FullName == repoName)
-              .Select(x => x.Id)
-              .SingleAsync();
+            ChangeSummary changes = null;
+            var repoName = $"{owner}/{repo}";
+            using (var context = new dm.ShipHubContext()) {
+              var repoId = await context.Repositories
+                .Where(x => x.FullName == repoName)
+                .Select(x => x.Id)
+                .SingleAsync();
 
-            changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
+              changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
 
-            if (issue.Milestone != null) {
+              if (issue.Milestone != null) {
+                changes.UnionWith(
+                  await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
+                );
+              }
+
+              if (issue.Labels?.Count() > 0) {
+                changes.UnionWith(await context.BulkUpdateLabels(
+                  repoId,
+                  issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
+              }
+
               changes.UnionWith(
-                await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
+                await context.BulkUpdateIssues(
+                repoId,
+                _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
+                issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
+                issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
               );
             }
 
-            if (issue.Labels?.Count() > 0) {
-              changes.UnionWith(await context.BulkUpdateLabels(
-                repoId,
-                issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
+            // Trigger issue event and comment sync.
+            var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}", grainClassNamePrefix: null);
+            issueGrain.SyncInteractive(user.UserId).LogFailure();
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
             }
-
-            changes.UnionWith(
-              await context.BulkUpdateIssues(
-              repoId,
-              _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
-              issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
-              issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
-            );
-          }
-
-          // Trigger issue event and comment sync.
-          var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}" , grainClassNamePrefix: null);
-          issueGrain.SyncInteractive(user.UserId).LogFailure();
-
-          if (!changes.IsEmpty) {
-            await _queueClient.NotifyChanges(changes);
+          } catch (Exception e) {
+            // swallow db exceptions, since if we're here github has created the issue.
+            // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.
+            Log.Exception(e);
           }
         }
 
