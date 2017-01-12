@@ -19,7 +19,7 @@
         task.ContinueWith(
           t => {
             if (t.IsFaulted) {
-              Log.Exception(t.Exception);
+              t.Exception.Report();
             }
           },
           CancellationToken.None,
