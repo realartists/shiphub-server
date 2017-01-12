@@ -586,6 +586,8 @@
           Tuple.Create("Private", typeof(bool)),
           Tuple.Create("Name", typeof(string)),
           Tuple.Create("FullName", typeof(string)),
+          Tuple.Create("Size", typeof(long)),
+          Tuple.Create("Disabled", typeof(bool)),
         },
         x => new object[] {
           x.Id,
@@ -593,6 +595,8 @@
           x.Private,
           x.Name,
           x.FullName,
+          x.Size,
+          x.Disabled,
         },
         repositories);
 
@@ -692,6 +696,13 @@
     public Task<ChangeSummary> DeleteLabel(long labelId) {
       return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
         x.LabelId = labelId;
+      });
+    }
+
+    public Task<ChangeSummary> DisableRepository(long repositoryId, bool disabled) {
+      return ExecuteAndReadChanges("[dbo].[DisableRepository]", x => {
+        x.RepositoryId = repositoryId;
+        x.Disabled = disabled;
       });
     }
 

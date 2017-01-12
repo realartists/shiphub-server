@@ -4,6 +4,7 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
+  using System.Text;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using ActorInterfaces.GitHub;
@@ -12,6 +13,7 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
+  using Common.Hashing;
   using GitHub;
   using Orleans;
   using QueueClient;
@@ -31,6 +33,9 @@
 
     private long _repoId;
     private string _fullName;
+    private long _repoSize;
+    private string _issueTemplateHash;
+    private bool _disabled;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -73,7 +78,10 @@
         }
 
         _fullName = repo.FullName;
+        _repoSize = repo.Size;
+        _issueTemplateHash = HashIssueTemplate(repo.IssueTemplate);
         _metadata = repo.Metadata;
+        _disabled = repo.Disabled;
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
         _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
@@ -94,8 +102,15 @@
     }
 
     public override async Task OnDeactivateAsync() {
+      _syncTimer?.Dispose();
+      _syncTimer = null;
+
+      _syncIssueTemplateTimer?.Dispose();
+      _syncIssueTemplateTimer = null;
+
       using (var context = _contextFactory.CreateInstance()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == _repoId);
+        repo.Size = _repoSize;
         repo.Metadata = _metadata;
         repo.AssignableMetadata = _assignableMetadata;
         repo.IssueMetadata = _issueMetadata;
@@ -170,15 +185,23 @@
           return;
         }
 
-        changes.UnionWith(
-          await UpdateRepositoryDetails(context, github),
-          await UpdateIssueTemplate(context, github),
-          await UpdateRepositoryAssignees(context, github),
-          await UpdateRepositoryLabels(context, github),
-          await UpdateRepositoryMilestones(context, github),
-          await UpdateRepositoryProjects(context, github),
-          await UpdateRepositoryIssues(context, github)
-        );
+        // Private repos in orgs that have reverted to the free plan show in users'
+        // repo lists but are inaccessible (404). We mark such repos _disabled until
+        // we can access them.
+        changes.UnionWith(await UpdateRepositoryDetails(context, github));
+
+        if (_disabled) {
+          DeactivateOnIdle();
+        } else {
+          changes.UnionWith(
+            await UpdateIssueTemplate(context, github),
+            await UpdateRepositoryAssignees(context, github),
+            await UpdateRepositoryLabels(context, github),
+            await UpdateRepositoryMilestones(context, github),
+            await UpdateRepositoryProjects(context, github),
+            await UpdateRepositoryIssues(context, github)
+          );
+        }
 
         /* Comments
          * 
@@ -213,7 +236,15 @@
         var repo = await github.Repository(_fullName, _metadata);
 
         if (repo.IsOk) {
+          _disabled = false;
           changes = await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }));
+          _fullName = repo.Result.FullName;
+          _repoSize = repo.Result.Size;
+        } else if (repo.Status == HttpStatusCode.NotFound) {
+          // private repo in unpaid org?
+          _disabled = true;
+          // we're not even allowed to get the repo info, so i had to make a special method
+          changes = await context.DisableRepository(_repoId, _disabled);
         }
 
         // Don't update until saved.
@@ -271,6 +302,17 @@
         return new ChangeSummary();
       }
       this.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
+
+      if (_repoSize == 0) {
+        // realartists/shiphub-server#282 Handle 404 on repos/.../contents/
+        // If there's never been a commit to the repo, the size will be 0, 
+        // and the contents API will return 404s. Because 404s are not cacheable,
+        // we want to be able to short circuit here and anticipate that and
+        // just set an empty ISSUE_TEMPLATE in this case.
+        var ret = await UpdateIssueTemplateWithResult(context, null);
+        _needsIssueTemplateSync = false;
+        return ret;
+      }
 
       var prevRootMetadata = _contentsRootMetadata;
       var prevDotGitHubMetadata = _contentsDotGithubMetadata;
@@ -350,13 +392,34 @@
       }
     }
 
-    private Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
-      string templateStr = null;
-      if (templateData != null) {
-        templateStr = System.Text.Encoding.UTF8.GetString(templateData);
+    private static string HashIssueTemplate(string issueTemplate) {
+      if (string.IsNullOrEmpty(issueTemplate)) {
+        return "";
       }
 
-      return context.SetRepositoryIssueTemplate(_repoId, templateStr);
+      string hashString;
+      using (var hashFunction = new MurmurHash3()) {
+        var hash = hashFunction.ComputeHash(Encoding.UTF8.GetBytes(issueTemplate));
+        hashString = new Guid(hash).ToString();
+      }
+
+      return hashString;
+    }
+
+    private async Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
+      string templateStr = null;
+      if (templateData != null) {
+        templateStr = Encoding.UTF8.GetString(templateData);
+      }
+
+      var newHash = HashIssueTemplate(templateStr);
+      if (_issueTemplateHash != newHash) {
+        var ret = await context.SetRepositoryIssueTemplate(_repoId, templateStr);
+        _issueTemplateHash = newHash;
+        return ret;
+      } else {
+        return new ChangeSummary();
+      }
     }
 
     private async Task<IChangeSummary> UpdateRepositoryAssignees(ShipHubContext context, IGitHubPoolable github) {

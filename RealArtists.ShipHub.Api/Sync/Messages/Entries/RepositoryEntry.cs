@@ -8,6 +8,7 @@
     public string Name { get; set; }
     public string FullName { get; set; }
     public string IssueTemplate { get; set; }
+    public bool Disabled { get; set; }
 
     public IEnumerable<long> Assignees { get; set; }
     public bool ShipNeedsWebhookHelp { get; set; }

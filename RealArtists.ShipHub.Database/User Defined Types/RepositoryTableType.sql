@@ -3,5 +3,7 @@
   [AccountId] BIGINT         NOT NULL,
   [Private]   BIT            NOT NULL,
   [Name]      NVARCHAR(255)  NOT NULL,
-  [FullName]  NVARCHAR(510)  NOT NULL
+  [FullName]  NVARCHAR(510)  NOT NULL,
+  [Size]      BIGINT         NOT NULL,
+  [Disabled]  BIT            NOT NULL
 )

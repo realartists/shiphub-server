@@ -144,7 +144,7 @@
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
           var issueGrain = _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
-          issueGrain.SyncInteractive(_user.UserId).Ignore();
+          issueGrain.SyncInteractive(_user.UserId).LogFailure();
           return;
         default:
           // Ignore unknown messages for now

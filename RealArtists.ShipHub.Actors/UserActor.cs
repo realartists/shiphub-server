@@ -69,6 +69,9 @@
     }
 
     public override async Task OnDeactivateAsync() {
+      _syncTimer?.Dispose();
+      _syncTimer = null;
+
       using (var context = _contextFactory.CreateInstance()) {
         // I think all we need to persist is the metadata.
         await context.UpdateMetadata("Accounts", _userId, _metadata);
