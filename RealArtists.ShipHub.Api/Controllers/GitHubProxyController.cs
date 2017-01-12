@@ -144,7 +144,7 @@
 
             // Trigger issue event and comment sync.
             var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}", grainClassNamePrefix: null);
-            issueGrain.SyncInteractive(user.UserId).LogFailure();
+            issueGrain.SyncInteractive(user.UserId).LogFailure(user.DebugIdentifier);
 
             if (!changes.IsEmpty) {
               await _queueClient.NotifyChanges(changes);
@@ -152,7 +152,7 @@
           } catch (Exception e) {
             // swallow db exceptions, since if we're here github has created the issue.
             // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.
-            e.Report($"request: {request.RequestUri} response: {response} user: {user.UserId}", user.UserId);
+            e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
           }
         }
 

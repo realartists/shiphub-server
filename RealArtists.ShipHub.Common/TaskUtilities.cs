@@ -10,16 +10,16 @@
     /// This will prevent the escalation of this exception to the .NET finalizer thread.
     /// </summary>
     /// <param name="task">The task to be logged.</param>
-    public static void LogFailure(this Task task) {
+    public static void LogFailure(this Task task, string userInfo = null) {
       if (task.IsCompleted) {
         if (task.IsFaulted) {
-          Log.Exception(task.Exception);
+          task.Exception.Report(userInfo: userInfo);
         }
       } else {
         task.ContinueWith(
           t => {
             if (t.IsFaulted) {
-              t.Exception.Report();
+              t.Exception.Report(userInfo: userInfo);
             }
           },
           CancellationToken.None,

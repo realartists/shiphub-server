@@ -55,28 +55,10 @@
 
     public override Task OnError(Exception exception) {
       try {
-        // TODO: This should not be needed, but I'm seeing weird behavior without it. Look into this later?
         Unsubscribe();
       } finally {
         // Ensure we log the original error
-
-        exception = exception.Simplify();
-        var userInfo = _user.DebugIdentifier;
-
-        // HACK: This is gross. Find a way to inject these or something.
-        // No need to cache since connection closed immediately after this.
-        var raygunClient = new RaygunWebApiClient() {
-          User = userInfo,
-        };
-        raygunClient.AddWrapperExceptions(typeof(AggregateException));
-        raygunClient.Send(exception);
-
-        var aiClient = new TelemetryClient();
-        aiClient.TrackException(exception, new Dictionary<string, string>() {
-          { "User", userInfo },
-        });
-
-        Log.Exception(exception);
+        exception.Report("Socket error.", _user.DebugIdentifier);
       }
 
       return Task.CompletedTask;
@@ -144,7 +126,7 @@
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
           var issueGrain = _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
-          issueGrain.SyncInteractive(_user.UserId).LogFailure();
+          issueGrain.SyncInteractive(_user.UserId).LogFailure(_user.DebugIdentifier);
           return;
         default:
           // Ignore unknown messages for now
@@ -209,7 +191,7 @@
     }
 
     private IObservable<T> LogError<T>(Exception exception) {
-      Log.Exception(exception, _user.Login);
+      exception.Report("Sync error.", _user.DebugIdentifier);
       return Observable.Empty<T>();
     }
 

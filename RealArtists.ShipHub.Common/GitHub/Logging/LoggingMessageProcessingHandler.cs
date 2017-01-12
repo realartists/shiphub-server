@@ -75,7 +75,7 @@
     }
 
     private IObservable<T> LogError<T>(Exception exception) {
-      Log.Exception(exception);
+      exception.Report("Error logging GitHub request.");
       return Observable.Empty<T>();
     }
 

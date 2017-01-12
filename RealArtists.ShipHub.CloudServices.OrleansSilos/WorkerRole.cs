@@ -41,7 +41,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         (object sender, UnhandledExceptionEventArgs e) => {
           var ex = e.ExceptionObject as Exception;
           if (ex != null) {
-            Log.Exception(ex, "Unhandled exception in Orleans CloudServices Worker Role.");
+            ex.Report("Unhandled exception in Orleans CloudServices Worker Role.");
           }
         };
 
@@ -74,7 +74,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // Block until silo is shutdown
         _silo.Run();
       } catch (Exception e) {
-        Log.Exception(e, "Error while running silo. Aborting.");
+        e.Report("Error while running silo. Aborting.");
       }
 
       Log.Info("Run loop exiting.");

@@ -89,7 +89,7 @@
           return;
         } catch (Exception exc) {
           lastException = exc;
-          Log.Exception(exc, "Error initializing Orleans Client. Will retry.");
+          exc.Report("Error initializing Orleans Client. Will retry.");
         }
       }
 

@@ -42,7 +42,7 @@
           result = await MakeRequest<T>(client, request, null);
         } catch (HttpRequestException hre) {
           if (attempt < LastAttempt) {
-            Log.Exception(hre);
+            hre.Report($"Error making GitHub request: {request.Uri}");
             continue;
           }
           throw;
