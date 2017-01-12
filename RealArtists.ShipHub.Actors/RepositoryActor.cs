@@ -102,6 +102,12 @@
     }
 
     public override async Task OnDeactivateAsync() {
+      _syncTimer?.Dispose();
+      _syncTimer = null;
+
+      _syncIssueTemplateTimer?.Dispose();
+      _syncIssueTemplateTimer = null;
+
       using (var context = _contextFactory.CreateInstance()) {
         var repo = await context.Repositories.SingleAsync(x => x.Id == _repoId);
         repo.Size = _repoSize;
