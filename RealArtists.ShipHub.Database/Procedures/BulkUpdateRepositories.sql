@@ -31,19 +31,19 @@ BEGIN
 
     MERGE INTO Repositories as [Target]
     USING (
-      SELECT [Id], [AccountId], [Private], [Name], [FullName], [Size]
+      SELECT [Id], [AccountId], [Private], [Name], [FullName], [Size], [Disabled]
       FROM @Repositories
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Size], [Date])
-      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date)
+      INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Size], [Date], [Disabled])
+      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date, [Disabled])
     WHEN MATCHED
       AND [Target].[Date] < @Date 
       AND EXISTS (
-        SELECT [Target].[AccountId], [Target].[Private], [Target].[Name], [Target].[FullName]
+        SELECT [Target].[AccountId], [Target].[Private], [Target].[Name], [Target].[FullName], [Target].[Size], [Target].[Disabled]
         EXCEPT
-        SELECT [Source].[AccountId], [Source].[Private], [Source].[Name], [Source].[FullName]
+        SELECT [Source].[AccountId], [Source].[Private], [Source].[Name], [Source].[FullName], [Source].[Size], [Source].[Disabled]
       ) THEN
       UPDATE SET
         [AccountId] = [Source].[AccountId],
@@ -51,7 +51,8 @@ BEGIN
         [Name] = [Source].[Name],
         [FullName] = [Source].[FullName],
         [Size] = [Source].[Size],
-        [Date] = @Date
+        [Date] = @Date,
+        [Disabled] = [Source].[Disabled]
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

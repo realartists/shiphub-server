@@ -6,6 +6,7 @@
   [FullName]                          NVARCHAR(510)  NOT NULL,
   [Date]                              DATETIMEOFFSET NOT NULL,
   [Size]                              BIGINT         NOT NULL DEFAULT 0,
+  [Disabled]                          BIT            NOT NULL DEFAULT 0,
   [IssueTemplate]                     NVARCHAR(MAX)  NULL,
   [MetadataJson]                      NVARCHAR(MAX)  NULL,
   [AssignableMetadataJson]            NVARCHAR(MAX)  NULL,

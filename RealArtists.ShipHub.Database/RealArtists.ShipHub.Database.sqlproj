@@ -138,6 +138,7 @@
     <Build Include="Tables\Projects.sql" />
     <Build Include="User Defined Types\ProjectTableType.sql" />
     <Build Include="Sequences\SyntheticIssueEventIdentifier.sql" />
+    <Build Include="Procedures\DisableRepository.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

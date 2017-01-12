@@ -24,6 +24,8 @@
 
     public DateTimeOffset Date { get; set; }
 
+    public bool Disabled { get; set; }
+
     public string IssueTemplate { get; set; }
 
     public long Size { get; set; }
