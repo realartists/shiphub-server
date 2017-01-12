@@ -31,13 +31,13 @@ BEGIN
 
     MERGE INTO Repositories as [Target]
     USING (
-      SELECT [Id], [AccountId], [Private], [Name], [FullName]
+      SELECT [Id], [AccountId], [Private], [Name], [FullName], [Size]
       FROM @Repositories
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Date])
-      VALUES ([Id], [AccountId], [Private], [Name], [FullName], @Date)
+      INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Size], [Date])
+      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date)
     WHEN MATCHED
       AND [Target].[Date] < @Date 
       AND EXISTS (
@@ -50,6 +50,7 @@ BEGIN
         [Private] = [Source].[Private],
         [Name] = [Source].[Name],
         [FullName] = [Source].[FullName],
+        [Size] = [Source].[Size],
         [Date] = @Date
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);

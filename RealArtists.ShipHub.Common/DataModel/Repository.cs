@@ -26,6 +26,8 @@
 
     public string IssueTemplate { get; set; }
 
+    public long Size { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
