@@ -30,7 +30,7 @@ BEGIN
 
     -- LOOP JOIN, FORCE ORDER prevents scans
     -- This is (non-obviously) important when acquiring locks during foreign key validation
-    MERGE INTO Milestones as [Target]
+    MERGE INTO Milestones WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, Number, [State], Title, [Description], CreatedAt, UpdatedAt, ClosedAt, DueOn
       FROM @Milestones

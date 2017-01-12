@@ -29,7 +29,7 @@ BEGIN
       EXEC [dbo].[DeleteRepositories] @Repositories = @DeletedRepositories
     END
 
-    MERGE INTO Repositories as [Target]
+    MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT [Id], [AccountId], [Private], [Name], [FullName], [Size], [Disabled]
       FROM @Repositories

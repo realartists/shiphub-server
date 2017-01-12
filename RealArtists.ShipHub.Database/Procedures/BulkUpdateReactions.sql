@@ -38,7 +38,7 @@ BEGIN
       AND rr.Id IS NULL
     OPTION (FORCE ORDER)
 
-    MERGE INTO Reactions as [Target]
+    MERGE INTO Reactions WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, UserId, Content, CreatedAt
       FROM @Reactions

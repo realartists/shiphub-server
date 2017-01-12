@@ -39,7 +39,7 @@ BEGIN
       AND oids.Item IS NULL
     OPTION (FORCE ORDER)
 
-    MERGE INTO OrganizationAccounts as [Target]
+    MERGE INTO OrganizationAccounts WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Item as OrganizationId FROM @OrganizationIds
     ) as [Source]

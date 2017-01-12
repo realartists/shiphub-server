@@ -32,7 +32,7 @@ BEGIN
       AND uids.Item1 IS NULL
     OPTION (FORCE ORDER)
 
-    MERGE INTO OrganizationAccounts as [Target]
+    MERGE INTO OrganizationAccounts WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Item1 as UserId, Item2 as [Admin] FROM @UserIds
     ) as [Source]

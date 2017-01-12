@@ -15,7 +15,7 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    MERGE INTO Accounts as [Target]
+    MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, [Type], [Login]
       FROM @Accounts
