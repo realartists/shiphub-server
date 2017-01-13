@@ -64,6 +64,7 @@
 
         if (repo.Disabled) {
           // all requests to it will fail
+          Log.Info($"Skipping disabled repo {repo.FullName}");
           return;
         }
 
@@ -78,7 +79,15 @@
         }
 
         if (hook == null) {
-          var existingHooks = (await client.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty)).Result
+          var hookList = await client.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty);
+          if (!hookList.IsOk) {
+            // webhooks are best effort
+            // this keeps us from spewing errors and retrying a ton when an org is unpaid
+            Log.Info($"Unable to list hooks for {repo.FullName}");
+            return;
+          }
+
+          var existingHooks = hookList.Result
             .Where(x => x.Name.Equals("web"))
             .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/"));
 
