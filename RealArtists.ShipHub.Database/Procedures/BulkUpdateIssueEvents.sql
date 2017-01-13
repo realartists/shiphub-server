@@ -37,7 +37,7 @@ BEGIN
       SET Id = NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier]
     WHERE Id IS NULL
 
-    MERGE INTO IssueEvents as [Target]
+    MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, UniqueKey, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
       FROM @WorkEvents

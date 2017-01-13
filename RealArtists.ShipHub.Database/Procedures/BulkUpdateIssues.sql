@@ -17,7 +17,7 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    MERGE INTO Issues as [Target]
+    MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions]
       FROM @Issues
@@ -56,7 +56,7 @@ BEGIN
     -- LOOP JOIN, FORCE ORDER prevents scans
     -- This is (non-obviously) important when acquiring locks during foreign key validation
     -- Can't do the delete concurrently, as it'll insist on using a scan
-    MERGE INTO IssueLabels as [Target]
+    MERGE INTO IssueLabels WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Item1 AS IssueId, Item2 AS LabelId FROM @Labels
     ) as [Source]
@@ -81,7 +81,7 @@ BEGIN
 
     -- Assignees
     -- Have to use the same tricks as above for the same reasons.
-    MERGE INTO IssueAssignees as [Target]
+    MERGE INTO IssueAssignees WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Item1 as IssueId, Item2 as UserId FROM @Assignees
     ) as [Source]

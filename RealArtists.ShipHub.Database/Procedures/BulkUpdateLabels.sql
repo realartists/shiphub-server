@@ -39,7 +39,7 @@ BEGIN
       OPTION (FORCE ORDER)
     END
 
-    MERGE INTO Labels as [Target]
+    MERGE INTO Labels WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, [Name], Color
       FROM @Labels

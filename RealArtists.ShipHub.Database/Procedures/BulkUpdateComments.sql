@@ -16,7 +16,7 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    MERGE INTO Comments as [Target]
+    MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT c.Id, COALESCE(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
       FROM @Comments as c

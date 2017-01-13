@@ -47,7 +47,7 @@ BEGIN
     OPTION (FORCE ORDER)
 
     -- Update the Projects table
-    MERGE INTO Projects as [Target]
+    MERGE INTO Projects WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, [Name], Number, Body, CreatedAt, UpdatedAt, CreatorId, @OrganizationId as OrganizationId, @RepositoryId as RepositoryId
       FROM @Projects

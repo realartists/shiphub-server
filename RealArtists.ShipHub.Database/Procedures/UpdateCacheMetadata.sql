@@ -7,7 +7,7 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  MERGE INTO CacheMetadata AS [Target]
+  MERGE INTO CacheMetadata WITH (SERIALIZABLE) AS [Target]
   USING (VALUES(
     @Key,
     @MetadataJson,

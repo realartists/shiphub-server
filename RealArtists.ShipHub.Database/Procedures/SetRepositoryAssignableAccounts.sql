@@ -21,7 +21,7 @@ BEGIN
 
     SET @Changes = @Changes + @@ROWCOUNT
 
-    MERGE INTO RepositoryAccounts as [Target]
+    MERGE INTO RepositoryAccounts WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Item as AccountId, @RepositoryId as RepositoryId
       FROM @AssignableAccountIds

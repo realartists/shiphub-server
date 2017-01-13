@@ -18,7 +18,7 @@ BEGIN
       AND rids.Item1 IS NULL
     OPTION (FORCE ORDER)
 
-    MERGE INTO AccountRepositories as [Target]
+    MERGE INTO AccountRepositories WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT @AccountId as AccountId, Item1 as RepositoryId, Item2 as [Admin]
         FROM @RepositoryIds
