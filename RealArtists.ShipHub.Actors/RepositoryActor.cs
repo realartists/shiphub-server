@@ -236,8 +236,13 @@
         var repo = await github.Repository(_fullName, _metadata);
 
         if (repo.IsOk) {
+          var repoTableType = _mapper.Map<RepositoryTableType>(repo.Result);
+
+          // If we can read it, it's not disabled.
           _disabled = false;
-          changes = await context.BulkUpdateRepositories(repo.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(new[] { repo.Result }));
+          repoTableType.Disabled = false;
+
+          changes = await context.BulkUpdateRepositories(repo.Date, new[] { repoTableType });
           _fullName = repo.Result.FullName;
           _repoSize = repo.Result.Size;
         } else if (repo.Status == HttpStatusCode.NotFound) {

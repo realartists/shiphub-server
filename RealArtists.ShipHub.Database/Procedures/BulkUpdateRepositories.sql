@@ -37,13 +37,13 @@ BEGIN
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
       INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Size], [Date], [Disabled])
-      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date, [Disabled])
+      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date, ISNULL([Disabled], 0))
     WHEN MATCHED
       AND [Target].[Date] < @Date 
       AND EXISTS (
         SELECT [Target].[AccountId], [Target].[Private], [Target].[Name], [Target].[FullName], [Target].[Size], [Target].[Disabled]
         EXCEPT
-        SELECT [Source].[AccountId], [Source].[Private], [Source].[Name], [Source].[FullName], [Source].[Size], [Source].[Disabled]
+        SELECT [Source].[AccountId], [Source].[Private], [Source].[Name], [Source].[FullName], [Source].[Size], ISNULL([Source].[Disabled], [Target].[Disabled])
       ) THEN
       UPDATE SET
         [AccountId] = [Source].[AccountId],
@@ -52,7 +52,7 @@ BEGIN
         [FullName] = [Source].[FullName],
         [Size] = [Source].[Size],
         [Date] = @Date,
-        [Disabled] = [Source].[Disabled]
+        [Disabled] = ISNULL([Source].[Disabled], [Target].[Disabled])
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
