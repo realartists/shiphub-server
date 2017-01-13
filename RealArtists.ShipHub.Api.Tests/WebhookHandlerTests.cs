@@ -140,6 +140,7 @@
                     Name = "web",
                   },
             },
+            Status = HttpStatusCode.OK,
           });
 
         var deletedHookIds = new List<long>();
