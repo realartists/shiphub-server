@@ -14,8 +14,8 @@
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
-  using cb = RealArtists.ChargeBee;
-  using cbm = RealArtists.ChargeBee.Models;
+  using cb = ChargeBee;
+  using cbm = ChargeBee.Models;
   using cm = Common.DataModel;
   using gh = Common.GitHub;
 
