@@ -21,15 +21,17 @@ GO
 -- Used regularly for inserts
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_SyncLog_OwnerType_OwnerId_ItemType_ItemId]
   ON [dbo].[SyncLog]([OwnerType], [OwnerId], [ItemType], [ItemId])
+  INCLUDE (OrganizationId, RepositoryId)
 GO
 
 -- Used regularly for updates
 CREATE NONCLUSTERED INDEX [IX_SyncLog_ItemType_ItemId]
   ON [dbo].[SyncLog]([ItemType], [ItemId])
+  INCLUDE ([OwnerType], [OwnerId], [Delete], [OrganizationId], [RepositoryId])
 GO
 
 -- Used regularly for sync
-CREATE NONCLUSTERED INDEX [IX_SyncLog_OwnerType_OwnerId_RowVersion_ItemType]
-  ON [dbo].[SyncLog]([OwnerType], [OwnerId], [RowVersion], [ItemType])
-  INCLUDE([ItemId])
+CREATE NONCLUSTERED INDEX [IX_SyncLog_OwnerType_OwnerId_RowVersion]
+  ON [dbo].[SyncLog]([OwnerType], [OwnerId], [RowVersion])
+  INCLUDE([ItemType], [ItemId], [Delete])
 GO
