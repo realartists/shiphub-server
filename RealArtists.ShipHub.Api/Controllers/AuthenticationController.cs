@@ -13,6 +13,7 @@
   using Common.DataModel;
   using Common.GitHub;
   using Orleans;
+  using RealArtists.ShipHub.Common.DataModel.Types;
 
   public class LoginRequest {
     public string AccessToken { get; set; }
@@ -79,22 +80,17 @@
         Error("Token must be for a user.", HttpStatusCode.BadRequest);
       }
 
-      var user = await Context.Users
-        .SingleOrDefaultAsync(x => x.Id == userInfo.Id);
-      if (user == null) {
-        user = (User)Context.Accounts.Add(new User() {
-          Id = userInfo.Id,
-        });
-      }
-      _mapper.Map(userInfo, user);
+      // Create account using stored procedure
+      // This ensures it exists (simpler logic) and also won't collide with sync.
+      await Context.BulkUpdateAccounts(userResponse.Date, new[] { _mapper.Map<AccountTableType>(userInfo) });
+
+      // There's no concurrency check on accounts, so the rest of this is safe.
+      var user = await Context.Users.SingleAsync(x => x.Id == userInfo.Id);
       user.Token = userResponse.CacheData.AccessToken;
       user.Scopes = string.Join(",", userResponse.Scopes);
-      user.RateLimit = userResponse.RateLimit.RateLimit;
-      user.RateLimitRemaining = userResponse.RateLimit.RateLimitRemaining;
-      user.RateLimitReset = userResponse.RateLimit.RateLimitReset;
-
-      // Be sure to save the account *before* syncing it!
       await Context.SaveChangesAsync();
+
+      await Context.UpdateRateLimit(userResponse.RateLimit);
 
       var userGrain = _grainFactory.GetGrain<IUserActor>(user.Id);
       userGrain.Sync().LogFailure($"{user.Login} ({user.Id})");
