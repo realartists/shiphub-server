@@ -73,7 +73,7 @@
     }
 
     [Test]
-    public async Task AccountsReturnsErrorWithNoSubscriptionInfo() {
+    public async Task AccountsReturnsEmptyListWhenThereIsNoSubscriptionInfo() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         user.Token = Guid.NewGuid().ToString();
@@ -92,8 +92,8 @@
         var controller = new BillingController(Configuration, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
-        var result = await controller.Accounts();
-        Assert.IsInstanceOf<NegotiatedContentResult<Dictionary<string, string>>>(result);
+        var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)await controller.Accounts();
+        Assert.AreEqual(0, result.Content.Count);
       }
     }
 

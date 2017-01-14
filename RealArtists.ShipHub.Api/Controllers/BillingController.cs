@@ -111,16 +111,7 @@
        })
         .ToList();
 
-      if (result.Count > 0) {
-        return Ok(result);
-      } else {
-        // We found no Subscription records in the db for these accounts, which can only mean
-        // that we're not correctly sync'ing with ChargeBee.  In that case, let's just show an
-        // error.
-        return Content(HttpStatusCode.ServiceUnavailable, new Dictionary<string, string>() {
-          { "message", "Subscription info for your accounts have not loaded yet. Try again later." },
-        });
-      }
+      return Ok(result);
     }
 
     public static string CreateSignature(long actorId, long targetId) {
