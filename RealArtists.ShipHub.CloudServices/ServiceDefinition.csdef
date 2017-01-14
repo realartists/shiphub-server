@@ -16,6 +16,7 @@
       <Setting name="GitHubLoggingStorage" />
       <Setting name="RAYGUN_APIKEY" />
       <Setting name="UseSqlAzureExecutionStrategy" />
+      <Setting name="GitHubApiRoot" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

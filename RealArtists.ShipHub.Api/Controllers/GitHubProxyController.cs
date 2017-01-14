@@ -34,11 +34,39 @@
     private IMapper _mapper;
     private IShipHubQueueClient _queueClient;
     private IGrainFactory _grainFactory;
+    private Uri _apiRoot;
 
-    public GitHubProxyController(IMapper mapper, IShipHubQueueClient queueClient, IGrainFactory grainFactory) {
+    public GitHubProxyController(IShipHubConfiguration configuration, IMapper mapper, IShipHubQueueClient queueClient, IGrainFactory grainFactory) {
       _mapper = mapper;
       _queueClient = queueClient;
       _grainFactory = grainFactory;
+      _apiRoot = configuration.GitHubApiRoot;
+    }
+
+    private async Task<HttpResponseMessage> ProxyRequest(HttpRequestMessage request, CancellationToken cancellationToken, string pathOverride) {
+      var builder = new UriBuilder(request.RequestUri);
+      builder.Scheme = _apiRoot.Scheme;
+      builder.Port = _apiRoot.Port;
+      builder.Host = _apiRoot.Host;
+      builder.Path = pathOverride;
+      request.RequestUri = builder.Uri;
+
+      request.Headers.Host = request.RequestUri.Host;
+      var user = RequestContext.Principal as ShipHubPrincipal;
+      request.Headers.Authorization = new AuthenticationHeaderValue("token", user.Token);
+
+      // This is dumb
+      if (_BareMethods.Contains(request.Method)) {
+        request.Content = null;
+      }
+
+      try {
+        var response = await _ProxyClient.SendAsync(request, cancellationToken);
+        response.Headers.Remove("Server");
+        return response;
+      } catch (TaskCanceledException exception) {
+        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      }
     }
 
     [HttpDelete]
@@ -49,117 +77,75 @@
     [HttpPost]
     [HttpPut]
     [Route("{*path}")]
-    public async Task<HttpResponseMessage> ProxyBlind(HttpRequestMessage request, CancellationToken cancellationToken, string path) {
-      var builder = new UriBuilder(request.RequestUri);
-      builder.Scheme = Uri.UriSchemeHttps;
-      builder.Port = 443;
-      builder.Host = "api.github.com";
-      builder.Path = path;
-      request.RequestUri = builder.Uri;
-
-      request.Headers.Host = request.RequestUri.Host;
-      var user = RequestContext.Principal as ShipHubPrincipal;
-      request.Headers.Authorization = new AuthenticationHeaderValue("token", user.Token);
-
-      // This is dumb
-      if (_BareMethods.Contains(request.Method)) {
-        request.Content = null;
-      }
-
-      try {
-        var response = await _ProxyClient.SendAsync(request, cancellationToken);
-        response.Headers.Remove("Server");
-        return response;
-      } catch (TaskCanceledException exception) {
-        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
-      }
+    public Task<HttpResponseMessage> ProxyBlind(HttpRequestMessage request, CancellationToken cancellationToken, string path) {
+      return ProxyRequest(request, cancellationToken, path);
     }
 
     [HttpPost]
     [Route("repos/{owner}/{repo}/issues")]
     public async Task<HttpResponseMessage> IssueCreate(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo) {
-      var builder = new UriBuilder(request.RequestUri);
-      builder.Scheme = Uri.UriSchemeHttps;
-      builder.Port = 443;
-      builder.Host = "api.github.com";
-      builder.Path = $"repos/{owner}/{repo}/issues";
-      request.RequestUri = builder.Uri;
+      var response = await ProxyRequest(request, cancellationToken, $"repos/{owner}/{repo}/issues");
 
-      request.Headers.Host = request.RequestUri.Host;
-      var user = RequestContext.Principal as ShipHubPrincipal;
-      request.Headers.Authorization = new AuthenticationHeaderValue("token", user.Token);
+      // Process the response
+      if (response.StatusCode == HttpStatusCode.Created) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          await response.Content.LoadIntoBufferAsync();
+          var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
 
-      // This is dumb
-      if (_BareMethods.Contains(request.Method)) {
-        request.Content = null;
-      }
+          // TODO: Unify this code with other issue update places to reduce bugs.
 
-      try {
-        var response = await _ProxyClient.SendAsync(request, cancellationToken);
-        response.Headers.Remove("Server");
+          var accounts = new[] { issue.User, issue.ClosedBy }
+            .Concat(issue.Assignees)
+            .Where(x => x != null)
+            .Distinct(x => x.Id);
 
-        // Process the response
-        if (response.StatusCode == HttpStatusCode.Created) {
-          try {
-            await response.Content.LoadIntoBufferAsync();
-            var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
+          ChangeSummary changes = null;
+          var repoName = $"{owner}/{repo}";
+          using (var context = new dm.ShipHubContext()) {
+            var repoId = await context.Repositories
+              .Where(x => x.FullName == repoName)
+              .Select(x => x.Id)
+              .SingleAsync();
 
-            // TODO: Unify this code with other issue update places to reduce bugs.
+            changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
 
-            var accounts = new[] { issue.User, issue.ClosedBy }
-              .Concat(issue.Assignees)
-              .Where(x => x != null)
-              .Distinct(x => x.Id);
-
-            ChangeSummary changes = null;
-            var repoName = $"{owner}/{repo}";
-            using (var context = new dm.ShipHubContext()) {
-              var repoId = await context.Repositories
-                .Where(x => x.FullName == repoName)
-                .Select(x => x.Id)
-                .SingleAsync();
-
-              changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
-
-              if (issue.Milestone != null) {
-                changes.UnionWith(
-                  await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
-                );
-              }
-
-              if (issue.Labels?.Count() > 0) {
-                changes.UnionWith(await context.BulkUpdateLabels(
-                  repoId,
-                  issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
-              }
-
+            if (issue.Milestone != null) {
               changes.UnionWith(
-                await context.BulkUpdateIssues(
-                repoId,
-                _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
-                issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
-                issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
+                await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
               );
             }
 
-            // Trigger issue event and comment sync.
-            var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}", grainClassNamePrefix: null);
-            issueGrain.SyncInteractive(user.UserId).LogFailure(user.DebugIdentifier);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
+            if (issue.Labels?.Count() > 0) {
+              changes.UnionWith(await context.BulkUpdateLabels(
+                repoId,
+                issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
             }
-          } catch (Exception e) {
-            // swallow db exceptions, since if we're here github has created the issue.
-            // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.
-            e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
-          }
-        }
 
-        return response;
-      } catch (TaskCanceledException exception) {
-        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+            changes.UnionWith(
+              await context.BulkUpdateIssues(
+              repoId,
+              _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
+              issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
+              issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
+            );
+          }
+
+          // Trigger issue event and comment sync.
+          var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}", grainClassNamePrefix: null);
+          issueGrain.SyncInteractive(user.UserId).LogFailure(user.DebugIdentifier);
+
+          if (!changes.IsEmpty) {
+            await _queueClient.NotifyChanges(changes);
+          }
+        } catch (Exception e) {
+          // swallow db exceptions, since if we're here github has created the issue.
+          // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
       }
+
+      return response;
     }
   }
 }
