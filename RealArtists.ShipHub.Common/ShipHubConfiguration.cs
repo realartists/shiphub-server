@@ -21,6 +21,7 @@
     ISet<string> ChargeBeeWebhookExcludeList { get; }
     string DataConnectionString { get; }
     string DeploymentId { get; }
+    Uri GitHubApiRoot { get; }
     string GitHubLoggingStorage { get; }
     string RaygunApiKey { get; }
     string ShipHubContext { get; }
@@ -47,6 +48,7 @@
     public ISet<string> ChargeBeeWebhookExcludeList { get; set; }
     public string DataConnectionString { get; set; }
     public string DeploymentId { get; set; }
+    public Uri GitHubApiRoot { get; set; }
     public string GitHubLoggingStorage { get; set; }
     public string RaygunApiKey { get; set; }
     public string ShipHubContext { get; set; }
@@ -111,6 +113,16 @@
 
     private Lazy<string> _deploymentId = new Lazy<string>(() => GetSetting("DeploymentId", required: true));
     public string DeploymentId { get { return _deploymentId.Value; } }
+
+    private Lazy<Uri> _gitHubApiRoot = new Lazy<Uri>(() => {
+      var root = GetSetting("GitHubApiRoot");
+      if (root.IsNullOrWhiteSpace()) {
+        return new Uri("https://api.github.com/");
+      } else {
+        return new Uri(root);
+      }
+    });
+    public Uri GitHubApiRoot { get { return _gitHubApiRoot.Value; } }
 
     private Lazy<string> _gitHubLoggingStorage = new Lazy<string>(() => GetSetting("GitHubLoggingStorage"));
     public string GitHubLoggingStorage { get { return _gitHubLoggingStorage.Value; } }

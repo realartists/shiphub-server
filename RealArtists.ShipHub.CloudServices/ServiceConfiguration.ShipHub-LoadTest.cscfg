@@ -5,10 +5,10 @@
                       osVersion="*"
                       schemaVersion="2015-04.2.6">
   <Role name="RealArtists.ShipHub.CloudServices.OrleansSilos">
-    <Instances count="3" />
+    <Instances count="5" />
     <ConfigurationSettings>
       <Setting name="DeploymentId"
-               value="shiphub-dev-20161119" />
+               value="shiphub-loadtest-20170113" />
       <Setting name="DataConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
@@ -16,7 +16,7 @@
       <Setting name="ShipHubContext"
                value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
       <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
-               value="6299522e-2b2d-4ebd-bb78-e0968eca82f6" />
+               value="" />
       <Setting name="AzureWebJobsServiceBus"
                value="" />
       <Setting name="AzureWebJobsServiceBusPair"
@@ -29,12 +29,11 @@
                value="" />
       <Setting name="UseSqlAzureExecutionStrategy"
                value="true" />
-      <Setting name="GitHubApiRoot"
-               value="" />
+      <Setting name="GitHubApiRoot" value="http://40.69.145.220/" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
-    <VirtualNetworkSite name="Group ShipHub-Dev shiphub-dev-net" />
+    <VirtualNetworkSite name="Group LoadTest shiphub-loadtest-net" />
     <AddressAssignments>
       <InstanceAddress roleName="RealArtists.ShipHub.CloudServices.OrleansSilos">
         <Subnets>

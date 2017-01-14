@@ -21,6 +21,7 @@
   public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor, IDisposable {
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
+    private IShipHubConfiguration _configuration;
 
     private long _userId;
     private GitHubClient _github;
@@ -43,9 +44,10 @@
       return (_handler = handler);
     }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient) {
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
+      _configuration = configuration;
     }
 
     public override async Task OnActivateAsync() {
@@ -76,7 +78,7 @@
         var handler = GetOrCreateHandlerPipeline(_shipContextFactory);
         // TODO: Orleans has a concept of state/correlation that we can use
         // instead of Guid.NewGuid() or adding parameters to every call.
-        _github = new GitHubClient(handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
+        _github = new GitHubClient(_configuration.GitHubApiRoot, handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
       }
 
       await base.OnActivateAsync();

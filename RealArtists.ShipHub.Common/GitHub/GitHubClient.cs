@@ -12,7 +12,7 @@
   public class GitHubClient : IGitHubClient {
     public const long InvalidUserId = -1;
 
-    public Uri ApiRoot { get; } = new Uri("https://api.github.com/");
+    public Uri ApiRoot { get; }
     public string AccessToken { get; }
     public ProductInfoHeaderValue UserAgent { get; }
     public long UserId { get; }
@@ -24,7 +24,14 @@
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
 
-    public GitHubClient(IGitHubHandler handler, string productName, string productVersion, string userInfo, Guid correlationId, long userId, string accessToken, GitHubRateLimit rateLimit = null) {
+    public GitHubClient(Uri apiRoot, IGitHubHandler handler, string productName, string productVersion, string userInfo, Guid correlationId, long userId, string accessToken, GitHubRateLimit rateLimit = null) {
+      if (apiRoot == null
+        || !apiRoot.IsAbsoluteUri
+        || !apiRoot.AbsolutePath.EndsWith("/", StringComparison.OrdinalIgnoreCase)) {
+        throw new ArgumentException("Uri must be absolute and end with a trailing '/'", nameof(apiRoot));
+      }
+
+      ApiRoot = apiRoot;
       Handler = handler;
       AccessToken = accessToken;
       UserAgent = new ProductInfoHeaderValue(productName, productVersion);

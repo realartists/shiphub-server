@@ -33,6 +33,7 @@
   </PropertyGroup>
   <!-- Items for the project -->
   <ItemGroup>
+    <ServiceConfiguration Include="ServiceConfiguration.ShipHub-LoadTest.cscfg" />
     <ServiceDefinition Include="ServiceDefinition.csdef" />
     <ServiceConfiguration Include="ServiceConfiguration.ShipHub-Live.cscfg" />
     <ServiceConfiguration Include="ServiceConfiguration.Local.cscfg" />
@@ -69,6 +70,7 @@
   <ItemGroup>
     <PublishProfile Include="Profiles\ShipHub-Dev.azurePubxml" />
     <PublishProfile Include="Profiles\ShipHub-Live.azurePubxml" />
+    <PublishProfile Include="Profiles\ShipHub-LoadTest.azurePubxml" />
   </ItemGroup>
   <!-- Import the target files for this project template -->
   <PropertyGroup>

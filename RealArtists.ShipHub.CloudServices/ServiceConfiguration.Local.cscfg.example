@@ -29,6 +29,8 @@
                value="" />
       <Setting name="UseSqlAzureExecutionStrategy"
                value="false" />
+      <Setting name="GitHubApiRoot"
+               value="" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>
