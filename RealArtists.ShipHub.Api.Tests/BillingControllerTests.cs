@@ -15,7 +15,14 @@
   [TestFixture]
   [AutoRollback]
   public class BillingControllerTests {
-    private static IShipHubConfiguration Configuration { get; } = new ShipHubCloudConfiguration();
+    private static IShipHubConfiguration Configuration {
+      get {
+        var config = new Mock<IShipHubConfiguration>();
+        config.Setup(x => x.ApiHostName).Returns("api.realartists.com");
+        config.Setup(x => x.WebsiteHostName).Returns("www.realartists.com");
+        return config.Object;
+      }
+    }
 
     [Test]
     public async Task CanGetAccounts() {
@@ -249,7 +256,7 @@
             if (expectRedirectToReactivation) {
               Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should bounce to reactivate page");
             } else {
-              Assert.AreEqual(BillingController.SignupThankYouUrl, data["redirect_url"], "should go to thank you page.");
+              Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", data["redirect_url"], "should go to thank you page.");
             }
 
             return new {
@@ -557,7 +564,7 @@
         var controller = new BillingController(Configuration, null, api);
         var response = await controller.Reactivate("someHostedPageId", "succeeded");
         Assert.IsInstanceOf<RedirectResult>(response);
-        Assert.AreEqual(BillingController.SignupThankYouUrl, ((RedirectResult)response).Location.AbsoluteUri);
+        Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", ((RedirectResult)response).Location.AbsoluteUri);
 
         Assert.IsTrue(doesReactivate);
       }

@@ -26,6 +26,7 @@
     string ShipHubContext { get; }
     string SmtpPassword { get; }
     bool UseFiddler { get; }
+    string WebsiteHostName { get; }
   }
 
   /// <summary>
@@ -51,6 +52,7 @@
     public string ShipHubContext { get; set; }
     public string SmtpPassword { get; set; }
     public bool UseFiddler { get; set; }
+    public string WebsiteHostName { get; set; }
   }
 
   /// <summary>
@@ -133,6 +135,9 @@
       return bool.TryParse(GetSetting("UseSqlAzureExecutionStrategy"), out result) && result;
     });
     public bool UseSqlAzureExecutionStrategy { get { return _useSqlAzureExecutionStrategy.Value; } }
+
+    private Lazy<string> _websiteHostName = new Lazy<string>(() => GetSetting("WebsiteHostName", required: true));
+    public string WebsiteHostName { get { return _websiteHostName.Value; } }
 
     private static string GetSetting(string key, bool required = false) {
       string value = CloudConfigurationManager.GetSetting(key);

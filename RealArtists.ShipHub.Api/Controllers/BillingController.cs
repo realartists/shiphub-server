@@ -45,8 +45,6 @@
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
-    public const string SignupThankYouUrl = "https://beta.realartists.com/signup-thankyou.html";
-
     public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee) {
       _configuration = config;
       _grainFactory = grainFactory;
@@ -150,7 +148,7 @@
       }
 
       await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
-      return Redirect(SignupThankYouUrl);
+      return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
     }
 
     public virtual IGitHubActor CreateGitHubActor(User user) {
@@ -206,7 +204,7 @@
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
           .SubscriptionTrialEnd(0)
-          .RedirectUrl("https://beta.realartists.com/signup-thankyou.html");
+          .RedirectUrl($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
       } else if (sub.Status == cbm.Subscription.StatusEnum.Cancelled) {
         // This case would happen if the customer was a subscriber in the past, cancelled,
         // and is now returning to signup again.
@@ -300,7 +298,7 @@
        .SubscriptionPlanId("organization")
        .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
-       .RedirectUrl(SignupThankYouUrl);
+       .RedirectUrl($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
 
         if (!firstName.IsNullOrWhiteSpace()) {
           checkoutRequest.CustomerFirstName(firstName);
@@ -347,7 +345,10 @@
       var customerIdPrefix = (account is Organization) ? "org" : "user";
 
       var result = (await _chargeBee.PortalSession.Create()
-        .RedirectUrl("https://www.realartists.com")
+        // The redirect URL tells ChargeBee where to send the user if they click
+        // the logout link.  Our ChargeBee theme hides this logout link, so this
+        // isn't used but is still a required param.
+        .RedirectUrl($"https://{_configuration.WebsiteHostName}")
         .CustomerId($"{customerIdPrefix}-{targetId}")
         .Request()).PortalSession;
 
