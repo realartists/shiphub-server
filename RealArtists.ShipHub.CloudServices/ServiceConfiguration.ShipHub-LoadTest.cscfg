@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ServiceConfiguration serviceName="RealArtists.ShipHub.CloudServices"
+                      xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration"
+                      osFamily="5"
+                      osVersion="*"
+                      schemaVersion="2015-04.2.6">
+  <Role name="RealArtists.ShipHub.CloudServices.OrleansSilos">
+    <Instances count="5" />
+    <ConfigurationSettings>
+      <Setting name="DeploymentId"
+               value="shiphub-loadtest-20170113" />
+      <Setting name="DataConnectionString"
+               value="UseDevelopmentStorage=true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
+               value="UseDevelopmentStorage=true" />
+      <Setting name="ShipHubContext"
+               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
+      <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
+               value="" />
+      <Setting name="AzureWebJobsServiceBus"
+               value="" />
+      <Setting name="AzureWebJobsServiceBusPair"
+               value="" />
+      <Setting name="UseFiddler"
+               value="false" />
+      <Setting name="GitHubLoggingStorage"
+               value=""/>
+      <Setting name="RAYGUN_APIKEY"
+               value="" />
+      <Setting name="UseSqlAzureExecutionStrategy"
+               value="true" />
+    </ConfigurationSettings>
+  </Role>
+  <NetworkConfiguration>
+    <VirtualNetworkSite name="Group LoadTest shiphub-loadtest-net" />
+    <AddressAssignments>
+      <InstanceAddress roleName="RealArtists.ShipHub.CloudServices.OrleansSilos">
+        <Subnets>
+          <Subnet name="Orleans" />
+        </Subnets>
+      </InstanceAddress>
+    </AddressAssignments>
+  </NetworkConfiguration>
+</ServiceConfiguration>

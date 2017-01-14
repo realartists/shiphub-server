@@ -33,6 +33,7 @@
   </PropertyGroup>
   <!-- Items for the project -->
   <ItemGroup>
+    <ServiceConfiguration Include="ServiceConfiguration.ShipHub-LoadTest.cscfg" />
     <ServiceDefinition Include="ServiceDefinition.csdef" />
     <ServiceConfiguration Include="ServiceConfiguration.ShipHub-Live.cscfg" />
     <ServiceConfiguration Include="ServiceConfiguration.Local.cscfg" />
