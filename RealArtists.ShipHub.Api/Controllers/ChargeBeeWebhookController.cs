@@ -137,8 +137,7 @@
         };
         var customerId = candidates.SkipWhile(string.IsNullOrEmpty).FirstOrDefault();
         if (customerId != null) {
-          var matches = CustomerIdRegex.Match(customerId);
-          var accountId = long.Parse(matches.Groups[2].ToString());
+          var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(customerId);
           var account = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == accountId);
           return account?.Login;
         } else {
@@ -248,11 +247,8 @@
       return Ok();
     }
 
-    private static Regex CustomerIdRegex { get; } = new Regex(@"^(user|org)-(\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
-
     private static string GetPaymentMethodUpdateUrl(IShipHubConfiguration configuration, string customerId) {
-      var matches = CustomerIdRegex.Match(customerId);
-      var accountId = long.Parse(matches.Groups[2].ToString());
+      var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(customerId);
 
       var apiHostName = configuration.ApiHostName;
 
@@ -336,8 +332,7 @@
     }
 
     public async Task SendPaymentSucceededOrganizationMessage(ChargeBeeWebhookPayload payload) {
-      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
-      var accountId = long.Parse(matches.Groups[2].ToString());
+      var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
 
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
@@ -388,15 +383,15 @@
     }
 
     public async Task SendPurchasePersonalMessage(ChargeBeeWebhookPayload payload) {
-      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
+      string accountType;
+      long accountId;
+      ChargeBeeUtilities.ParseCustomerId(payload.Content.Customer.Id, out accountType, out accountId);
 
-      if (matches.Groups[1].ToString() != "user") {
+      if (accountType != "user") {
         // "activated" only happens on transition from trial -> active, and we only do trials
         // for personal subscriptions.
         throw new Exception("subscription_activated should only happen on personal/user subscriptions");
       }
-
-      var accountId = long.Parse(matches.Groups[2].ToString());
 
       bool belongsToOrganization = false;
 
@@ -419,9 +414,7 @@
     }
 
     public async Task SendPurchaseOrganizationMessage(ChargeBeeWebhookPayload payload) {
-      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
-
-      var accountId = long.Parse(matches.Groups[2].ToString());
+      var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
 
       await _mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
@@ -433,8 +426,7 @@
     }
 
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
-      var matches = CustomerIdRegex.Match(payload.Content.Customer.Id);
-      var accountId = long.Parse(matches.Groups[2].ToString());
+      var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
 
       var sub = await Context.Subscriptions
         .Include(x => x.Account)
@@ -521,8 +513,7 @@
     }
 
     public async Task HandlePendingInvoiceCreated(ChargeBeeWebhookPayload payload) {
-      var matches = CustomerIdRegex.Match(payload.Content.Invoice.CustomerId);
-      var accountId = long.Parse(matches.Groups[2].ToString());
+      var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Invoice.CustomerId);
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
 
       if (planLineItem.EntityId == "organization") {

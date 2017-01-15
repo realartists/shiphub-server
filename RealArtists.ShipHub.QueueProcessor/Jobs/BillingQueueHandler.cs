@@ -179,11 +179,8 @@
             .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Asc)
             .Request();
 
-          var customerIdRegex = new Regex(@"^(user|org)-(\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
           foreach (var sub in response.List.Select(x => x.Subscription)) {
-            var match = customerIdRegex.Match(sub.CustomerId);
-            var accountId = long.Parse(match.Groups[2].ToString());
-            subsById.Add(accountId, sub);
+            subsById.Add(ChargeBeeUtilities.AccountIdFromCustomerId(sub.CustomerId), sub);
           }
 
           if (!string.IsNullOrEmpty(response.NextOffset)) {
