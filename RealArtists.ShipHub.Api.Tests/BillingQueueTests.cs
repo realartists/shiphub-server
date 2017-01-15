@@ -8,13 +8,14 @@
   using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
-  using RealArtists.ChargeBee;
+  using ChargeBee;
   using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
   using QueueClient.Messages;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
+  using Newtonsoft.Json;
 
   [TestFixture]
   [AutoRollback]
@@ -554,7 +555,9 @@
     public async Task WillSyncOrgSubscriptionState() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-        var org = TestUtil.MakeTestOrg(context);
+        var org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
+        var org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
+        var org3 = TestUtil.MakeTestOrg(context, 6003, "myorg3");
         await context.SaveChangesAsync();
 
         var changeMessages = new List<ChangeMessage>();
@@ -570,7 +573,7 @@
           .Setup(x => x.User(It.IsAny<GitHubCacheDetails>()))
           .ReturnsAsync(new GitHubResponse<Common.GitHub.Models.Account>(null) {
             Result = new Common.GitHub.Models.Account() {
-              Id = org.Id,
+              Id = user.Id,
               Login = "aroon",
               Name = "Aroon Pahwa",
               Type = Common.GitHub.Models.GitHubAccountType.User,
@@ -579,7 +582,8 @@
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
-            Assert.AreEqual($"org-{org.Id}", data["customer_id[is]"]);
+            var idList = JsonConvert.SerializeObject(new[] { org1, org2, org3 }.Select(x => $"org-{x.Id}"));
+            Assert.AreEqual(idList, data["customer_id[in]"]);
             Assert.AreEqual("organization", data["plan_id[is]"]);
 
             return new {
@@ -587,8 +591,17 @@
                   new {
                     subscription = new {
                       id = "existing-sub-id",
+                      customer_id = $"org-{org1.Id}",
                       status = "active",
                       resource_version = 1234,
+                    },
+                  },
+                  new {
+                    subscription = new {
+                      id = "existing-sub-id2",
+                      customer_id = $"org-{org3.Id}",
+                      status = "active",
+                      resource_version = 2345,
                     },
                   },
                 },
@@ -601,20 +614,32 @@
         });
 
         await CreateHandler(api).SyncOrgSubscriptionStateHelper(
-          new TargetMessage() {
-            TargetId = org.Id,
+          new SyncOrgSubscriptionStateMessage() {
+            OrgIds = new[] { org1.Id, org2.Id, org3.Id },
             ForUserId = user.Id,
           },
           collectorMock.Object, mockClient.Object, Console.Out);
 
-        var subscription = context.Subscriptions.Single(x => x.AccountId == org.Id);
-        Assert.AreEqual(SubscriptionState.Subscribed, subscription.State,
+        var org1Subscription = context.Subscriptions.Single(x => x.AccountId == org1.Id);
+        Assert.AreEqual(SubscriptionState.Subscribed, org1Subscription.State,
           "should show as subscribed");
-        Assert.IsNull(subscription.TrialEndDate);
-        Assert.AreEqual(1234, subscription.Version);
+        Assert.IsNull(org1Subscription.TrialEndDate);
+        Assert.AreEqual(1234, org1Subscription.Version);
+
+        var org2Subscription = context.Subscriptions.Single(x => x.AccountId == org2.Id);
+        Assert.AreEqual(SubscriptionState.NotSubscribed, org2Subscription.State,
+          "should not show as subscribed");
+        Assert.IsNull(org2Subscription.TrialEndDate);
+        Assert.AreEqual(0, org2Subscription.Version);
+        
+        var org3Subscription = context.Subscriptions.Single(x => x.AccountId == org3.Id);
+        Assert.AreEqual(SubscriptionState.Subscribed, org3Subscription.State,
+          "should show as subscribed");
+        Assert.IsNull(org3Subscription.TrialEndDate);
+        Assert.AreEqual(2345, org3Subscription.Version);
 
         Assert.AreEqual(
-          new long[] { org.Id },
+          new long[] { org1.Id },
           changeMessages.FirstOrDefault()?.Organizations.OrderBy(x => x).ToArray(),
           "should notify that this org changed.");
       }
