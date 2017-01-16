@@ -80,20 +80,17 @@
         Error("Token must be for a user.", HttpStatusCode.BadRequest);
       }
 
-      // Create account using stored procedure
-      // This ensures it exists (simpler logic) and also won't collide with sync.
-      await Context.BulkUpdateAccounts(userResponse.Date, new[] { _mapper.Map<AccountTableType>(userInfo) });
+      using (var context = new ShipHubContext()) {
+        // Create account using stored procedure
+        // This ensures it exists (simpler logic) and also won't collide with sync.
+        await context.BulkUpdateAccounts(userResponse.Date, new[] { _mapper.Map<AccountTableType>(userInfo) });
 
-      // There's no concurrency check on accounts, so the rest of this is safe.
-      var user = await Context.Users.SingleAsync(x => x.Id == userInfo.Id);
-      user.Token = userResponse.CacheData.AccessToken;
-      user.Scopes = string.Join(",", userResponse.Scopes);
-      await Context.SaveChangesAsync();
+        // Save user access details
+        await context.SetUserAccessToken(userInfo.Id, string.Join(",", userResponse.Scopes), userResponse.RateLimit);
+      }
 
-      await Context.UpdateRateLimit(userResponse.RateLimit);
-
-      var userGrain = _grainFactory.GetGrain<IUserActor>(user.Id);
-      userGrain.Sync().LogFailure($"{user.Login} ({user.Id})");
+      var userGrain = _grainFactory.GetGrain<IUserActor>(userInfo.Id);
+      userGrain.Sync().LogFailure($"{userInfo.Login} ({userInfo.Id})");
 
       return Ok(userInfo);
     }
