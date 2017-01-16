@@ -78,31 +78,34 @@
     [HttpGet]
     [Route("accounts")]
     public async Task<IHttpActionResult> Accounts() {
-      var principal = RequestContext.Principal as ShipHubPrincipal;
-
       var combined = new List<Account>();
 
-      var user = await Context.Users
-        .Include(x => x.Subscription)
-        .SingleAsync(x => x.Id == principal.UserId);
-      if (user.Subscription != null) {
-        combined.Add(user);
-      }
+      using (var context = new ShipHubContext()) {
+        var user = await context.Users
+          .Include(x => x.Subscription)
+          .Where(x => x.Subscription != null)
+          .SingleOrDefaultAsync(x => x.Id == ShipHubUser.UserId);
 
-      var orgs = await Context.OrganizationAccounts
-        .Include(x => x.Organization.Subscription)
-        .Where(x => x.UserId == principal.UserId && x.Organization.Subscription != null)
-        .Select(x => x.Organization)
-        .OrderBy(x => x.Login)
-        .ToArrayAsync();
-      combined.AddRange(orgs);
+        if (user != null) {
+          combined.Add(user);
+        }
+
+        var orgs = await context.OrganizationAccounts
+          .Where(x => x.UserId == ShipHubUser.UserId && x.Organization.Subscription != null)
+          .Select(x => x.Organization)
+          .Include(x => x.Subscription)
+          .OrderBy(x => x.Login)
+          .ToArrayAsync();
+
+        combined.AddRange(orgs);
+      }
 
       var result = combined
        .Select(x => {
          var hasSubscription = x.Subscription.State == SubscriptionState.Subscribed;
-         var signature = CreateSignature(principal.UserId, x.Id);
+         var signature = CreateSignature(ShipHubUser.UserId, x.Id);
          var apiHostName = _configuration.ApiHostName;
-         var actionUrl = $"https://{apiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{principal.UserId}/{x.Id}/{signature}";
+         var actionUrl = $"https://{apiHostName}/billing/{(hasSubscription ? "manage" : "buy")}/{ShipHubUser.UserId}/{x.Id}/{signature}";
 
          return new BillingAccountRow() {
            Account = new BillingAccount() {
@@ -118,8 +121,7 @@
            ActionUrl = actionUrl,
            PricingLines = GetActionLines(x),
          };
-       })
-        .ToList();
+       }).ToList();
 
       return Ok(result);
     }
@@ -216,10 +218,13 @@
         .SubscriptionPlanId("personal")
         .Embed(false);
 
-      var isMemberOfPaidOrg = await Context.OrganizationAccounts
-        .CountAsync(x =>
-          x.UserId == targetId &&
-          x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString()) > 0;
+      bool isMemberOfPaidOrg = false;
+      using (var context = new ShipHubContext()) {
+        isMemberOfPaidOrg = await context.OrganizationAccounts
+          .AnyAsync(x =>
+            x.UserId == targetId &&
+            x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString());
+      }
 
       string couponToAdd = null;
 
@@ -276,9 +281,7 @@
     }
 
     private async Task<IHttpActionResult> BuyOrganization(long actorId, long targetId, Account targetAccount) {
-      var user = await Context.Users.SingleAsync(x => x.Id == actorId);
-
-      var ghc = CreateGitHubActor(user);
+      var ghc = CreateGitHubActor(actorId);
       var ghcUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
       var ghcOrg = (await ghc.Organization(targetAccount.Login, GitHubCacheDetails.Empty)).Result;
 
@@ -366,12 +369,14 @@
     [HttpGet]
     [Route("buy/{actorId}/{targetId}/{signature}")]
     public async Task<IHttpActionResult> Buy(long actorId, long targetId, string signature) {
-
       if (!CreateSignature(actorId, targetId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
-      var targetAccount = await Context.Accounts.SingleAsync(x => x.Id == targetId);
+      Account targetAccount;
+      using (var context = new ShipHubContext()) {
+        targetAccount = await context.Accounts.SingleAsync(x => x.Id == targetId);
+      }
 
       if (targetAccount is Organization) {
         return await BuyOrganization(actorId, targetId, targetAccount);
@@ -384,12 +389,14 @@
     [HttpGet]
     [Route("manage/{actorId}/{targetId}/{signature}")]
     public async Task<IHttpActionResult> Manage(long actorId, long targetId, string signature) {
-
       if (!CreateSignature(actorId, targetId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
-      var account = await Context.Accounts.SingleAsync(x => x.Id == targetId);
+      Account account;
+      using (var context = new ShipHubContext()) {
+        account = await context.Accounts.SingleAsync(x => x.Id == targetId);
+      }
       var customerIdPrefix = (account is Organization) ? "org" : "user";
 
       var result = (await _chargeBee.PortalSession.Create()
@@ -407,12 +414,14 @@
     [HttpGet]
     [Route("update/{accountId}/{signature}")]
     public async Task<IHttpActionResult> UpdatePaymentMethod(long accountId, string signature) {
-
       if (!CreateSignature(accountId, accountId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
-      var account = await Context.Accounts.SingleAsync(x => x.Id == accountId);
+      Account account;
+      using (var context = new ShipHubContext()) {
+        account = await context.Accounts.SingleAsync(x => x.Id == accountId);
+      }
       var customerIdPrefix = (account is Organization) ? "org" : "user";
 
       var result = await _chargeBee.HostedPage.UpdatePaymentMethod()
