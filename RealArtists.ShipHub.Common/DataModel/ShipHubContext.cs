@@ -744,6 +744,14 @@
       }
     }
 
+    public async Task HookSeen(long hookId) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[HookSeen]", ConnectionFactory)) {
+        dsp.HookId = hookId;
+
+        await dsp.ExecuteNonQueryAsync();
+      }
+    }
+
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
       return CreateTableParameter(
         parameterName,
