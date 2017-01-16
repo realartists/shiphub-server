@@ -358,7 +358,6 @@
           .CountAsync();
 
         activeUsersSample = await context.Usage
-          .Include(x => x.Account)
           .Where(x => (
             x.Date >= previousMonthStart &&
             x.Date <= previousMonthEnd &&
