@@ -8,6 +8,7 @@
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
+  using System.Threading;
   using System.Threading.Tasks;
   using GitHub;
   using Legacy;
@@ -158,22 +159,19 @@
     }
 
     public Task BumpRepositoryVersion(long repositoryId) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'repo' AND OwnerId = @RepoId AND ItemType = 'repository' and ItemId = @RepoId",
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repositoryId });
     }
 
     public Task BumpOrganizationVersion(long organizationId) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'org' AND OwnerId = @OrgId AND ItemType = 'account' AND ItemId = @OrgId",
         new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
     }
 
     public Task RevokeAccessToken(string accessToken) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         $"EXEC [dbo].[RevokeAccessToken] @Token = @Token",
         new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken });
     }
@@ -197,8 +195,7 @@
         return Task.CompletedTask;
       }
 
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         $@"UPDATE [{table}] SET
              [{column}] = @Metadata
            WHERE Id = @Id
@@ -208,8 +205,7 @@
     }
 
     public Task UpdateRateLimit(GitHubRateLimit limit) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         $"EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
         new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
         new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
@@ -218,8 +214,7 @@
     }
 
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",
         new SqlParameter("IssueSince", SqlDbType.DateTimeOffset) { Value = issueSince },
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
@@ -232,11 +227,23 @@
         return Task.CompletedTask;
       }
 
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteSqlCommandAsync(
         "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
         new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
         new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
+    }
+
+    private async Task<int> ExecuteSqlCommandAsync(string command, params SqlParameter[] parameters) {
+      using (var conn = ConnectionFactory.Get())
+      using (var cmd = new SqlCommand(command, conn)) {
+        try {
+          cmd.CommandType = CommandType.Text;
+          cmd.Parameters.AddRange(parameters);
+          return await cmd.ExecuteNonQueryAsync();
+        } finally {
+          conn.Close();
+        }
+      }
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
@@ -612,26 +619,15 @@
       });
     }
 
-    [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Whats")]
-    public DynamicStoredProcedure PrepareWhatsNew(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
-      var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
-      DynamicStoredProcedure result = null;
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
+    public DynamicStoredProcedure PrepareSync(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
+      dsp.Token = accessToken;
+      dsp.PageSize = pageSize;
+      dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
+      dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
 
-      try {
-        dynamic dsp = result = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
-        dsp.Token = accessToken;
-        dsp.PageSize = pageSize;
-        dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
-        dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
-      } catch {
-        if (result != null) {
-          result.Dispose();
-          result = null;
-        }
-        throw;
-      }
-
-      return result;
+      return dsp;
     }
 
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {

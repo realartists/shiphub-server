@@ -122,7 +122,7 @@
       var pageSize = 1000;
       var tasks = new List<Task>();
 
-      var dsp = context.PrepareWhatsNew(
+      var dsp = context.PrepareSync(
         _user.Token,
         pageSize,
         _versions.RepoVersions.Select(x => new VersionTableType() {
