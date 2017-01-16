@@ -5,6 +5,7 @@
   using System.Data.Entity.Infrastructure;
   using System.IO;
   using System.Linq;
+  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
@@ -157,66 +158,86 @@
     }
 
     public async Task SyncOrgSubscriptionStateHelper(
-      TargetMessage message,
+      SyncOrgSubscriptionStateMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
       IGitHubActor gitHubClient,
       TextWriter logger) {
 
       using (var context = new cm.ShipHubContext()) {
-        var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
+        var orgs = await context.Organizations.Where(x => message.OrgIds.Contains(x.Id)).ToArrayAsync();
+        var orgCustomerIds = orgs.Select(x => $"org-{x.Id}").ToArray();
 
-        var customerId = $"org-{message.TargetId}";
-        var sub = (await _chargeBee.Subscription.List()
-          .CustomerId().Is(customerId)
-          .PlanId().Is("organization")
-          .Status().Is(cbm.Subscription.StatusEnum.Active)
-          .Limit(1)
-          .Request()).List.SingleOrDefault()?.Subscription;
+        var subsById = new Dictionary<long, cbm.Subscription>();
 
-        for (int attempt = 0; attempt < 2; ++attempt) {
-          try {
-            var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.TargetId);
+        string offset = null;
+        while (true) {
+          var response = await _chargeBee.Subscription.List()
+            .CustomerId().In(orgCustomerIds)
+            .PlanId().Is("organization")
+            .Status().Is(cbm.Subscription.StatusEnum.Active)
+            .Offset(offset)
+            .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Asc)
+            .Request();
 
-            if (accountSubscription == null) {
-              accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
-                AccountId = message.TargetId,
-              });
-            }
+          foreach (var sub in response.List.Select(x => x.Subscription)) {
+            subsById.Add(ChargeBeeUtilities.AccountIdFromCustomerId(sub.CustomerId), sub);
+          }
 
-            if (sub != null) {
-              switch (sub.Status) {
-                case cbm.Subscription.StatusEnum.Active:
-                case cbm.Subscription.StatusEnum.NonRenewing:
-                case cbm.Subscription.StatusEnum.Future:
-                  accountSubscription.State = cm.SubscriptionState.Subscribed;
-                  break;
-                default:
-                  accountSubscription.State = cm.SubscriptionState.NotSubscribed;
-                  break;
-              }
-              accountSubscription.Version = sub.GetValue<long>("resource_version");
-            } else {
-              accountSubscription.State = cm.SubscriptionState.NotSubscribed;
-            }
-
-            int recordsSaved = await context.SaveChangesAsync();
-
-            if (recordsSaved > 0) {
-              var changes = new ChangeSummary();
-              changes.Organizations.Add(message.TargetId);
-              await notifyChanges.AddAsync(new ChangeMessage(changes));
-            }
-
-            // Success. Don't retry.
+          if (!string.IsNullOrEmpty(response.NextOffset)) {
+            offset = response.NextOffset;
+          } else {
             break;
-          } catch (DbUpdateConcurrencyException) {
+          }
+        }
+
+        foreach (var org in orgs) {
+          for (int attempt = 0; attempt < 2; ++attempt) {
+            try {
+              var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == org.Id);
+
+              if (accountSubscription == null) {
+                accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
+                  AccountId = org.Id,
+                });
+              }
+
+              var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
+
+              if (sub != null) {
+                switch (sub.Status) {
+                  case cbm.Subscription.StatusEnum.Active:
+                  case cbm.Subscription.StatusEnum.NonRenewing:
+                  case cbm.Subscription.StatusEnum.Future:
+                    accountSubscription.State = cm.SubscriptionState.Subscribed;
+                    break;
+                  default:
+                    accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+                    break;
+                }
+                accountSubscription.Version = sub.GetValue<long>("resource_version");
+              } else {
+                accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+              }
+
+              int recordsSaved = await context.SaveChangesAsync();
+
+              if (recordsSaved > 0) {
+                var changes = new ChangeSummary();
+                changes.Organizations.Add(org.Id);
+                await notifyChanges.AddAsync(new ChangeMessage(changes));
+              }
+
+              // Success. Don't retry.
+              break;
+            } catch (DbUpdateConcurrencyException) {
+            }
           }
         }
       }
     }
 
     public async Task SyncOrgSubscriptionState(
-      [ServiceBusTrigger(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] TargetMessage message,
+      [ServiceBusTrigger(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] SyncOrgSubscriptionStateMessage message,
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger,
       ExecutionContext executionContext) {

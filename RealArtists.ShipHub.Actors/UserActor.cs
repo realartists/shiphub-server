@@ -169,7 +169,7 @@
 
         if (allOrgIds.Any()) {
           tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync(_userId)));
-          tasks.AddRange(allOrgIds.Select(x => _queueClient.BillingSyncOrgSubscriptionState(x, _userId)));
+          tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
         }
 
         // Update this user's repo memberships

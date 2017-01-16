@@ -9,7 +9,7 @@
     Task AddOrUpdateOrgWebhooks(long targetId, long forUserId);
     Task AddOrUpdateRepoWebhooks(long targetId, long forUserId);
     Task BillingGetOrCreatePersonalSubscription(long userId);
-    Task BillingSyncOrgSubscriptionState(long targetId, long forUserId);
+    Task BillingSyncOrgSubscriptionState(long[] orgIds, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
     Task QueueWebhookEvent(GitHubWebhookEventMessage message);
   }
@@ -30,8 +30,8 @@
     public Task BillingGetOrCreatePersonalSubscription(long userId)
       => SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
 
-    public Task BillingSyncOrgSubscriptionState(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new TargetMessage(targetId, forUserId));
+    public Task BillingSyncOrgSubscriptionState(long[] orgIds, long forUserId)
+      => SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new SyncOrgSubscriptionStateMessage(orgIds, forUserId));
 
     public Task BillingUpdateComplimentarySubscription(long userId)
       => SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
