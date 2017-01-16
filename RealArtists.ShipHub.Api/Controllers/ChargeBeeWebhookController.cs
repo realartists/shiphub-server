@@ -164,7 +164,7 @@
     /// Dev will ignore hooks for your user and your local server will only process
     /// hooks for your user.
     /// </summary>
-    /// <param name="gitHubUserName">Github user or organization name</param>
+    /// <param name="gitHubUserName">GitHub user or organization name</param>
     /// <returns>True if we should reject this webhook event</returns>
     public virtual async Task<bool> ShouldIgnoreWebhook(ChargeBeeWebhookPayload payload) {
       if (_configuration.ChargeBeeWebhookIncludeOnlyList != null

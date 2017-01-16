@@ -52,7 +52,7 @@
 
             var response = await ghc.Comments(repo.FullName, null, metadata);
             if (response.IsOk) {
-              logger.WriteLine("Github: Changed. Saving changes.");
+              logger.WriteLine("GitHub: Changed. Saving changes.");
               var comments = response.Result;
 
               var users = comments
@@ -65,7 +65,7 @@
 
               tasks.Add(notifyChanges.Send(changes));
             } else {
-              logger.WriteLine("Github: Not modified.");
+              logger.WriteLine("GitHub: Not modified.");
             }
 
             tasks.Add(context.UpdateMetadata("Repositories", "CommentMetadataJson", repo.Id, response));
@@ -104,7 +104,7 @@
             // TODO: Cute pagination trick to detect latest only.
             var response = await ghc.Events(repo.FullName, metadata);
             if (response.IsOk) {
-              logger.WriteLine("Github: Changed. Saving changes.");
+              logger.WriteLine("GitHub: Changed. Saving changes.");
               var events = response.Result;
 
               // For now only grab accounts from the response.
@@ -120,7 +120,7 @@
 
               tasks.Add(notifyChanges.Send(changes));
             } else {
-              logger.WriteLine("Github: Not modified.");
+              logger.WriteLine("GitHub: Not modified.");
             }
 
             tasks.Add(context.UpdateMetadata("Repositories", "EventMetadataJson", repo.Id, response));

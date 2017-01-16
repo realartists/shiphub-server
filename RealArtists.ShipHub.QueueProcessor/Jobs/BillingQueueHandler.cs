@@ -53,7 +53,7 @@
             .AddParam("cf_github_username", githubUser.Login)
             .Email(primaryEmail.Email);
 
-          // Name is optional for Github.
+          // Name is optional for GitHub.
           if (!githubUser.Name.IsNullOrWhiteSpace()) {
             var nameParts = githubUser.Name.Trim().Split(' ');
             var firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));

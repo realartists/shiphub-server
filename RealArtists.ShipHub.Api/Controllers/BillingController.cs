@@ -289,7 +289,7 @@
       string lastName = null;
       string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? ghcOrg.Login : ghcOrg.Name;
 
-      // Name is optional for Github.
+      // Name is optional for GitHub.
       if (!ghcUser.Name.IsNullOrWhiteSpace()) {
         var nameParts = ghcUser.Name.Trim().Split(' ');
         firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
