@@ -702,6 +702,37 @@
       });
     }
 
+    public async Task SaveRepositoryMetadata(
+      long repositoryId,
+      long repoSize,
+      GitHubMetadata metadata,
+      GitHubMetadata assignableMetadata,
+      GitHubMetadata issueMetadata,
+      DateTimeOffset issueSince,
+      GitHubMetadata labelMetadata,
+      GitHubMetadata milestoneMetadata,
+      GitHubMetadata projectMetadata,
+      GitHubMetadata contentsRootMetadata,
+      GitHubMetadata contentsDotGitHubMetadata,
+      GitHubMetadata contentsIssueTemplateMetadata) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
+        dsp.RepositoryId = repositoryId;
+        dsp.Size = repoSize;
+        dsp.Metadata = metadata.SerializeObject();
+        dsp.AssignableMetadata = assignableMetadata.SerializeObject();
+        dsp.IssueMetadata = issueMetadata.SerializeObject();
+        dsp.IssueSince = issueSince;
+        dsp.LabelMetadata = labelMetadata.SerializeObject();
+        dsp.MilestoneMetadata = milestoneMetadata.SerializeObject();
+        dsp.ProjectMetadata = projectMetadata.SerializeObject();
+        dsp.ContentsRootMetadata = contentsRootMetadata.SerializeObject();
+        dsp.ContentsDotGitHubMetadata = contentsDotGitHubMetadata.SerializeObject();
+        dsp.ContentsIssueTemplateMetadata = contentsIssueTemplateMetadata.SerializeObject();
+
+        await dsp.ExecuteNonQueryAsync();
+      }
+    }
+
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
       return CreateTableParameter(
         parameterName,
