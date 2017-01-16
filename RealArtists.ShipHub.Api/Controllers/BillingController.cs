@@ -189,8 +189,8 @@
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
     }
 
-    public virtual IGitHubActor CreateGitHubActor(User user) {
-      return _grainFactory.GetGrain<IGitHubActor>(user.Id);
+    public virtual IGitHubActor CreateGitHubActor(long userId) {
+      return _grainFactory.GetGrain<IGitHubActor>(userId);
     }
 
     private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {

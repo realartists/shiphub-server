@@ -414,9 +414,9 @@
 
         var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
         mock
-          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
-          .Returns((User forUser) => {
-            Assert.AreEqual(user.Id, forUser.Id);
+          .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
+          .Returns((long forUserId) => {
+            Assert.AreEqual(user.Id, forUserId);
             return mockClient.Object;
           });
 
@@ -517,9 +517,9 @@
 
         var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
         mock
-          .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
-          .Returns((User forUser) => {
-            Assert.AreEqual(user.Id, forUser.Id);
+          .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
+          .Returns((long forUserId) => {
+            Assert.AreEqual(user.Id, forUserId);
             return mockClient.Object;
           });
 
