@@ -141,7 +141,9 @@
     <Build Include="Procedures\DisableRepository.sql" />
     <Build Include="Procedures\SaveRepositoryMetadata.sql" />
     <Build Include="Procedures\SetUserAccessToken.sql" />
-    <Build Include="Procedures\HookSeen.sql" />
+    <Build Include="Procedures\BulkUpdateHooks.sql" />
+    <Build Include="User Defined Types\HookTableType.sql" />
+    <Build Include="Procedures\CreateHook.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

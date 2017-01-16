@@ -43,6 +43,7 @@
     <Compile Include="Constants.cs" />
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
+    <Compile Include="DataModel\Types\HookTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />

@@ -149,7 +149,7 @@
           }
 
           // Reset the ping count so this webhook won't get reaped.
-          await context.HookSeen(hook.Id);
+          await context.BulkUpdateHooks(seen: new[] { hook.Id });
         }
 
         if (changeSummary != null && !changeSummary.IsEmpty) {
