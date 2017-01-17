@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Data.Entity.Infrastructure;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.Linq;
@@ -16,9 +17,12 @@
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Filters;
+  using Newtonsoft.Json;
   using Orleans;
+  using QueueClient;
   using cb = ChargeBee;
   using cba = ChargeBee.Api;
   using cbm = ChargeBee.Models;
@@ -39,14 +43,20 @@
     public IEnumerable<string> PricingLines { get; set; }
   }
 
+  public class BuyPassThruContent {
+    public bool NeedsReactivation { get; set; }
+  }
+
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
     private IShipHubConfiguration _configuration;
+    private IShipHubQueueClient _queueClient;
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
-    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee) {
+    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient) {
       _configuration = config;
+      _queueClient = queueClient;
       _grainFactory = grainFactory;
       _chargeBee = chargeBee;
     }
@@ -129,16 +139,53 @@
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "state")]
     [AllowAnonymous]
     [HttpGet]
-    [Route("reactivate")]
-    public async Task<IHttpActionResult> Reactivate(string id, string state) {
+    [Route("buy/finish")]
+    public async Task<IHttpActionResult> BuyFinish(string id, string state) {
       var hostedPage = (await _chargeBee.HostedPage.Retrieve(id).Request()).HostedPage;
 
       if (hostedPage.State != cbm.HostedPage.StateEnum.Succeeded) {
-        // ChargeBee should never send the user here unless checkout was successufl.
-        throw new ArgumentException("Asked to reactivate a subscription when checkout did not complete.");
+        // We should only get here if the signup was completed.
+        throw new InvalidOperationException("Asked to complete signup for subscription when checkout did not complete.");
       }
 
-      await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
+      var passThruContent = JsonConvert.DeserializeObject<BuyPassThruContent>(hostedPage.PassThruContent);
+      
+      if (passThruContent.NeedsReactivation) {
+        await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
+      }
+
+      string accountType;
+      long accountId;
+      ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out accountType, out accountId);
+
+      // TODO: Switch to Nick's stored proc to update subscription state.
+      try {
+        var sub = await Context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
+
+        if (sub == null) {
+          sub = Context.Subscriptions.Add(new Subscription() {
+            AccountId = accountId,
+          });
+        }
+
+        sub.State = SubscriptionState.Subscribed;
+        sub.TrialEndDate = null;
+        sub.Version = hostedPage.Content.Subscription.ResourceVersion.Value;
+
+        await Context.SaveChangesAsync();
+
+        var changes = new ChangeSummary();
+
+        if (accountType == "org") {
+          changes.Organizations.Add(accountId);
+        } else {
+          changes.Users.Add(accountId);
+        }
+
+        await _queueClient.NotifyChanges(changes);
+      } catch (DbUpdateConcurrencyException) {
+      }
+
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
     }
 
@@ -163,7 +210,7 @@
       if (sub.Status == cbm.Subscription.StatusEnum.Active) {
         throw new ArgumentException("Existing subscription is already active");
       }
-
+      var needsReactivation = false;
       var pageRequest = _chargeBee.HostedPage.CheckoutExisting()
         .SubscriptionId(sub.Id)
         .SubscriptionPlanId("personal")
@@ -194,8 +241,7 @@
         pageRequest
           // Setting trial end to 0 makes the checkout page run the charge
           // immediately rather than waiting for the trial period to end.
-          .SubscriptionTrialEnd(0)
-          .RedirectUrl($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
+          .SubscriptionTrialEnd(0);
       } else if (sub.Status == cbm.Subscription.StatusEnum.Cancelled) {
         // This case would happen if the customer was a subscriber in the past, cancelled,
         // and is now returning to signup again.
@@ -205,8 +251,7 @@
         // bummer because it means the customer's card won't get run as part of checkout.
         // If they provide invalid CC info, they won't know it until after they've completed
         // the checkout page; the failure info will have to come in an email.
-        var apiHostName = _configuration.ApiHostName;
-        pageRequest.RedirectUrl($"https://{apiHostName}/billing/reactivate");
+        needsReactivation = true;
 
         if (isMemberOfPaidOrg) {
           couponToAdd = "member_of_paid_org";
@@ -218,6 +263,12 @@
       if (couponToAdd != null && sub.Coupons?.SingleOrDefault(x => x.CouponId() == couponToAdd) == null) {
         pageRequest.SubscriptionCoupon(couponToAdd);
       }
+
+      pageRequest
+        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
+        .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+          NeedsReactivation = needsReactivation,
+        }));
 
       var result = (await pageRequest.Request()).HostedPage;
 
@@ -277,7 +328,10 @@
           // bummer because it means the customer's card won't get run as part of checkout.
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
-          .RedirectUrl($"https://{_configuration.ApiHostName}/billing/reactivate")
+          .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+            NeedsReactivation = true,
+          }))
+          .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
           .Request()).HostedPage;
 
         return Redirect(result.Url);
@@ -289,9 +343,12 @@
        .SubscriptionPlanId("organization")
        .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
-       .RedirectUrl($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
+       .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+         NeedsReactivation = true,
+       }))
+       .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
 
-        if (!firstName.IsNullOrWhiteSpace()) {
+       if (!firstName.IsNullOrWhiteSpace()) {
           checkoutRequest.CustomerFirstName(firstName);
         }
 

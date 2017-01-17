@@ -1,16 +1,21 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
+  using System.Data.Entity;
+  using System.Linq;
   using System.Threading.Tasks;
   using System.Web.Http.Results;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Controllers;
   using Filters;
   using Moq;
+  using Newtonsoft.Json;
   using NUnit.Framework;
+  using QueueClient;
 
   [TestFixture]
   [AutoRollback]
@@ -52,7 +57,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null, null);
+        var controller = new BillingController(Configuration, null, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
@@ -89,7 +94,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null, null);
+        var controller = new BillingController(Configuration, null, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)await controller.Accounts();
@@ -104,7 +109,7 @@
         trialEndIfAny: null,
         expectCoupon: null,
         expectTrialToEndImmediately: false,
-        expectRedirectToReactivation: true
+        expectNeedsReactivation: true
         );
     }
 
@@ -175,7 +180,7 @@
         trialEndIfAny: null,
         expectCoupon: "member_of_paid_org",
         expectTrialToEndImmediately: false,
-        expectRedirectToReactivation: true,
+        expectNeedsReactivation: true,
         orgIsPaid: true
         );
     }
@@ -188,7 +193,7 @@
         trialEndIfAny: null,
         expectCoupon: null,
         expectTrialToEndImmediately: false,
-        expectRedirectToReactivation: true,
+        expectNeedsReactivation: true,
         orgIsPaid: true
         );
     }
@@ -198,7 +203,7 @@
       DateTimeOffset? trialEndIfAny,
       string expectCoupon,
       bool expectTrialToEndImmediately,
-      bool expectRedirectToReactivation = false,
+      bool expectNeedsReactivation = false,
       bool orgIsPaid = false,
       string existingCouponId = null
       ) {
@@ -253,10 +258,13 @@
               Assert.IsFalse(data.ContainsKey("subscription[trial_end]"), "should not have set trial to end");
             }
 
-            if (expectRedirectToReactivation) {
-              Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath, "should bounce to reactivate page");
+            Assert.AreEqual("/billing/buy/finish", new Uri(data["redirect_url"]).AbsolutePath, "should always bounce to finish page");
+
+            var passThruContent = JsonConvert.DeserializeObject<BuyPassThruContent>(data["pass_thru_content"]);
+            if (expectNeedsReactivation) {
+              Assert.True(passThruContent.NeedsReactivation, "should have set NeedsReactivation");
             } else {
-              Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", data["redirect_url"], "should go to thank you page.");
+              Assert.False(passThruContent.NeedsReactivation, "should not have set NeedsReactivation");
             }
 
             return new {
@@ -271,7 +279,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api);
+        var controller = new BillingController(Configuration, null, api, null);
         var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -300,7 +308,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api);
+        var controller = new BillingController(Configuration, null, api, null);
         var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -329,7 +337,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api);
+        var controller = new BillingController(Configuration, null, api, null);
         var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -404,7 +412,7 @@
           }
         });
 
-        var mock = new Mock<BillingController>(Configuration, null, api) { CallBase = true };
+        var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
         mock
           .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
           .Returns((User forUser) => {
@@ -493,7 +501,7 @@
             doesCheckoutExisting = true;
             Assert.AreEqual("existing-sub-id", data["subscription[id]"]);
             Assert.AreEqual("organization", data["subscription[plan_id]"]);
-            Assert.AreEqual("/billing/reactivate", new Uri(data["redirect_url"]).AbsolutePath);
+            Assert.AreEqual("/billing/buy/finish", new Uri(data["redirect_url"]).AbsolutePath);
 
             return new {
               hosted_page = new {
@@ -507,7 +515,7 @@
           }
         });
 
-        var mock = new Mock<BillingController>(Configuration, null, api) { CallBase = true };
+        var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
         mock
           .Setup(x => x.CreateGitHubActor(It.IsAny<User>()))
           .Returns((User forUser) => {
@@ -525,7 +533,7 @@
     }
 
     [Test]
-    public async Task ReactivateEndpointReactivatesAndSaysThankYou() {
+    public async Task BuyFinishEndpointCanReactivateSubscription() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
         user.Token = Guid.NewGuid().ToString();
@@ -543,8 +551,13 @@
                 content = new {
                   subscription = new {
                     id = "someSubId",
+                    customer_id = $"user-{user.Id}",
+                    resource_version = 999,
                   }
-                }
+                },
+                pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
+                  NeedsReactivation = true,
+                }),
               },
             };
           } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/someSubId/reactivate")) {
@@ -561,12 +574,102 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api);
-        var response = await controller.Reactivate("someHostedPageId", "succeeded");
-        Assert.IsInstanceOf<RedirectResult>(response);
-        Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", ((RedirectResult)response).Location.AbsoluteUri);
+        var queueClientMock = new Mock<IShipHubQueueClient>();
 
+        var controller = new BillingController(Configuration, null, api, queueClientMock.Object);
+        var response = await controller.BuyFinish("someHostedPageId", "succeeded");
+        Assert.IsInstanceOf<RedirectResult>(response);
         Assert.IsTrue(doesReactivate);
+      }
+    }
+
+    private async Task<IChangeSummary> BuyFinishEndpointUpdatesSubscriptionStateHelper(ShipHubContext context, string customerId) {
+      var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+        if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
+          return new {
+            hosted_page = new {
+              state = "succeeded",
+              url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
+              content = new {
+                subscription = new {
+                  id = "someSubId",
+                  customer_id = customerId,
+                  resource_version = 1234,
+                }
+              },
+              pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
+                NeedsReactivation = false,
+              }),
+            },
+          };
+        } else {
+          Assert.Fail($"Unexpected {method} to {path}");
+          return null;
+        }
+      });
+
+      IChangeSummary changes = null;
+
+      var queueClientMock = new Mock<IShipHubQueueClient>();
+      queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns((IChangeSummary c) => {
+          changes = c;
+          return Task.CompletedTask;
+        });
+
+      var controller = new BillingController(Configuration, null, api, queueClientMock.Object);
+      var response = await controller.BuyFinish("someHostedPageId", "succeeded");
+      Assert.IsInstanceOf<RedirectResult>(response);
+      Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", ((RedirectResult)response).Location.AbsoluteUri);
+
+      return changes;
+    }
+
+    [Test]
+    public async Task BuyFinishEndpointUpdatesSubscriptionStateForUser() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        user.Token = Guid.NewGuid().ToString();
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.InTrial,
+          TrialEndDate = DateTimeOffset.UtcNow.AddDays(30),
+          Version = 1,
+        });
+        await context.SaveChangesAsync();
+
+        var changes = await BuyFinishEndpointUpdatesSubscriptionStateHelper(context, $"user-{user.Id}");
+
+        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
+        context.Entry(sub).Reload();
+        Assert.NotNull(sub, "should have found subscription");
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+        Assert.Null(sub.TrialEndDate);
+        Assert.AreEqual(1234, sub.Version);
+
+        Assert.NotNull(changes, "should have sent notification about changes");
+        Assert.AreEqual(new long[] { user.Id }, changes.Users.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task BuyFinishEndpointUpdatesSubscriptionStateForOrg() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        user.Token = Guid.NewGuid().ToString();
+        var org = TestUtil.MakeTestOrg(context);
+        await context.SaveChangesAsync();
+
+        var changes = await BuyFinishEndpointUpdatesSubscriptionStateHelper(context, $"org-{org.Id}");
+
+        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == org.Id);
+        Assert.NotNull(sub, "should have found subscription");
+        Assert.AreEqual(SubscriptionState.Subscribed, sub.State);
+        Assert.Null(sub.TrialEndDate);
+        Assert.AreEqual(1234, sub.Version);
+
+        Assert.NotNull(changes, "should have sent notification about changes");
+        Assert.AreEqual(new long[] { org.Id }, changes.Organizations.ToArray());
       }
     }
 
@@ -592,7 +695,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api);
+        var controller = new BillingController(Configuration, null, api, null);
         var response = await controller.UpdatePaymentMethod(org.Id, BillingController.CreateSignature(org.Id, org.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/page/path/123", ((RedirectResult)response).Location.AbsoluteUri);
