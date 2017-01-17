@@ -332,33 +332,29 @@
     }
 
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {
-      var accountsParam = CreateTableParameter(
-        "Accounts",
-        "[dbo].[AccountTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Type", typeof(string)),
-          Tuple.Create("Login", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.Type,
-          x.Login,
-        },
-        accounts);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateAccounts]", x => {
         x.Date = date;
-        x.Accounts = accountsParam;
+        x.Accounts = CreateTableParameter(
+          "Accounts",
+          "[dbo].[AccountTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("Type", typeof(string)),
+            Tuple.Create("Login", typeof(string)),
+          },
+          y => new object[] {
+            y.Id,
+            y.Type,
+            y.Login,
+          },
+          accounts);
       });
     }
 
     public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
-      var tableParam = CreateCommentTable("Comments", comments);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
         x.RepositoryId = repositoryId;
-        x.Comments = tableParam;
+        x.Comments = CreateCommentTable("Comments", comments);
       });
     }
 
@@ -384,42 +380,37 @@
       bool fromTimeline,
       IEnumerable<IssueEventTableType> issueEvents,
       IEnumerable<long> referencedAccounts) {
-
-      var eventsParam = CreateTableParameter(
-        "IssueEvents",
-        "[dbo].[IssueEventTableType]",
-        new[] {
-          Tuple.Create("UniqueKey", typeof(string)),
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueId", typeof(long)),
-          Tuple.Create("ActorId", typeof(long)),
-          Tuple.Create("Event", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("Hash", typeof(Guid)),
-          Tuple.Create("Restricted", typeof(bool)),
-          Tuple.Create("ExtensionData", typeof(string)),
-        },
-        x => new object[] {
-          x.UniqueKey,
-          x.Id,
-          x.IssueId,
-          x.ActorId,
-          x.Event,
-          x.CreatedAt,
-          x.Hash,
-          x.Restricted,
-          x.ExtensionData,
-        },
-        issueEvents);
-
-      var accountsParam = CreateItemListTable("ReferencedAccounts", referencedAccounts);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueEvents]", x => {
         x.UserId = userId;
         x.RepositoryId = repositoryId;
         x.Timeline = fromTimeline;
-        x.IssueEvents = eventsParam;
-        x.ReferencedAccounts = accountsParam;
+        x.ReferencedAccounts = CreateItemListTable("ReferencedAccounts", referencedAccounts);
+        x.IssueEvents = CreateTableParameter(
+          "IssueEvents",
+          "[dbo].[IssueEventTableType]",
+          new[] {
+            Tuple.Create("UniqueKey", typeof(string)),
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("IssueId", typeof(long)),
+            Tuple.Create("ActorId", typeof(long)),
+            Tuple.Create("Event", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("Hash", typeof(Guid)),
+            Tuple.Create("Restricted", typeof(bool)),
+            Tuple.Create("ExtensionData", typeof(string)),
+          },
+          y => new object[] {
+            y.UniqueKey,
+            y.Id,
+            y.IssueId,
+            y.ActorId,
+            y.Event,
+            y.CreatedAt,
+            y.Hash,
+            y.Restricted,
+            y.ExtensionData,
+          },
+          issueEvents);
       });
     }
 
@@ -428,46 +419,44 @@
       IEnumerable<IssueTableType> issues,
       IEnumerable<MappingTableType> labels,
       IEnumerable<MappingTableType> assignees) {
-      var issueParam = CreateTableParameter(
-        "Issues",
-        "[dbo].[IssueTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Number", typeof(int)),
-          Tuple.Create("State", typeof(string)),
-          Tuple.Create("Title", typeof(string)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("MilestoneId", typeof(long)),
-          Tuple.Create("Locked", typeof(bool)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
-          Tuple.Create("ClosedById", typeof(long)),
-          Tuple.Create("PullRequest", typeof(bool)),
-          Tuple.Create("Reactions", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.UserId,
-          x.Number,
-          x.State,
-          x.Title,
-          x.Body,
-          x.MilestoneId,
-          x.Locked,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.ClosedAt,
-          x.ClosedById,
-          x.PullRequest,
-          x.Reactions,
-        },
-        issues);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssues]", x => {
         x.RepositoryId = repositoryId;
-        x.Issues = issueParam;
+        x.Issues = CreateTableParameter(
+          "Issues",
+          "[dbo].[IssueTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("UserId", typeof(long)),
+            Tuple.Create("Number", typeof(int)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("Title", typeof(string)),
+            Tuple.Create("Body", typeof(string)),
+            Tuple.Create("MilestoneId", typeof(long)),
+            Tuple.Create("Locked", typeof(bool)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
+            Tuple.Create("ClosedById", typeof(long)),
+            Tuple.Create("PullRequest", typeof(bool)),
+            Tuple.Create("Reactions", typeof(string)),
+          },
+          y => new object[] {
+            y.Id,
+            y.UserId,
+            y.Number,
+            y.State,
+            y.Title,
+            y.Body,
+            y.MilestoneId,
+            y.Locked,
+            y.CreatedAt,
+            y.UpdatedAt,
+            y.ClosedAt,
+            y.ClosedById,
+            y.PullRequest,
+            y.Reactions,
+          },
+          issues);
 
         if (labels != null) {
           x.Labels = CreateMappingTable("Labels", labels);
@@ -480,65 +469,41 @@
     }
 
     public Task<ChangeSummary> BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones, bool complete = false) {
-      var tableParam = CreateTableParameter(
-        "Milestones",
-        "[dbo].[MilestoneTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Number", typeof(int)),
-          Tuple.Create("State", typeof(string)),
-          Tuple.Create("Title", typeof(string)),
-          Tuple.Create("Description", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("ClosedAt", typeof(DateTimeOffset)), // Nullable types handled by DataTable
-          Tuple.Create("DueOn", typeof(DateTimeOffset)), // Nullable types handled by DataTable
-        },
-        x => new object[] {
-          x.Id,
-          x.Number,
-          x.State,
-          x.Title,
-          x.Description,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.ClosedAt,
-          x.DueOn,
-        },
-        milestones);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
         x.RepositoryId = repositoryId;
-        x.Milestones = tableParam;
         x.Complete = complete;
+        x.Milestones = CreateTableParameter(
+          "Milestones",
+          "[dbo].[MilestoneTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("Number", typeof(int)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("Title", typeof(string)),
+            Tuple.Create("Description", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("ClosedAt", typeof(DateTimeOffset)), // Nullable types handled by DataTable
+            Tuple.Create("DueOn", typeof(DateTimeOffset)), // Nullable types handled by DataTable
+          },
+          y => new object[] {
+            y.Id,
+            y.Number,
+            y.State,
+            y.Title,
+            y.Description,
+            y.CreatedAt,
+            y.UpdatedAt,
+            y.ClosedAt,
+            y.DueOn,
+          },
+          milestones);
       });
     }
 
     private Task<ChangeSummary> BulkUpdateProjects(IEnumerable<ProjectTableType> projects, long? repositoryId = null, long? organizationId = null) {
       Debug.Assert(repositoryId != null || organizationId != null, "Must specify either repositoryId or organizationId");
       Debug.Assert(!(repositoryId != null && organizationId != null), "Must specify exactly one of repositoryId or organizationId");
-      var tableParam = CreateTableParameter(
-        "Projects",
-        "[dbo].[ProjectTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Name", typeof(string)),
-          Tuple.Create("Number", typeof(long)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("CreatorId", typeof(long)),
-        },
-        x => new object[] {
-          x.Id,
-          x.Name,
-          x.Number,
-          x.Body,
-          x.CreatedAt,
-          x.UpdatedAt,
-          x.CreatorId,
-        },
-        projects);
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateProjects]", x => {
         x.RepositoryId = new SqlParameter("RepositoryId", SqlDbType.BigInt);
@@ -553,7 +518,28 @@
         } else {
           x.OrganizationId.Value = DBNull.Value;
         }
-        x.Projects = tableParam;
+        x.Projects = CreateTableParameter(
+          "Projects",
+          "[dbo].[ProjectTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("Name", typeof(string)),
+            Tuple.Create("Number", typeof(long)),
+            Tuple.Create("Body", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("CreatorId", typeof(long)),
+          },
+          y => new object[] {
+            y.Id,
+            y.Name,
+            y.Number,
+            y.Body,
+            y.CreatedAt,
+            y.UpdatedAt,
+            y.CreatorId,
+          },
+          projects);
       });
     }
 
@@ -566,25 +552,23 @@
     }
 
     public Task<ChangeSummary> BulkUpdateLabels(long repositoryId, IEnumerable<LabelTableType> labels, bool complete = false) {
-      var tableParam = CreateTableParameter(
-        "Labels",
-        "[dbo].[LabelTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Color", typeof(string)),
-          Tuple.Create("Name", typeof(string)),
-        },
-        x => new object[] {
-          x.Id,
-          x.Color,
-          x.Name,
-        },
-        labels);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateLabels]", x => {
         x.RepositoryId = repositoryId;
-        x.Labels = tableParam;
         x.Complete = complete;
+        x.Labels = CreateTableParameter(
+          "Labels",
+          "[dbo].[LabelTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("Color", typeof(string)),
+            Tuple.Create("Name", typeof(string)),
+          },
+          y => new object[] {
+            y.Id,
+            y.Color,
+            y.Name,
+          },
+          labels);
       });
     }
 
@@ -597,58 +581,54 @@
     }
 
     private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
-      var reactionsParam = CreateTableParameter(
-        "Reactions",
-        "[dbo].[ReactionTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Content", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-        },
-        x => new object[] {
-          x.Id,
-          x.UserId,
-          x.Content,
-          x.CreatedAt,
-        },
-        reactions);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.CommentId = commentId;
-        x.Reactions = reactionsParam;
+        x.Reactions = CreateTableParameter(
+          "Reactions",
+          "[dbo].[ReactionTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("UserId", typeof(long)),
+            Tuple.Create("Content", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+          },
+          y => new object[] {
+            y.Id,
+            y.UserId,
+            y.Content,
+            y.CreatedAt,
+          },
+          reactions);
       });
     }
 
     public Task<ChangeSummary> BulkUpdateRepositories(DateTimeOffset date, IEnumerable<RepositoryTableType> repositories) {
-      var tableParam = CreateTableParameter(
-        "Repositories",
-        "[dbo].[RepositoryTableType]",
-        new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("AccountId", typeof(long)),
-          Tuple.Create("Private", typeof(bool)),
-          Tuple.Create("Name", typeof(string)),
-          Tuple.Create("FullName", typeof(string)),
-          Tuple.Create("Size", typeof(long)),
-          Tuple.Create("Disabled", typeof(bool)),
-        },
-        x => new object[] {
-          x.Id,
-          x.AccountId,
-          x.Private,
-          x.Name,
-          x.FullName,
-          x.Size,
-          x.Disabled,
-        },
-        repositories);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateRepositories]", x => {
         x.Date = date;
-        x.Repositories = tableParam;
+        x.Repositories = CreateTableParameter(
+          "Repositories",
+          "[dbo].[RepositoryTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("AccountId", typeof(long)),
+            Tuple.Create("Private", typeof(bool)),
+            Tuple.Create("Name", typeof(string)),
+            Tuple.Create("FullName", typeof(string)),
+            Tuple.Create("Size", typeof(long)),
+            Tuple.Create("Disabled", typeof(bool)),
+          },
+          y => new object[] {
+            y.Id,
+            y.AccountId,
+            y.Private,
+            y.Name,
+            y.FullName,
+            y.Size,
+            y.Disabled,
+          },
+          repositories);
       });
     }
 
@@ -670,22 +650,18 @@
     }
 
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
-      var repoParam = CreateMappingTable(
-        "RepositoryIds",
-        repoIdAndAdminPairs.Select(x => new MappingTableType() { Item1 = x.Item1, Item2 = x.Item2 ? 1 : 0 }));
-
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
-        x.RepositoryIds = repoParam;
+        x.RepositoryIds = CreateMappingTable(
+          "RepositoryIds",
+          repoIdAndAdminPairs.Select(y => new MappingTableType() { Item1 = y.Item1, Item2 = y.Item2 ? 1 : 0 }));
       });
     }
 
     public Task<ChangeSummary> SetUserOrganizations(long userId, IEnumerable<long> organizationIds) {
-      var orgTable = CreateItemListTable("OrganizationIds", organizationIds);
-
       return ExecuteAndReadChanges("[dbo].[SetUserOrganizations]", x => {
         x.UserId = userId;
-        x.OrganizationIds = orgTable;
+        x.OrganizationIds = CreateItemListTable("OrganizationIds", organizationIds);
       });
     }
 
@@ -837,25 +813,23 @@
     }
 
     public Task<ChangeSummary> BulkUpdateSubscriptions(IEnumerable<SubscriptionTableType> subscriptions) {
-      var tableParam = CreateTableParameter(
-        "Subscriptions",
-        "[dbo].[SubscriptionTableType]",
-        new[] {
-          Tuple.Create("AccountId", typeof(long)),
-          Tuple.Create("State", typeof(string)),
-          Tuple.Create("TrialEndDate", typeof(DateTimeOffset)),
-          Tuple.Create("Version", typeof(long)),
-        },
-        x => new object[] {
-          x.AccountId,
-          x.State,
-          x.TrialEndDate,
-          x.Version,
-        },
-        subscriptions);
-
       return ExecuteAndReadChanges("[dbo].[BulkUpdateSubscriptions]", x => {
-        x.Subscriptions = tableParam;
+        x.Subscriptions = CreateTableParameter(
+          "Subscriptions",
+          "[dbo].[SubscriptionTableType]",
+          new[] {
+            Tuple.Create("AccountId", typeof(long)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("TrialEndDate", typeof(DateTimeOffset)),
+            Tuple.Create("Version", typeof(long)),
+          },
+          y => new object[] {
+            y.AccountId,
+            y.State,
+            y.TrialEndDate,
+            y.Version,
+          },
+          subscriptions);
       });
     }
 
