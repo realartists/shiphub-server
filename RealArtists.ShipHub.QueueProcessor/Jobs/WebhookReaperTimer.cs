@@ -116,8 +116,7 @@
         }
 
         await Task.WhenAll(pingTasks);
-
-      } while (numStaleHooks > (batchSize / 2));
+      } while (numStaleHooks == batchSize);
     }
   }
 }

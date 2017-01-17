@@ -327,7 +327,7 @@
         // Comment Reactions
         Dictionary<long, GitHubMetadata> commentReactionMetadata;
         using (var context2 = _contextFactory.CreateInstance()) {
-          commentReactionMetadata = await context.Comments
+          commentReactionMetadata = await context2.Comments
             .AsNoTracking()
             .Where(x => x.IssueId == _issueId)
             .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
