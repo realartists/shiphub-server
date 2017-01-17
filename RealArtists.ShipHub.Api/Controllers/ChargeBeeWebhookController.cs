@@ -432,6 +432,7 @@
 
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
       var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
+      ChangeSummary changes;
 
       using (var context = new ShipHubContext()) {
         var sub = await context.Subscriptions
@@ -454,7 +455,7 @@
           incomingVersion = payload.Content.Subscription.ResourceVersion;
         }
 
-        if (incomingVersion < sub.Version) {
+        if (incomingVersion <= sub.Version) {
           // We're receiving webhook events out-of-order (which can happen due to re-delivery),
           // so ignore.
           return;
@@ -486,31 +487,32 @@
           }
         }
 
+        changes = await context.BulkUpdateSubscriptions(new[] {
+          new SubscriptionTableType() {
+            AccountId = sub.AccountId,
+            State = sub.StateName,
+            TrialEndDate = sub.TrialEndDate,
+            Version = sub.Version,
+          }
+        });
+
         var afterState = sub.State;
-
-        var recordsUpdated = await context.SaveChangesAsync();
-
-        if (recordsUpdated > 0) {
-          var changes = new ChangeSummary();
-
-          if (sub.Account is Organization) {
-            changes.Organizations.Add(accountId);
-          } else {
-            changes.Users.Add(accountId);
+        if (afterState != beforeState) {
+          // Only send changes when they're material.
+          if (!changes.IsEmpty) {
+            await _queueClient.NotifyChanges(changes);
           }
 
-          await _queueClient.NotifyChanges(changes);
-        }
-
-        if (afterState != beforeState && sub.Account is Organization) {
-          // For all users associated with this org and that have logged into Ship
-          // (i.e., they have a Subscription record), go re-evaluate whether the
-          // user should have a complimentary personal subscription.
-          var orgAccountIds = context.OrganizationAccounts
-            .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
-            .Select(x => x.UserId)
-            .ToArray();
-          await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+          if (sub.Account is Organization) {
+            // For all users associated with this org and that have logged into Ship
+            // (i.e., they have a Subscription record), go re-evaluate whether the
+            // user should have a complimentary personal subscription.
+            var orgAccountIds = context.OrganizationAccounts
+              .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
+              .Select(x => x.UserId)
+              .ToArray();
+            await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+          }
         }
       }
     }

@@ -5,7 +5,6 @@
   using System.Data.Entity.Infrastructure;
   using System.IO;
   using System.Linq;
-  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
@@ -35,6 +34,7 @@
       IAsyncCollector<ChangeMessage> notifyChanges,
       IGitHubActor gitHubClient,
       TextWriter logger) {
+
       using (var context = new cm.ShipHubContext()) {
         var user = await context.Users.SingleAsync(x => x.Id == message.UserId);
 
@@ -87,52 +87,49 @@
           sub = subList.First().Subscription;
         }
 
-        for (int attempt = 0; attempt < 2; ++attempt) {
-          try {
-            var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
+        var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == user.Id);
 
-            if (accountSubscription == null) {
-              accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
-                AccountId = user.Id,
-              });
-            }
+        if (accountSubscription == null) {
+          accountSubscription = new cm.Subscription() {
+            AccountId = user.Id,
+          };
+        }
 
-            var version = sub.ResourceVersion.GetValueOrDefault(0);
-            if (accountSubscription.Version > version) {
-              // Drop old data
-              break;
-            } else {
-              accountSubscription.Version = version;
-            }
+        var version = sub.ResourceVersion.GetValueOrDefault(0);
+        if (accountSubscription.Version > version) {
+          // Drop old data
+          return;
+        } else {
+          accountSubscription.Version = version;
+        }
 
-            switch (sub.Status) {
-              case cbm.Subscription.StatusEnum.Active:
-              case cbm.Subscription.StatusEnum.NonRenewing:
-                accountSubscription.State = cm.SubscriptionState.Subscribed;
-                accountSubscription.TrialEndDate = null;
-                break;
-              case cbm.Subscription.StatusEnum.InTrial:
-                accountSubscription.State = cm.SubscriptionState.InTrial;
-                accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
-                break;
-              default:
-                accountSubscription.State = cm.SubscriptionState.NotSubscribed;
-                accountSubscription.TrialEndDate = null;
-                break;
-            }
-
-            int recordsSaved = await context.SaveChangesAsync();
-
-            if (recordsSaved > 0) {
-              var changes = new ChangeSummary();
-              changes.Users.Add(user.Id);
-              await notifyChanges.AddAsync(new ChangeMessage(changes));
-            }
-
-            // Success. Don't retry.
+        switch (sub.Status) {
+          case cbm.Subscription.StatusEnum.Active:
+          case cbm.Subscription.StatusEnum.NonRenewing:
+            accountSubscription.State = cm.SubscriptionState.Subscribed;
+            accountSubscription.TrialEndDate = null;
             break;
-          } catch (DbUpdateConcurrencyException) {
-          }
+          case cbm.Subscription.StatusEnum.InTrial:
+            accountSubscription.State = cm.SubscriptionState.InTrial;
+            accountSubscription.TrialEndDate = new DateTimeOffset(sub.TrialEnd.Value.ToUniversalTime());
+            break;
+          default:
+            accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+            accountSubscription.TrialEndDate = null;
+            break;
+        }
+
+        var changes = await context.BulkUpdateSubscriptions(new[] {
+          new SubscriptionTableType(){
+            AccountId = accountSubscription.AccountId,
+            State = accountSubscription.StateName,
+            TrialEndDate = accountSubscription.TrialEndDate,
+            Version = accountSubscription.Version,
+          },
+        });
+
+        if (!changes.IsEmpty) {
+          await notifyChanges.AddAsync(new ChangeMessage(changes));
         }
       }
     }
@@ -191,46 +188,43 @@
         }
 
         foreach (var org in orgs) {
-          for (int attempt = 0; attempt < 2; ++attempt) {
-            try {
-              var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == org.Id);
+          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == org.Id);
 
-              if (accountSubscription == null) {
-                accountSubscription = context.Subscriptions.Add(new cm.Subscription() {
-                  AccountId = org.Id,
-                });
-              }
+          if (accountSubscription == null) {
+            accountSubscription = new cm.Subscription() {
+              AccountId = org.Id,
+            };
+          }
 
-              var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
+          var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
 
-              if (sub != null) {
-                switch (sub.Status) {
-                  case cbm.Subscription.StatusEnum.Active:
-                  case cbm.Subscription.StatusEnum.NonRenewing:
-                  case cbm.Subscription.StatusEnum.Future:
-                    accountSubscription.State = cm.SubscriptionState.Subscribed;
-                    break;
-                  default:
-                    accountSubscription.State = cm.SubscriptionState.NotSubscribed;
-                    break;
-                }
-                accountSubscription.Version = sub.GetValue<long>("resource_version");
-              } else {
+          if (sub != null) {
+            switch (sub.Status) {
+              case cbm.Subscription.StatusEnum.Active:
+              case cbm.Subscription.StatusEnum.NonRenewing:
+              case cbm.Subscription.StatusEnum.Future:
+                accountSubscription.State = cm.SubscriptionState.Subscribed;
+                break;
+              default:
                 accountSubscription.State = cm.SubscriptionState.NotSubscribed;
-              }
-
-              int recordsSaved = await context.SaveChangesAsync();
-
-              if (recordsSaved > 0) {
-                var changes = new ChangeSummary();
-                changes.Organizations.Add(org.Id);
-                await notifyChanges.AddAsync(new ChangeMessage(changes));
-              }
-
-              // Success. Don't retry.
-              break;
-            } catch (DbUpdateConcurrencyException) {
+                break;
             }
+            accountSubscription.Version = sub.GetValue<long>("resource_version");
+          } else {
+            accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+          }
+
+          var changes = await context.BulkUpdateSubscriptions(new[] {
+            new SubscriptionTableType(){
+              AccountId = accountSubscription.AccountId,
+              State = accountSubscription.StateName,
+              TrialEndDate = accountSubscription.TrialEndDate,
+              Version = accountSubscription.Version,
+            }
+          });
+
+          if (!changes.IsEmpty) {
+            await notifyChanges.AddAsync(new ChangeMessage(changes));
           }
         }
       }
