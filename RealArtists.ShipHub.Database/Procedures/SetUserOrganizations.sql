@@ -51,14 +51,18 @@ BEGIN
     OUTPUT INSERTED.OrganizationId, $action INTO @Changes
     OPTION(LOOP JOIN, FORCE ORDER);
 
-    -- New organizations reference themselves
-    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-    SELECT 'org', c.OrganizationId, 'account', c.OrganizationId, 0
-    FROM @Changes as c
-    WHERE c.[Action] = 'INSERT'
-      AND NOT EXISTS (
-        SELECT * FROM SyncLog
-        WHERE OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
+    -- Organizations reference themselves
+    MERGE INTO SyncLog WITH (SERIALIZABLE) as [Target]
+    USING (
+      SELECT Item as OwnerId, Item as ItemId
+      FROM @OrganizationIds
+    ) as [Source]
+    ON (  [Target].OwnerType = 'org' AND [Target].OwnerId = [Source].OwnerId
+      AND [Target].ItemType = 'account' AND [Target].ItemId = [Source].ItemId)
+    WHEN NOT MATCHED BY TARGET THEN
+      INSERT(OwnerType, OwnerId, ItemType, ItemId, [Delete])
+      VALUES('org', OwnerId, 'account', ItemId, 0)
+    OPTION (LOOP JOIN, FORCE ORDER);
 
     -- For new members, add a reference but don't notify.
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
