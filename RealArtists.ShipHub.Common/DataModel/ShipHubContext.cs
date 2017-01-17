@@ -757,16 +757,16 @@
       using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
         dsp.RepositoryId = repositoryId;
         dsp.Size = repoSize;
-        dsp.Metadata = metadata.SerializeObject();
-        dsp.AssignableMetadata = assignableMetadata.SerializeObject();
-        dsp.IssueMetadata = issueMetadata.SerializeObject();
+        dsp.MetadataJson = metadata.SerializeObject();
+        dsp.AssignableMetadataJson = assignableMetadata.SerializeObject();
+        dsp.IssueMetadataJson = issueMetadata.SerializeObject();
         dsp.IssueSince = issueSince;
-        dsp.LabelMetadata = labelMetadata.SerializeObject();
-        dsp.MilestoneMetadata = milestoneMetadata.SerializeObject();
-        dsp.ProjectMetadata = projectMetadata.SerializeObject();
-        dsp.ContentsRootMetadata = contentsRootMetadata.SerializeObject();
-        dsp.ContentsDotGitHubMetadata = contentsDotGitHubMetadata.SerializeObject();
-        dsp.ContentsIssueTemplateMetadata = contentsIssueTemplateMetadata.SerializeObject();
+        dsp.LabelMetadataJson = labelMetadata.SerializeObject();
+        dsp.MilestoneMetadataJson = milestoneMetadata.SerializeObject();
+        dsp.ProjectMetadataJson = projectMetadata.SerializeObject();
+        dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
+        dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
+        dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
 
         await dsp.ExecuteNonQueryAsync();
       }
