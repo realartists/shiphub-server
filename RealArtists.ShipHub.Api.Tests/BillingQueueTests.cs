@@ -16,6 +16,7 @@
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
   using Newtonsoft.Json;
+  using RealArtists.ShipHub.Common;
 
   [TestFixture]
   [AutoRollback]
@@ -631,17 +632,19 @@
           "should not show as subscribed");
         Assert.IsNull(org2Subscription.TrialEndDate);
         Assert.AreEqual(0, org2Subscription.Version);
-        
+
         var org3Subscription = context.Subscriptions.Single(x => x.AccountId == org3.Id);
         Assert.AreEqual(SubscriptionState.Subscribed, org3Subscription.State,
           "should show as subscribed");
         Assert.IsNull(org3Subscription.TrialEndDate);
         Assert.AreEqual(2345, org3Subscription.Version);
 
-        Assert.AreEqual(
-          new long[] { org1.Id },
-          changeMessages.FirstOrDefault()?.Organizations.OrderBy(x => x).ToArray(),
-          "should notify that this org changed.");
+        Assert.AreEqual(1, changeMessages.Count, "Should send one complete message.");
+
+        var orgChanges = changeMessages.Single().Organizations;
+        var userChanges = changeMessages.Single().Users;
+        Assert.IsFalse(userChanges.Any(), "no users should be notified.");
+        Assert.AreEqual(new HashSet<long>(new[] { org1.Id, org2.Id, org3.Id }), orgChanges.ToHashSet(), "should notify that orgs changed.");
       }
     }
 

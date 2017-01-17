@@ -142,6 +142,8 @@
     <Build Include="Procedures\SaveRepositoryMetadata.sql" />
     <Build Include="Procedures\SetUserAccessToken.sql" />
     <Build Include="Procedures\BulkUpdateHooks.sql" />
+    <Build Include="User Defined Types\SubscriptionTableType.sql" />
+    <Build Include="Procedures\BulkUpdateSubscriptions.sql" />
     <Build Include="User Defined Types\HookTableType.sql" />
     <Build Include="Procedures\CreateHook.sql" />
   </ItemGroup>

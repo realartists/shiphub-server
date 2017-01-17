@@ -816,6 +816,29 @@
       }
     }
 
+    public Task<ChangeSummary> BulkUpdateSubscriptions(IEnumerable<SubscriptionTableType> subscriptions) {
+      var tableParam = CreateTableParameter(
+        "Subscriptions",
+        "[dbo].[SubscriptionTableType]",
+        new[] {
+          Tuple.Create("AccountId", typeof(long)),
+          Tuple.Create("State", typeof(string)),
+          Tuple.Create("TrialEndDate", typeof(DateTimeOffset)),
+          Tuple.Create("Version", typeof(long)),
+        },
+        x => new object[] {
+          x.AccountId,
+          x.State,
+          x.TrialEndDate,
+          x.Version,
+        },
+        subscriptions);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateSubscriptions]", x => {
+        x.Subscriptions = tableParam;
+      });
+    }
+
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
       return CreateTableParameter(
         parameterName,

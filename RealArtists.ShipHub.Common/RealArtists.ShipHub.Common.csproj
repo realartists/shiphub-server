@@ -45,6 +45,7 @@
     <Compile Include="DataModel\SyncLog.cs" />
     <Compile Include="DataModel\Types\HookTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
+    <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />
     <Compile Include="Log.cs" />
