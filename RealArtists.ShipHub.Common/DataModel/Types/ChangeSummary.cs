@@ -32,7 +32,7 @@
       UnionWith(initialValue);
     }
 
-    public void Add(long? organizationId, long? repositoryId, long? userId) {
+    public void Add(long? organizationId = null, long? repositoryId = null, long? userId = null) {
       if (organizationId != null) {
         Organizations.Add(organizationId.Value);
       }

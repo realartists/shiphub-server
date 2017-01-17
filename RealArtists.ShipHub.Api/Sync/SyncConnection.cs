@@ -166,7 +166,7 @@
       }
 
       var start = new ChangeSummary();
-      start.Add(null, null, _user.UserId);
+      start.Add(userId: _user.UserId);
 
       // Changes streamed from the queue
       _syncSubscription = _syncManager.Changes
