@@ -124,11 +124,13 @@
                 FirstName = "Aroon",
                 LastName = "Pahwa",
                 GitHubUserName = "aroon",
+                ResourceVersion = sub.Version + 1,
               },
               Subscription = new ChargeBeeWebhookSubscription() {
                 Status = chargeBeeState,
                 TrialEnd = chargeBeeTrialEndDate?.ToUnixTimeSeconds(),
                 PlanId = (userOrOrg == "user") ? "personal" : "organization",
+                ResourceVersion = sub.Version + 1,
               },
               Invoice = invoicePayload,
             },

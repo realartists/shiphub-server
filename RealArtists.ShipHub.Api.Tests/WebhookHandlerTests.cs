@@ -261,8 +261,14 @@
            .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
            .ThrowsAsync(new Exception("some exception!"));
 
+        bool exceptionThrown = false;
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        try {
+          await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        } catch {
+          exceptionThrown = true;
+        }
+        Assert.True(exceptionThrown, "Creating hook should throw exception.");
 
         var hook = context.Hooks.SingleOrDefault(x => x.RepositoryId == repo.Id);
         Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
@@ -292,8 +298,14 @@
            .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
            .ThrowsAsync(new Exception("some exception!"));
 
+        bool exceptionThrown = false;
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        try {
+          await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        } catch {
+          exceptionThrown = true;
+        }
+        Assert.True(exceptionThrown, "Creating hook should throw exception.");
 
         var hook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
         Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");

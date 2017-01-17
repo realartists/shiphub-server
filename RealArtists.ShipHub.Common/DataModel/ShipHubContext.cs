@@ -752,6 +752,70 @@
       }
     }
 
+    public Task<ChangeSummary> BulkUpdateHooks(
+      IEnumerable<HookTableType> hooks = null,
+      IEnumerable<long> seen = null,
+      IEnumerable<long> pinged = null,
+      IEnumerable<long> deleted = null) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateHooks]", x => {
+        if (hooks?.Any() == true) {
+          x.Hooks = CreateTableParameter(
+            "Hooks",
+            "[dbo].[HookTableType]",
+            new[] {
+              Tuple.Create("Id", typeof(long)),
+              Tuple.Create("GitHubId", typeof(long)),
+              Tuple.Create("Secret", typeof(Guid)),
+              Tuple.Create("Events", typeof(string)),
+            },
+            y => new object[] {
+              y.Id,
+              y.GitHubId,
+              y.Secret,
+              y.Events,
+            },
+            hooks);
+        }
+
+        if (seen?.Any() == true) {
+          x.Seen = CreateItemListTable("Seen", seen);
+        }
+
+        if (pinged?.Any() == true) {
+          x.Pinged = CreateItemListTable("Pinged", pinged);
+        }
+
+        if (deleted?.Any() == true) {
+          x.Deleted = CreateItemListTable("Deleted", deleted);
+        }
+      });
+    }
+
+    public async Task<HookTableType> CreateHook(Guid secret, string events, long? organizationId = null, long? repositoryId = null) {
+      if ((organizationId == null) == (repositoryId == null)) {
+        throw new ArgumentException($"Exactly one of {nameof(organizationId)} and {nameof(repositoryId)} must be non-null.");
+      }
+
+      using (var sp = new DynamicStoredProcedure("[dbo].[CreateHook]", ConnectionFactory)) {
+        dynamic dsp = sp;
+        dsp.Secret = secret;
+        dsp.Events = events;
+        dsp.OrganizationId = organizationId;
+        dsp.RepositoryId = repositoryId;
+
+        using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
+          sdr.Read();
+          dynamic ddr = sdr;
+          return new HookTableType() {
+            Id = ddr.Id,
+            GitHubId = ddr.GitHubId,
+            Secret = ddr.Secret,
+            Events = ddr.Events,
+          };
+        }
+      }
+    }
+
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
       return CreateTableParameter(
         parameterName,
