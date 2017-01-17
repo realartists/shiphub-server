@@ -2,26 +2,29 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
+  using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
+  using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
+  using RealArtists.ShipHub.QueueClient.Messages;
 
   [TestFixture]
   [AutoRollback]
   public class WebhookReaperTests {
     private static Mock<WebhookReaperTimer> MockReaper(
-      Dictionary<string, List<Tuple<string, string, long>>> pings) {
+      Dictionary<long, List<Tuple<string, string, long>>> pings) {
       var mock = new Mock<WebhookReaperTimer>(null, new DetailedExceptionLogger()) { CallBase = true };
       mock
-        .Setup(x => x.CreateGitHubClient(It.IsAny<User>(), It.IsAny<Guid>()))
-        .Returns((User user, Guid correlationId) => {
-          if (!pings.ContainsKey(user.Token)) {
-            pings[user.Token] = new List<Tuple<string, string, long>>();
+        .Setup(x => x.CreateGitHubClient(It.IsAny<long>()))
+        .Returns((long userId) => {
+          if (!pings.ContainsKey(userId)) {
+            pings[userId] = new List<Tuple<string, string, long>>();
           }
 
           var mockClient = new Mock<IGitHubActor>();
@@ -29,7 +32,7 @@
           mockClient
             .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>()))
             .Returns((string repoFullName, long hookId) => {
-              pings[user.Token].Add(Tuple.Create("repo", repoFullName, hookId));
+              pings[userId].Add(Tuple.Create("repo", repoFullName, hookId));
               return Task.FromResult(new GitHubResponse<bool>(null) {
                 Result = true,
               });
@@ -38,7 +41,7 @@
           mockClient
               .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>()))
               .Returns((string name, long hookId) => {
-                pings[user.Token].Add(Tuple.Create("org", name, hookId));
+                pings[userId].Add(Tuple.Create("org", name, hookId));
                 return Task.FromResult(new GitHubResponse<bool>(null) {
                   Result = true,
                 });
@@ -117,6 +120,8 @@
         Tuple.Create(env.user1.Id, true),
         Tuple.Create(env.user2.Id, true),
       });
+      await context.SetUserOrganizations(env.user1.Id, new[] { env.org1.Id, env.org2.Id });
+      await context.SetUserOrganizations(env.user2.Id, new[] { env.org1.Id, env.org2.Id });
       await context.SaveChangesAsync();
 
       return env;
@@ -138,28 +143,29 @@
 
         await context.SaveChangesAsync();
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
 
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
         Assert.AreEqual(1, env.repo1Hook.PingCount);
         Assert.AreEqual(1, env.org2Hook.PingCount);
-        Assert.AreEqual(new[] { env.user1.Token }, pings.Keys.ToArray());
+        Assert.AreEqual(new[] { env.user1.Id }, pings.Keys.ToArray());
         Assert.AreEqual(
           new[] {
             Tuple.Create("repo", "myorg1/unicorns", (long)env.repo1Hook.GitHubId),
             Tuple.Create("org", "myorg2", (long)env.org2Hook.GitHubId),
           },
-          pings[env.user1.Token].ToArray());
+          pings[env.user1.Id].ToArray());
 
         // If we run again sooner than 30 minutes from now, we should not
         // see pings.  (The threshold for re-pinging is 30+ minutes)
         pings.Clear();
         mock.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow.AddMinutes(29));
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
         Assert.AreEqual(1, env.repo1Hook.PingCount);
@@ -169,12 +175,11 @@
         // going up if we run again.
         pings.Clear();
         mock.Setup(x => x.UtcNow).Returns(DateTimeOffset.UtcNow.AddMinutes(31));
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
         context.Entry(env.repo1Hook).Reload();
         context.Entry(env.org2Hook).Reload();
         Assert.AreEqual(2, env.repo1Hook.PingCount);
         Assert.AreEqual(2, env.org2Hook.PingCount);
-
       }
     }
 
@@ -199,10 +204,11 @@
           Tuple.Create(env.user2.Id, false),
         });
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
 
         context.Entry(env.org1Hook).Reload();
         Assert.Null(env.org1Hook.PingCount);
@@ -235,10 +241,11 @@
           Tuple.Create(env.user2.Id, true),
         });
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
 
         context.Entry(env.org1Hook).Reload();
         Assert.Null(env.org1Hook.PingCount,
@@ -266,10 +273,11 @@
           Tuple.Create(env.repo2.Id, false),
         });
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
 
         context.Entry(env.repo1Hook).Reload();
         Assert.Null(env.repo1Hook.PingCount, "ping should not have counted because we could not find an admin.");
@@ -297,12 +305,26 @@
 
         await context.SaveChangesAsync();
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
-        await mock.Object.Run("correlationId");
+
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
+        var changedOrgs = new HashSet<long>();
+        var changedRepos = new HashSet<long>();
+        collectorMock
+          .Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
+          .Returns((ChangeMessage changeMessage, CancellationToken token) => {
+            changedOrgs.UnionWith(changeMessage.Organizations);
+            changedRepos.UnionWith(changeMessage.Repositories);
+            return Task.CompletedTask;
+          });
+
+        await mock.Object.Run(collectorMock.Object);
 
         var remainingHookIds = context.Hooks.Select(x => x.Id).ToArray();
         Assert.AreEqual(new[] { env.repo2Hook.Id, env.org1Hook.Id }, remainingHookIds);
+        Assert.AreEqual(new[] { env.repo1Hook.RepositoryId }, changedRepos.ToArray());
+        Assert.AreEqual(new[] { env.org2Hook.OrganizationId }, changedOrgs.ToArray());
       }
     }
 
@@ -330,10 +352,11 @@
           Tuple.Create(env.repo2.Id, true),
         });
 
-        var pings = new Dictionary<string, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
+        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
-        await mock.Object.Run("correlationId");
+        await mock.Object.Run(collectorMock.Object);
 
         context.Entry(env.repo1Hook).Reload();
         Assert.Null(env.repo1Hook.PingCount, "ping attempt should not be counted since we had no tokens to ping with.");

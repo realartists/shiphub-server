@@ -11,6 +11,8 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Orleans;
+  using RealArtists.ShipHub.QueueClient;
+  using RealArtists.ShipHub.QueueClient.Messages;
   using Tracing;
 
   public class WebhookReaperTimer : LoggingHandlerBase {
@@ -21,8 +23,8 @@
       _grainFactory = grainFactory;
     }
 
-    public virtual IGitHubActor CreateGitHubClient(User user, Guid correlationId) {
-      return _grainFactory.GetGrain<IGitHubActor>(user.Id);
+    public virtual IGitHubActor CreateGitHubClient(long userId) {
+      return _grainFactory.GetGrain<IGitHubActor>(userId);
     }
 
     public virtual DateTimeOffset UtcNow {
@@ -34,13 +36,14 @@
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
     public async Task ReaperTimer(
       [TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo,
+      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, null, null, async () => {
-        await Run(executionContext.InvocationId.ToString());
+        await Run(notifyChanges);
       });
     }
 
-    public async Task Run(string correlationId) {
+    public async Task Run(IAsyncCollector<ChangeMessage> notifyChanges) {
       while (true) {
         using (var context = new ShipHubContext()) {
           var now = UtcNow;
@@ -59,13 +62,15 @@
 
           var pingTasks = new List<Task<GitHubResponse<bool>>>();
 
+          var deleted = new HashSet<long>();
+          var pinged = new HashSet<long>();
           foreach (var hook in staleHooks) {
             if (hook.PingCount >= maxPingCount) {
               // We've pinged this hook several times now and never heard back.
               // We'll remove it.  The hook will get re-added later when a user
               // with admin privileges for that app uses Ship again and triggers
               // another sync.
-              context.Hooks.Remove(hook);
+              deleted.Add(hook.Id);
             } else if (hook.RepositoryId != null) {
               // Find some account with admin privileges for this repo that we can
               // use to ping.
@@ -77,11 +82,9 @@
                 .FirstOrDefaultAsync();
 
               if (accountRepository != null) {
-                var client = CreateGitHubClient(accountRepository.Account, Guid.NewGuid());
+                var client = CreateGitHubClient(accountRepository.Account.Id);
                 pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
-
-                hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
-                hook.LastPing = now;
+                pinged.Add(hook.Id);
               }
             } else if (hook.OrganizationId != null) {
               var accountOrganization = await context.OrganizationAccounts
@@ -92,17 +95,21 @@
                 .FirstOrDefaultAsync();
 
               if (accountOrganization != null) {
-                var client = CreateGitHubClient(accountOrganization.User, Guid.NewGuid());
+                var client = CreateGitHubClient(accountOrganization.User.Id);
                 pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
-
-                hook.PingCount = hook.PingCount == null ? 1 : hook.PingCount + 1;
-                hook.LastPing = now;
+                pinged.Add(hook.Id);
               }
             } else {
               throw new InvalidOperationException("RepositoryId or OrganizationId should be non null");
             }
           }
-          await context.SaveChangesAsync();
+
+          var changes = await context.BulkUpdateHooks(deleted: deleted, pinged: pinged);
+
+          if (!changes.IsEmpty) {
+            await notifyChanges.AddAsync(new ChangeMessage(changes));
+          }
+
           await Task.WhenAll(pingTasks);
 
           if (staleHooks.Count < batchSize) {

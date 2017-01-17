@@ -138,8 +138,10 @@
         var customerId = candidates.SkipWhile(string.IsNullOrEmpty).FirstOrDefault();
         if (customerId != null) {
           var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(customerId);
-          var account = await Context.Accounts.SingleOrDefaultAsync(x => x.Id == accountId);
-          return account?.Login;
+          using (var context = new ShipHubContext()) {
+            var account = await context.Accounts.SingleOrDefaultAsync(x => x.Id == accountId);
+            return account?.Login;
+          }
         } else {
           return null;
         }
@@ -164,7 +166,7 @@
     /// Dev will ignore hooks for your user and your local server will only process
     /// hooks for your user.
     /// </summary>
-    /// <param name="gitHubUserName">Github user or organization name</param>
+    /// <param name="gitHubUserName">GitHub user or organization name</param>
     /// <returns>True if we should reject this webhook event</returns>
     public virtual async Task<bool> ShouldIgnoreWebhook(ChargeBeeWebhookPayload payload) {
       if (_configuration.ChargeBeeWebhookIncludeOnlyList != null
@@ -340,32 +342,35 @@
       var previousMonthStart = DateTimeOffsetFloor(newInvoiceStartDate.AddMonths(-1));
       var previousMonthEnd = DateTimeOffsetFloor(newInvoiceStartDate.AddDays(-1));
 
-      var activeUsersCount = await Context.Usage
-        .Where(x => (
-          x.Date >= previousMonthStart &&
-          x.Date <= previousMonthEnd &&
-          Context.OrganizationAccounts
-            .Where(y => y.OrganizationId == accountId)
-            .Select(y => y.UserId)
-            .Contains(x.AccountId)))
-        .Select(x => x.AccountId)
-        .Distinct()
-        .CountAsync();
+      int activeUsersCount;
+      string[] activeUsersSample;
+      using (var context = new ShipHubContext()) {
+        activeUsersCount = await context.Usage
+          .Where(x => (
+            x.Date >= previousMonthStart &&
+            x.Date <= previousMonthEnd &&
+            context.OrganizationAccounts
+              .Where(y => y.OrganizationId == accountId)
+              .Select(y => y.UserId)
+              .Contains(x.AccountId)))
+          .Select(x => x.AccountId)
+          .Distinct()
+          .CountAsync();
 
-      var activeUsersSample = await Context.Usage
-        .Include(x => x.Account)
-        .Where(x => (
-          x.Date >= previousMonthStart &&
-          x.Date <= previousMonthEnd &&
-          Context.OrganizationAccounts
-            .Where(y => y.OrganizationId == accountId)
-            .Select(y => y.UserId)
-            .Contains(x.AccountId)))
-        .Select(x => x.Account.Login)
-        .OrderBy(x => x)
-        .Distinct()
-        .Take(20)
-        .ToArrayAsync();
+        activeUsersSample = await context.Usage
+          .Where(x => (
+            x.Date >= previousMonthStart &&
+            x.Date <= previousMonthEnd &&
+            context.OrganizationAccounts
+              .Where(y => y.OrganizationId == accountId)
+              .Select(y => y.UserId)
+              .Contains(x.AccountId)))
+          .Select(x => x.Account.Login)
+          .OrderBy(x => x)
+          .Distinct()
+          .Take(20)
+          .ToArrayAsync();
+      }
 
       await _mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
@@ -427,84 +432,85 @@
 
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
       var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
+      ChangeSummary changes;
 
-      var sub = await Context.Subscriptions
-        .Include(x => x.Account)
-        .SingleOrDefaultAsync(x => x.AccountId == accountId);
+      using (var context = new ShipHubContext()) {
+        var sub = await context.Subscriptions
+          .Include(x => x.Account)
+          .SingleOrDefaultAsync(x => x.AccountId == accountId);
 
-      if (sub == null) {
-        // We only care to update subscriptions we've already sync'ed.  This case often happens
-        // in development - e.g., you might be testing subscriptions on your local machine, and
-        // chargebee delivers webhook calls to shiphub-dev about subscriptions it doesn't know
-        // about yet.
-        return;
-      }
-
-      long incomingVersion;
-
-      if (payload.EventType == "customer_deleted") {
-        incomingVersion = payload.Content.Customer.ResourceVersion;
-      } else {
-        incomingVersion = payload.Content.Subscription.ResourceVersion;
-      }
-
-      if (incomingVersion < sub.Version) {
-        // We're receiving webhook events out-of-order (which can happen due to re-delivery),
-        // so ignore.
-        return;
-      }
-
-      sub.Version = incomingVersion;
-      var beforeState = sub.State;
-
-      if (payload.EventType.Equals("subscription_deleted") ||
-          payload.EventType.Equals("customer_deleted")) {
-        sub.State = SubscriptionState.NotSubscribed;
-        sub.TrialEndDate = null;
-      } else {
-        switch (payload.Content.Subscription.Status) {
-          case "in_trial":
-            sub.State = SubscriptionState.InTrial;
-            sub.TrialEndDate = DateTimeOffset.FromUnixTimeSeconds((long)payload.Content.Subscription.TrialEnd);
-            break;
-          case "active":
-          case "non_renewing":
-          case "future":
-            sub.State = SubscriptionState.Subscribed;
-            sub.TrialEndDate = null;
-            break;
-          case "cancelled":
-            sub.State = SubscriptionState.NotSubscribed;
-            sub.TrialEndDate = null;
-            break;
+        if (sub == null) {
+          // We only care to update subscriptions we've already sync'ed.  This case often happens
+          // in development - e.g., you might be testing subscriptions on your local machine, and
+          // chargebee delivers webhook calls to shiphub-dev about subscriptions it doesn't know
+          // about yet.
+          return;
         }
-      }
 
-      var afterState = sub.State;
+        long incomingVersion;
 
-      var recordsUpdated = await Context.SaveChangesAsync();
-
-      if (recordsUpdated > 0) {
-        var changes = new ChangeSummary();
-
-        if (sub.Account is Organization) {
-          changes.Organizations.Add(accountId);
+        if (payload.EventType == "customer_deleted") {
+          incomingVersion = payload.Content.Customer.ResourceVersion;
         } else {
-          changes.Users.Add(accountId);
+          incomingVersion = payload.Content.Subscription.ResourceVersion;
         }
 
-        await _queueClient.NotifyChanges(changes);
-      }
+        if (incomingVersion <= sub.Version) {
+          // We're receiving webhook events out-of-order (which can happen due to re-delivery),
+          // so ignore.
+          return;
+        }
 
-      if (afterState != beforeState && sub.Account is Organization) {
-        // For all users associated with this org and that have logged into Ship
-        // (i.e., they have a Subscription record), go re-evaluate whether the
-        // user should have a complimentary personal subscription.
-        var orgAccountIds = Context.OrganizationAccounts
-          .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
-          .Select(x => x.UserId)
-          .ToArray();
-        await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+        sub.Version = incomingVersion;
+        var beforeState = sub.State;
+
+        if (payload.EventType.Equals("subscription_deleted") ||
+            payload.EventType.Equals("customer_deleted")) {
+          sub.State = SubscriptionState.NotSubscribed;
+          sub.TrialEndDate = null;
+        } else {
+          switch (payload.Content.Subscription.Status) {
+            case "in_trial":
+              sub.State = SubscriptionState.InTrial;
+              sub.TrialEndDate = DateTimeOffset.FromUnixTimeSeconds((long)payload.Content.Subscription.TrialEnd);
+              break;
+            case "active":
+            case "non_renewing":
+            case "future":
+              sub.State = SubscriptionState.Subscribed;
+              sub.TrialEndDate = null;
+              break;
+            case "cancelled":
+              sub.State = SubscriptionState.NotSubscribed;
+              sub.TrialEndDate = null;
+              break;
+          }
+        }
+
+        changes = await context.BulkUpdateSubscriptions(new[] {
+          new SubscriptionTableType() {
+            AccountId = sub.AccountId,
+            State = sub.StateName,
+            TrialEndDate = sub.TrialEndDate,
+            Version = sub.Version,
+          }
+        });
+
+        if (!changes.IsEmpty) {
+          await _queueClient.NotifyChanges(changes);
+        }
+
+        var afterState = sub.State;
+        if (afterState != beforeState && sub.Account is Organization) {
+          // For all users associated with this org and that have logged into Ship
+          // (i.e., they have a Subscription record), go re-evaluate whether the
+          // user should have a complimentary personal subscription.
+          var orgAccountIds = context.OrganizationAccounts
+            .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
+            .Select(x => x.UserId)
+            .ToArray();
+          await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+        }
       }
     }
 
@@ -525,17 +531,20 @@
         var previousMonthStart = DateTimeOffsetFloor(newInvoiceStartDate.AddMonths(-1));
         var previousMonthEnd = DateTimeOffsetFloor(newInvoiceStartDate.AddDays(-1));
 
-        var activeUsers = await Context.Usage
-          .Where(x => (
-            x.Date >= previousMonthStart &&
-            x.Date <= previousMonthEnd &&
-            Context.OrganizationAccounts
-              .Where(y => y.OrganizationId == accountId)
-              .Select(y => y.UserId)
-              .Contains(x.AccountId)))
-          .Select(x => x.AccountId)
-          .Distinct()
-          .CountAsync();
+        int activeUsers;
+        using (var context = new ShipHubContext()) {
+          activeUsers = await context.Usage
+            .Where(x => (
+              x.Date >= previousMonthStart &&
+              x.Date <= previousMonthEnd &&
+              context.OrganizationAccounts
+                .Where(y => y.OrganizationId == accountId)
+                .Select(y => y.UserId)
+                .Contains(x.AccountId)))
+            .Select(x => x.AccountId)
+            .Distinct()
+            .CountAsync();
+        }
 
         if (activeUsers > 5) {
           await _chargeBee.Invoice.AddAddonCharge(payload.Content.Invoice.Id)

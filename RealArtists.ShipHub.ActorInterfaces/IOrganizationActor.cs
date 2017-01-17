@@ -3,7 +3,7 @@
   using Orleans;
 
   /// <summary>
-  /// Represents a Github/ShipHub organization.
+  /// Represents a GitHub/ShipHub organization.
   /// </summary>
   public interface IOrganizationActor : IGrainWithIntegerKey {
     /// <summary>

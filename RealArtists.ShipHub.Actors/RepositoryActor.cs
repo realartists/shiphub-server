@@ -45,7 +45,7 @@
     private GitHubMetadata _milestoneMetadata;
     private GitHubMetadata _projectMetadata;
     private GitHubMetadata _contentsRootMetadata;
-    private GitHubMetadata _contentsDotGithubMetadata;
+    private GitHubMetadata _contentsDotGitHubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
 
     // Issue chunk tracking
@@ -89,7 +89,7 @@
         _milestoneMetadata = repo.MilestoneMetadata;
         _projectMetadata = repo.ProjectMetadata;
         _contentsRootMetadata = repo.ContentsRootMetadata;
-        _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
+        _contentsDotGitHubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
@@ -109,20 +109,19 @@
       _syncIssueTemplateTimer = null;
 
       using (var context = _contextFactory.CreateInstance()) {
-        var repo = await context.Repositories.SingleAsync(x => x.Id == _repoId);
-        repo.Size = _repoSize;
-        repo.Metadata = _metadata;
-        repo.AssignableMetadata = _assignableMetadata;
-        repo.IssueMetadata = _issueMetadata;
-        repo.IssueSince = _issueSince;
-        repo.LabelMetadata = _labelMetadata;
-        repo.MilestoneMetadata = _milestoneMetadata;
-        repo.ProjectMetadata = _projectMetadata;
-        repo.ContentsRootMetadata = _contentsRootMetadata;
-        repo.ContentsDotGitHubMetadata = _contentsDotGithubMetadata;
-        repo.ContentsIssueTemplateMetadata = _contentsIssueTemplateMetadata;
-
-        await context.SaveChangesAsync();
+        await context.SaveRepositoryMetadata(
+          _repoId,
+          _repoSize,
+          _metadata,
+          _assignableMetadata,
+          _issueMetadata,
+          _issueSince,
+          _labelMetadata,
+          _milestoneMetadata,
+          _projectMetadata,
+          _contentsRootMetadata,
+          _contentsDotGitHubMetadata,
+          _contentsIssueTemplateMetadata);
       }
 
       await base.OnDeactivateAsync();
@@ -320,7 +319,7 @@
       }
 
       var prevRootMetadata = _contentsRootMetadata;
-      var prevDotGitHubMetadata = _contentsDotGithubMetadata;
+      var prevDotGitHubMetadata = _contentsDotGitHubMetadata;
       var prevIssueTemplateMetadata = _contentsIssueTemplateMetadata;
       try {
         var ret = await _UpdateIssueTemplate(context, github);
@@ -329,7 +328,7 @@
       } catch (Exception ex) {
         // unwind anything we've discovered about the cache state if we couldn't finish the whole operation
         _contentsRootMetadata = prevRootMetadata;
-        _contentsDotGithubMetadata = prevDotGitHubMetadata;
+        _contentsDotGitHubMetadata = prevDotGitHubMetadata;
         _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
         this.Exception(ex);
         throw;
@@ -357,8 +356,8 @@
             // Which means that we're fine to only search /.github in the event that
             // / returns 200 (and not 304).
             if (hasDotGitHub) {
-              var dotGitHubListing = await github.ListDirectoryContents(_fullName, "/.github", _contentsDotGithubMetadata);
-              _contentsDotGithubMetadata = GitHubMetadata.FromResponse(dotGitHubListing);
+              var dotGitHubListing = await github.ListDirectoryContents(_fullName, "/.github", _contentsDotGitHubMetadata);
+              _contentsDotGitHubMetadata = GitHubMetadata.FromResponse(dotGitHubListing);
               if (dotGitHubListing.IsOk) {
                 var dotGitHubTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsTemplateFile);
                 if (dotGitHubTemplateFile != null) {
