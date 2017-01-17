@@ -48,7 +48,7 @@
         _userId = this.GetPrimaryKeyLong();
 
         // Ensure this user actually exists, and lookup their token.
-        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == _userId);
+        var user = await context.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == _userId);
 
         if (user == null) {
           throw new InvalidOperationException($"User {_userId} does not exist and cannot be activated.");
@@ -160,15 +160,26 @@
           _orgMetadata = GitHubMetadata.FromResponse(orgs);
         }
 
-        // TODO: Actually and load and maintain the list of orgs inside the object
-        // Maintain the grain references too.
-        var allOrgIds = await context.OrganizationAccounts
-          .Where(x => x.UserId == _userId)
-          .Select(x => x.OrganizationId)
-          .ToArrayAsync();
+        IEnumerable<long> allOrgIds;
+        IEnumerable<AccountRepository> allRepos;
+        using (var context2 = _contextFactory.CreateInstance()) {
+          // TODO: Actually and load and maintain the list of orgs inside the object
+          // Maintain the grain references too.
+          allOrgIds = await context.OrganizationAccounts
+            .AsNoTracking()
+            .Where(x => x.UserId == _userId)
+            .Select(x => x.OrganizationId)
+            .ToArrayAsync();
+
+          // TODO: Save the repo list locally in this object
+          allRepos = await context.AccountRepositories
+            .AsNoTracking()
+            .Where(x => x.AccountId == _userId)
+            .ToArrayAsync();
+        }
 
         if (allOrgIds.Any()) {
-          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync(_userId)));
+          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
           tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
         }
 
@@ -192,12 +203,7 @@
           _repoMetadata = GitHubMetadata.FromResponse(repos);
         }
 
-        // TODO: Save the repo list locally in this object
-        var allRepos = await context.AccountRepositories
-          .Where(x => x.AccountId == _userId)
-          .ToArrayAsync();
-
-        tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync(_userId)));
+        tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
         tasks.AddRange(allRepos
           .Where(x => x.Admin)
           .Select(x => _queueClient.AddOrUpdateRepoWebhooks(x.RepositoryId, _userId)));

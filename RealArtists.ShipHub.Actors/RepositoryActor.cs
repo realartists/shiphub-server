@@ -131,26 +131,28 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IGitHubPoolable> GetRepositoryActorPool(ShipHubContext context) {
-      // TODO: Keep this cached and current instead of looking it up every time.
-      var syncUserIds = await context.AccountRepositories
-          .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Token != null)
-          .Select(x => x.AccountId)
-          .ToArrayAsync();
+    private async Task<IGitHubPoolable> GetRepositoryActorPool() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: Keep this cached and current instead of looking it up every time.
+        var syncUserIds = await context.AccountRepositories
+            .Where(x => x.RepositoryId == _repoId)
+            .Where(x => x.Account.Token != null)
+            .Select(x => x.AccountId)
+            .ToArrayAsync();
 
-      if (syncUserIds.Length == 0) {
-        return null;
+        if (syncUserIds.Length == 0) {
+          return null;
+        }
+
+        return new GitHubActorPool(_grainFactory, syncUserIds);
       }
-
-      return new GitHubActorPool(_grainFactory, syncUserIds);
     }
 
     // ////////////////////////////////////////////////////////////
     // Sync
     // ////////////////////////////////////////////////////////////
 
-    public Task Sync(long forUserId) {
+    public Task Sync() {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
@@ -176,14 +178,14 @@
       _syncCount++;
 
       var changes = new ChangeSummary();
+      var github = await GetRepositoryActorPool();
+
+      if (github == null) {
+        DeactivateOnIdle();
+        return;
+      }
+
       using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRepositoryActorPool(context);
-
-        if (github == null) {
-          DeactivateOnIdle();
-          return;
-        }
-
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
         // we can access them.
@@ -277,18 +279,18 @@
         return;
       }
 
+      var github = await GetRepositoryActorPool();
+      if (github == null) {
+        DeactivateOnIdle(); // Sync may not even be running.
+        return;
+      }
+
+      ChangeSummary changes;
       using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRepositoryActorPool(context);
-
-        if (github == null) {
-          DeactivateOnIdle(); // Sync may not even be running.
-          return;
-        }
-
-        var changes = await UpdateIssueTemplate(context, github);
-        if (!changes.IsEmpty) {
-          await _queueClient.NotifyChanges(changes);
-        }
+        changes = await UpdateIssueTemplate(context, github);
+      }
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
       }
     }
 

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+﻿namespace RealArtists.ShipHub.QueueClient.Messages {
+  using System.Collections.Generic;
 
-namespace RealArtists.ShipHub.QueueClient.Messages {
   public class SyncOrgSubscriptionStateMessage {
     public SyncOrgSubscriptionStateMessage() { }
 
-    public SyncOrgSubscriptionStateMessage(long[] orgIds, long forUserId) {
+    public SyncOrgSubscriptionStateMessage(IEnumerable<long> orgIds, long forUserId) {
       OrgIds = orgIds;
       ForUserId = forUserId;
     }
