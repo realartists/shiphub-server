@@ -151,7 +151,7 @@
       }
 
       var passThruContent = JsonConvert.DeserializeObject<BuyPassThruContent>(hostedPage.PassThruContent);
-      
+
       if (passThruContent.NeedsReactivation) {
         await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
       }
@@ -160,32 +160,29 @@
       long accountId;
       ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out accountType, out accountId);
 
-      // TODO: Switch to Nick's stored proc to update subscription state.
-      try {
-        var sub = await Context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
+      using (var context = new ShipHubContext()) {
+        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
 
         if (sub == null) {
-          sub = Context.Subscriptions.Add(new Subscription() {
-            AccountId = accountId,
-          });
+          sub = new Subscription() { AccountId = accountId, };
         }
 
         sub.State = SubscriptionState.Subscribed;
         sub.TrialEndDate = null;
         sub.Version = hostedPage.Content.Subscription.ResourceVersion.Value;
 
-        await Context.SaveChangesAsync();
+        var changes = await context.BulkUpdateSubscriptions(new[] {
+            new SubscriptionTableType(){
+              AccountId = sub.AccountId,
+              State = sub.StateName,
+              TrialEndDate = sub.TrialEndDate,
+              Version = sub.Version,
+            },
+          });
 
-        var changes = new ChangeSummary();
-
-        if (accountType == "org") {
-          changes.Organizations.Add(accountId);
-        } else {
-          changes.Users.Add(accountId);
+        if (!changes.IsEmpty) {
+          await _queueClient.NotifyChanges(changes);
         }
-
-        await _queueClient.NotifyChanges(changes);
-      } catch (DbUpdateConcurrencyException) {
       }
 
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
@@ -351,7 +348,7 @@
        }))
        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
 
-       if (!firstName.IsNullOrWhiteSpace()) {
+        if (!firstName.IsNullOrWhiteSpace()) {
           checkoutRequest.CustomerFirstName(firstName);
         }
 
