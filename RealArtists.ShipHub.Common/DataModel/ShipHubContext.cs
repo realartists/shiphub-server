@@ -506,18 +506,8 @@
       Debug.Assert(!(repositoryId != null && organizationId != null), "Must specify exactly one of repositoryId or organizationId");
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateProjects]", x => {
-        x.RepositoryId = new SqlParameter("RepositoryId", SqlDbType.BigInt);
-        if (repositoryId != null) {
-          x.RepositoryId.Value = repositoryId.Value;
-        } else {
-          x.RepositoryId.Value = DBNull.Value;
-        }
-        x.OrganizationId = new SqlParameter("OrganizationId", SqlDbType.BigInt);
-        if (organizationId != null) {
-          x.OrganizationId.Value = organizationId.Value;
-        } else {
-          x.OrganizationId.Value = DBNull.Value;
-        }
+        x.RepositoryId = repositoryId;
+        x.OrganizationId = organizationId;
         x.Projects = CreateTableParameter(
           "Projects",
           "[dbo].[ProjectTableType]",

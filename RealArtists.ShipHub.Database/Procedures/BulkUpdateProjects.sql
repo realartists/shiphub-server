@@ -1,6 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateProjects]
-  @RepositoryId BIGINT NULL,
-  @OrganizationId BIGINT NULL,  -- OrganizationId and RepositoryId are mutually exclusive. Set one, but not the other.
+  @RepositoryId BIGINT = NULL,
+  @OrganizationId BIGINT = NULL,  -- OrganizationId and RepositoryId are mutually exclusive. Set one, but not the other.
   @Projects ProjectTableType READONLY
 AS
 BEGIN
