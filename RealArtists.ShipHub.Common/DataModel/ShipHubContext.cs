@@ -8,6 +8,7 @@
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
+  using System.Threading;
   using System.Threading.Tasks;
   using GitHub;
   using Legacy;
@@ -58,6 +59,25 @@
 
     public override int SaveChanges() {
       throw new NotImplementedException("Please use asynchronous methods instead.");
+    }
+
+    public override Task<int> SaveChangesAsync() {
+      if (Environment.StackTrace.Contains("RealArtists.ShipHub.Api.Tests")) {
+        // The current implementation of EF calls SaveChangesAsync(CancellationToken cancellationToken) here,
+        // so we could just have the override below. However, in case that changes, keep the test in both
+        // places. It should only impact tests.
+        return base.SaveChangesAsync();
+      } else {
+        throw new InvalidOperationException("EF sucks at concurrency. Use a stored procedure instead.");
+      }
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken) {
+      if (Environment.StackTrace.Contains("RealArtists.ShipHub.Api.Tests")) {
+        return base.SaveChangesAsync(cancellationToken);
+      } else {
+        throw new InvalidOperationException("EF sucks at concurrency. Use a stored procedure instead.");
+      }
     }
 
     [SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "instance", Justification = "See comment.")]
