@@ -2,12 +2,9 @@
   using System.Net;
   using System.Runtime.CompilerServices;
   using System.Web.Http;
-  using Common.DataModel;
   using Filters;
 
   public abstract class ShipHubController : ApiController {
-    private ShipHubContext _context = new ShipHubContext();
-    protected ShipHubContext Context => _context;
     protected ShipHubPrincipal ShipHubUser => RequestContext.Principal as ShipHubPrincipal;
 
     public IHttpActionResult Error(
@@ -29,16 +26,6 @@
       };
 
       return Content(status, error);
-    }
-
-    protected override void Dispose(bool disposing) {
-      if (disposing) {
-        if (_context != null) {
-          _context.Dispose();
-          _context = null;
-        }
-      }
-      base.Dispose(disposing);
     }
   }
 }
