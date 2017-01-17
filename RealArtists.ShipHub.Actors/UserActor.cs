@@ -183,11 +183,9 @@
               .Select(x => x.Owner)
               .Distinct(x => x.Login);
 
-            changes.UnionWith(
-              await context.BulkUpdateAccounts(repos.Date, _mapper.Map<IEnumerable<AccountTableType>>(owners)),
-              await context.BulkUpdateRepositories(repos.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)),
-              await context.SetAccountLinkedRepositories(_userId, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin)))
-            );
+            changes.UnionWith(await context.BulkUpdateAccounts(repos.Date, _mapper.Map<IEnumerable<AccountTableType>>(owners)));
+            changes.UnionWith(await context.BulkUpdateRepositories(repos.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(keepRepos)));
+            changes.UnionWith(await context.SetAccountLinkedRepositories(_userId, keepRepos.Select(x => Tuple.Create(x.Id, x.Permissions.Admin))));
           }
 
           // Don't update until saved.

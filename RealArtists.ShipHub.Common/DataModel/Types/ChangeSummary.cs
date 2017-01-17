@@ -46,17 +46,11 @@
       }
     }
 
-    public void UnionWith(params IChangeSummary[] others) {
-      if (others != null) {
-        foreach (var other in others) {
-          if (other == null) {
-            continue;
-          }
-
-          Organizations.UnionWith(other.Organizations);
-          Repositories.UnionWith(other.Repositories);
-          Users.UnionWith(other.Users);
-        }
+    public void UnionWith(IChangeSummary other) {
+      if (other != null) {
+        Organizations.UnionWith(other.Organizations);
+        Repositories.UnionWith(other.Repositories);
+        Users.UnionWith(other.Users);
       }
     }
 

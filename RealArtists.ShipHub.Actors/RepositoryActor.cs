@@ -192,14 +192,12 @@
         if (_disabled) {
           DeactivateOnIdle();
         } else {
-          changes.UnionWith(
-            await UpdateIssueTemplate(context, github),
-            await UpdateRepositoryAssignees(context, github),
-            await UpdateRepositoryLabels(context, github),
-            await UpdateRepositoryMilestones(context, github),
-            await UpdateRepositoryProjects(context, github),
-            await UpdateRepositoryIssues(context, github)
-          );
+          changes.UnionWith(await UpdateIssueTemplate(context, github));
+          changes.UnionWith(await UpdateRepositoryAssignees(context, github));
+          changes.UnionWith(await UpdateRepositoryLabels(context, github));
+          changes.UnionWith(await UpdateRepositoryMilestones(context, github));
+          changes.UnionWith(await UpdateRepositoryProjects(context, github));
+          changes.UnionWith(await UpdateRepositoryIssues(context, github));
         }
 
         /* Comments
@@ -433,10 +431,8 @@
       if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
         var assignees = await github.Assignable(_fullName, _assignableMetadata);
         if (assignees.IsOk) {
-          changes.UnionWith(
-            await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)),
-            await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id))
-          );
+          changes.UnionWith(await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)));
+          changes.UnionWith(await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id)));
         }
 
         _assignableMetadata = GitHubMetadata.FromResponse(assignees);
@@ -525,18 +521,16 @@
             .Where(x => x != null)
             .Distinct(x => x.Id);
 
-          changes.UnionWith(
-            await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)),
-            await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)),
-            await context.BulkUpdateLabels(
-              _repoId,
-              issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)),
-            await context.BulkUpdateIssues(
-              _repoId,
-              _mapper.Map<IEnumerable<IssueTableType>>(issues),
-              issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
-              issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
-          ));
+          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)));
+          changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
+          changes.UnionWith(await context.BulkUpdateLabels(
+            _repoId,
+            issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
+          changes.UnionWith(await context.BulkUpdateIssues(
+            _repoId,
+            _mapper.Map<IEnumerable<IssueTableType>>(issues),
+            issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
+            issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
 
           if (issues.Any()) {
             // Ensure we don't miss any when we hit the page limit.

@@ -240,13 +240,12 @@
         Item2 = x.Id,
       });
 
-      summary.UnionWith(
-        await context.BulkUpdateLabels(payload.Repository.Id, labels),
-        await context.BulkUpdateIssues(
-          payload.Repository.Id,
-          issuesMapped,
-          payload.Issue.Labels?.Select(x => new MappingTableType() { Item1 = payload.Issue.Id, Item2 = x.Id }),
-          assigneeMappings));
+      summary.UnionWith(await context.BulkUpdateLabels(payload.Repository.Id, labels));
+      summary.UnionWith(await context.BulkUpdateIssues(
+        payload.Repository.Id,
+        issuesMapped,
+        payload.Issue.Labels?.Select(x => new MappingTableType() { Item1 = payload.Issue.Id, Item2 = x.Id }),
+        assigneeMappings));
 
       return summary;
     }
