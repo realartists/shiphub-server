@@ -91,23 +91,22 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
-      using (var context = _contextFactory.CreateInstance()) {
-        await Save(context);
-      }
-
+      await Save();
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save(ShipHubContext context) {
-      // MUST MATCH LOAD
-      await context.UpdateMetadata("Accounts", _orgId, _metadata);
-      // RepoMetadataJson here IS NOT A BUG, just a nasty hack
-      await context.UpdateMetadata("Accounts", "RepoMetadataJson", _orgId, _memberMetadata);
-      await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
-      await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
+    private async Task Save() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // MUST MATCH LOAD
+        await context.UpdateMetadata("Accounts", _orgId, _metadata);
+        // RepoMetadataJson here IS NOT A BUG, just a nasty hack
+        await context.UpdateMetadata("Accounts", "RepoMetadataJson", _orgId, _memberMetadata);
+        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
+        await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
+      }
     }
 
-    public Task Sync(long forUserId) {
+    public Task Sync() {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
@@ -127,8 +126,10 @@
 
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
+      GitHubActorPool github;
       using (var context = _contextFactory.CreateInstance()) {
         var syncUserIds = await context.OrganizationAccounts
+          .AsNoTracking()
           .Where(x => x.OrganizationId == _orgId)
           .Where(x => x.User.Token != null)
           .Select(x => x.UserId)
@@ -140,8 +141,10 @@
           return;
         }
 
-        var github = new GitHubActorPool(_grainFactory, syncUserIds);
+        github = new GitHubActorPool(_grainFactory, syncUserIds);
+      }
 
+      using (var context = _contextFactory.CreateInstance()) {
         // Org itself
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var org = await github.Organization(_login, _metadata);
@@ -214,9 +217,14 @@
           _adminMetadata = GitHubMetadata.FromResponse(admins);
         }
 
+        // Projects
+        changes.UnionWith(await UpdateProjects(context, github));
+
+        // This is OK from a DB Connection prespective since it's right at the end.
         // If any active org members are admins, update webhooks
         // TODO: Does this really need to happen this often?
         var activeAdmins = await context.OrganizationAccounts
+          .AsNoTracking()
           .Where(x => x.OrganizationId == _orgId
             && x.Admin == true
             && x.User.Token != null)
@@ -227,9 +235,6 @@
           var randmin = activeAdmins[_random.Next(activeAdmins.Length)];
           tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin));
         }
-
-        // Projects
-        changes.UnionWith(await UpdateProjects(context, github));
       }
 
       // Send Changes.

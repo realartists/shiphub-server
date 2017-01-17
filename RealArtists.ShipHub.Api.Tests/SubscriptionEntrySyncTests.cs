@@ -54,7 +54,7 @@
       var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
       var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
       var changeSummary = new ChangeSummary();
-      changeSummary.Add(null, null, user.Id);
+      changeSummary.Add(userId: user.Id);
       await syncContext.Sync(changeSummary);
 
       var result = messages

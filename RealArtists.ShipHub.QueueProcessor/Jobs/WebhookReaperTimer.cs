@@ -11,6 +11,7 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Orleans;
+  using RealArtists.ShipHub.Common.DataModel.Types;
   using RealArtists.ShipHub.QueueClient;
   using RealArtists.ShipHub.QueueClient.Messages;
   using Tracing;
@@ -44,14 +45,18 @@
     }
 
     public async Task Run(IAsyncCollector<ChangeMessage> notifyChanges) {
-      while (true) {
-        using (var context = new ShipHubContext()) {
-          var now = UtcNow;
-          var maxPingCount = 3;
-          var staleDateTimeOffset = now.AddDays(-1);
-          var pingTime = now.AddMinutes(-30);
-          var batchSize = 100;
+      var maxPingCount = 3;
+      var batchSize = 100;
+      int numStaleHooks = 0;
 
+      do {
+        var now = UtcNow;
+        var staleDateTimeOffset = now.AddDays(-1);
+        var pingTime = now.AddMinutes(-30);
+        var pingTasks = new List<Task<GitHubResponse<bool>>>();
+
+        ChangeSummary changes;
+        using (var context = new ShipHubContext()) {
           var staleHooks = context.Hooks
            .Where(x =>
              (x.LastSeen <= staleDateTimeOffset) &&
@@ -59,8 +64,7 @@
              (x.GitHubId != null))
            .Take(batchSize)
            .ToList();
-
-          var pingTasks = new List<Task<GitHubResponse<bool>>>();
+          numStaleHooks = staleHooks.Count;
 
           var deleted = new HashSet<long>();
           var pinged = new HashSet<long>();
@@ -104,19 +108,15 @@
             }
           }
 
-          var changes = await context.BulkUpdateHooks(deleted: deleted, pinged: pinged);
-
-          if (!changes.IsEmpty) {
-            await notifyChanges.AddAsync(new ChangeMessage(changes));
-          }
-
-          await Task.WhenAll(pingTasks);
-
-          if (staleHooks.Count < batchSize) {
-            break;
-          }
+          changes = await context.BulkUpdateHooks(deleted: deleted, pinged: pinged);
         }
-      }
+
+        if (!changes.IsEmpty) {
+          await notifyChanges.AddAsync(new ChangeMessage(changes));
+        }
+
+        await Task.WhenAll(pingTasks);
+      } while (numStaleHooks == batchSize);
     }
   }
 }

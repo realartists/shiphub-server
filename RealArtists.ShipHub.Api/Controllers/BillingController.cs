@@ -160,6 +160,7 @@
       long accountId;
       ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out accountType, out accountId);
 
+      ChangeSummary changes;
       using (var context = new ShipHubContext()) {
         var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
 
@@ -171,7 +172,7 @@
         sub.TrialEndDate = null;
         sub.Version = hostedPage.Content.Subscription.ResourceVersion.Value;
 
-        var changes = await context.BulkUpdateSubscriptions(new[] {
+        changes = await context.BulkUpdateSubscriptions(new[] {
             new SubscriptionTableType(){
               AccountId = sub.AccountId,
               State = sub.StateName,
@@ -179,10 +180,10 @@
               Version = sub.Version,
             },
           });
+      }
 
-        if (!changes.IsEmpty) {
-          await _queueClient.NotifyChanges(changes);
-        }
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
       }
 
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");

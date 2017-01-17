@@ -48,6 +48,7 @@
 
       using (var context = _contextFactory.CreateInstance()) {
         var issue = await context.Issues
+          .AsNoTracking()
           .SingleOrDefaultAsync(x => x.Repository.FullName == _repoFullName && x.Number == _issueNumber);
 
         if (issue == null) {
@@ -93,7 +94,6 @@
       // TODO: Load balance
       var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
 
-      var tasks = new List<Task>();
       var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
         // Always refresh the issue when viewed
@@ -325,9 +325,13 @@
         }
 
         // Comment Reactions
-        var commentReactionMetadata = await context.Comments
-          .Where(x => x.IssueId == _issueId)
-          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+        Dictionary<long, GitHubMetadata> commentReactionMetadata;
+        using (var context2 = _contextFactory.CreateInstance()) {
+          commentReactionMetadata = await context2.Comments
+            .AsNoTracking()
+            .Where(x => x.IssueId == _issueId)
+            .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+        }
 
         // Now, find the ones that need updating.
         var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
@@ -367,19 +371,16 @@
               break;
           }
 
-          // context only supports one operation at a time
           await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
         }
       }
 
       if (!changes.IsEmpty) {
-        tasks.Add(_queueClient.NotifyChanges(changes));
+        await _queueClient.NotifyChanges(changes);
       }
 
       // Save metadata and other updates
       await Save();
-
-      await Task.WhenAll(tasks);
     }
   }
 }

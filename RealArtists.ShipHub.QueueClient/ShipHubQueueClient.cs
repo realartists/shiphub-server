@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.QueueClient {
+  using System.Collections.Generic;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel.Types;
@@ -9,7 +10,7 @@
     Task AddOrUpdateOrgWebhooks(long targetId, long forUserId);
     Task AddOrUpdateRepoWebhooks(long targetId, long forUserId);
     Task BillingGetOrCreatePersonalSubscription(long userId);
-    Task BillingSyncOrgSubscriptionState(long[] orgIds, long forUserId);
+    Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
     Task QueueWebhookEvent(GitHubWebhookEventMessage message);
   }
@@ -30,7 +31,7 @@
     public Task BillingGetOrCreatePersonalSubscription(long userId)
       => SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
 
-    public Task BillingSyncOrgSubscriptionState(long[] orgIds, long forUserId)
+    public Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId)
       => SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new SyncOrgSubscriptionStateMessage(orgIds, forUserId));
 
     public Task BillingUpdateComplimentarySubscription(long userId)

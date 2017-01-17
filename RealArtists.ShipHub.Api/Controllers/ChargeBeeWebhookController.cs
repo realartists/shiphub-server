@@ -433,11 +433,12 @@
     public async Task HandleSubscriptionStateChange(ChargeBeeWebhookPayload payload) {
       var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
       ChangeSummary changes;
+      var tasks = new List<Task>();
 
       using (var context = new ShipHubContext()) {
         var sub = await context.Subscriptions
-          .Include(x => x.Account)
-          .SingleOrDefaultAsync(x => x.AccountId == accountId);
+         .AsNoTracking()
+         .SingleOrDefaultAsync(x => x.AccountId == accountId);
 
         if (sub == null) {
           // We only care to update subscriptions we've already sync'ed.  This case often happens
@@ -496,22 +497,25 @@
           }
         });
 
-        if (!changes.IsEmpty) {
-          await _queueClient.NotifyChanges(changes);
-        }
-
         var afterState = sub.State;
         if (afterState != beforeState && sub.Account is Organization) {
           // For all users associated with this org and that have logged into Ship
           // (i.e., they have a Subscription record), go re-evaluate whether the
           // user should have a complimentary personal subscription.
           var orgAccountIds = context.OrganizationAccounts
+            .AsNoTracking()
             .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
             .Select(x => x.UserId)
             .ToArray();
-          await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+          tasks.AddRange(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
         }
       }
+
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
+
+      await Task.WhenAll(tasks);
     }
 
     private static DateTimeOffset DateTimeOffsetFloor(DateTimeOffset date) {
@@ -534,6 +538,7 @@
         int activeUsers;
         using (var context = new ShipHubContext()) {
           activeUsers = await context.Usage
+            .AsNoTracking()
             .Where(x => (
               x.Date >= previousMonthStart &&
               x.Date <= previousMonthEnd &&

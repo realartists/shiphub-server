@@ -42,14 +42,7 @@
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        IGitHubActor gh;
-        using (var context = new ShipHubContext()) {
-          var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
-        }
+        var gh = _grainFactory.GetGrain<IGitHubActor>(message.ForUserId);
         await AddOrUpdateRepoWebhooksWithClient(message, gh, notifyChanges);
       });
     }
@@ -58,9 +51,11 @@
       TargetMessage message,
       IGitHubActor client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
+      var apiHostName = _configuration.ApiHostName;
+      Repository repo;
+      Hook hook;
       using (var context = new ShipHubContext()) {
-        var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-        var apiHostName = _configuration.ApiHostName;
+        repo = await context.Repositories.AsNoTracking().SingleAsync(x => x.Id == message.TargetId);
 
         if (repo.Disabled) {
           // all requests to it will fail
@@ -68,7 +63,7 @@
           return;
         }
 
-        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
+        hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == message.TargetId);
 
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed
@@ -76,7 +71,10 @@
           await context.BulkUpdateHooks(deleted: new[] { hook.Id });
           hook = null;
         }
+      }
 
+      // This new connection is efficient because only stored procedures are used from here on.
+      using (var context = new ShipHubContext()) {
         if (hook == null) {
           var hookList = await client.RepositoryWebhooks(repo.FullName, GitHubCacheDetails.Empty);
           if (!hookList.IsOk) {
@@ -136,7 +134,7 @@
               await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
             }
           }
-        } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(RequiredEvents)) {
+        } else if (!hook.Events.Split(',').ToHashSet().SetEquals(RequiredEvents)) {
           var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RequiredEvents);
 
           if (!editResponse.Succeeded) {
@@ -161,15 +159,7 @@
       [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
       TextWriter logger, ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        IGitHubActor gh;
-        using (var context = new ShipHubContext()) {
-          var user = await context.Users.Where(x => x.Id == message.ForUserId).SingleOrDefaultAsync();
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
-            return;
-          }
-          gh = _grainFactory.GetGrain<IGitHubActor>(user.Id);
-        }
-
+        var gh = _grainFactory.GetGrain<IGitHubActor>(message.ForUserId);
         await AddOrUpdateOrgWebhooksWithClient(message, gh, notifyChanges);
       });
     }
@@ -178,14 +168,15 @@
       TargetMessage message,
       IGitHubActor client,
       IAsyncCollector<ChangeMessage> notifyChanges) {
-      using (var context = new ShipHubContext()) {
-        var org = await context.Organizations.SingleAsync(x => x.Id == message.TargetId);
-        var requiredEvents = new string[] {
-          "repository",
-        };
-        var apiHostName = _configuration.ApiHostName;
+      var apiHostName = _configuration.ApiHostName;
+      var requiredEvents = new string[] { "repository", };
 
-        var hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
+      Organization org;
+      Hook hook;
+      using (var context = new ShipHubContext()) {
+        org = await context.Organizations.AsNoTracking().SingleAsync(x => x.Id == message.TargetId);
+
+        hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.OrganizationId == message.TargetId);
 
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed
@@ -193,7 +184,10 @@
           await context.BulkUpdateHooks(deleted: new[] { hook.Id });
           hook = null;
         }
+      }
 
+      // New connection is efficient because we use stored procedures from here on out.
+      using (var context = new ShipHubContext()) {
         if (hook == null) {
           var existingHooks = (await client.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))

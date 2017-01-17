@@ -10,7 +10,7 @@
     /// TODO: Track and return some kind of status
     /// TODO: Publish event streams for sync status and data changes.
     /// </summary>
-    Task Sync(long forUserId);
+    Task Sync();
 
     /// <summary>
     /// Trigger a refresh of the ISSUE_TEMPLATE for the repo.

@@ -131,26 +131,28 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IGitHubPoolable> GetRepositoryActorPool(ShipHubContext context) {
-      // TODO: Keep this cached and current instead of looking it up every time.
-      var syncUserIds = await context.AccountRepositories
-          .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Token != null)
-          .Select(x => x.AccountId)
-          .ToArrayAsync();
+    private async Task<IGitHubPoolable> GetRepositoryActorPool() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: Keep this cached and current instead of looking it up every time.
+        var syncUserIds = await context.AccountRepositories
+            .Where(x => x.RepositoryId == _repoId)
+            .Where(x => x.Account.Token != null)
+            .Select(x => x.AccountId)
+            .ToArrayAsync();
 
-      if (syncUserIds.Length == 0) {
-        return null;
+        if (syncUserIds.Length == 0) {
+          return null;
+        }
+
+        return new GitHubActorPool(_grainFactory, syncUserIds);
       }
-
-      return new GitHubActorPool(_grainFactory, syncUserIds);
     }
 
     // ////////////////////////////////////////////////////////////
     // Sync
     // ////////////////////////////////////////////////////////////
 
-    public Task Sync(long forUserId) {
+    public Task Sync() {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
@@ -176,14 +178,14 @@
       _syncCount++;
 
       var changes = new ChangeSummary();
+      var github = await GetRepositoryActorPool();
+
+      if (github == null) {
+        DeactivateOnIdle();
+        return;
+      }
+
       using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRepositoryActorPool(context);
-
-        if (github == null) {
-          DeactivateOnIdle();
-          return;
-        }
-
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
         // we can access them.
@@ -192,14 +194,12 @@
         if (_disabled) {
           DeactivateOnIdle();
         } else {
-          changes.UnionWith(
-            await UpdateIssueTemplate(context, github),
-            await UpdateRepositoryAssignees(context, github),
-            await UpdateRepositoryLabels(context, github),
-            await UpdateRepositoryMilestones(context, github),
-            await UpdateRepositoryProjects(context, github),
-            await UpdateRepositoryIssues(context, github)
-          );
+          changes.UnionWith(await UpdateIssueTemplate(context, github));
+          changes.UnionWith(await UpdateRepositoryAssignees(context, github));
+          changes.UnionWith(await UpdateRepositoryLabels(context, github));
+          changes.UnionWith(await UpdateRepositoryMilestones(context, github));
+          changes.UnionWith(await UpdateRepositoryProjects(context, github));
+          changes.UnionWith(await UpdateRepositoryIssues(context, github));
         }
 
         /* Comments
@@ -279,18 +279,18 @@
         return;
       }
 
+      var github = await GetRepositoryActorPool();
+      if (github == null) {
+        DeactivateOnIdle(); // Sync may not even be running.
+        return;
+      }
+
+      ChangeSummary changes;
       using (var context = _contextFactory.CreateInstance()) {
-        var github = await GetRepositoryActorPool(context);
-
-        if (github == null) {
-          DeactivateOnIdle(); // Sync may not even be running.
-          return;
-        }
-
-        var changes = await UpdateIssueTemplate(context, github);
-        if (!changes.IsEmpty) {
-          await _queueClient.NotifyChanges(changes);
-        }
+        changes = await UpdateIssueTemplate(context, github);
+      }
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
       }
     }
 
@@ -433,10 +433,8 @@
       if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
         var assignees = await github.Assignable(_fullName, _assignableMetadata);
         if (assignees.IsOk) {
-          changes.UnionWith(
-            await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)),
-            await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id))
-          );
+          changes.UnionWith(await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)));
+          changes.UnionWith(await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id)));
         }
 
         _assignableMetadata = GitHubMetadata.FromResponse(assignees);
@@ -525,18 +523,16 @@
             .Where(x => x != null)
             .Distinct(x => x.Id);
 
-          changes.UnionWith(
-            await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)),
-            await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)),
-            await context.BulkUpdateLabels(
-              _repoId,
-              issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)),
-            await context.BulkUpdateIssues(
-              _repoId,
-              _mapper.Map<IEnumerable<IssueTableType>>(issues),
-              issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
-              issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))
-          ));
+          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)));
+          changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
+          changes.UnionWith(await context.BulkUpdateLabels(
+            _repoId,
+            issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
+          changes.UnionWith(await context.BulkUpdateIssues(
+            _repoId,
+            _mapper.Map<IEnumerable<IssueTableType>>(issues),
+            issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
+            issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
 
           if (issues.Any()) {
             // Ensure we don't miss any when we hit the page limit.
