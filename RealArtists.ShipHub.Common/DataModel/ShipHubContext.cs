@@ -213,6 +213,17 @@
         await dsp.ExecuteNonQueryAsync();
       }
     }
+
+    public async Task SetUserAccessToken(long userId, string scopes, GitHubRateLimit limit) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SetUserAccessToken]", ConnectionFactory)) {
+        dsp.UserId = userId;
+        dsp.Scopes = scopes;
+        dsp.Token = limit.AccessToken;
+        dsp.RateLimit = limit.RateLimit;
+        dsp.RateLimitRemaining = limit.RateLimitRemaining;
+        dsp.RateLimitReset = limit.RateLimitReset;
+        await dsp.ExecuteNonQueryAsync();
+      }
     }
 
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
