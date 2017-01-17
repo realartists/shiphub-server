@@ -8,7 +8,9 @@ BEGIN
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+    [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [StateChanged] BIT NOT NULL,
+    [TrialChanged] BIT NOT NULL
   )
 
   BEGIN TRY
@@ -30,12 +32,15 @@ BEGIN
         [State] = [Source].[State],
         TrialEndDate = [Source].TrialEndDate,
         [Version] = [Source].[Version]
-    OUTPUT INSERTED.AccountId INTO @Changes
+    OUTPUT INSERTED.AccountId,
+           IIF(INSERTED.[State] != ISNULL(DELETED.[State], ''), 1, 0),
+           IIF(ISNULL(INSERTED.TrialEndDate, '') != ISNULL(DELETED.TrialEndDate, ''), 1, 0) INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
     SELECT a.[Type] as ItemType, a.Id as ItemId
     FROM @Changes as c
       INNER JOIN Accounts as a ON (a.Id = c.Id)
+    WHERE c.StateChanged = 1 OR c.TrialChanged = 1
     OPTION (LOOP JOIN, FORCE ORDER)
 
     COMMIT TRANSACTION

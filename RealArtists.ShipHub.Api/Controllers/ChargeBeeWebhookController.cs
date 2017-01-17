@@ -496,23 +496,20 @@
           }
         });
 
-        var afterState = sub.State;
-        if (afterState != beforeState) {
-          // Only send changes when they're material.
-          if (!changes.IsEmpty) {
-            await _queueClient.NotifyChanges(changes);
-          }
+        if (!changes.IsEmpty) {
+          await _queueClient.NotifyChanges(changes);
+        }
 
-          if (sub.Account is Organization) {
-            // For all users associated with this org and that have logged into Ship
-            // (i.e., they have a Subscription record), go re-evaluate whether the
-            // user should have a complimentary personal subscription.
-            var orgAccountIds = context.OrganizationAccounts
-              .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
-              .Select(x => x.UserId)
-              .ToArray();
-            await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
-          }
+        var afterState = sub.State;
+        if (afterState != beforeState && sub.Account is Organization) {
+          // For all users associated with this org and that have logged into Ship
+          // (i.e., they have a Subscription record), go re-evaluate whether the
+          // user should have a complimentary personal subscription.
+          var orgAccountIds = context.OrganizationAccounts
+            .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
+            .Select(x => x.UserId)
+            .ToArray();
+          await Task.WhenAll(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
         }
       }
     }

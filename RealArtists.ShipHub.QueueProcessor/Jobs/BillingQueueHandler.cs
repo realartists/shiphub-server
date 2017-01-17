@@ -161,13 +161,17 @@
       TextWriter logger) {
 
       using (var context = new cm.ShipHubContext()) {
-        var orgs = await context.Organizations.Where(x => message.OrgIds.Contains(x.Id)).ToArrayAsync();
+        // Lookup orgs
+        var orgs = await context.Organizations
+          .Where(x => message.OrgIds.Contains(x.Id))
+          .Include(x => x.Subscription)
+          .ToArrayAsync();
         var orgCustomerIds = orgs.Select(x => $"org-{x.Id}").ToArray();
 
+        // Get subscriptions from ChargeBee
         var subsById = new Dictionary<long, cbm.Subscription>();
-
         string offset = null;
-        while (true) {
+        do {
           var response = await _chargeBee.Subscription.List()
             .CustomerId().In(orgCustomerIds)
             .PlanId().Is("organization")
@@ -180,20 +184,13 @@
             subsById.Add(ChargeBeeUtilities.AccountIdFromCustomerId(sub.CustomerId), sub);
           }
 
-          if (!string.IsNullOrEmpty(response.NextOffset)) {
-            offset = response.NextOffset;
-          } else {
-            break;
-          }
-        }
+          offset = response.NextOffset;
+        } while (!offset.IsNullOrWhiteSpace());
 
+        // Process any updates
         foreach (var org in orgs) {
-          var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == org.Id);
-
-          if (accountSubscription == null) {
-            accountSubscription = new cm.Subscription() {
-              AccountId = org.Id,
-            };
+          if (org.Subscription == null) {
+            org.Subscription = new cm.Subscription() { AccountId = org.Id };
           }
 
           var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
@@ -203,29 +200,30 @@
               case cbm.Subscription.StatusEnum.Active:
               case cbm.Subscription.StatusEnum.NonRenewing:
               case cbm.Subscription.StatusEnum.Future:
-                accountSubscription.State = cm.SubscriptionState.Subscribed;
+                org.Subscription.State = cm.SubscriptionState.Subscribed;
                 break;
               default:
-                accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+                org.Subscription.State = cm.SubscriptionState.NotSubscribed;
                 break;
             }
-            accountSubscription.Version = sub.GetValue<long>("resource_version");
+            org.Subscription.Version = sub.GetValue<long>("resource_version");
           } else {
-            accountSubscription.State = cm.SubscriptionState.NotSubscribed;
+            org.Subscription.State = cm.SubscriptionState.NotSubscribed;
           }
+        }
 
-          var changes = await context.BulkUpdateSubscriptions(new[] {
+        var changes = await context.BulkUpdateSubscriptions(
+          orgs.Select(x =>
             new SubscriptionTableType(){
-              AccountId = accountSubscription.AccountId,
-              State = accountSubscription.StateName,
-              TrialEndDate = accountSubscription.TrialEndDate,
-              Version = accountSubscription.Version,
-            }
-          });
+              AccountId = x.Subscription.AccountId,
+              State = x.Subscription.StateName,
+              TrialEndDate = x.Subscription.TrialEndDate,
+              Version = x.Subscription.Version,
+            })
+        );
 
-          if (!changes.IsEmpty) {
-            await notifyChanges.AddAsync(new ChangeMessage(changes));
-          }
+        if (!changes.IsEmpty) {
+          await notifyChanges.AddAsync(new ChangeMessage(changes));
         }
       }
     }
