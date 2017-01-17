@@ -27,7 +27,7 @@ END
 
 IF (@Version = 'SQL Azure')
 BEGIN
-	SET @SQL = REPLACE(@SQL, 'sys.server_event_sessions', 'sys.dm_xe_database_sessions')
+	SET @SQL = REPLACE(@SQL, 'sys.server_event_sessions', 'sys.database_event_sessions')
 	SET @SQL = REPLACE(@SQL, 'ON SERVER', 'ON DATABASE')
 END
 
