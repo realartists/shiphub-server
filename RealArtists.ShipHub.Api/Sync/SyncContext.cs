@@ -59,9 +59,9 @@
       SubscriptionResponse response;
       var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
       var orgs = await context.OrganizationAccounts
-        .Include(x => x.Organization.Subscription)
         .Where(x => x.UserId == _user.UserId)
         .Select(x => x.Organization)
+        .Include(x => x.Subscription)
         .ToListAsync();
       var numOfSubscribedOrgs = orgs
         .Where(x => x.Subscription != null && x.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()))
