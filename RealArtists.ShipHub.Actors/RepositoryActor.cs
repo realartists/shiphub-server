@@ -109,20 +109,19 @@
       _syncIssueTemplateTimer = null;
 
       using (var context = _contextFactory.CreateInstance()) {
-        var repo = await context.Repositories.SingleAsync(x => x.Id == _repoId);
-        repo.Size = _repoSize;
-        repo.Metadata = _metadata;
-        repo.AssignableMetadata = _assignableMetadata;
-        repo.IssueMetadata = _issueMetadata;
-        repo.IssueSince = _issueSince;
-        repo.LabelMetadata = _labelMetadata;
-        repo.MilestoneMetadata = _milestoneMetadata;
-        repo.ProjectMetadata = _projectMetadata;
-        repo.ContentsRootMetadata = _contentsRootMetadata;
-        repo.ContentsDotGitHubMetadata = _contentsDotGithubMetadata;
-        repo.ContentsIssueTemplateMetadata = _contentsIssueTemplateMetadata;
-
-        await context.SaveChangesAsync();
+        await context.SaveRepositoryMetadata(
+          _repoId,
+          _repoSize,
+          _metadata,
+          _assignableMetadata,
+          _issueMetadata,
+          _issueSince,
+          _labelMetadata,
+          _milestoneMetadata,
+          _projectMetadata,
+          _contentsRootMetadata,
+          _contentsDotGithubMetadata,
+          _contentsIssueTemplateMetadata);
       }
 
       await base.OnDeactivateAsync();

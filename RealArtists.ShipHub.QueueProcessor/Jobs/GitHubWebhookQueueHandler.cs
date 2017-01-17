@@ -33,8 +33,8 @@
       _mapper = mapper;
     }
 
-    private T ReadPayload<T>(Hook hook, string payloadString, byte[] expectedSignature) {
-      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(hook.Secret.ToString()))) {
+    private T ReadPayload<T>(Guid secret, string payloadString, byte[] expectedSignature) {
+      using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(secret.ToString()))) {
         var computedSignature = hmac.ComputeHash(Encoding.UTF8.GetBytes(payloadString));
         // We're not worth launching a timing attack against.
         if (!expectedSignature.SequenceEqual(computedSignature)) {
@@ -52,10 +52,9 @@
       TextWriter logger,
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, null, message, async () => {
+        ChangeSummary changeSummary = null;
         using (var context = new ShipHubContext()) {
-
           Hook hook = null;
-
           if (message.EntityType == "org") {
             hook = await context.Hooks.SingleOrDefaultAsync(x => x.OrganizationId == message.EntityId);
           } else if (message.EntityType == "repo") {
@@ -71,11 +70,9 @@
             return;
           }
 
-          ChangeSummary changeSummary = null;
-
           switch (message.EventName) {
             case "issues": {
-                var payload = ReadPayload<WebhookIssuePayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookIssuePayload>(hook.Secret, message.Payload, message.Signature);
                 switch (payload.Action) {
                   case "opened":
                   case "closed":
@@ -93,7 +90,7 @@
                 break;
               }
             case "issue_comment": {
-                var payload = ReadPayload<WebhookIssuePayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookIssuePayload>(hook.Secret, message.Payload, message.Signature);
                 switch (payload.Action) {
                   case "created":
                   case "edited":
@@ -104,7 +101,7 @@
                 break;
               }
             case "milestone": {
-                var payload = ReadPayload<WebhookIssuePayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookIssuePayload>(hook.Secret, message.Payload, message.Signature);
                 switch (payload.Action) {
                   case "closed":
                   case "created":
@@ -117,7 +114,7 @@
                 break;
               }
             case "label": {
-                var payload = ReadPayload<WebhookIssuePayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookIssuePayload>(hook.Secret, message.Payload, message.Signature);
                 switch (payload.Action) {
                   case "created":
                   case "edited":
@@ -128,7 +125,7 @@
                 break;
               }
             case "repository": {
-                var payload = ReadPayload<WebhookIssuePayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookIssuePayload>(hook.Secret, message.Payload, message.Signature);
                 if (
                 // Created events can only come from the org-level hook.
                 payload.Action == "created" ||
@@ -140,26 +137,23 @@
                 break;
               }
             case "push": {
-                var payload = ReadPayload<WebhookPushPayload>(hook, message.Payload, message.Signature);
+                var payload = ReadPayload<WebhookPushPayload>(hook.Secret, message.Payload, message.Signature);
                 await HandlePush(payload);
                 break;
               }
             case "ping":
-              ReadPayload<object>(hook, message.Payload, message.Signature); // read payload to validate signature
+              ReadPayload<object>(hook.Secret, message.Payload, message.Signature); // read payload to validate signature
               break;
             default:
               throw new NotImplementedException($"Webhook event '{message.EventName}' is not handled. Either support it or don't subscribe to it.");
           }
 
-          hook.LastSeen = DateTimeOffset.UtcNow;
           // Reset the ping count so this webhook won't get reaped.
-          hook.PingCount = null;
-          hook.LastPing = null;
-          await context.SaveChangesAsync();
+          await context.BulkUpdateHooks(seen: new[] { hook.Id });
+        }
 
-          if (changeSummary != null && !changeSummary.IsEmpty) {
-            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
-          }
+        if (changeSummary != null && !changeSummary.IsEmpty) {
+          await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
         }
       });
     }

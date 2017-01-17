@@ -8,6 +8,7 @@
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
+  using System.Threading;
   using System.Threading.Tasks;
   using GitHub;
   using Legacy;
@@ -58,6 +59,25 @@
 
     public override int SaveChanges() {
       throw new NotImplementedException("Please use asynchronous methods instead.");
+    }
+
+    public override Task<int> SaveChangesAsync() {
+      if (Environment.StackTrace.Contains("RealArtists.ShipHub.Api.Tests")) {
+        // The current implementation of EF calls SaveChangesAsync(CancellationToken cancellationToken) here,
+        // so we could just have the override below. However, in case that changes, keep the test in both
+        // places. It should only impact tests.
+        return base.SaveChangesAsync();
+      } else {
+        throw new InvalidOperationException("EF sucks at concurrency. Use a stored procedure instead.");
+      }
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken) {
+      if (Environment.StackTrace.Contains("RealArtists.ShipHub.Api.Tests")) {
+        return base.SaveChangesAsync(cancellationToken);
+      } else {
+        throw new InvalidOperationException("EF sucks at concurrency. Use a stored procedure instead.");
+      }
     }
 
     [SuppressMessage("Microsoft.Performance", "CA1804:RemoveUnusedLocals", MessageId = "instance", Justification = "See comment.")]
@@ -158,24 +178,22 @@
     }
 
     public Task BumpRepositoryVersion(long repositoryId) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteCommandTextAsync(
         "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'repo' AND OwnerId = @RepoId AND ItemType = 'repository' and ItemId = @RepoId",
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repositoryId });
     }
 
     public Task BumpOrganizationVersion(long organizationId) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteCommandTextAsync(
         "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'org' AND OwnerId = @OrgId AND ItemType = 'account' AND ItemId = @OrgId",
         new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
     }
 
-    public Task RevokeAccessToken(string accessToken) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        $"EXEC [dbo].[RevokeAccessToken] @Token = @Token",
-        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = accessToken });
+    public async Task RevokeAccessToken(string accessToken) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[RevokeAccessToken]", ConnectionFactory)) {
+        dsp.Token = accessToken;
+        await dsp.ExecuteNonQueryAsync();
+      }
     }
 
     public Task UpdateMetadata(string table, long id, GitHubResponse response) {
@@ -197,8 +215,7 @@
         return Task.CompletedTask;
       }
 
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteCommandTextAsync(
         $@"UPDATE [{table}] SET
              [{column}] = @Metadata
            WHERE Id = @Id
@@ -207,36 +224,65 @@
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
-    public Task UpdateRateLimit(GitHubRateLimit limit) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        $"EXEC [dbo].[UpdateRateLimit] @Token = @Token, @RateLimit = @RateLimit, @RateLimitRemaining = @RateLimitRemaining, @RateLimitReset = @RateLimitReset",
-        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = limit.AccessToken },
-        new SqlParameter("RateLimit", SqlDbType.Int) { Value = limit.RateLimit },
-        new SqlParameter("RateLimitRemaining", SqlDbType.Int) { Value = limit.RateLimitRemaining },
-        new SqlParameter("RateLimitReset", SqlDbType.DateTimeOffset) { Value = limit.RateLimitReset });
+    public async Task UpdateRateLimit(GitHubRateLimit limit) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[UpdateRateLimit]", ConnectionFactory)) {
+        dsp.Token = limit.AccessToken;
+        dsp.RateLimit = limit.RateLimit;
+        dsp.RateLimitRemaining = limit.RateLimitRemaining;
+        dsp.RateLimitReset = limit.RateLimitReset;
+        await dsp.ExecuteNonQueryAsync();
+      }
+    }
+
+    public async Task SetUserAccessToken(long userId, string scopes, GitHubRateLimit limit) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SetUserAccessToken]", ConnectionFactory)) {
+        dsp.UserId = userId;
+        dsp.Scopes = scopes;
+        dsp.Token = limit.AccessToken;
+        dsp.RateLimit = limit.RateLimit;
+        dsp.RateLimitRemaining = limit.RateLimitRemaining;
+        dsp.RateLimitReset = limit.RateLimitReset;
+        await dsp.ExecuteNonQueryAsync();
+      }
     }
 
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
+      return ExecuteCommandTextAsync(
         $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",
         new SqlParameter("IssueSince", SqlDbType.DateTimeOffset) { Value = issueSince },
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
     }
 
-    public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
+    public async Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
       // This can happen sometimes and doesn't make sense to handle until here.
       // Obviously, don't update.
       if (metadata == null) {
-        return Task.CompletedTask;
+        return;
       }
 
-      return Database.ExecuteSqlCommandAsync(
-        TransactionalBehavior.DoNotEnsureTransaction,
-        "EXEC [dbo].[UpdateCacheMetadata] @Key = @Key, @MetadataJson = @MetadataJson",
-        new SqlParameter("Key", SqlDbType.NVarChar, 255) { Value = cacheKey },
-        new SqlParameter("MetadataJson", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[UpdateCacheMetadata]", ConnectionFactory)) {
+        dsp.Key = cacheKey;
+        dsp.MetadataJson = metadata.SerializeObject();
+        await dsp.ExecuteNonQueryAsync();
+      }
+    }
+
+    private async Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {
+      using (var conn = ConnectionFactory.Get())
+      using (var cmd = new SqlCommand(commandText, conn)) {
+        try {
+          cmd.CommandType = CommandType.Text;
+          cmd.Parameters.AddRange(parameters);
+          if (conn.State != ConnectionState.Open) {
+            await conn.OpenAsync();
+          }
+          return await cmd.ExecuteNonQueryAsync();
+        } finally {
+          if (conn.State != ConnectionState.Closed) {
+            conn.Close();
+          }
+        }
+      }
     }
 
     private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
@@ -612,26 +658,15 @@
       });
     }
 
-    [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Whats")]
-    public DynamicStoredProcedure PrepareWhatsNew(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
-      var factory = new SqlConnectionFactory(Database.Connection.ConnectionString);
-      DynamicStoredProcedure result = null;
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
+    public DynamicStoredProcedure PrepareSync(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
+      dsp.Token = accessToken;
+      dsp.PageSize = pageSize;
+      dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
+      dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
 
-      try {
-        dynamic dsp = result = new DynamicStoredProcedure("[dbo].[WhatsNew]", factory);
-        dsp.Token = accessToken;
-        dsp.PageSize = pageSize;
-        dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
-        dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
-      } catch {
-        if (result != null) {
-          result.Dispose();
-          result = null;
-        }
-        throw;
-      }
-
-      return result;
+      return dsp;
     }
 
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
@@ -703,6 +738,124 @@
       return ExecuteAndReadChanges("[dbo].[DisableRepository]", x => {
         x.RepositoryId = repositoryId;
         x.Disabled = disabled;
+      });
+    }
+
+    public async Task SaveRepositoryMetadata(
+      long repositoryId,
+      long repoSize,
+      GitHubMetadata metadata,
+      GitHubMetadata assignableMetadata,
+      GitHubMetadata issueMetadata,
+      DateTimeOffset issueSince,
+      GitHubMetadata labelMetadata,
+      GitHubMetadata milestoneMetadata,
+      GitHubMetadata projectMetadata,
+      GitHubMetadata contentsRootMetadata,
+      GitHubMetadata contentsDotGitHubMetadata,
+      GitHubMetadata contentsIssueTemplateMetadata) {
+      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
+        dsp.RepositoryId = repositoryId;
+        dsp.Size = repoSize;
+        dsp.MetadataJson = metadata.SerializeObject();
+        dsp.AssignableMetadataJson = assignableMetadata.SerializeObject();
+        dsp.IssueMetadataJson = issueMetadata.SerializeObject();
+        dsp.IssueSince = issueSince;
+        dsp.LabelMetadataJson = labelMetadata.SerializeObject();
+        dsp.MilestoneMetadataJson = milestoneMetadata.SerializeObject();
+        dsp.ProjectMetadataJson = projectMetadata.SerializeObject();
+        dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
+        dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
+        dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
+
+        await dsp.ExecuteNonQueryAsync();
+      }
+    }
+
+    public Task<ChangeSummary> BulkUpdateHooks(
+      IEnumerable<HookTableType> hooks = null,
+      IEnumerable<long> seen = null,
+      IEnumerable<long> pinged = null,
+      IEnumerable<long> deleted = null) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateHooks]", x => {
+        if (hooks?.Any() == true) {
+          x.Hooks = CreateTableParameter(
+            "Hooks",
+            "[dbo].[HookTableType]",
+            new[] {
+              Tuple.Create("Id", typeof(long)),
+              Tuple.Create("GitHubId", typeof(long)),
+              Tuple.Create("Secret", typeof(Guid)),
+              Tuple.Create("Events", typeof(string)),
+            },
+            y => new object[] {
+              y.Id,
+              y.GitHubId,
+              y.Secret,
+              y.Events,
+            },
+            hooks);
+        }
+
+        if (seen?.Any() == true) {
+          x.Seen = CreateItemListTable("Seen", seen);
+        }
+
+        if (pinged?.Any() == true) {
+          x.Pinged = CreateItemListTable("Pinged", pinged);
+        }
+
+        if (deleted?.Any() == true) {
+          x.Deleted = CreateItemListTable("Deleted", deleted);
+        }
+      });
+    }
+
+    public async Task<HookTableType> CreateHook(Guid secret, string events, long? organizationId = null, long? repositoryId = null) {
+      if ((organizationId == null) == (repositoryId == null)) {
+        throw new ArgumentException($"Exactly one of {nameof(organizationId)} and {nameof(repositoryId)} must be non-null.");
+      }
+
+      using (var sp = new DynamicStoredProcedure("[dbo].[CreateHook]", ConnectionFactory)) {
+        dynamic dsp = sp;
+        dsp.Secret = secret;
+        dsp.Events = events;
+        dsp.OrganizationId = organizationId;
+        dsp.RepositoryId = repositoryId;
+
+        using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
+          sdr.Read();
+          dynamic ddr = sdr;
+          return new HookTableType() {
+            Id = ddr.Id,
+            GitHubId = ddr.GitHubId,
+            Secret = ddr.Secret,
+            Events = ddr.Events,
+          };
+        }
+      }
+    }
+
+    public Task<ChangeSummary> BulkUpdateSubscriptions(IEnumerable<SubscriptionTableType> subscriptions) {
+      var tableParam = CreateTableParameter(
+        "Subscriptions",
+        "[dbo].[SubscriptionTableType]",
+        new[] {
+          Tuple.Create("AccountId", typeof(long)),
+          Tuple.Create("State", typeof(string)),
+          Tuple.Create("TrialEndDate", typeof(DateTimeOffset)),
+          Tuple.Create("Version", typeof(long)),
+        },
+        x => new object[] {
+          x.AccountId,
+          x.State,
+          x.TrialEndDate,
+          x.Version,
+        },
+        subscriptions);
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateSubscriptions]", x => {
+        x.Subscriptions = tableParam;
       });
     }
 

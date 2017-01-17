@@ -64,7 +64,7 @@
 
         if (repo.Disabled) {
           // all requests to it will fail
-          Log.Info($"Skipping disabled repo {repo.FullName}");
+          Trace.TraceWarning($"Skipping disabled repo {repo.FullName}");
           return;
         }
 
@@ -73,8 +73,7 @@
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed
           // and we never got a chance to learn its GitHubId.
-          context.Hooks.Remove(hook);
-          await context.SaveChangesAsync();
+          await context.BulkUpdateHooks(deleted: new[] { hook.Id });
           hook = null;
         }
 
@@ -83,19 +82,19 @@
           if (!hookList.IsOk) {
             // webhooks are best effort
             // this keeps us from spewing errors and retrying a ton when an org is unpaid
-            Log.Info($"Unable to list hooks for {repo.FullName}");
+            Trace.TraceWarning($"Unable to list hooks for {repo.FullName}");
             return;
           }
 
           var existingHooks = hookList.Result
             .Where(x => x.Name.Equals("web"))
-            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/"));
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/", StringComparison.OrdinalIgnoreCase));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
           foreach (var existingHook in existingHooks) {
             var deleteResponse = await client.DeleteRepositoryWebhook(repo.FullName, existingHook.Id);
-            if (!deleteResponse.Succeeded || !deleteResponse.Result) {
+            if (!deleteResponse.Succeeded) {
               Trace.TraceWarning($"Failed to delete existing hook ({existingHook.Id}) for repo '{repo.FullName}'");
             }
           }
@@ -103,49 +102,54 @@
           // GitHub will immediately send a ping when the webhook is created.
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
-          hook = context.Hooks.Add(new Hook() {
-            Events = string.Join(",", RequiredEvents),
-            Secret = Guid.NewGuid(),
-            RepositoryId = repo.Id,
-          });
-          await context.SaveChangesAsync();
+          var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: repo.Id);
 
-          var addRepoHookTask = client.AddRepositoryWebhook(
-            repo.FullName,
-            new gm.Webhook() {
-              Name = "web",
-              Active = true,
-              Events = RequiredEvents,
-              Config = new gm.WebhookConfiguration() {
-                Url = $"https://{apiHostName}/webhook/repo/{repo.Id}",
-                ContentType = "json",
-                Secret = hook.Secret.ToString(),
-              },
-            });
-          await Task.WhenAny(addRepoHookTask);
+          bool deleteHook = false;
+          try {
+            var addRepoHookResponse = await client.AddRepositoryWebhook(
+              repo.FullName,
+              new gm.Webhook() {
+                Name = "web",
+                Active = true,
+                Events = RequiredEvents,
+                Config = new gm.WebhookConfiguration() {
+                  Url = $"https://{apiHostName}/webhook/repo/{repo.Id}",
+                  ContentType = "json",
+                  Secret = newHook.Secret.ToString(),
+                },
+              });
 
-          if (!addRepoHookTask.IsFaulted && addRepoHookTask.Result.Succeeded) {
-            hook.GitHubId = addRepoHookTask.Result.Result.Id;
-            await context.SaveChangesAsync();
-
-            await context.BumpRepositoryVersion(repo.Id);
-
-            var changeSummary = new ChangeSummary();
-            changeSummary.Repositories.Add(repo.Id);
-            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
-          } else {
-            Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}': {addRepoHookTask.Exception}");
-            context.Hooks.Remove(hook);
-            await context.SaveChangesAsync();
+            if (addRepoHookResponse.Succeeded) {
+              newHook.GitHubId = addRepoHookResponse.Result.Id;
+              var changeSummary = await context.BulkUpdateHooks(hooks: new[] { newHook });
+              await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
+            } else {
+              Trace.TraceWarning($"Failed to add hook for repo '{repo.FullName}' ({repo.Id}): {addRepoHookResponse.Status} {addRepoHookResponse.Error?.ToException()}");
+              deleteHook = true;
+            }
+          } catch (Exception e) {
+            e.Report($"Failed to add hook for repo '{repo.FullName}' ({repo.Id})");
+            deleteHook = true;
+            throw;
+          } finally {
+            if (deleteHook) {
+              await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
+            }
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(RequiredEvents)) {
           var editResponse = await client.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RequiredEvents);
 
           if (!editResponse.Succeeded) {
-            Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}': {editResponse.Error}");
+            Trace.TraceWarning($"Failed to edit hook for repo '{repo.FullName}' ({repo.Id}): {editResponse.Status} {editResponse.Error?.ToException()}");
           } else {
-            hook.Events = string.Join(",", editResponse.Result.Events);
-            await context.SaveChangesAsync();
+            await context.BulkUpdateHooks(hooks: new[] {
+              new HookTableType(){
+                Id = hook.Id,
+                GitHubId = editResponse.Result.Id,
+                Secret = hook.Secret,
+                Events = string.Join(",", editResponse.Result.Events),
+              }
+            });
           }
         }
       }
@@ -186,15 +190,14 @@
         if (hook != null && hook.GitHubId == null) {
           // We attempted to add a webhook for this earlier, but something failed
           // and we never got a chance to learn its GitHubId.
-          context.Hooks.Remove(hook);
-          await context.SaveChangesAsync();
+          await context.BulkUpdateHooks(deleted: new[] { hook.Id });
           hook = null;
         }
 
         if (hook == null) {
           var existingHooks = (await client.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty)).Result
             .Where(x => x.Name.Equals("web"))
-            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/"));
+            .Where(x => x.Config.Url.StartsWith($"https://{apiHostName}/", StringComparison.OrdinalIgnoreCase));
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
@@ -208,49 +211,54 @@
           //// GitHub will immediately send a ping when the webhook is created.
           // To avoid any chance for a race, add the Hook to the DB first, then
           // create on GitHub.
-          hook = context.Hooks.Add(new Hook() {
-            Events = string.Join(",", requiredEvents),
-            Secret = Guid.NewGuid(),
-            OrganizationId = org.Id,
-          });
-          await context.SaveChangesAsync();
+          var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", requiredEvents), organizationId: org.Id);
 
-          var addTask = client.AddOrganizationWebhook(
-            org.Login,
-            new gm.Webhook() {
-              Name = "web",
-              Active = true,
-              Events = requiredEvents,
-              Config = new gm.WebhookConfiguration() {
-                Url = $"https://{apiHostName}/webhook/org/{org.Id}",
-                ContentType = "json",
-                Secret = hook.Secret.ToString(),
-              },
-            });
-          await Task.WhenAny(addTask);
+          bool deleteHook = false;
+          try {
+            var addHookResponse = await client.AddOrganizationWebhook(
+              org.Login,
+              new gm.Webhook() {
+                Name = "web",
+                Active = true,
+                Events = requiredEvents,
+                Config = new gm.WebhookConfiguration() {
+                  Url = $"https://{apiHostName}/webhook/org/{org.Id}",
+                  ContentType = "json",
+                  Secret = newHook.Secret.ToString(),
+                },
+              });
 
-          if (!addTask.IsFaulted && addTask.Result.Succeeded) {
-            hook.GitHubId = addTask.Result.Result.Id;
-            await context.SaveChangesAsync();
-
-            await context.BumpOrganizationVersion(org.Id);
-
-            var changeSummary = new ChangeSummary();
-            changeSummary.Organizations.Add(org.Id);
-            await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
-          } else {
-            Trace.TraceWarning($"Failed to add hook for org '{org.Login}': {addTask.Exception}");
-            context.Hooks.Remove(hook);
-            await context.SaveChangesAsync();
+            if (addHookResponse.Succeeded) {
+              newHook.GitHubId = addHookResponse.Result.Id;
+              var changeSummary = await context.BulkUpdateHooks(hooks: new[] { newHook });
+              await notifyChanges.AddAsync(new ChangeMessage(changeSummary));
+            } else {
+              Trace.TraceWarning($"Failed to add hook for org '{org.Login}' ({org.Id}): {addHookResponse.Status} {addHookResponse.Error?.ToException()}");
+              deleteHook = true;
+            }
+          } catch (Exception e) {
+            e.Report($"Failed to add hook for org '{org.Login}' ({org.Id})");
+            deleteHook = true;
+            throw;
+          } finally {
+            if (deleteHook) {
+              await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
+            }
           }
         } else if (!new HashSet<string>(hook.Events.Split(',')).SetEquals(requiredEvents)) {
           var editResponse = await client.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, requiredEvents);
 
           if (!editResponse.Succeeded) {
-            Trace.TraceWarning($"Failed to edit hook for org '{org.Login}': {editResponse.Error}");
+            Trace.TraceWarning($"Failed to edit hook for org '{org.Login}' ({org.Id}): {editResponse.Status} {editResponse.Error?.ToException()}");
           } else {
-            hook.Events = string.Join(",", editResponse.Result.Events);
-            await context.SaveChangesAsync();
+            await context.BulkUpdateHooks(hooks: new[] {
+              new HookTableType(){
+                Id = hook.Id,
+                GitHubId = editResponse.Result.Id,
+                Secret = hook.Secret,
+                Events = string.Join(",", editResponse.Result.Events),
+              }
+            });
           }
         }
       }
