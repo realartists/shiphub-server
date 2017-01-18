@@ -6,6 +6,7 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
+  using System.Security.Authentication;
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
@@ -22,11 +23,26 @@
 
   [RoutePrefix("github")]
   public class GitHubProxyController : ApiController {
+    // If you increase this, you may also need to update timeouts on the handler
+    // For 60 seconds, the defaults are fine.
+    private static readonly TimeSpan _ProxyTimeout = TimeSpan.FromSeconds(60);
+
+    private static readonly WinHttpHandler _ProxyHandler = new WinHttpHandler() {
+      AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
+      AutomaticRedirection = true,
+      CheckCertificateRevocationList = true,
+      CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
+      MaxAutomaticRedirections = 3,
+      SslProtocols = SslProtocols.Tls12,
+      WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
+      // The default timeout values are all longer than our overall timeout.
+    };
+
     // Using one HttpClient for all requests should be safe according to the documentation.
     // See https://msdn.microsoft.com/en-us/library/system.net.http.httpclient(v=vs.110).aspx?f=255&mspperror=-2147217396#Anchor_5
-    private static readonly HttpClient _ProxyClient = new HttpClient() {
+    private static readonly HttpClient _ProxyClient = new HttpClient(_ProxyHandler) {
       MaxResponseContentBufferSize = 1024 * 1024 * 5, // 5MB is pretty generous
-      Timeout = TimeSpan.FromSeconds(10), // so is 10 seconds
+      Timeout = _ProxyTimeout
     };
 
     private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
@@ -44,11 +60,12 @@
     }
 
     private async Task<HttpResponseMessage> ProxyRequest(HttpRequestMessage request, CancellationToken cancellationToken, string pathOverride) {
-      var builder = new UriBuilder(request.RequestUri);
-      builder.Scheme = _apiRoot.Scheme;
-      builder.Port = _apiRoot.Port;
-      builder.Host = _apiRoot.Host;
-      builder.Path = pathOverride;
+      var builder = new UriBuilder(request.RequestUri) {
+        Scheme = _apiRoot.Scheme,
+        Port = _apiRoot.Port,
+        Host = _apiRoot.Host,
+        Path = pathOverride
+      };
       request.RequestUri = builder.Uri;
 
       request.Headers.Host = request.RequestUri.Host;
@@ -60,12 +77,15 @@
         request.Content = null;
       }
 
-      try {
-        var response = await _ProxyClient.SendAsync(request, cancellationToken);
-        response.Headers.Remove("Server");
-        return response;
-      } catch (TaskCanceledException exception) {
-        return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      using (var timeout = new CancellationTokenSource(_ProxyTimeout))
+      using (var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token)) {
+        try {
+          var response = await _ProxyClient.SendAsync(request, linkedCancellation.Token);
+          response.Headers.Remove("Server");
+          return response;
+        } catch (TaskCanceledException exception) {
+          return request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+        }
       }
     }
 
