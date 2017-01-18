@@ -118,7 +118,7 @@
       }
     }
 
-    private string ExtractBlobName(HttpRequestMessage request) {
+    public static string ExtractBlobName(HttpRequestMessage request) {
       string blobName = null;
       if (request.Properties.ContainsKey(LogBlobNameKey)) {
         blobName = request.Properties[LogBlobNameKey] as string;

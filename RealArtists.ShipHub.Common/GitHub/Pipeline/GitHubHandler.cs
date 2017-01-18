@@ -5,6 +5,8 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
+  using System.Security.Authentication;
+  using System.Threading;
   using System.Threading.Tasks;
   using Logging;
   using Microsoft.Azure;
@@ -24,7 +26,11 @@
     public const int RateLimitFloor = 500;
     public const int RetryMilliseconds = 1000;
 
-    public static HttpClient HttpClient { get; } = CreateGitHubHttpClient();
+    // Should be less than Orleans timeout.
+    // If changing, may also need to update values in CreateGitHubHttpClient()
+    private static readonly TimeSpan _GitHubRequestTimeout = TimeSpan.FromSeconds(20);
+
+    private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
       if (client.RateLimit != null && client.RateLimit.IsUnder(RateLimitFloor)) {
@@ -111,7 +117,15 @@
         $"{client.UserInfo}/{client.CorrelationId}/{client.NextRequestId()}_{DateTime.UtcNow:o}{httpRequest.RequestUri.PathAndQuery}.log"
       );
 
-      var response = await HttpClient.SendAsync(httpRequest);
+      HttpResponseMessage response;
+      using (var timeout = new CancellationTokenSource(_GitHubRequestTimeout)) {
+        try {
+          response = await _HttpClient.SendAsync(httpRequest, timeout.Token);
+        } catch (TaskCanceledException exception) {
+          exception.Report($"GitHub timeout for {request.Uri} {LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}");
+          throw;
+        }
+      }
 
       // Handle redirects
       switch (response.StatusCode) {
@@ -221,7 +235,9 @@
       var rootHandler = new WinHttpHandler() {
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
         AutomaticRedirection = false,
+        CheckCertificateRevocationList = true,
         CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
+        SslProtocols = SslProtocols.Tls12,
         WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
       };
 
@@ -245,7 +261,9 @@
       );
       handler = logHandler;
 
-      var httpClient = new HttpClient(handler, true);
+      var httpClient = new HttpClient(handler, true) {
+        Timeout = _GitHubRequestTimeout,
+      };
 
       var headers = httpClient.DefaultRequestHeaders;
       headers.AcceptEncoding.Clear();

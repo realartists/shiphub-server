@@ -9,6 +9,7 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
+  using System.Security.Authentication;
   using System.Security.Cryptography;
   using System.Text;
   using System.Threading;
@@ -430,7 +431,22 @@
       return Redirect(result.HostedPage.Url);
     }
 
-    private static HttpClient _HttpClient { get; } = new HttpClient();
+    private static readonly TimeSpan _HandlerTimeout = TimeSpan.FromSeconds(60);
+
+    private static readonly WinHttpHandler _HttpHandler = new WinHttpHandler() {
+      AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
+      AutomaticRedirection = true,
+      CheckCertificateRevocationList = true,
+      CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
+      MaxAutomaticRedirections = 3,
+      SslProtocols = SslProtocols.Tls12,
+      WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
+      // The default timeout values are all longer than our overall timeout.
+    };
+
+    private static readonly HttpClient _HttpClient = new HttpClient(_HttpHandler) {
+      Timeout = _HandlerTimeout
+    };
 
     private async Task<HttpResponseMessage> DownloadEntity(cba.EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
       if (!CreateSignature(entityId, entityId).Equals(signature)) {
@@ -440,15 +456,19 @@
       var downloadUrl = (await entityResult.Request()).Download.DownloadUrl;
       var request = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
 
-      try {
-        var response = await _HttpClient.SendAsync(request, cancellationToken);
-        response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
-          FileName = fileName
-        };
-        response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-        return response;
-      } catch (TaskCanceledException exception) {
-        return Request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+      using (var timeout = new CancellationTokenSource(_HandlerTimeout))
+      using (var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token)) {
+        try {
+          var response = await _HttpClient.SendAsync(request, linkedCancellation.Token);
+          response.Headers.Remove("Server");
+          response.Content.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
+            FileName = fileName
+          };
+          response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+          return response;
+        } catch (TaskCanceledException exception) {
+          return Request.CreateErrorResponse(HttpStatusCode.GatewayTimeout, exception);
+        }
       }
     }
 
