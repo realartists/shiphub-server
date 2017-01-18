@@ -345,7 +345,7 @@
        .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
        .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
-         NeedsReactivation = true,
+         NeedsReactivation = false,
        }))
        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
 

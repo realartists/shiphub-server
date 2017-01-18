@@ -399,7 +399,13 @@
             Assert.AreEqual("aroon@pureimaginary.com", data["customer[email]"]);
             Assert.AreEqual("Pure Imaginary LLC", data["customer[company]"]);
             Assert.AreEqual("pureimaginary", data["customer[cf_github_username]"]);
+            Assert.AreEqual("/billing/buy/finish", new Uri(data["redirect_url"]).AbsolutePath);
 
+            var expectedPassThruContent = JsonConvert.SerializeObject(new BuyPassThruContent() {
+              NeedsReactivation = false,
+            });
+            Assert.AreEqual(expectedPassThruContent, data["pass_thru_content"]);
+            
             return new {
               hosted_page = new {
                 id = "hosted-page-id",
