@@ -23,7 +23,6 @@
   /// </summary>
   public class GitHubHandler : IGitHubHandler {
     public const int LastAttempt = 2; // Make three attempts
-    public const int RateLimitFloor = 500;
     public const int RetryMilliseconds = 1000;
 
     // Should be less than Orleans timeout.
@@ -33,7 +32,7 @@
     private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
-      if (client.RateLimit != null && client.RateLimit.IsUnder(RateLimitFloor)) {
+      if (client.RateLimit?.IsExceeded == true) {
         throw new GitHubException($"Rate limit exceeded. Only {client.RateLimit.RateLimitRemaining} requests left before {client.RateLimit.RateLimitReset:o} ({client.UserInfo}).");
       }
 
@@ -178,12 +177,11 @@
       // Rate Limits
       // These aren't always sent. Check for presence and fail gracefully.
       if (response.Headers.Contains("X-RateLimit-Limit")) {
-        result.RateLimit = new GitHubRateLimit() {
-          AccessToken = client.AccessToken,
-          RateLimit = response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
-          RateLimitRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
-          RateLimitReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))),
-        };
+        result.RateLimit = new GitHubRateLimit(
+          client.AccessToken,
+          response.ParseHeader("X-RateLimit-Limit", x => int.Parse(x)),
+          response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x)),
+          response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x))));
       }
 
       // Abuse

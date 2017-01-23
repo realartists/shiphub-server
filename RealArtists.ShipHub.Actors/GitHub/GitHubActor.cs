@@ -67,12 +67,11 @@
 
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
-          rateLimit = new GitHubRateLimit() {
-            AccessToken = user.Token,
-            RateLimit = user.RateLimit,
-            RateLimitRemaining = user.RateLimitRemaining,
-            RateLimitReset = user.RateLimitReset,
-          };
+          rateLimit = new GitHubRateLimit(
+            user.Token,
+            user.RateLimit,
+            user.RateLimitRemaining,
+            user.RateLimitReset);
         }
 
         var handler = GetOrCreateHandlerPipeline(_shipContextFactory);
@@ -134,19 +133,20 @@
         }
 
         limitUntil = _retryAfter;
-      } else if (_github.RateLimit.IsUnder(GitHubHandler.RateLimitFloor)) {
         limitUntil = _github.RateLimit.RateLimitReset;
+      } else if (_github.RateLimit?.IsExceeded == true) {
       }
 
       if (limitUntil != null) {
         using (var context = _shipContextFactory.CreateInstance()) {
-          var rate = _github.RateLimit;
-          await context.UpdateRateLimit(new GitHubRateLimit() {
-            AccessToken = rate.AccessToken,
-            RateLimit = rate.RateLimit,
-            RateLimitRemaining = Math.Min(rate.RateLimitRemaining, GitHubHandler.RateLimitFloor - 1),
-            RateLimitReset = limitUntil.Value,
-          });
+          var oldRate = _github.RateLimit;
+          var newRate = new GitHubRateLimit(
+            oldRate.AccessToken,
+            oldRate.Limit,
+            Math.Min(oldRate.Remaining, GitHubRateLimit.RateLimitFloor - 1),
+            limitUntil.Value);
+          _github.UpdateInternalRateLimit(newRate);
+          await context.UpdateRateLimit(newRate);
         }
 
         var changes = new ChangeSummary();

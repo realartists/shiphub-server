@@ -44,8 +44,8 @@
     public void UpdateInternalRateLimit(GitHubRateLimit rateLimit) {
       lock (_rateLimitLock) {
         if (_rateLimit == null
-          || _rateLimit.RateLimitReset < rateLimit.RateLimitReset
-          || _rateLimit.RateLimitRemaining > rateLimit.RateLimitRemaining) {
+          || _rateLimit.Reset < rateLimit.Reset
+          || _rateLimit.Remaining > rateLimit.Remaining) {
           Interlocked.Exchange(ref _rateLimit, rateLimit);
         }
       }

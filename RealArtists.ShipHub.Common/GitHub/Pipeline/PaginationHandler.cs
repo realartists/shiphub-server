@@ -72,7 +72,7 @@
           }).ToArray();
 
         // Check if we can request all the pages within the limit.
-        if (firstPage.RateLimit.RateLimitRemaining < pageRequestors.Length) {
+        if (firstPage.RateLimit.Remaining < pageRequestors.Length) {
           firstPage.Result = default(TCollection);
           firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
           return firstPage;
@@ -125,17 +125,16 @@
         final.CacheData = null;
       }
 
-      var rateLimit = final.RateLimit;
-      foreach (var req in batch) {
-        // Rate Limit
-        var limit = req.RateLimit;
-        if (limit.RateLimitReset > rateLimit.RateLimitReset) {
-          rateLimit = limit;
-        } else if (limit.RateLimitReset == rateLimit.RateLimitReset) {
-          rateLimit.RateLimit = Math.Min(rateLimit.RateLimit, limit.RateLimit);
-          rateLimit.RateLimitRemaining = Math.Min(rateLimit.RateLimitRemaining, limit.RateLimitRemaining);
-        } // else ignore it
-      }
+      var rates = batch
+        .Select(x => x.RateLimit)
+        .GroupBy(x => x.Reset)
+        .OrderByDescending(x => x.Key)
+        .First();
+      final.RateLimit = new GitHubRateLimit(
+        final.RateLimit.AccessToken,
+        rates.Min(x => x.Limit),
+        rates.Min(x => x.Remaining),
+        rates.Key);
 
       return final;
     }
