@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -95,7 +96,7 @@ namespace RealArtists.ShipHub.Common {
         Component = e.TargetSite?.DeclaringType.AssemblyQualifiedName,
         Level = LogLine.LogLevel.Exception,
         Message = m,
-        StackTrace = e.StackTrace
+        ExceptionDetail = ExceptionDetail(e),
       };
       Sink.WriteLine(line);
 #if DEBUG
@@ -108,6 +109,19 @@ namespace RealArtists.ShipHub.Common {
     private static Lazy<LogSink> _sink = new Lazy<LogSink>(() => new LogSink());
     private static LogSink Sink {
       get { return _sink.Value; }
+    }
+
+    private static string ExceptionDetail(Exception e) {
+      if (e == null) {
+        return string.Empty;
+      }
+
+      if (e is AggregateException) {
+        var agg = (AggregateException)e;
+        return string.Join("\n", agg.InnerExceptions.Select(x => ExceptionDetail(x)));
+      } else {
+        return string.Join("\n", e.ToString(), ExceptionDetail(e.InnerException));
+      }
     }
 
 #if DEBUG
@@ -146,14 +160,14 @@ namespace RealArtists.ShipHub.Common {
       public string Method { get; set; }
       public int LineNumber { get; set; }
       public LogLevel Level { get; set; }
-      public string StackTrace { get; set; }
+      public string ExceptionDetail { get; set; }
 
       public string Formatted {
         get {
           if (Level == LogLevel.Trace) {
             return $"[{Level.ToString().ToUpperInvariant()}] - {HostName} - {FilePath}:{LineNumber} {Method}";
           } else if (Level == LogLevel.Exception) {
-            return $"[{Level.ToString().ToUpperInvariant()}] - {HostName} - {Component} - {Message}\n{StackTrace}";
+            return $"[{Level.ToString().ToUpperInvariant()}] - {HostName} - {Component} - {Message}\n{ExceptionDetail}";
           } else {
             return $"[{Level.ToString().ToUpperInvariant()}] - {HostName} - {FilePath}:{LineNumber} {Method} - {Message}";
           }
