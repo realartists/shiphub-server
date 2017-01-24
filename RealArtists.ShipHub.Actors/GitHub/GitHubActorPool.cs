@@ -9,6 +9,7 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
+  using RealArtists.ShipHub.Common;
 
   public class GitHubActorPool : IGitHubPoolable {
     private IGrainFactory _grainFactory;
@@ -83,14 +84,17 @@
               actor = null;
               continue;
           }
+
           return result;
-        } catch (GitHubException) {
-          // TODO: Right now these are only thrown for pre-emptive rate limit aborts (before calling GitHub)
-          // That may not always be the case, so think of a better way to indicate that condition.
+        } catch (GitHubRateException) {
           Remove(actor);
           actor = null;
+
+          if (_actors.Count == 0) {
+            // No more users to try with. Bubble up.
+            throw;
+          }
         }
-        // TODO: Also catch InvalidOperationException?
       }
     }
 

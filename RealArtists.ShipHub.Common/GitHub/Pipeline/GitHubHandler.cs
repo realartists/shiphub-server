@@ -33,7 +33,7 @@
 
     public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
       if (client.RateLimit?.IsExceeded == true) {
-        throw new GitHubException($"Rate limit exceeded. Only {client.RateLimit.RateLimitRemaining} requests left before {client.RateLimit.RateLimitReset:o} ({client.UserInfo}).");
+        throw new GitHubRateException(client.UserInfo, request.Uri, client.RateLimit);
       }
 
       GitHubResponse<T> result = null;
