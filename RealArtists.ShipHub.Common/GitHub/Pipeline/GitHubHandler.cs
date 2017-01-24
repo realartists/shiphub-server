@@ -221,7 +221,7 @@
           result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
         } else {
           var body = await response.Content.ReadAsStringAsync();
-          throw new GitHubException($"Invalid GitHub Response:\n\n{body}");
+          throw new GitHubException($"Invalid GitHub Response for [{request.Uri}]:\n\n{body}");
         }
       }
 
