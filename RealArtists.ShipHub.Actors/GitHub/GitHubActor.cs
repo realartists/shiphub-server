@@ -19,15 +19,18 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor, IDisposable {
+    public const int MaxConcurrentRequests = 4;
+
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
 
-    private long _userId;
-    private GitHubClient _github;
-    private DateTimeOffset? _retryAfter;
 
-    // TODO: Overhaul this code and trim/eliminate the pipeline
+    private long _userId;
+    private string _login;
+    private GitHubClient _github;
+    private DateTimeOffset? _abuseDelay;
+
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
@@ -65,6 +68,8 @@
           throw new InvalidOperationException($"User {_userId} has no token.");
         }
 
+        _login = user.Login;
+
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
           rateLimit = new GitHubRateLimit(
@@ -95,16 +100,13 @@
 
     ////////////////////////////////////////////////////////////
     // All per request limiting and checking
-    // * Limit concurrency
-    // * Clear invalid tokens
-    // * More?
     ////////////////////////////////////////////////////////////
 
-    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(4);
+    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
 
     public async Task<object> Invoke(MethodInfo method, InvokeMethodRequest request, IGrainMethodInvoker invoker) {
-      if (_retryAfter != null && _retryAfter.Value > DateTimeOffset.UtcNow) {
-        throw new GitHubException($"Abuse reported. Dropping requests until {_retryAfter}");
+      if (_abuseDelay != null && _abuseDelay.Value > DateTimeOffset.UtcNow) {
+        throw new GitHubRateException($"{_login} ({_userId})", null, _github.RateLimit, true);
       }
 
       await _maxConcurrentRequests.WaitAsync();
@@ -128,13 +130,12 @@
       } else if (response.Error?.IsAbuse == true) {
         var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
 
-        if (_retryAfter == null || _retryAfter < retryAfter) {
-          _retryAfter = retryAfter;
+        if (_abuseDelay == null || _abuseDelay < retryAfter) {
+          _abuseDelay = retryAfter;
         }
-
-        limitUntil = _retryAfter;
-        limitUntil = _github.RateLimit.RateLimitReset;
+        limitUntil = _abuseDelay;
       } else if (_github.RateLimit?.IsExceeded == true) {
+        limitUntil = _github.RateLimit.Reset;
       }
 
       if (limitUntil != null) {
