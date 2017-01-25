@@ -37,8 +37,7 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 4;
-    public const int PaginationBatchSize = 4;
+    public const int MaxConcurrentRequests = 8;
     public const int PageSize = 100;
     public const bool InterpolationEnabled = true;
 
@@ -534,7 +533,7 @@
         var accum = new List<GitHubResponse<TCollection>>();
         for (int i = 0; i < pageRequestors.Length;) {
           var tasks = new List<Task<GitHubResponse<TCollection>>>();
-          for (int j = 0; j < PaginationBatchSize && i < pageRequestors.Length; ++i, ++j) {
+          for (int j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
             tasks.Add(pageRequestors[i]());
           }
           await Task.WhenAll(tasks);
