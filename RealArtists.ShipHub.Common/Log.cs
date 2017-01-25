@@ -116,8 +116,8 @@ namespace RealArtists.ShipHub.Common {
         return string.Empty;
       }
 
-      if (e is AggregateException) {
-        var agg = (AggregateException)e;
+      var agg = e as AggregateException;
+      if (agg != null) {
         return string.Join("\n", agg.InnerExceptions.Select(x => ExceptionDetail(x)));
       } else {
         return string.Join("\n", e.ToString(), ExceptionDetail(e.InnerException));
