@@ -189,11 +189,14 @@
         new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
     }
 
-    public async Task RevokeAccessToken(string accessToken) {
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[RevokeAccessToken]", ConnectionFactory)) {
-        dsp.Token = accessToken;
-        await dsp.ExecuteNonQueryAsync();
-      }
+    public Task RevokeAccessToken(string accessToken) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[RevokeAccessToken]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.Token = accessToken;
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
     }
 
     public Task UpdateMetadata(string table, long id, GitHubResponse response) {
@@ -224,26 +227,32 @@
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
-    public async Task UpdateRateLimit(GitHubRateLimit limit) {
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[UpdateRateLimit]", ConnectionFactory)) {
-        dsp.Token = limit.AccessToken;
-        dsp.RateLimit = limit.Limit;
-        dsp.RateLimitRemaining = limit.Remaining;
-        dsp.RateLimitReset = limit.Reset;
-        await dsp.ExecuteNonQueryAsync();
-      }
+    public Task UpdateRateLimit(GitHubRateLimit limit) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[UpdateRateLimit]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.Token = limit.AccessToken;
+          dsp.RateLimit = limit.Limit;
+          dsp.RateLimitRemaining = limit.Remaining;
+          dsp.RateLimitReset = limit.Reset;
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
     }
 
-    public async Task SetUserAccessToken(long userId, string scopes, GitHubRateLimit limit) {
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SetUserAccessToken]", ConnectionFactory)) {
-        dsp.UserId = userId;
-        dsp.Scopes = scopes;
-        dsp.Token = limit.AccessToken;
-        dsp.RateLimit = limit.Limit;
-        dsp.RateLimitRemaining = limit.Remaining;
-        dsp.RateLimitReset = limit.Reset;
-        await dsp.ExecuteNonQueryAsync();
-      }
+    public Task SetUserAccessToken(long userId, string scopes, GitHubRateLimit limit) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[SetUserAccessToken]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.UserId = userId;
+          dsp.Scopes = scopes;
+          dsp.Token = limit.AccessToken;
+          dsp.RateLimit = limit.Limit;
+          dsp.RateLimitRemaining = limit.Remaining;
+          dsp.RateLimitReset = limit.Reset;
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
     }
 
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
@@ -253,78 +262,89 @@
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
     }
 
-    public async Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
+    public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
       // This can happen sometimes and doesn't make sense to handle until here.
       // Obviously, don't update.
       if (metadata == null) {
-        return;
+        return Task.CompletedTask;
       }
 
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[UpdateCacheMetadata]", ConnectionFactory)) {
-        dsp.Key = cacheKey;
-        dsp.MetadataJson = metadata.SerializeObject();
-        await dsp.ExecuteNonQueryAsync();
-      }
-    }
-
-    private async Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {
-      using (var conn = ConnectionFactory.Get())
-      using (var cmd = new SqlCommand(commandText, conn)) {
-        try {
-          cmd.CommandType = CommandType.Text;
-          cmd.Parameters.AddRange(parameters);
-          if (conn.State != ConnectionState.Open) {
-            await conn.OpenAsync();
-          }
-          return await cmd.ExecuteNonQueryAsync();
-        } finally {
-          if (conn.State != ConnectionState.Closed) {
-            conn.Close();
-          }
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[UpdateCacheMetadata]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.Key = cacheKey;
+          dsp.MetadataJson = metadata.SerializeObject();
+          return await sp.ExecuteNonQueryAsync();
         }
-      }
+      });
     }
 
-    private async Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
-      var result = new ChangeSummary();
-
-      using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
-        applyParams(dsp);
-
-        for (int attempt = 1; ; ++attempt) {
+    private Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {
+      return RetryOnDeadlock(async () => {
+        using (var conn = ConnectionFactory.Get())
+        using (var cmd = new SqlCommand(commandText, conn)) {
           try {
-            using (var sdr = await dsp.ExecuteReaderAsync()) {
-              dynamic ddr = sdr;
-              do {
-                while (sdr.Read()) {
-                  long itemId = ddr.ItemId;
-                  switch ((string)ddr.ItemType) {
-                    case "org":
-                      result.Organizations.Add(itemId);
-                      break;
-                    case "repo":
-                      result.Repositories.Add(itemId);
-                      break;
-                    case "user":
-                      result.Users.Add(itemId);
-                      break;
-                    default:
-                      throw new Exception($"Unknown change ItemType {ddr.ItemType}");
-                  }
-                }
-              } while (sdr.NextResult());
-
-              return result;
+            cmd.CommandType = CommandType.Text;
+            cmd.Parameters.AddRange(parameters);
+            if (conn.State != ConnectionState.Open) {
+              await conn.OpenAsync();
             }
-          } catch (SqlException ex) {
-            if (ex.Number == 1205 && attempt < 2) {
-              // Retry deadlock once
-              continue;
+            return await cmd.ExecuteNonQueryAsync();
+          } finally {
+            if (conn.State != ConnectionState.Closed) {
+              conn.Close();
             }
-            throw;
           }
         }
+      });
+    }
+
+    private async Task<TResult> RetryOnDeadlock<TResult>(Func<Task<TResult>> query, int maxAttempts = 2) {
+      for (int attempt = 1; ; ++attempt) {
+        try {
+          return await query();
+        } catch (SqlException ex) {
+          if (ex.Number == 1205 && attempt < maxAttempts) {
+            // Retry deadlock
+            continue;
+          }
+          throw;
+        }
       }
+    }
+
+    private Task<ChangeSummary> ExecuteAndReadChanges(string procedureName, Action<dynamic> applyParams) {
+      return RetryOnDeadlock(async () => {
+        var result = new ChangeSummary();
+
+        using (var dsp = new DynamicStoredProcedure(procedureName, ConnectionFactory)) {
+          applyParams(dsp);
+
+          using (var sdr = await dsp.ExecuteReaderAsync()) {
+            dynamic ddr = sdr;
+            do {
+              while (sdr.Read()) {
+                long itemId = ddr.ItemId;
+                switch ((string)ddr.ItemType) {
+                  case "org":
+                    result.Organizations.Add(itemId);
+                    break;
+                  case "repo":
+                    result.Repositories.Add(itemId);
+                    break;
+                  case "user":
+                    result.Users.Add(itemId);
+                    break;
+                  default:
+                    throw new Exception($"Unknown change ItemType {ddr.ItemType}");
+                }
+              }
+            } while (sdr.NextResult());
+
+            return result;
+          }
+        }
+      });
     }
 
     public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account) {
@@ -630,13 +650,13 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
     public DynamicStoredProcedure PrepareSync(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
-      dynamic dsp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
+      var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
+      dynamic dsp = sp;
       dsp.Token = accessToken;
       dsp.PageSize = pageSize;
       dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
       dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
-
-      return dsp;
+      return sp;
     }
 
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
@@ -676,16 +696,19 @@
       });
     }
 
-    public async Task RecordUsage(long accountId, DateTimeOffset date) {
+    public Task RecordUsage(long accountId, DateTimeOffset date) {
       if (date.Offset != TimeSpan.Zero) {
         throw new ArgumentException("date must be in UTC");
       }
 
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[RecordUsage]", ConnectionFactory)) {
-        dsp.AccountId = accountId;
-        dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
-        await dsp.ExecuteNonQueryAsync();
-      }
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[RecordUsage]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.AccountId = accountId;
+          dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
     }
 
     public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
@@ -707,7 +730,7 @@
       });
     }
 
-    public async Task SaveRepositoryMetadata(
+    public Task SaveRepositoryMetadata(
       long repositoryId,
       long repoSize,
       GitHubMetadata metadata,
@@ -720,22 +743,25 @@
       GitHubMetadata contentsRootMetadata,
       GitHubMetadata contentsDotGitHubMetadata,
       GitHubMetadata contentsIssueTemplateMetadata) {
-      using (dynamic dsp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
-        dsp.RepositoryId = repositoryId;
-        dsp.Size = repoSize;
-        dsp.MetadataJson = metadata.SerializeObject();
-        dsp.AssignableMetadataJson = assignableMetadata.SerializeObject();
-        dsp.IssueMetadataJson = issueMetadata.SerializeObject();
-        dsp.IssueSince = issueSince;
-        dsp.LabelMetadataJson = labelMetadata.SerializeObject();
-        dsp.MilestoneMetadataJson = milestoneMetadata.SerializeObject();
-        dsp.ProjectMetadataJson = projectMetadata.SerializeObject();
-        dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
-        dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
-        dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.RepositoryId = repositoryId;
+          dsp.Size = repoSize;
+          dsp.MetadataJson = metadata.SerializeObject();
+          dsp.AssignableMetadataJson = assignableMetadata.SerializeObject();
+          dsp.IssueMetadataJson = issueMetadata.SerializeObject();
+          dsp.IssueSince = issueSince;
+          dsp.LabelMetadataJson = labelMetadata.SerializeObject();
+          dsp.MilestoneMetadataJson = milestoneMetadata.SerializeObject();
+          dsp.ProjectMetadataJson = projectMetadata.SerializeObject();
+          dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
+          dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
+          dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
 
-        await dsp.ExecuteNonQueryAsync();
-      }
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
     }
 
     public Task<ChangeSummary> BulkUpdateHooks(
@@ -777,29 +803,31 @@
       });
     }
 
-    public async Task<HookTableType> CreateHook(Guid secret, string events, long? organizationId = null, long? repositoryId = null) {
+    public Task<HookTableType> CreateHook(Guid secret, string events, long? organizationId = null, long? repositoryId = null) {
       if ((organizationId == null) == (repositoryId == null)) {
         throw new ArgumentException($"Exactly one of {nameof(organizationId)} and {nameof(repositoryId)} must be non-null.");
       }
 
-      using (var sp = new DynamicStoredProcedure("[dbo].[CreateHook]", ConnectionFactory)) {
-        dynamic dsp = sp;
-        dsp.Secret = secret;
-        dsp.Events = events;
-        dsp.OrganizationId = organizationId;
-        dsp.RepositoryId = repositoryId;
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[CreateHook]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.Secret = secret;
+          dsp.Events = events;
+          dsp.OrganizationId = organizationId;
+          dsp.RepositoryId = repositoryId;
 
-        using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
-          sdr.Read();
-          dynamic ddr = sdr;
-          return new HookTableType() {
-            Id = ddr.Id,
-            GitHubId = ddr.GitHubId,
-            Secret = ddr.Secret,
-            Events = ddr.Events,
-          };
+          using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
+            sdr.Read();
+            dynamic ddr = sdr;
+            return new HookTableType() {
+              Id = ddr.Id,
+              GitHubId = ddr.GitHubId,
+              Secret = ddr.Secret,
+              Events = ddr.Events,
+            };
+          }
         }
-      }
+      });
     }
 
     public Task<ChangeSummary> BulkUpdateSubscriptions(IEnumerable<SubscriptionTableType> subscriptions) {
