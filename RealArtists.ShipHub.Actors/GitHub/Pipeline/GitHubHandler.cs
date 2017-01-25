@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Common.GitHub {
+﻿namespace RealArtists.ShipHub.Actors.GitHub {
   using System;
   using System.Collections.Generic;
   using System.Diagnostics.CodeAnalysis;
@@ -9,12 +9,13 @@
   using System.Threading;
   using System.Threading.Tasks;
   using Logging;
+  using Common;
+  using Common.GitHub;
   using Microsoft.Azure;
   using Microsoft.WindowsAzure.Storage;
 
   public interface IGitHubHandler {
-    Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request);
-    Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null);
+    Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request);
   }
 
   /// <summary>
@@ -31,7 +32,7 @@
 
     private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
-    public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
+    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request) {
       if (client.RateLimit?.IsExceeded == true) {
         throw new GitHubRateException(client.UserInfo, request.Uri, client.RateLimit);
       }
@@ -73,11 +74,7 @@
       return result;
     }
 
-    public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
-      throw new NotSupportedException($"{nameof(GitHubHandler)} only supports single fetches. Is {nameof(PaginationHandler)} missing from the pipeline?");
-    }
-
-    private async Task<GitHubResponse<T>> MakeRequest<T>(GitHubClient client, GitHubRequest request, GitHubRedirect redirect) {
+    private async Task<GitHubResponse<T>> MakeRequest<T>(IGitHubClient client, GitHubRequest request, GitHubRedirect redirect) {
       var uri = new Uri(client.ApiRoot, request.Uri);
       var httpRequest = new HttpRequestMessage(request.Method, uri) {
         Content = request.CreateBodyContent(),

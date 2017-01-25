@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Common.GitHub.Logging {
+﻿namespace RealArtists.ShipHub.Actors.GitHub.Logging {
   using System;
   using System.IO;
   using System.Linq;
@@ -10,6 +10,7 @@
   using System.Text;
   using System.Threading;
   using System.Threading.Tasks;
+  using Common;
   using Microsoft.WindowsAzure.Storage;
   using Microsoft.WindowsAzure.Storage.Blob;
 

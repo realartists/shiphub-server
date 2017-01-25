@@ -99,6 +99,10 @@
       <Project>{a23a5314-a785-4d1e-9405-969e0b6d1979}</Project>
       <Name>RealArtists.ShipHub.ActorInterfaces</Name>
     </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Actors\RealArtists.ShipHub.Actors.csproj">
+      <Project>{EAA1A282-233E-495C-9210-6307CD8DA6A0}</Project>
+      <Name>RealArtists.ShipHub.Actors</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
       <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
       <Name>RealArtists.ShipHub.Common</Name>

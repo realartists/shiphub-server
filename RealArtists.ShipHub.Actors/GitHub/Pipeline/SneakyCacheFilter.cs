@@ -1,4 +1,4 @@
-﻿namespace RealArtists.ShipHub.Common.GitHub {
+﻿namespace RealArtists.ShipHub.Actors.GitHub {
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
@@ -6,8 +6,10 @@
   using System.Net;
   using System.Net.Http;
   using System.Threading.Tasks;
-  using DataModel;
-  using DataModel.Types;
+  using Common;
+  using Common.DataModel;
+  using Common.DataModel.Types;
+  using Common.GitHub;
 
   /// <summary>
   /// This is a gross place to stuff hacky cache logic.
@@ -23,18 +25,14 @@
       _shipContextFactory = shipContextFactory;
     }
 
-    public async Task<GitHubResponse<T>> Fetch<T>(GitHubClient client, GitHubRequest request) {
+    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request) {
       await HandleRequest(client, request);
       var response = await _next.Fetch<T>(client, request);
       await HandleResponse(response);
       return response;
     }
 
-    public Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubClient client, GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
-      throw new NotSupportedException($"{nameof(SneakyCacheFilter)} only supports single fetches.");
-    }
-
-    private async Task HandleRequest(GitHubClient client, GitHubRequest request) {
+    private async Task HandleRequest(IGitHubClient client, GitHubRequest request) {
       if (request.CacheOptions != null || request.Method != HttpMethod.Get) {
         return;
       }
