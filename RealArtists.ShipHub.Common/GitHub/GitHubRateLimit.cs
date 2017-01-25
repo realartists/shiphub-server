@@ -2,13 +2,20 @@
   using System;
 
   public class GitHubRateLimit {
-    public string AccessToken { get; set; }
-    public int RateLimit { get; set; }
-    public int RateLimitRemaining { get; set; }
-    public DateTimeOffset RateLimitReset { get; set; }
+    public const int RateLimitFloor = 500;
 
-    public bool IsUnder(uint floor) {
-      return RateLimitRemaining < floor && RateLimitReset > DateTimeOffset.UtcNow;
+    public string AccessToken { get; }
+    public int Limit { get; }
+    public int Remaining { get; }
+    public DateTimeOffset Reset { get; }
+
+    public bool IsExceeded { get { return Remaining < RateLimitFloor && Reset > DateTimeOffset.UtcNow; } }
+
+    public GitHubRateLimit(string accessToken, int limit, int remaining, DateTimeOffset reset) {
+      AccessToken = accessToken;
+      Limit = limit;
+      Remaining = remaining;
+      Reset = reset;
     }
   }
 }

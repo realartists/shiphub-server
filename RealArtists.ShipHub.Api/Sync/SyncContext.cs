@@ -151,11 +151,11 @@
           Common.GitHub.GitHubRateLimit rateLimit = null;
           if (reader.Read()) {
             userId = (long)ddr.UserId;
-            rateLimit = new Common.GitHub.GitHubRateLimit() {
-              RateLimit = ddr.RateLimit,
-              RateLimitRemaining = ddr.RateLimitRemaining,
-              RateLimitReset = ddr.RateLimitReset,
-            };
+            rateLimit = new Common.GitHub.GitHubRateLimit(
+              null,
+              ddr.RateLimit,
+              ddr.RateLimitRemaining,
+              ddr.RateLimitReset);
           }
 
           if (userId == null || userId != _user.UserId) {
@@ -163,9 +163,9 @@
             return;
           }
 
-          if (rateLimit.IsUnder(Common.GitHub.GitHubHandler.RateLimitFloor)) {
+          if (rateLimit?.IsExceeded == true) {
             tasks.Add(_connection.SendJsonAsync(new RateLimitResponse() {
-              Until = rateLimit.RateLimitReset
+              Until = rateLimit.Reset
             }));
           }
 

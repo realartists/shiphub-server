@@ -13,6 +13,7 @@
   using Common.DataModel;
   using Common.GitHub;
   using Orleans;
+  using RealArtists.ShipHub.Actors.GitHub;
   using RealArtists.ShipHub.Common.DataModel.Types;
 
   public class LoginRequest {
@@ -23,9 +24,6 @@
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController {
-    private static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
-    private static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
 
     private IGrainFactory _grainFactory;
@@ -38,10 +36,6 @@
       "admin:repo_hook",
       "admin:org_hook",
     }.AsReadOnly();
-
-    private static GitHubClient CreateGitHubClient(string accessToken) {
-      return new GitHubClient(ShipHubCloudConfiguration.Instance.GitHubApiRoot, _handlerPipeline, ApplicationName, ApplicationVersion, "ShipHub Authentication Controller", Guid.NewGuid(), GitHubClient.InvalidUserId, accessToken);
-    }
 
     public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
       _grainFactory = grainFactory;
@@ -58,7 +52,7 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userClient = CreateGitHubClient(request.AccessToken);
+      var userClient = new LoginGitHubClient(request.AccessToken, _handlerPipeline);
       var userResponse = await userClient.User(GitHubCacheDetails.Empty);
 
       if (!userResponse.IsOk) {

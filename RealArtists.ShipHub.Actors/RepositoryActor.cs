@@ -297,7 +297,7 @@
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
             && file.Name != null
-            && GitHubClient.IssueTemplateRegex.IsMatch(file.Name);
+            && GitHubActor.IssueTemplateRegex.IsMatch(file.Name);
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {

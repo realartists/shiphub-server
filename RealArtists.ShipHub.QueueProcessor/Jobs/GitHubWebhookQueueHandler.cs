@@ -10,6 +10,7 @@
   using System.Text;
   using System.Threading.Tasks;
   using ActorInterfaces;
+  using Actors.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -281,7 +282,7 @@
             accum.UnionWith(commit.Removed);
             return accum;
           })
-          .Any(f => GitHubClient.IssueTemplateRegex.IsMatch(Path.GetFileName(f)));
+          .Any(f => GitHubActor.IssueTemplateRegex.IsMatch(Path.GetFileName(f)));
       }
 
       if (hasIssueTemplate) {

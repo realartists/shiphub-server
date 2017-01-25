@@ -1,9 +1,14 @@
 ﻿namespace RealArtists.ShipHub.Actors.GitHub {
   using System;
   using System.Collections.Generic;
+  using System.Configuration;
   using System.Data.Entity;
+  using System.Linq;
   using System.Net;
+  using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Reflection;
+  using System.Text.RegularExpressions;
   using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
@@ -17,68 +22,111 @@
   using QueueClient;
   using dm = Common.DataModel;
 
+  public interface IGitHubClient {
+    string AccessToken { get; }
+    Uri ApiRoot { get; }
+    Guid CorrelationId { get; }
+    GitHubRateLimit RateLimit { get; }
+    ProductInfoHeaderValue UserAgent { get; }
+    string UserInfo { get; }
+    long UserId { get; }
+
+    int NextRequestId();
+    void UpdateInternalRateLimit(GitHubRateLimit rateLimit);
+  }
+
   [Reentrant]
-  public class GitHubActor : Grain, IGitHubActor, IGrainInvokeInterceptor, IDisposable {
+  public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
+    public const int MaxConcurrentRequests = 4;
+    public const int PaginationBatchSize = 4;
+    public const int PageSize = 100;
+    public const bool InterpolationEnabled = true;
+
+    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
+    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
 
-    private long _userId;
-    private GitHubClient _github;
-    private DateTimeOffset? _retryAfter;
+    public long UserId { get; private set; }
+    public string AccessToken { get; private set; }
 
-    // TODO: Overhaul this code and trim/eliminate the pipeline
-    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
-    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    private string _login;
+    private DateTimeOffset? _abuseDelay;
+    private IGitHubHandler _handler;
 
-    private static IGitHubHandler _handler;
+    public Uri ApiRoot { get; }
+    public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
+    public Guid CorrelationId { get; }
+
+    public string UserInfo { get { return $"{UserId} ({_login})"; } }
+
+    // Rate limit concurrency requires some finesse
+    private object _rateLimitLock = new object();
+    private GitHubRateLimit _rateLimit;
+    public GitHubRateLimit RateLimit { get { return _rateLimit; } }
+
+    private static IGitHubHandler SharedHandler;
     private static IGitHubHandler GetOrCreateHandlerPipeline(IFactory<dm.ShipHubContext> shipContextFactory) {
-      if (_handler != null) {
-        return _handler;
+      if (SharedHandler != null) {
+        return SharedHandler;
       }
 
       IGitHubHandler handler = new GitHubHandler();
       handler = new SneakyCacheFilter(handler, shipContextFactory);
-      handler = new PaginationHandler(handler);
 
-      return (_handler = handler);
+      return (SharedHandler = handler);
     }
 
     public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
       _configuration = configuration;
+
+      // Initialize old GitHubClient members
+      var apiRoot = _configuration.GitHubApiRoot;
+      if (apiRoot == null
+        || !apiRoot.IsAbsoluteUri
+        || !apiRoot.AbsolutePath.EndsWith("/", StringComparison.OrdinalIgnoreCase)) {
+        throw new ConfigurationErrorsException($"ApiRoot Uri must be absolute and end with a trailing '/'. '{apiRoot}' is invalid.");
+      }
+      ApiRoot = apiRoot;
+
+      _handler = GetOrCreateHandlerPipeline(_shipContextFactory);
+      // TODO: Orleans has a concept of state/correlation that we can use
+      // instead of Guid.NewGuid() or adding parameters to every call.
+      CorrelationId = Guid.NewGuid();
     }
 
     public override async Task OnActivateAsync() {
-      _userId = this.GetPrimaryKeyLong();
+      UserId = this.GetPrimaryKeyLong();
 
       using (var context = _shipContextFactory.CreateInstance()) {
         // Require user and token to already exist in database.
-        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == _userId);
+        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == UserId);
 
         if (user == null) {
-          throw new InvalidOperationException($"User {_userId} does not exist.");
+          throw new InvalidOperationException($"User {UserId} does not exist.");
         }
 
         if (user.Token.IsNullOrWhiteSpace()) {
-          throw new InvalidOperationException($"User {_userId} has no token.");
+          throw new InvalidOperationException($"User {UserId} has no token.");
         }
+
+        _login = user.Login;
 
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
-          rateLimit = new GitHubRateLimit() {
-            AccessToken = user.Token,
-            RateLimit = user.RateLimit,
-            RateLimitRemaining = user.RateLimitRemaining,
-            RateLimitReset = user.RateLimitReset,
-          };
+          rateLimit = new GitHubRateLimit(
+            user.Token,
+            user.RateLimit,
+            user.RateLimitRemaining,
+            user.RateLimitReset);
         }
 
-        var handler = GetOrCreateHandlerPipeline(_shipContextFactory);
-        // TODO: Orleans has a concept of state/correlation that we can use
-        // instead of Guid.NewGuid() or adding parameters to every call.
-        _github = new GitHubClient(_configuration.GitHubApiRoot, handler, ApplicationName, ApplicationVersion, $"{user.Id} ({user.Login})", Guid.NewGuid(), user.Id, user.Token, rateLimit);
+        AccessToken = user.Token;
+        _rateLimit = rateLimit;
       }
 
       await base.OnActivateAsync();
@@ -86,7 +134,7 @@
 
     public override async Task OnDeactivateAsync() {
       using (var context = _shipContextFactory.CreateInstance()) {
-        await context.UpdateRateLimit(_github.RateLimit);
+        await context.UpdateRateLimit(RateLimit);
       }
 
       Dispose();
@@ -95,24 +143,295 @@
     }
 
     ////////////////////////////////////////////////////////////
-    // All per request limiting and checking
-    // * Limit concurrency
-    // * Clear invalid tokens
-    // * More?
+    // GitHubClient Legacy
     ////////////////////////////////////////////////////////////
 
-    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(4);
+    public void UpdateInternalRateLimit(GitHubRateLimit rateLimit) {
+      lock (_rateLimitLock) {
+        if (_rateLimit == null
+          || _rateLimit.Reset < rateLimit.Reset
+          || _rateLimit.Remaining > rateLimit.Remaining) {
+          _rateLimit = rateLimit;
+        }
+      }
+    }
 
-    public async Task<object> Invoke(MethodInfo method, InvokeMethodRequest request, IGrainMethodInvoker invoker) {
-      if (_retryAfter != null && _retryAfter.Value > DateTimeOffset.UtcNow) {
-        throw new GitHubException($"Abuse reported. Dropping requests until {_retryAfter}");
+    ////////////////////////////////////////////////////////////
+    // Helpers
+    ////////////////////////////////////////////////////////////
+
+    public static Regex IssueTemplateRegex { get; } = new Regex(
+      @"^issue_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
+
+    private int _requestId = 0;
+    public int NextRequestId() {
+      return Interlocked.Increment(ref _requestId);
+    }
+
+    ////////////////////////////////////////////////////////////
+    // GitHub Actions
+    ////////////////////////////////////////////////////////////
+
+    public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest("user", cacheOptions);
+      return Fetch<Account>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest("user/emails", cacheOptions);
+      return FetchPaged(request, (UserEmail x) => x.Email);
+    }
+
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"/repos/{repoFullName}", cacheOptions);
+      return Fetch<Repository>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest("user/repos", cacheOptions);
+      return FetchPaged(request, (Repository x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/timeline", cacheOptions) {
+        // Timeline support (application/vnd.github.mockingbird-preview+json)
+        // https://developer.github.com/changes/2016-05-23-timeline-preview-api/
+        AcceptHeaderOverride = "application/vnd.github.mockingbird-preview+json",
+      };
+      // Ugh. Uniqueness here is hard because IDs aren't.
+      return FetchPaged(request, (IssueEvent x) => {
+        // Fixup since GitHub doesn't consistently send it
+        x.FallbackIssueId = issueId;
+        return x.UniqueKey;
+      });
+    }
+
+    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{number}", cacheOptions) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      return Fetch<Issue>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      request.AddParameter("since", since);
+
+      return FetchPaged(request, (Issue x) => x.Id, maxPages);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/reactions", cacheOptions) {
+        // Reactions are in beta
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
+      };
+      return FetchPaged(request, (Reaction x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments/{commentId}/reactions", cacheOptions) {
+        // Reactions are in beta
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
+      };
+      return FetchPaged(request, (Reaction x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions);
+      if (since != null) {
+        request.AddParameter("since", since);
+      }
+      return FetchPaged(request, (Comment x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions);
+      if (since != null) {
+        request.AddParameter("since", since);
+      }
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      return FetchPaged(request, (Comment x) => x.Id);
+    }
+
+    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions);
+      return Fetch<Commit>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/events", cacheOptions);
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      return FetchPaged(request, (IssueEvent x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/labels", cacheOptions);
+      return FetchPaged(request, (Label x) => Tuple.Create(x.Name, x.Color));
+    }
+
+    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/milestones", cacheOptions);
+      request.AddParameter("state", "all");
+      return FetchPaged(request, (Milestone x) => x.Id);
+    }
+
+    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"orgs/{orgName}", cacheOptions);
+      return Fetch<Account>(request);
+    }
+
+    public async Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest("user/memberships/orgs", cacheOptions);
+      request.AddParameter(nameof(state), state);
+      var result = await FetchPaged(request, (OrganizationMembership x) => x.Organization.Id);
+
+      if (result.IsOk) {
+        // Seriously GitHub?
+        foreach (var membership in result.Result) {
+          membership.Organization.Type = GitHubAccountType.Organization;
+        }
+      }
+
+      return result;
+    }
+
+    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null) {
+      // defaults: filter=all, role=all
+      var request = new GitHubRequest($"orgs/{orgLogin}/members", cacheOptions);
+      request.AddParameter("role", role);
+      return FetchPaged(request, (Account x) => x.Id);
+    }
+
+    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions);
+      return Fetch<PullRequest>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions);
+      return FetchPaged(request, (Account x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"orgs/{name}/hooks", cacheOptions);
+      return FetchPaged(request, (Webhook x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+      var request = new GitHubRequest($"repos/{repoFullName}/hooks", cacheOptions);
+      return FetchPaged(request, (Webhook x) => x.Id);
+    }
+
+    public Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook) {
+      var request = new GitHubRequest<Webhook>(HttpMethod.Post, $"repos/{repoFullName}/hooks", hook);
+      return Fetch<Webhook>(request);
+    }
+
+    public Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook) {
+      var request = new GitHubRequest<Webhook>(HttpMethod.Post, $"orgs/{orgName}/hooks", hook);
+      return Fetch<Webhook>(request);
+    }
+
+    public Task<GitHubResponse<bool>> DeleteRepositoryWebhook(string repoFullName, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Delete, $"repos/{repoFullName}/hooks/{hookId}");
+      return Fetch<bool>(request);
+    }
+
+    public Task<GitHubResponse<bool>> DeleteOrganizationWebhook(string orgName, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Delete, $"orgs/{orgName}/hooks/{hookId}");
+      return Fetch<bool>(request);
+    }
+
+    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, IEnumerable<string> events) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"),
+        $"repos/{repoFullName}/hooks/{hookId}",
+        new {
+          Events = events,
+        });
+
+      return Fetch<Webhook>(request);
+    }
+
+    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, IEnumerable<string> events) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"),
+        $"orgs/{orgName}/hooks/{hookId}",
+        new {
+          Events = events,
+        });
+
+      return Fetch<Webhook>(request);
+    }
+
+    public Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Post, $"orgs/{name}/hooks/{hookId}/pings");
+      return Fetch<bool>(request);
+    }
+
+    public Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId) {
+      var request = new GitHubRequest(HttpMethod.Post, $"repos/{repoFullName}/hooks/{hookId}/pings");
+      return Fetch<bool>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
+      if (!directoryPath.StartsWith("/", StringComparison.Ordinal)) {
+        directoryPath = "/" + directoryPath;
+      }
+      var request = new GitHubRequest($"repos/{repoFullName}/contents{directoryPath}", cacheOptions);
+      return FetchPaged(request, (ContentsFile f) => f.Path);
+    }
+
+    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions) {
+      if (!filePath.StartsWith("/", StringComparison.Ordinal)) {
+        filePath = "/" + filePath;
+      }
+      var request = new GitHubRequest($"repos/{repoFullName}/contents{filePath}", cacheOptions);
+      return Fetch<byte[]>(request);
+    }
+
+    private Task<GitHubResponse<IEnumerable<Project>>> Projects(string endpoint, GitHubCacheDetails cacheOptions) {
+      var request = new GitHubRequest(endpoint, cacheOptions) {
+        AcceptHeaderOverride = "application/vnd.github.inertia-preview+json",
+      };
+      return FetchPaged(request, (Project p) => p.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions) {
+      return Projects($"repos/{repoFullName}/projects", cacheOptions);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions) {
+      return Projects($"orgs/{organizationLogin}/projects", cacheOptions);
+    }
+
+    ////////////////////////////////////////////////////////////
+    // Handling
+    ////////////////////////////////////////////////////////////
+
+    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
+
+    private async Task<GitHubResponse<T>> Fetch<T>(GitHubRequest request) {
+      if (_abuseDelay != null && _abuseDelay.Value > DateTimeOffset.UtcNow) {
+        throw new GitHubRateException(UserInfo, null, RateLimit, true);
       }
 
       await _maxConcurrentRequests.WaitAsync();
 
-      object result;
+      GitHubResponse<T> result;
       try {
-        result = await invoker.Invoke(this, request);
+        result = await _handler.Fetch<T>(this, request);
       } finally {
         _maxConcurrentRequests.Release();
       }
@@ -123,177 +442,174 @@
       // Token revocation handling and abuse.
       if (response?.Status == HttpStatusCode.Unauthorized) {
         using (var ctx = _shipContextFactory.CreateInstance()) {
-          await ctx.RevokeAccessToken(_github.AccessToken);
+          await ctx.RevokeAccessToken(AccessToken);
         }
         DeactivateOnIdle();
       } else if (response.Error?.IsAbuse == true) {
         var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
 
-        if (_retryAfter == null || _retryAfter < retryAfter) {
-          _retryAfter = retryAfter;
+        if (_abuseDelay == null || _abuseDelay < retryAfter) {
+          _abuseDelay = retryAfter;
         }
-
-        limitUntil = _retryAfter;
-      } else if (_github.RateLimit.IsUnder(GitHubHandler.RateLimitFloor)) {
-        limitUntil = _github.RateLimit.RateLimitReset;
+        limitUntil = _abuseDelay;
+      } else if (RateLimit?.IsExceeded == true) {
+        limitUntil = RateLimit.Reset;
       }
 
       if (limitUntil != null) {
         using (var context = _shipContextFactory.CreateInstance()) {
-          var rate = _github.RateLimit;
-          await context.UpdateRateLimit(new GitHubRateLimit() {
-            AccessToken = rate.AccessToken,
-            RateLimit = rate.RateLimit,
-            RateLimitRemaining = Math.Min(rate.RateLimitRemaining, GitHubHandler.RateLimitFloor - 1),
-            RateLimitReset = limitUntil.Value,
-          });
+          var oldRate = RateLimit;
+          var newRate = new GitHubRateLimit(
+            oldRate.AccessToken,
+            oldRate.Limit,
+            Math.Min(oldRate.Remaining, GitHubRateLimit.RateLimitFloor - 1),
+            limitUntil.Value);
+          UpdateInternalRateLimit(newRate);
+          await context.UpdateRateLimit(newRate);
         }
 
         var changes = new ChangeSummary();
-        changes.Users.Add(_userId);
+        changes.Users.Add(UserId);
         await _queueClient.NotifyChanges(changes);
       }
 
       return result;
     }
 
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
+      if (request.Method != HttpMethod.Get) {
+        throw new InvalidOperationException("Only GETs can be paginated.");
+      }
+
+      // Always request the largest page size
+      if (!request.Parameters.ContainsKey("per_page")) {
+        request.AddParameter("per_page", PageSize);
+      }
+
+      // Fetch has the retry logic.
+      var result = await Fetch<IEnumerable<T>>(request);
+
+      if (result.IsOk
+        && result.Pagination != null
+        && (maxPages == null || maxPages > 1)) {
+        result = await EnumerateParallel<IEnumerable<T>, T>(result, maxPages);
+      }
+
+      return result.Distinct(keySelector);
+    }
+
+    private async Task<GitHubResponse<TCollection>> EnumerateParallel<TCollection, TItem>(GitHubResponse<TCollection> firstPage, ushort? maxPages)
+      where TCollection : IEnumerable<TItem> {
+      var results = new List<TItem>(firstPage.Result);
+      IEnumerable<GitHubResponse<TCollection>> batch;
+      var partial = false;
+
+      // TODO: Cancellation (for when errors are encountered)?
+
+      if (InterpolationEnabled && firstPage.Pagination?.CanInterpolate == true) {
+        var pages = firstPage.Pagination.Interpolate();
+
+        if (maxPages < pages.Count()) {
+          partial = true;
+          pages = pages.Take((int)maxPages - 1);
+        }
+
+        var pageRequestors = pages
+          .Select(page => {
+            Func<Task<GitHubResponse<TCollection>>> requestor = () => {
+              var request = firstPage.Request.CloneWithNewUri(page);
+              return Fetch<TCollection>(request);
+            };
+
+            return requestor;
+          }).ToArray();
+
+        // Check if we can request all the pages within the limit.
+        if (firstPage.RateLimit.Remaining < pageRequestors.Length) {
+          firstPage.Result = default(TCollection);
+          firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
+          return firstPage;
+        }
+
+        var accum = new List<GitHubResponse<TCollection>>();
+        for (int i = 0; i < pageRequestors.Length;) {
+          var tasks = new List<Task<GitHubResponse<TCollection>>>();
+          for (int j = 0; j < PaginationBatchSize && i < pageRequestors.Length; ++i, ++j) {
+            tasks.Add(pageRequestors[i]());
+          }
+          await Task.WhenAll(tasks);
+          foreach (var task in tasks) {
+            if (task.IsFaulted) {
+              task.Wait(); // force exception to throw
+            } else {
+              accum.Add(task.Result);
+            }
+          }
+        }
+        batch = accum;
+
+        foreach (var response in batch) {
+          if (response.IsOk) {
+            results.AddRange(response.Result);
+          } else if (maxPages != null) {
+            // Return results up to this point.
+            partial = true;
+            break;
+          } else {
+            return response;
+          }
+        }
+      } else { // Walk in order
+        var current = firstPage;
+        ushort page = 0;
+        while (current.Pagination?.Next != null
+          && (maxPages == null || page < maxPages)) {
+
+          var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
+          current = await Fetch<TCollection>(nextReq);
+
+          if (current.IsOk) {
+            results.AddRange(current.Result);
+          } else if (maxPages != null) {
+            // Return results up to this point.
+            partial = true;
+            break;
+          } else {
+            return current;
+          }
+
+          ++page;
+        }
+        // Just use the last request.
+        batch = new[] { current };
+      }
+
+      // Keep cache and other headers from first page.
+      var final = firstPage;
+      final.Result = (TCollection)(IEnumerable<TItem>)results;
+
+      // Clear cache data if partial result
+      if (partial) {
+        final.CacheData = null;
+      }
+
+      var rates = batch
+        .Select(x => x.RateLimit)
+        .GroupBy(x => x.Reset)
+        .OrderByDescending(x => x.Key)
+        .First();
+      final.RateLimit = new GitHubRateLimit(
+        final.RateLimit.AccessToken,
+        rates.Min(x => x.Limit),
+        rates.Min(x => x.Remaining),
+        rates.Key);
+
+      return final;
+    }
+
     ////////////////////////////////////////////////////////////
-
-    public Task<GitHubResponse<Webhook>> AddOrganizationWebhook(string orgName, Webhook hook) {
-      return _github.AddOrganizationWebhook(orgName, hook);
-    }
-
-    public Task<GitHubResponse<Webhook>> AddRepositoryWebhook(string repoFullName, Webhook hook) {
-      return _github.AddRepositoryWebhook(repoFullName, hook);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Assignable(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
-      return _github.Comments(repoFullName, since, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
-      return _github.Comments(repoFullName, issueNumber, since, cacheOptions);
-    }
-
-    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null) {
-      return _github.Commit(repoFullName, hash, cacheOptions);
-    }
-
-    public Task<GitHubResponse<bool>> DeleteOrganizationWebhook(string orgName, long hookId) {
-      return _github.DeleteOrganizationWebhook(orgName, hookId);
-    }
-
-    public Task<GitHubResponse<bool>> DeleteRepositoryWebhook(string repoFullName, long hookId) {
-      return _github.DeleteRepositoryWebhook(repoFullName, hookId);
-    }
-
-    public Task<GitHubResponse<Webhook>> EditOrganizationWebhookEvents(string orgName, long hookId, IEnumerable<string> events) {
-      return _github.EditOrganizationWebhookEvents(orgName, hookId, events);
-    }
-
-    public Task<GitHubResponse<Webhook>> EditRepositoryWebhookEvents(string repoFullName, long hookId, IEnumerable<string> events) {
-      return _github.EditRepositoryWebhookEvents(repoFullName, hookId, events);
-    }
-
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Events(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
-      return _github.Issue(repoFullName, number, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions = null) {
-      return _github.IssueCommentReactions(repoFullName, commentId, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
-      return _github.IssueReactions(repoFullName, issueNumber, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
-      return _github.Issues(repoFullName, since, maxPages, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Labels(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Milestones(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Organization(orgName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null) {
-      return _github.OrganizationMembers(orgLogin, role, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null) {
-      return _github.OrganizationMemberships(state, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions = null) {
-      return _github.OrganizationWebhooks(name, cacheOptions);
-    }
-
-    public Task<GitHubResponse<bool>> PingOrganizationWebhook(string name, long hookId) {
-      return _github.PingOrganizationWebhook(name, hookId);
-    }
-
-    public Task<GitHubResponse<bool>> PingRepositoryWebhook(string repoFullName, long hookId) {
-      return _github.PingRepositoryWebhook(repoFullName, hookId);
-    }
-
-    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null) {
-      return _github.PullRequest(repoFullName, pullRequestNumber, cacheOptions);
-    }
-
-    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.Repository(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null) {
-      return _github.Repositories(cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Webhook>>> RepositoryWebhooks(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.RepositoryWebhooks(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null) {
-      return _github.Timeline(repoFullName, issueNumber, issueId, cacheOptions);
-    }
-
-    public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {
-      return _github.User(cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null) {
-      return _github.UserEmails(cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
-      return _github.ListDirectoryContents(repoFullName, directoryPath, cacheOptions);
-    }
-
-    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null) {
-      return _github.FileContents(repoFullName, filePath, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions = null) {
-      return _github.RepositoryProjects(repoFullName, cacheOptions);
-    }
-
-    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions = null) {
-      return _github.OrganizationProjects(organizationLogin, cacheOptions);
-    }
+    // IDisposable
+    ////////////////////////////////////////////////////////////
 
     private bool disposedValue = false;
     protected virtual void Dispose(bool disposing) {

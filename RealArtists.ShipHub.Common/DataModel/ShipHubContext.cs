@@ -227,9 +227,9 @@
     public async Task UpdateRateLimit(GitHubRateLimit limit) {
       using (dynamic dsp = new DynamicStoredProcedure("[dbo].[UpdateRateLimit]", ConnectionFactory)) {
         dsp.Token = limit.AccessToken;
-        dsp.RateLimit = limit.RateLimit;
-        dsp.RateLimitRemaining = limit.RateLimitRemaining;
-        dsp.RateLimitReset = limit.RateLimitReset;
+        dsp.RateLimit = limit.Limit;
+        dsp.RateLimitRemaining = limit.Remaining;
+        dsp.RateLimitReset = limit.Reset;
         await dsp.ExecuteNonQueryAsync();
       }
     }
@@ -239,9 +239,9 @@
         dsp.UserId = userId;
         dsp.Scopes = scopes;
         dsp.Token = limit.AccessToken;
-        dsp.RateLimit = limit.RateLimit;
-        dsp.RateLimitRemaining = limit.RateLimitRemaining;
-        dsp.RateLimitReset = limit.RateLimitReset;
+        dsp.RateLimit = limit.Limit;
+        dsp.RateLimitRemaining = limit.Remaining;
+        dsp.RateLimitReset = limit.Reset;
         await dsp.ExecuteNonQueryAsync();
       }
     }

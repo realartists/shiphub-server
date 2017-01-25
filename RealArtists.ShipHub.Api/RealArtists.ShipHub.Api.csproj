@@ -85,6 +85,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="LoginGitHubClient.cs" />
     <Compile Include="Sync\Messages\Entries\ProjectEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionSummary.cs" />
@@ -177,7 +178,7 @@
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.ServiceBus, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\WindowsAzure.ServiceBus.3.4.4\lib\net45-full\Microsoft.ServiceBus.dll</HintPath>
+      <HintPath>..\packages\WindowsAzure.ServiceBus.3.4.5\lib\net45-full\Microsoft.ServiceBus.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
@@ -324,6 +325,10 @@
     <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">
       <Project>{a23a5314-a785-4d1e-9405-969e0b6d1979}</Project>
       <Name>RealArtists.ShipHub.ActorInterfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Actors\RealArtists.ShipHub.Actors.csproj">
+      <Project>{EAA1A282-233E-495C-9210-6307CD8DA6A0}</Project>
+      <Name>RealArtists.ShipHub.Actors</Name>
     </ProjectReference>
     <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
       <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
