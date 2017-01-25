@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Actors.GitHub {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.Net;
   using System.Net.Http;
@@ -114,14 +115,18 @@
       );
 
       HttpResponseMessage response;
+      var sw = new Stopwatch();
+      sw.Start();
       using (var timeout = new CancellationTokenSource(_GitHubRequestTimeout)) {
         try {
           response = await _HttpClient.SendAsync(httpRequest, timeout.Token);
         } catch (TaskCanceledException exception) {
-          exception.Report($"GitHub timeout for {request.Uri} {LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}");
+          sw.Stop();
+          exception.Report($"GitHub timeout for {request.Uri} after {sw.ElapsedMilliseconds} msec [{LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}]");
           throw;
         }
       }
+      sw.Stop();
 
       // Handle redirects
       switch (response.StatusCode) {
