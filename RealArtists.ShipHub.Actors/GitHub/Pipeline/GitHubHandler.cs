@@ -126,7 +126,6 @@
           throw;
         }
       }
-      sw.Stop();
 
       // Handle redirects
       switch (response.StatusCode) {
