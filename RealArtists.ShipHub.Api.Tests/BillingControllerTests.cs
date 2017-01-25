@@ -36,6 +36,15 @@
         user.Token = Guid.NewGuid().ToString();
         var org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
         var org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
+        var org3 = TestUtil.MakeTestOrg(context, 6003, "myorg3");
+        var org1Repo = TestUtil.MakeTestRepo(context, org1.Id, 2001, "org1repo");
+        var org2Repo = TestUtil.MakeTestRepo(context, org2.Id, 2002, "org2repo");
+        var org3Repo = TestUtil.MakeTestRepo(context, org3.Id, 2003, "org3repo");
+
+        await context.SetAccountLinkedRepositories(user.Id, new[] {
+          Tuple.Create(org1Repo.Id, false),
+          Tuple.Create(org2Repo.Id, false),
+        });
 
         await context.SetOrganizationUsers(org1.Id, new[] {
           Tuple.Create(user.Id, false),
@@ -43,16 +52,29 @@
         await context.SetOrganizationUsers(org2.Id, new[] {
           Tuple.Create(user.Id, false),
         });
-
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = user.Id,
-          State = SubscriptionState.InTrial,
-          Version = 0,
+        await context.SetOrganizationUsers(org3.Id, new[] {
+          Tuple.Create(user.Id, false),
         });
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = org1.Id,
-          State = SubscriptionState.Subscribed,
-          Version = 0,
+
+        context.Subscriptions.AddRange(new[] {
+          new Subscription() {
+            AccountId = user.Id,
+            State = SubscriptionState.InTrial,
+            Version = 0,
+          },
+          new Subscription() {
+            AccountId = org1.Id,
+            State = SubscriptionState.Subscribed,
+            Version = 0,
+          },
+          // Subscription info is intentionally omitted for org2; we should
+          // not see org2 in the results because it's subscription info has
+          // not been fetched from ChargeBee yet.
+          new Subscription() {
+            AccountId = org3.Id,
+            State = SubscriptionState.NotSubscribed,
+            Version = 0,
+          }
         });
 
         await context.SaveChangesAsync();

@@ -91,11 +91,13 @@
           combined.Add(user);
         }
 
-        var orgs = await context.OrganizationAccounts
-          .Where(x => x.UserId == ShipHubUser.UserId && x.Organization.Subscription != null)
-          .Select(x => x.Organization)
+        var orgs = await context.AccountRepositories
+          .Where(x => (
+            x.AccountId == ShipHubUser.UserId &&
+            x.Repository.Account is Organization &&
+            x.Repository.Account.Subscription != null))
+          .Select(x => x.Repository.Account)
           .Include(x => x.Subscription)
-          .OrderBy(x => x.Login)
           .ToArrayAsync();
 
         combined.AddRange(orgs);
