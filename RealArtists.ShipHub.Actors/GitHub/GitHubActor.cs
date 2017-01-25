@@ -151,7 +151,7 @@
         if (_rateLimit == null
           || _rateLimit.Reset < rateLimit.Reset
           || _rateLimit.Remaining > rateLimit.Remaining) {
-          Interlocked.Exchange(ref _rateLimit, rateLimit);
+          _rateLimit = rateLimit;
         }
       }
     }
