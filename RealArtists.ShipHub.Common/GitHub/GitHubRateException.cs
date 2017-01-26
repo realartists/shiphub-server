@@ -37,7 +37,7 @@
       info.AddValue(nameof(IsAbuse), IsAbuse);
       info.AddValue(nameof(RateLimit), RateLimit);
       info.AddValue(nameof(RateLimitRemaining), RateLimitRemaining);
-      info.AddValue(nameof(RateLimitReset), RateLimitReset);
+      info.AddValue(nameof(RateLimitReset), RateLimitReset.UtcDateTime);
     }
 
     public bool IsAbuse { get; set; }
