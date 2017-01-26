@@ -165,22 +165,12 @@
 
       ChangeSummary changes;
       using (var context = new ShipHubContext()) {
-        var sub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == accountId);
-
-        if (sub == null) {
-          sub = new Subscription() { AccountId = accountId, };
-        }
-
-        sub.State = SubscriptionState.Subscribed;
-        sub.TrialEndDate = null;
-        sub.Version = hostedPage.Content.Subscription.ResourceVersion.Value;
-
         changes = await context.BulkUpdateSubscriptions(new[] {
             new SubscriptionTableType(){
-              AccountId = sub.AccountId,
-              State = sub.StateName,
-              TrialEndDate = sub.TrialEndDate,
-              Version = sub.Version,
+              AccountId = accountId,
+              State = SubscriptionState.Subscribed.ToString(),
+              TrialEndDate = null,
+              Version = hostedPage.Content.Subscription.ResourceVersion.Value,
             },
           });
       }
