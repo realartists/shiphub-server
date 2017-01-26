@@ -6,6 +6,7 @@
     Unspecified = 0,
     Organization,
     User,
+    Bot, // WTF? undocumented
   }
 
   public class Account {
