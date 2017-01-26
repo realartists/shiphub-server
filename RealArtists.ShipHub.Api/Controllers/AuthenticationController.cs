@@ -8,13 +8,14 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces;
+  using ActorInterfaces.GitHub;
+  using Actors.GitHub;
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Common.DataModel.Types;
   using Common.GitHub;
   using Orleans;
-  using RealArtists.ShipHub.Actors.GitHub;
-  using RealArtists.ShipHub.Common.DataModel.Types;
 
   public class LoginRequest {
     public string AccessToken { get; set; }
@@ -40,6 +41,41 @@
     public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
       _grainFactory = grainFactory;
       _mapper = mapper;
+    }
+
+    [HttpDelete]
+    [Authorize]
+    [Route("login")]
+    public async Task<IHttpActionResult> Logout() {
+      // User wants to log out.
+      using (var context = new ShipHubContext()) {
+        var hookDetails = await context.GetLogoutWebhooks(ShipHubUser.UserId);
+        var github = _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
+        var tasks = new List<Task>();
+
+        // Delete all repo hooks where they're the only user
+        tasks.AddRange(hookDetails.RepositoryHooks.Select(x => github.DeleteRepositoryWebhook(x.Name, x.HookId)));
+        // Delete all org hooks where they're the only user
+        tasks.AddRange(hookDetails.OrganizationHooks.Select(x => github.DeleteOrganizationWebhook(x.Name, x.HookId)));
+
+        // Wait and log errors.
+        string userInfo = $"{ShipHubUser.Login} ({ShipHubUser.UserId})";
+        try {
+          await Task.WhenAll(tasks);
+          foreach (var task in tasks) {
+            task.LogFailure(userInfo);
+          }
+        } catch {
+          // They're logging out. We had our chance.
+        }
+
+        // TODO: Invalidate their token with GitHub
+
+        // Invalidate their token with ShipHub
+        await context.RevokeAccessToken(ShipHubUser.Token);
+      }
+
+      return Ok();
     }
 
     [HttpPost]
