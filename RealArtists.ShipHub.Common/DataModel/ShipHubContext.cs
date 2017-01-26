@@ -851,6 +851,34 @@
       });
     }
 
+    public async Task<LogoutHookDetails> GetLogoutWebhooks(long userId) {
+      return await RetryOnDeadlock(async () => {
+        var repos = new List<WebhookDetails>();
+        var orgs = new List<WebhookDetails>();
+
+        using (var sp = new DynamicStoredProcedure("[dbo].[LogoutWebhooks]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.UserId = userId;
+
+          using (var sdr = await sp.ExecuteReaderAsync()) {
+            dynamic ddr = sdr;
+            while (sdr.Read()) {
+              repos.Add(new WebhookDetails(ddr.HookId, ddr.FullName));
+            }
+            sdr.NextResult();
+            while (sdr.Read()) {
+              orgs.Add(new WebhookDetails(ddr.HookId, ddr.Login));
+            }
+          }
+        }
+
+        return new LogoutHookDetails() {
+          OrganizationHooks = orgs,
+          RepositoryHooks = repos,
+        };
+      });
+    }
+
     private static SqlParameter CreateItemListTable<T>(string parameterName, IEnumerable<T> values) {
       return CreateTableParameter(
         parameterName,
@@ -962,5 +990,20 @@
         throw;
       }
     }
+  }
+
+  public class WebhookDetails {
+    public long HookId { get; set; }
+    public string Name { get; set; }
+
+    public WebhookDetails(long hookId, string name) {
+      HookId = hookId;
+      Name = name;
+    }
+  }
+
+  public class LogoutHookDetails {
+    public IEnumerable<WebhookDetails> RepositoryHooks { get; set; }
+    public IEnumerable<WebhookDetails> OrganizationHooks { get; set; }
   }
 }
