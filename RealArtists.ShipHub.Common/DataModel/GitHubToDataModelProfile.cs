@@ -14,8 +14,11 @@
       CreateMap<g.Account, AccountTableType>(MemberList.Destination)
         .ForMember(x => x.Type, o => o.ResolveUsing(x => {
           switch (x.Type) {
-            case g.GitHubAccountType.Organization: return Account.OrganizationType;
-            case g.GitHubAccountType.User: return Account.UserType;
+            case g.GitHubAccountType.Organization:
+              return Account.OrganizationType;
+            case g.GitHubAccountType.User:
+            case g.GitHubAccountType.Bot:
+              return Account.UserType;
             default:
               Log.Error("Mapping untyped account: " + Environment.StackTrace);
               Debug.Assert(false, "Un-typed account");
