@@ -97,6 +97,8 @@
             x.Repository.Account is Organization &&
             x.Repository.Account.Subscription != null))
           .Select(x => x.Repository.Account)
+          .GroupBy(x => x.Id)
+          .Select(x => x.FirstOrDefault())
           .Include(x => x.Subscription)
           .ToArrayAsync();
 
