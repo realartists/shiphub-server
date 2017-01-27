@@ -11,7 +11,8 @@ BEGIN
     SELECT r.Id, COUNT(*) as NumAdmins
     FROM AccountRepositories as ar
       INNER JOIN Repositories as r ON (r.Id = ar.RepositoryId)
-    WHERE ar.[Admin] = 1
+      INNER JOIN Accounts as a ON (a.Id = ar.AccountId)
+    WHERE ar.[Admin] = 1 AND a.Token IS NOT NULL
     GROUP BY r.Id
   ) SELECT r.FullName, h.GitHubId as HookId
   FROM AccountRepositories as ar
