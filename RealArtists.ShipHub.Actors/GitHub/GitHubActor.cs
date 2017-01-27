@@ -37,7 +37,7 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 8;
+    public const int MaxConcurrentRequests = 4;
     public const int PageSize = 100;
     public const bool InterpolationEnabled = true;
 
