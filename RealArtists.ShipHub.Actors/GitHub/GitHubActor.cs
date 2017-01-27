@@ -83,19 +83,12 @@
       _queueClient = queueClient;
       _configuration = configuration;
 
-      // Initialize old GitHubClient members
-      var apiRoot = _configuration.GitHubApiRoot;
-      if (apiRoot == null
-        || !apiRoot.IsAbsoluteUri
-        || !apiRoot.AbsolutePath.EndsWith("/", StringComparison.OrdinalIgnoreCase)) {
-        throw new ConfigurationErrorsException($"ApiRoot Uri must be absolute and end with a trailing '/'. '{apiRoot}' is invalid.");
-      }
-      ApiRoot = apiRoot;
 
       _handler = GetOrCreateHandlerPipeline(_shipContextFactory);
       // TODO: Orleans has a concept of state/correlation that we can use
       // instead of Guid.NewGuid() or adding parameters to every call.
       CorrelationId = Guid.NewGuid();
+      ApiRoot = _configuration.GitHubApiRoot;
     }
 
     public override async Task OnActivateAsync() {

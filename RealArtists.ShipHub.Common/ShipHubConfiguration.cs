@@ -119,7 +119,12 @@
       if (root.IsNullOrWhiteSpace()) {
         return new Uri("https://api.github.com/");
       } else {
-        return new Uri(root);
+        var apiRoot = new Uri(root);
+        if (!apiRoot.IsAbsoluteUri
+        || !apiRoot.AbsolutePath.EndsWith("/", StringComparison.OrdinalIgnoreCase)) {
+          throw new ConfigurationErrorsException($"ApiRoot Uri must be absolute and end with a trailing '/'. '{apiRoot}' is invalid.");
+        }
+        return apiRoot;
       }
     });
     public Uri GitHubApiRoot { get { return _gitHubApiRoot.Value; } }
