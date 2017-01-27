@@ -11,6 +11,7 @@
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using Common.GitHub;
   using GitHub;
   using Orleans;
   using QueueClient;
@@ -106,6 +107,33 @@
       }
     }
 
+    // ////////////////////////////////////////////////////////////
+    // Utility Functions
+    // ////////////////////////////////////////////////////////////
+
+    private async Task<IGitHubPoolable> GetOrganizationActorPool() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: Keep this cached and current instead of looking it up every time.
+        var syncUserIds = await context.OrganizationAccounts
+          .AsNoTracking()
+          .Where(x => x.OrganizationId == _orgId)
+          .Where(x => x.User.Token != null)
+          .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
+          .Select(x => x.UserId)
+          .ToArrayAsync();
+
+        if (syncUserIds.Length == 0) {
+          return null;
+        }
+
+        return new GitHubActorPool(_grainFactory, syncUserIds);
+      }
+    }
+
+    // ////////////////////////////////////////////////////////////
+    // Sync
+    // ////////////////////////////////////////////////////////////
+
     public Task Sync() {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
@@ -126,22 +154,11 @@
 
       var tasks = new List<Task>();
       var changes = new ChangeSummary();
-      GitHubActorPool github;
-      using (var context = _contextFactory.CreateInstance()) {
-        var syncUserIds = await context.OrganizationAccounts
-          .AsNoTracking()
-          .Where(x => x.OrganizationId == _orgId)
-          .Where(x => x.User.Token != null)
-          .Select(x => x.UserId)
-          .ToArrayAsync();
+      var github = await GetOrganizationActorPool();
 
-        if (syncUserIds.Length == 0) {
-          this.Info("No members with tokens. Cannot sync.");
-          DeactivateOnIdle();
-          return;
-        }
-
-        github = new GitHubActorPool(_grainFactory, syncUserIds);
+      if (github == null) {
+        DeactivateOnIdle();
+        return;
       }
 
       using (var context = _contextFactory.CreateInstance()) {

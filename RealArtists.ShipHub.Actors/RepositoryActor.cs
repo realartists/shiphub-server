@@ -135,10 +135,12 @@
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
         var syncUserIds = await context.AccountRepositories
-            .Where(x => x.RepositoryId == _repoId)
-            .Where(x => x.Account.Token != null)
-            .Select(x => x.AccountId)
-            .ToArrayAsync();
+          .AsNoTracking()
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Token != null)
+          .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
 
         if (syncUserIds.Length == 0) {
           return null;
