@@ -6,17 +6,16 @@
   using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
+  using Common;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
-  using RealArtists.ShipHub.Common;
 
   public class GitHubActorPool : IGitHubPoolable {
     private IGrainFactory _grainFactory;
+
     private ConcurrentDictionary<long, IGitHubActor> _actorMap;
     private List<IGitHubActor> _actors;
-
-    private object _lock = new object();
     private Random _random = new Random();
 
     public GitHubActorPool(IGrainFactory grainFactory, IEnumerable<long> userIds) {
@@ -27,32 +26,29 @@
       _actors = _actorMap.Values.ToList();
     }
 
-    public void Add(long userId) {
-      var actor = _grainFactory.GetGrain<IGitHubActor>(userId);
-      if (_actorMap.TryAdd(userId, actor)) {
-        lock (_lock) {
-          _actors.Add(actor);
-        }
-      }
-    }
+    //public void Add(long userId) {
+    //  var actor = _grainFactory.GetGrain<IGitHubActor>(userId);
+    //  if (_actorMap.TryAdd(userId, actor)) {
+    //    lock (this) {
+    //      _actors.Add(actor);
+    //    }
+    //  }
+    //}
 
     private void Remove(IGitHubActor actor) {
-      Remove(actor.GetPrimaryKeyLong());
-    }
-
-    private void Remove(long userId) {
-      IGitHubActor actor = null;
-      if (_actorMap.TryRemove(userId, out actor)) {
-        lock (_lock) {
-          _actors.Remove(actor);
+      var userId = actor.GetPrimaryKeyLong();
+      IGitHubActor removed;
+      if (_actorMap.TryRemove(userId, out removed)) {
+        lock (this) {
+          _actors.Remove(removed);
         }
       }
     }
 
     private IGitHubActor GetRandomActor() {
-      lock (_lock) {
+      lock (this) {
         if (_actors.Count == 0) {
-          throw new InvalidOperationException("No actors available.");
+          throw new GitHubPoolEmptyException("No actors available.");
         }
         return _actors[_random.Next(_actors.Count)];
       }
@@ -89,11 +85,6 @@
         } catch (GitHubRateException) {
           Remove(actor);
           actor = null;
-
-          if (_actors.Count == 0) {
-            // No more users to try with. Bubble up.
-            throw;
-          }
         }
       }
     }
