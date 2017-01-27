@@ -22,6 +22,9 @@
   /// <summary>
   /// This is the core GitHub handler. It's the end of the line and does not delegate.
   /// Currently supports redirects, pagination, rate limits and limited retry logic.
+  /// 
+  /// WARNING! THIS HANDLER DOES NO RATE LIMIT ENFORCEMENT OR TRACKING
+  /// ALL LIMITING CODE SHOULD LIVE IN GitHubActor
   /// </summary>
   public class GitHubHandler : IGitHubHandler {
     public const int LastAttempt = 2; // Make three attempts
@@ -34,10 +37,6 @@
     private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
     public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request) {
-      if (client.RateLimit?.IsExceeded == true) {
-        throw new GitHubRateException(client.UserInfo, request.Uri, client.RateLimit);
-      }
-
       GitHubResponse<T> result = null;
 
       for (int attempt = 0; attempt <= LastAttempt; ++attempt) {
@@ -66,10 +65,6 @@
         }
 
         break; //for
-      }
-
-      if (result.RateLimit != null) {
-        client.UpdateInternalRateLimit(result.RateLimit);
       }
 
       return result;

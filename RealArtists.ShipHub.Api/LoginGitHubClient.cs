@@ -22,7 +22,6 @@
 
     public Uri ApiRoot { get; } = ShipHubCloudConfiguration.Instance.GitHubApiRoot;
     public Guid CorrelationId { get; } = Guid.NewGuid();
-    public GitHubRateLimit RateLimit { get; private set; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
     public long UserId { get; } = -1;
     public string UserInfo { get; } = "ShipHub Authentication Controller (-1)";
@@ -36,10 +35,6 @@
 
     public int NextRequestId() {
       return 1;
-    }
-
-    public void UpdateInternalRateLimit(GitHubRateLimit rateLimit) {
-      RateLimit = rateLimit;
     }
 
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null) {
