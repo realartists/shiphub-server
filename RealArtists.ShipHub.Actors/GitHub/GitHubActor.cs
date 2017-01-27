@@ -48,34 +48,29 @@
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
 
-    public long UserId { get; private set; }
     public string AccessToken { get; private set; }
+    public string Login { get; private set; }
+    public long UserId { get; private set; }
 
-    private string _login;
     private DateTimeOffset? _abuseDelay;
-    private IGitHubHandler _handler;
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
-    public Guid CorrelationId { get; }
-
-    public string UserInfo { get { return $"{UserId} ({_login})"; } }
-
     // Rate limit concurrency requires some finesse
     private object _rateLimitLock = new object();
     private GitHubRateLimit _rateLimit;
     public GitHubRateLimit RateLimit { get { return _rateLimit; } }
+    public string UserInfo { get { return $"{UserId} ({Login})"; } }
+    // TODO: Orleans has a concept of state/correlation that we can use
+    // instead of Guid.NewGuid() or adding parameters to every call.
+    public Guid CorrelationId { get; } = Guid.NewGuid();
 
     private static IGitHubHandler SharedHandler;
-    private static IGitHubHandler GetOrCreateHandlerPipeline(IFactory<dm.ShipHubContext> shipContextFactory) {
+    private static void EnsureHandlerPipelineCreated(IFactory<dm.ShipHubContext> shipContextFactory) {
       if (SharedHandler != null) {
-        return SharedHandler;
+        return;
       }
-
-      IGitHubHandler handler = new GitHubHandler();
-      handler = new SneakyCacheFilter(handler, shipContextFactory);
-
-      return (SharedHandler = handler);
+      SharedHandler = new SneakyCacheFilter(new GitHubHandler(), shipContextFactory);
     }
 
     public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
@@ -83,12 +78,8 @@
       _queueClient = queueClient;
       _configuration = configuration;
 
-
-      _handler = GetOrCreateHandlerPipeline(_shipContextFactory);
-      // TODO: Orleans has a concept of state/correlation that we can use
-      // instead of Guid.NewGuid() or adding parameters to every call.
-      CorrelationId = Guid.NewGuid();
       ApiRoot = _configuration.GitHubApiRoot;
+      EnsureHandlerPipelineCreated(_shipContextFactory);
     }
 
     public override async Task OnActivateAsync() {
@@ -106,7 +97,8 @@
           throw new InvalidOperationException($"User {UserId} has no token.");
         }
 
-        _login = user.Login;
+        AccessToken = user.Token;
+        Login = user.Login;
 
         GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
@@ -117,7 +109,6 @@
             user.RateLimitReset);
         }
 
-        AccessToken = user.Token;
         _rateLimit = rateLimit;
       }
 
@@ -423,7 +414,7 @@
 
       GitHubResponse<T> result;
       try {
-        result = await _handler.Fetch<T>(this, request);
+        result = await SharedHandler.Fetch<T>(this, request);
       } finally {
         _maxConcurrentRequests.Release();
       }
