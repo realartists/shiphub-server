@@ -17,6 +17,7 @@
       <Setting name="RAYGUN_APIKEY" />
       <Setting name="UseSqlAzureExecutionStrategy" />
       <Setting name="GitHubApiRoot" />
+      <Setting name="ApiHostName" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

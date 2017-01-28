@@ -29,7 +29,10 @@
                value="" />
       <Setting name="UseSqlAzureExecutionStrategy"
                value="true" />
-      <Setting name="GitHubApiRoot" value="http://40.69.145.220/" />
+      <Setting name="GitHubApiRoot"
+               value="http://40.69.145.220/" />
+      <Setting name="ApiHostName"
+               value="load.realartists.com" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

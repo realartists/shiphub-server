@@ -31,6 +31,8 @@
                value="false" />
       <Setting name="GitHubApiRoot"
                value="" />
+      <Setting name="ApiHostName"
+               value="your.webhook.hostname" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>

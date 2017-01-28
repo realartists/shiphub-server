@@ -31,6 +31,8 @@
                value="true" />
       <Setting name="GitHubApiRoot"
                value="" />
+      <Setting name="ApiHostName"
+               value="hub.realartists.com" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>
