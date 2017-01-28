@@ -8,7 +8,6 @@
   public interface IShipHubQueueClient {
     Task NotifyChanges(IChangeSummary changeSummary);
     Task AddOrUpdateOrgWebhooks(long targetId, long forUserId);
-    Task AddOrUpdateRepoWebhooks(long targetId, long forUserId);
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
@@ -24,9 +23,6 @@
 
     public Task AddOrUpdateOrgWebhooks(long targetId, long forUserId)
       => SendIt(ShipHubQueueNames.AddOrUpdateOrgWebhooks, new TargetMessage(targetId, forUserId));
-
-    public Task AddOrUpdateRepoWebhooks(long targetId, long forUserId)
-      => SendIt(ShipHubQueueNames.AddOrUpdateRepoWebhooks, new TargetMessage(targetId, forUserId));
 
     public Task BillingGetOrCreatePersonalSubscription(long userId)
       => SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));

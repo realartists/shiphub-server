@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Actors {
   using System;
   using System.Collections.Generic;
+  using System.Collections.Immutable;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -25,6 +26,14 @@
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
+    
+    public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
+      "issues",
+      "issue_comment",
+      "label",
+      "milestone",
+      "push"
+    );
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -36,6 +45,7 @@
     private long _repoSize;
     private string _issueTemplateHash;
     private bool _disabled;
+    private string _apiHostName;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -59,25 +69,31 @@
     private bool _pollIssueTemplate;
     private int _syncCount;
 
-    public RepositoryActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
+    public RepositoryActor(
+      IMapper mapper,
+      IGrainFactory grainFactory,
+      IFactory<ShipHubContext> contextFactory,
+      IShipHubQueueClient queueClient,
+      IShipHubConfiguration configuration) {
       _mapper = mapper;
       _grainFactory = grainFactory;
       _contextFactory = contextFactory;
       _queueClient = queueClient;
+      _apiHostName = configuration.ApiHostName;
     }
 
     public override async Task OnActivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
-        _repoId = this.GetPrimaryKeyLong();
+        var repoId = this.GetPrimaryKeyLong();
 
         // Ensure this repository actually exists
-        var repo = await context.Repositories.SingleOrDefaultAsync(x => x.Id == _repoId);
+        var repo = await context.Repositories.SingleOrDefaultAsync(x => x.Id == repoId);
 
         if (repo == null) {
           throw new InvalidOperationException($"Repository {_repoId} does not exist and cannot be activated.");
         }
 
-        _fullName = repo.FullName;
+        Initialize(repo.Id, repo.FullName);
         _repoSize = repo.Size;
         _issueTemplateHash = HashIssueTemplate(repo.IssueTemplate);
         _metadata = repo.Metadata;
@@ -99,6 +115,11 @@
       }
 
       await base.OnActivateAsync();
+    }
+
+    public void Initialize(long repoId, string fullName) {
+      _repoId = repoId;
+      _fullName = fullName;
     }
 
     public override async Task OnDeactivateAsync() {
@@ -134,22 +155,20 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IGitHubPoolable> GetRepositoryActorPool() {
+    private async Task<IEnumerable<Tuple<long, bool>>> GetUsersWithAccess() {
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
-        var syncUserIds = await context.AccountRepositories
+        var users = await context.AccountRepositories
           .AsNoTracking()
           .Where(x => x.RepositoryId == _repoId)
           .Where(x => x.Account.Token != null)
           .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
-          .Select(x => x.AccountId)
+          .Select(x => new { UserId = x.AccountId, Admin = x.Admin })
           .ToArrayAsync();
 
-        if (syncUserIds.Length == 0) {
-          return null;
-        }
-
-        return new GitHubActorPool(_grainFactory, syncUserIds);
+        return users
+          .Select(x => Tuple.Create(x.UserId, x.Admin))
+          .ToArray();
       }
     }
 
@@ -180,17 +199,25 @@
         return;
       }
 
-      var github = await GetRepositoryActorPool();
+      var users = await GetUsersWithAccess();
 
-      if (github == null) {
+      if (!users.Any()) {
         DeactivateOnIdle();
         return;
+      }
+
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
+
+      IGitHubRepositoryAdmin admin = null;
+      var firstAdmin = users.FirstOrDefault(x => x.Item2);
+      if (firstAdmin != null) {
+        admin = _grainFactory.GetGrain<IGitHubActor>(firstAdmin.Item1);
       }
 
       var changes = new ChangeSummary();
       try {
         _syncCount++;
-        await SyncTask(github, changes);
+        await SyncTask(github, admin, changes);
       } catch (GitHubPoolEmptyException) {
         // Nothing to do.
         // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
@@ -205,7 +232,7 @@
       await Save();
     }
 
-    private async Task SyncTask(IGitHubPoolable github, ChangeSummary changes) {
+    private async Task SyncTask(IGitHubPoolable github, IGitHubRepositoryAdmin admin, ChangeSummary changes) {
       using (var context = _contextFactory.CreateInstance()) {
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
@@ -221,6 +248,11 @@
           changes.UnionWith(await UpdateRepositoryMilestones(context, github));
           changes.UnionWith(await UpdateRepositoryProjects(context, github));
           changes.UnionWith(await UpdateRepositoryIssues(context, github));
+
+          // Probably best to keep last
+          if (admin != null) {
+            changes.UnionWith(await AddOrUpdateRepositoryWebhooks(context, admin));
+          }
         }
 
         /* Comments
@@ -295,11 +327,13 @@
         return;
       }
 
-      var github = await GetRepositoryActorPool();
-      if (github == null) {
+      var users = await GetUsersWithAccess();
+      if (!users.Any()) {
         DeactivateOnIdle(); // Sync may not even be running.
         return;
       }
+
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
 
       ChangeSummary changes;
       using (var context = _contextFactory.CreateInstance()) {
@@ -558,6 +592,97 @@
         }
 
         _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
+      }
+
+      return changes;
+    }
+
+    public async Task<IChangeSummary> AddOrUpdateRepositoryWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
+      var changes = ChangeSummary.Empty;
+
+      var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
+      context.Database.Connection.Close();
+
+      if (hook != null && hook.GitHubId == null) {
+        // We attempted to add a webhook for this earlier, but something failed
+        // and we never got a chance to learn its GitHubId.
+        await context.BulkUpdateHooks(deleted: new[] { hook.Id });
+        hook = null;
+      }
+
+      if (hook == null) {
+        var hookList = await admin.RepositoryWebhooks(_fullName, GitHubCacheDetails.Empty);
+        if (!hookList.IsOk) {
+          // webhooks are best effort
+          // this keeps us from spewing errors and retrying a ton when an org is unpaid
+          Log.Info($"Unable to list hooks for {_fullName}");
+          return changes;
+        }
+
+        var existingHooks = hookList.Result
+          .Where(x => x.Name.Equals("web"))
+          .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/", StringComparison.OrdinalIgnoreCase));
+
+        // Delete any existing hooks that already point back to us - don't
+        // want to risk adding multiple Ship hooks.
+        foreach (var existingHook in existingHooks) {
+          var deleteResponse = await admin.DeleteRepositoryWebhook(_fullName, existingHook.Id);
+          if (!deleteResponse.Succeeded) {
+            Log.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'");
+          }
+        }
+
+        // GitHub will immediately send a ping when the webhook is created.
+        // To avoid any chance for a race, add the Hook to the DB first, then
+        // create on GitHub.
+        var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
+
+        bool deleteHook = false;
+        try {
+          var addRepoHookResponse = await admin.AddRepositoryWebhook(
+            _fullName,
+            new Common.GitHub.Models.Webhook() {
+              Name = "web",
+              Active = true,
+              Events = RequiredEvents,
+              Config = new Common.GitHub.Models.WebhookConfiguration() {
+                Url = $"https://{_apiHostName}/webhook/repo/{_repoId}",
+                ContentType = "json",
+                Secret = newHook.Secret.ToString(),
+              },
+            });
+
+          if (addRepoHookResponse.Succeeded) {
+            newHook.GitHubId = addRepoHookResponse.Result.Id;
+            changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
+          } else {
+            Log.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error?.ToException()}");
+            deleteHook = true;
+          }
+        } catch (Exception e) {
+          e.Report($"Failed to add hook for repo '{_fullName}' ({_repoId})");
+          deleteHook = true;
+          throw;
+        } finally {
+          if (deleteHook) {
+            await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
+          }
+        }
+      } else if (!hook.Events.Split(',').ToHashSet().SetEquals(RequiredEvents)) {
+        var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
+
+        if (!editResponse.Succeeded) {
+          Log.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error?.ToException()}");
+        } else {
+          await context.BulkUpdateHooks(hooks: new[] {
+              new HookTableType(){
+                Id = hook.Id,
+                GitHubId = editResponse.Result.Id,
+                Secret = hook.Secret,
+                Events = string.Join(",", editResponse.Result.Events),
+              }
+            });
+        }
       }
 
       return changes;

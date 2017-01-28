@@ -212,9 +212,6 @@
         }
 
         tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
-        tasks.AddRange(allRepos
-          .Where(x => x.Admin)
-          .Select(x => _queueClient.AddOrUpdateRepoWebhooks(x.RepositoryId, _userId)));
       }
 
       // Await all outstanding operations.
