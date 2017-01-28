@@ -17,7 +17,7 @@
   }
 
   public class ServiceBusFactory : IServiceBusFactory {
-    public static readonly TimeSpan DefaultTimeToLive = TimeSpan.FromMinutes(2);
+    public static readonly TimeSpan DefaultTimeToLive = TimeSpan.FromSeconds(30);
 
     bool _initialized;
     string _connString;
@@ -111,32 +111,17 @@
     }
 
     private QueueDescription GetQueueDescription(string queueName) {
-      if (queueName == ShipHubQueueNames.WebhooksEvent) {
-        return new QueueDescription(queueName) {
-          // Set TTL lower if we find we find the DB is overwhelmed by webhook events.
-          DefaultMessageTimeToLive = TimeSpan.FromSeconds(30),
-          EnableExpress = false,
-          EnableBatchedOperations = true,
-          EnablePartitioning = true,
-          IsAnonymousAccessible = false,
-          MaxDeliveryCount = 1, //Prevent explosions of errors.
-          MaxSizeInMegabytes = 1024,
-          RequiresDuplicateDetection = false,
-        };
-      } else {
-        return new QueueDescription(queueName) {
-          DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
-          DuplicateDetectionHistoryTimeWindow = TimeSpan.FromMinutes(10),
-          EnableExpress = true,
-          EnableBatchedOperations = true,
-          EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
-          EnablePartitioning = true,
-          IsAnonymousAccessible = false,
-          MaxDeliveryCount = 2, // Prevent explosions of errors.
-          MaxSizeInMegabytes = 5120,
-          RequiresDuplicateDetection = false,
-        };
-      }
+      return new QueueDescription(queueName) {
+        DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
+        EnableExpress = true,
+        EnableBatchedOperations = true,
+        EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
+        EnablePartitioning = true,
+        IsAnonymousAccessible = false,
+        MaxDeliveryCount = 1, // Prevent explosions of errors.
+        MaxSizeInMegabytes = 5120,
+        RequiresDuplicateDetection = false,
+      };
     }
 
     private async Task EnsureQueues() {
