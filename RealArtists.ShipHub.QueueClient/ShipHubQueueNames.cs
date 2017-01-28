@@ -22,7 +22,6 @@
     public const string SyncRepositoryComments = SyncRepository + "-comments";
     public const string SyncRepositoryIssueEvents = SyncRepository + "-issue-events";
 
-    public const string AddOrUpdateRepoWebhooks = "hooks-add-update-repo";
     public const string AddOrUpdateOrgWebhooks = "hooks-add-update-org";
     public const string WebhooksEvent = "hooks-event";
 
