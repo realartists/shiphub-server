@@ -220,6 +220,7 @@
       if (
         (payload.EventType == "subscription_activated" ||
          payload.EventType == "subscription_reactivated") &&
+        payload.Content.Subscription.Status == "active" &&
         payload.Content.Subscription.PlanId == "personal") {
         await SendPurchasePersonalMessage(payload);
       } else if (
