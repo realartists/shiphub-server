@@ -67,11 +67,14 @@ BEGIN
       [RowVersion] = DEFAULT -- Bump version
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
     FROM @Changes as c
-      INNER LOOP JOIN SyncLog as sl ON (
-        (sl.OwnerType = 'repo' AND sl.OwnerId = c.RepositoryId AND sl.ItemType = 'repository' AND sl.ItemId = c.RepositoryId)
-        OR
-        (sl.OwnerType = 'org' AND sl.OwnerId = c.OrganizationId AND sl.ItemType = 'account' AND sl.ItemId = c.OrganizationId)
-      )
+      INNER LOOP JOIN SyncLog as sl ON (sl.OwnerType = 'repo' AND sl.OwnerId = c.RepositoryId AND sl.ItemType = 'repository' AND sl.ItemId = c.RepositoryId)
+    OPTION (FORCE ORDER)
+
+    UPDATE SyncLog SET
+      [RowVersion] = DEFAULT -- Bump version
+    OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
+    FROM @Changes as c
+      INNER LOOP JOIN SyncLog as sl ON (sl.OwnerType = 'org' AND sl.OwnerId = c.OrganizationId AND sl.ItemType = 'account' AND sl.ItemId = c.OrganizationId)
     OPTION (FORCE ORDER)
 
     COMMIT TRANSACTION
