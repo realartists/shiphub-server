@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
+  using System.Collections.Immutable;
   using System.Linq;
   using System.Net;
   using System.Threading;
@@ -16,6 +17,7 @@
   using QueueClient.Messages;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
+  using RealArtists.ShipHub.Actors;
 
   [TestFixture]
   [AutoRollback]
@@ -24,6 +26,10 @@
 
     public static WebhookQueueHandler CreateHandler() {
       return new WebhookQueueHandler(Configuration, null, new DetailedExceptionLogger());
+    }
+
+    public static RepositoryActor CreateRepoActor() {
+      return new RepositoryActor(null, null, null, null, Configuration);
     }
 
     [Test]
@@ -85,12 +91,14 @@
             return Task.FromResult(result);
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        var repoActor = CreateRepoActor();
+        repoActor.Initialize(repo.Id, repo.FullName);
+        var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, WebhookQueueHandler.RequiredEvents));
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents));
         context.Entry(hook).Reload();
-        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, hook.Events.Split(',').ToHashSet());
+        Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(hook.Events.Split(',')));
+        Assert.IsFalse(changes.Repositories.Any());
       }
     }
 
@@ -164,8 +172,10 @@
             Status = HttpStatusCode.OK,
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        var repoActor = CreateRepoActor();
+        repoActor.Initialize(repo.Id, repo.FullName);
+        var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
+
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -208,19 +218,13 @@
             installWebhook = webhook;
           });
 
-        var changeMessages = new List<ChangeMessage>();
+        var repoActor = CreateRepoActor();
+        repoActor.Initialize(repo.Id, repo.FullName);
+        var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
-          .Returns((ChangeMessage msg, CancellationToken token) => {
-            changeMessages.Add(msg);
-            return Task.CompletedTask;
-          });
-
-        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
-        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(hook.Events.Split(',')));
+        Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(hook.Events.Split(',')));
         Assert.AreEqual(repo.Id, hook.RepositoryId);
         Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.OrganizationId);
@@ -230,7 +234,7 @@
         Assert.AreEqual(repo.FullName, installRepoName);
         Assert.AreEqual("web", installWebhook.Name);
         Assert.AreEqual(true, installWebhook.Active);
-        Assert.AreEqual(WebhookQueueHandler.RequiredEvents, new HashSet<string>(installWebhook.Events));
+        Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(installWebhook.Events));
         Assert.AreEqual("json", installWebhook.Config.ContentType);
         Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
@@ -238,7 +242,7 @@
         repoLogItem = context.SyncLogs.Single(x => x.OwnerType == "repo" && x.OwnerId == repo.Id && x.ItemType == "repository" && x.ItemId == repo.Id);
         Assert.Greater(repoLogItem.RowVersion, repoLogItemRowVersion,
           "row version should get bumped so the repo gets synced");
-        Assert.AreEqual(new long[] { repo.Id }, changeMessages[0].Repositories.ToArray());
+        Assert.AreEqual(new long[] { repo.Id }, changes.Repositories.ToArray());
       }
     }
 
@@ -262,9 +266,10 @@
            .ThrowsAsync(new Exception("some exception!"));
 
         bool exceptionThrown = false;
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         try {
-          await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+          var repoActor = CreateRepoActor();
+          repoActor.Initialize(repo.Id, repo.FullName);
+          var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
         } catch {
           exceptionThrown = true;
         }
@@ -619,8 +624,9 @@
             Status = HttpStatusCode.OK,
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateRepoWebhooksWithClient(new TargetMessage(repo.Id, user.Id), mock.Object, collectorMock.Object);
+        var repoActor = CreateRepoActor();
+        repoActor.Initialize(repo.Id, repo.FullName);
+        var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
         var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
         Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
