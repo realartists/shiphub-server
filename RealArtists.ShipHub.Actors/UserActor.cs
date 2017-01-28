@@ -35,6 +35,7 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
+    bool _forceRepos = false;
 
     public UserActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -72,17 +73,22 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
+      await Save();
+      await base.OnDeactivateAsync();
+    }
+
+    private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
         // I think all we need to persist is the metadata.
         await context.UpdateMetadata("Accounts", _userId, _metadata);
         await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
       }
+    }
 
-      // TODO: Look into how agressively Orleans deactivates "inactive" grains.
-      // We may need to delay deactivation based on sync interest.
-
-      await base.OnDeactivateAsync();
+    public Task ForceSyncRepositories() {
+      _forceRepos = true;
+      return Sync();
     }
 
     public Task Sync() {
@@ -91,36 +97,37 @@
       _lastSyncInterest = DateTimeOffset.UtcNow;
 
       if (_syncTimer == null) {
-        _syncTimer = RegisterTimer(SyncCallback, null, TimeSpan.Zero, SyncDelay);
+        _syncTimer = RegisterTimer(SyncTimerCallback, null, TimeSpan.Zero, SyncDelay);
       }
 
       return Task.CompletedTask;
     }
 
-    public Task ForceSyncRepositories() {
-      return TimerSync(forceRepos: true);
-    }
-
-    // Implementation methods
-
-    private async Task SyncCallback(object state) {
-      if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
+    private async Task SyncTimerCallback(object state) {
+      if (_forceRepos && DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
         return;
       }
 
-      await TimerSync(forceRepos: false);
-    }
-
-    private async Task TimerSync(bool forceRepos) {
-      if (_github == null) {
-        return;
+      var changes = new ChangeSummary();
+      try {
+        await SyncTask(changes);
+      } catch (GitHubRateException) {
+        // nothing to do
       }
 
-      var tasks = new List<Task>();
-      var changes = new ChangeSummary();
-      using (var context = _contextFactory.CreateInstance()) {
+      // Send Changes.
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
 
+      // Save changes
+      await Save();
+    }
+
+    private async Task SyncTask(ChangeSummary changes) {
+      var tasks = new List<Task>();
+      using (var context = _contextFactory.CreateInstance()) {
         // User
         if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
           var user = await _github.User(_metadata);
@@ -184,7 +191,7 @@
         }
 
         // Update this user's repo memberships
-        if (forceRepos || _repoMetadata == null || _repoMetadata.Expires < DateTimeOffset.UtcNow) {
+        if (_forceRepos || _repoMetadata == null || _repoMetadata.Expires < DateTimeOffset.UtcNow) {
           var repos = await _github.Repositories(_repoMetadata);
 
           if (repos.IsOk) {
@@ -201,6 +208,7 @@
 
           // Don't update until saved.
           _repoMetadata = GitHubMetadata.FromResponse(repos);
+          _forceRepos = false;
         }
 
         tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
@@ -209,19 +217,8 @@
           .Select(x => _queueClient.AddOrUpdateRepoWebhooks(x.RepositoryId, _userId)));
       }
 
-      // Send Changes.
-      if (!changes.IsEmpty) {
-        tasks.Add(_queueClient.NotifyChanges(changes));
-      }
-
       // Await all outstanding operations.
       await Task.WhenAll(tasks);
-
-      // Future Compatibility:
-
-      // Tell the user's orgs and repos that we're interested
-      // TODO: Sync orgs
-      // TODO: Sync repos
     }
   }
 }
