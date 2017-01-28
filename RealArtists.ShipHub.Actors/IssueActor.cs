@@ -81,6 +81,23 @@
     }
 
     public async Task SyncInteractive(long forUserId) {
+      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
+      var changes = new ChangeSummary();
+      try {
+        await SyncIssueTimeline(ghc, changes, forUserId);
+      } catch (GitHubRateException) {
+        // nothing to do
+      }
+
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
+
+      // Save metadata and other updates
+      await Save();
+    }
+
+    private async Task SyncIssueTimeline(IGitHubActor ghc, ChangeSummary changes, long forUserId) {
       ///////////////////////////////////////////
       /* NOTE!
        * We can't sync the timeline incrementally, because the client wants commit and
@@ -91,10 +108,6 @@
        */
       //////////////////////////////////////////
 
-      // TODO: Load balance
-      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
-
-      var changes = new ChangeSummary();
       using (var context = _contextFactory.CreateInstance()) {
         // Always refresh the issue when viewed
         var issueResponse = await ghc.Issue(_repoFullName, _issueNumber, _metadata);
@@ -374,13 +387,6 @@
           await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
         }
       }
-
-      if (!changes.IsEmpty) {
-        await _queueClient.NotifyChanges(changes);
-      }
-
-      // Save metadata and other updates
-      await Save();
     }
   }
 }

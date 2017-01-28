@@ -108,6 +108,11 @@
       _syncIssueTemplateTimer?.Dispose();
       _syncIssueTemplateTimer = null;
 
+      await Save();
+      await base.OnDeactivateAsync();
+    }
+
+    private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
         await context.SaveRepositoryMetadata(
           _repoId,
@@ -123,8 +128,6 @@
           _contentsDotGithubMetadata,
           _contentsIssueTemplateMetadata);
       }
-
-      await base.OnDeactivateAsync();
     }
 
     // ////////////////////////////////////////////////////////////
@@ -135,10 +138,12 @@
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
         var syncUserIds = await context.AccountRepositories
-            .Where(x => x.RepositoryId == _repoId)
-            .Where(x => x.Account.Token != null)
-            .Select(x => x.AccountId)
-            .ToArrayAsync();
+          .AsNoTracking()
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Token != null)
+          .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
 
         if (syncUserIds.Length == 0) {
           return null;
@@ -158,13 +163,13 @@
       _lastSyncInterest = DateTimeOffset.UtcNow;
 
       if (_syncTimer == null) {
-        _syncTimer = RegisterTimer(SyncCallback, null, TimeSpan.Zero, SyncDelay);
+        _syncTimer = RegisterTimer(SyncTimerCallback, null, TimeSpan.Zero, SyncDelay);
       }
 
       return Task.CompletedTask;
     }
 
-    private async Task SyncCallback(object state) {
+    private async Task SyncTimerCallback(object state) {
       if (_syncIssueTemplateTimer != null) {
         _syncIssueTemplateTimer.Dispose();
         _syncIssueTemplateTimer = null;
@@ -175,9 +180,6 @@
         return;
       }
 
-      _syncCount++;
-
-      var changes = new ChangeSummary();
       var github = await GetRepositoryActorPool();
 
       if (github == null) {
@@ -185,6 +187,25 @@
         return;
       }
 
+      var changes = new ChangeSummary();
+      try {
+        _syncCount++;
+        await SyncTask(github, changes);
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+      }
+
+      // Send Changes.
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
+
+      // Save
+      await Save();
+    }
+
+    private async Task SyncTask(IGitHubPoolable github, ChangeSummary changes) {
       using (var context = _contextFactory.CreateInstance()) {
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
@@ -220,11 +241,6 @@
          * sync will sparsely populate the event corpus, so there's not a way
          * to derive the overall sync status from the comments we've already synced.
          */
-      }
-
-      // Send Changes.
-      if (!changes.IsEmpty) {
-        await _queueClient.NotifyChanges(changes);
       }
     }
 

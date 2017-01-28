@@ -11,6 +11,7 @@
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
+  using Common.GitHub;
   using GitHub;
   using Orleans;
   using QueueClient;
@@ -106,43 +107,77 @@
       }
     }
 
+    // ////////////////////////////////////////////////////////////
+    // Utility Functions
+    // ////////////////////////////////////////////////////////////
+
+    private async Task<IGitHubPoolable> GetOrganizationActorPool() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: Keep this cached and current instead of looking it up every time.
+        var syncUserIds = await context.OrganizationAccounts
+          .AsNoTracking()
+          .Where(x => x.OrganizationId == _orgId)
+          .Where(x => x.User.Token != null)
+          .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
+          .Select(x => x.UserId)
+          .ToArrayAsync();
+
+        if (syncUserIds.Length == 0) {
+          return null;
+        }
+
+        return new GitHubActorPool(_grainFactory, syncUserIds);
+      }
+    }
+
+    // ////////////////////////////////////////////////////////////
+    // Sync
+    // ////////////////////////////////////////////////////////////
+
     public Task Sync() {
       // For now, calls to sync just indicate interest in syncing.
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
 
       if (_syncTimer == null) {
-        _syncTimer = RegisterTimer(SyncCallback, null, TimeSpan.Zero, SyncDelay);
+        _syncTimer = RegisterTimer(SyncTimerCallback, null, TimeSpan.Zero, SyncDelay);
       }
 
       return Task.CompletedTask;
     }
 
-    private async Task SyncCallback(object state) {
+    private async Task SyncTimerCallback(object state) {
       if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
         return;
       }
 
-      var tasks = new List<Task>();
-      var changes = new ChangeSummary();
-      GitHubActorPool github;
-      using (var context = _contextFactory.CreateInstance()) {
-        var syncUserIds = await context.OrganizationAccounts
-          .AsNoTracking()
-          .Where(x => x.OrganizationId == _orgId)
-          .Where(x => x.User.Token != null)
-          .Select(x => x.UserId)
-          .ToArrayAsync();
+      var github = await GetOrganizationActorPool();
 
-        if (syncUserIds.Length == 0) {
-          this.Info("No members with tokens. Cannot sync.");
-          DeactivateOnIdle();
-          return;
-        }
-
-        github = new GitHubActorPool(_grainFactory, syncUserIds);
+      if (github == null) {
+        DeactivateOnIdle();
+        return;
       }
+
+      var changes = new ChangeSummary();
+      try {
+        await SyncTask(github, changes);
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+      }
+
+      // Send Changes.
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
+
+      // Save
+      await Save();
+    }
+
+    private async Task SyncTask(IGitHubPoolable github, ChangeSummary changes) {
+      var tasks = new List<Task>();
 
       using (var context = _contextFactory.CreateInstance()) {
         // Org itself
@@ -235,11 +270,6 @@
           var randmin = activeAdmins[_random.Next(activeAdmins.Length)];
           tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin));
         }
-      }
-
-      // Send Changes.
-      if (!changes.IsEmpty) {
-        tasks.Add(_queueClient.NotifyChanges(changes));
       }
 
       // Await all outstanding operations.

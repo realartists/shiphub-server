@@ -26,18 +26,16 @@
     string AccessToken { get; }
     Uri ApiRoot { get; }
     Guid CorrelationId { get; }
-    GitHubRateLimit RateLimit { get; }
     ProductInfoHeaderValue UserAgent { get; }
     string UserInfo { get; }
     long UserId { get; }
 
     int NextRequestId();
-    void UpdateInternalRateLimit(GitHubRateLimit rateLimit);
   }
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 8;
+    public const int MaxConcurrentRequests = 4;
     public const int PageSize = 100;
     public const bool InterpolationEnabled = true;
 
@@ -48,34 +46,28 @@
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
 
-    public long UserId { get; private set; }
     public string AccessToken { get; private set; }
+    public string Login { get; private set; }
+    public long UserId { get; private set; }
 
-    private string _login;
-    private DateTimeOffset? _abuseDelay;
-    private IGitHubHandler _handler;
+    private DateTimeOffset? _dropRequestsUntil;
+    private volatile bool _dropRequestAbuse;
+    private volatile bool _lastRequestLimited;
+    private volatile GitHubRateLimit _rateLimit; // Do not update directly please.
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
-    public Guid CorrelationId { get; }
-
-    public string UserInfo { get { return $"{UserId} ({_login})"; } }
-
-    // Rate limit concurrency requires some finesse
-    private object _rateLimitLock = new object();
-    private GitHubRateLimit _rateLimit;
-    public GitHubRateLimit RateLimit { get { return _rateLimit; } }
+    public string UserInfo { get { return $"{UserId} ({Login})"; } }
+    // TODO: Orleans has a concept of state/correlation that we can use
+    // instead of Guid.NewGuid() or adding parameters to every call.
+    public Guid CorrelationId { get; } = Guid.NewGuid();
 
     private static IGitHubHandler SharedHandler;
-    private static IGitHubHandler GetOrCreateHandlerPipeline(IFactory<dm.ShipHubContext> shipContextFactory) {
+    private static void EnsureHandlerPipelineCreated(IFactory<dm.ShipHubContext> shipContextFactory) {
       if (SharedHandler != null) {
-        return SharedHandler;
+        return;
       }
-
-      IGitHubHandler handler = new GitHubHandler();
-      handler = new SneakyCacheFilter(handler, shipContextFactory);
-
-      return (SharedHandler = handler);
+      SharedHandler = new SneakyCacheFilter(new GitHubHandler(), shipContextFactory);
     }
 
     public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
@@ -83,19 +75,8 @@
       _queueClient = queueClient;
       _configuration = configuration;
 
-      // Initialize old GitHubClient members
-      var apiRoot = _configuration.GitHubApiRoot;
-      if (apiRoot == null
-        || !apiRoot.IsAbsoluteUri
-        || !apiRoot.AbsolutePath.EndsWith("/", StringComparison.OrdinalIgnoreCase)) {
-        throw new ConfigurationErrorsException($"ApiRoot Uri must be absolute and end with a trailing '/'. '{apiRoot}' is invalid.");
-      }
-      ApiRoot = apiRoot;
-
-      _handler = GetOrCreateHandlerPipeline(_shipContextFactory);
-      // TODO: Orleans has a concept of state/correlation that we can use
-      // instead of Guid.NewGuid() or adding parameters to every call.
-      CorrelationId = Guid.NewGuid();
+      ApiRoot = _configuration.GitHubApiRoot;
+      EnsureHandlerPipelineCreated(_shipContextFactory);
     }
 
     public override async Task OnActivateAsync() {
@@ -113,19 +94,16 @@
           throw new InvalidOperationException($"User {UserId} has no token.");
         }
 
-        _login = user.Login;
+        AccessToken = user.Token;
+        Login = user.Login;
 
-        GitHubRateLimit rateLimit = null;
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
-          rateLimit = new GitHubRateLimit(
+          UpdateRateLimit(new GitHubRateLimit(
             user.Token,
             user.RateLimit,
             user.RateLimitRemaining,
-            user.RateLimitReset);
+            user.RateLimitReset));
         }
-
-        AccessToken = user.Token;
-        _rateLimit = rateLimit;
       }
 
       await base.OnActivateAsync();
@@ -133,26 +111,12 @@
 
     public override async Task OnDeactivateAsync() {
       using (var context = _shipContextFactory.CreateInstance()) {
-        await context.UpdateRateLimit(RateLimit);
+        await context.UpdateRateLimit(_rateLimit);
       }
 
       Dispose();
 
       await base.OnDeactivateAsync();
-    }
-
-    ////////////////////////////////////////////////////////////
-    // GitHubClient Legacy
-    ////////////////////////////////////////////////////////////
-
-    public void UpdateInternalRateLimit(GitHubRateLimit rateLimit) {
-      lock (_rateLimitLock) {
-        if (_rateLimit == null
-          || _rateLimit.Reset < rateLimit.Reset
-          || _rateLimit.Remaining > rateLimit.Remaining) {
-          _rateLimit = rateLimit;
-        }
-      }
     }
 
     ////////////////////////////////////////////////////////////
@@ -167,6 +131,16 @@
     private int _requestId = 0;
     public int NextRequestId() {
       return Interlocked.Increment(ref _requestId);
+    }
+
+    private void UpdateRateLimit(GitHubRateLimit rateLimit) {
+      lock (this) {
+        if (_rateLimit == null
+          || _rateLimit.Reset < rateLimit.Reset
+          || _rateLimit.Remaining > rateLimit.Remaining) {
+          _rateLimit = rateLimit;
+        }
+      }
     }
 
     ////////////////////////////////////////////////////////////
@@ -422,54 +396,77 @@
     private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
 
     private async Task<GitHubResponse<T>> Fetch<T>(GitHubRequest request) {
-      if (_abuseDelay != null && _abuseDelay.Value > DateTimeOffset.UtcNow) {
-        throw new GitHubRateException(UserInfo, null, RateLimit, true);
+      /* ALL RATE LIMIT ENFORCEMENT SHOULD EXIST HERE ONLY
+       * We need one central place for this to maintain sanity.
+       * 
+       * So when we *first* hit a rate limit or abuse warning, log the exception.
+       * Then throw but don't log until a request succeeded. Upstream callers are
+       * expected to act (if needed) on the exceptions, but silently swallow them.
+       * 
+       * This should ensure we're aware of all rate and abuse issues, without
+       * overwhelming us with non-actionable exceptions.
+       */
+
+      if (_dropRequestsUntil != null && _dropRequestsUntil.Value > DateTimeOffset.UtcNow) {
+        var rateException = new GitHubRateException(UserInfo, request.Uri, _rateLimit, _dropRequestAbuse);
+        if (!_lastRequestLimited) {
+          _lastRequestLimited = true;
+          rateException.Report(userInfo: UserInfo);
+        }
+        throw rateException;
       }
+
+      // Clear flag since we made it this far.
+      _lastRequestLimited = false;
 
       await _maxConcurrentRequests.WaitAsync();
 
       GitHubResponse<T> result;
       try {
-        result = await _handler.Fetch<T>(this, request);
+        result = await SharedHandler.Fetch<T>(this, request);
       } finally {
         _maxConcurrentRequests.Release();
       }
 
-      DateTimeOffset? limitUntil = null;
-      var response = result as GitHubResponse;
-
       // Token revocation handling and abuse.
+      var response = result as GitHubResponse;
+      bool abuse = false;
+      DateTimeOffset? limitUntil = null;
       if (response?.Status == HttpStatusCode.Unauthorized) {
         using (var ctx = _shipContextFactory.CreateInstance()) {
           await ctx.RevokeAccessToken(AccessToken);
         }
         DeactivateOnIdle();
       } else if (response.Error?.IsAbuse == true) {
-        var retryAfter = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
-
-        if (_abuseDelay == null || _abuseDelay < retryAfter) {
-          _abuseDelay = retryAfter;
-        }
-        limitUntil = _abuseDelay;
-      } else if (RateLimit?.IsExceeded == true) {
-        limitUntil = RateLimit.Reset;
+        abuse = true;
+        limitUntil = response.RetryAfter ?? DateTimeOffset.UtcNow.AddSeconds(60); // Default to 60 seconds.
+      } else if (_rateLimit?.IsExceeded == true) {
+        limitUntil = _rateLimit.Reset;
       }
 
       if (limitUntil != null) {
+        _dropRequestAbuse = abuse;
+        _dropRequestsUntil = limitUntil;
         using (var context = _shipContextFactory.CreateInstance()) {
-          var oldRate = RateLimit;
+          var oldRate = _rateLimit;
           var newRate = new GitHubRateLimit(
             oldRate.AccessToken,
             oldRate.Limit,
             Math.Min(oldRate.Remaining, GitHubRateLimit.RateLimitFloor - 1),
             limitUntil.Value);
-          UpdateInternalRateLimit(newRate);
+          UpdateRateLimit(newRate);
+
+          // Record in DB for sync notification
           await context.UpdateRateLimit(newRate);
         }
 
+        // Force sync notification
         var changes = new ChangeSummary();
         changes.Users.Add(UserId);
         await _queueClient.NotifyChanges(changes);
+      } else if (response.RateLimit != null) {
+        // Normal rate limit tracking
+        UpdateRateLimit(response.RateLimit);
       }
 
       return result;

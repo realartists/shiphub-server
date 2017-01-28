@@ -38,6 +38,7 @@
   <ItemGroup>
     <Compile Include="EchoActor.cs" />
     <Compile Include="GitHub\GitHubActorPool.cs" />
+    <Compile Include="GitHub\GitHubPoolEmptyException.cs" />
     <Compile Include="GitHub\Logging\LoggingMessageProcessingHandler.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />
     <Compile Include="GitHub\Pipeline\SneakyCacheFilter.cs" />
