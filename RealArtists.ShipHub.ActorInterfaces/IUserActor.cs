@@ -20,5 +20,11 @@
     /// one is known to have been added or deleted.
     /// </summary>
     Task ForceSyncRepositories();
+
+    /// <summary>
+    /// Called whenever a client connects and says Hello.
+    /// </summary>
+    /// <returns></returns>
+    Task OnHello();
   }
 }
