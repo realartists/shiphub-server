@@ -118,7 +118,11 @@
             hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
             hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version))
           );
-          Subscribe(); // Also performs the initial sync
+
+          var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);
+          await userActor.OnHello();
+
+          Subscribe(userActor); // Also performs the initial sync
           return;
         case "viewing":
           var viewing = jobj.ToObject<ViewingRequest>(JsonUtility.SaneSerializer);
@@ -158,7 +162,7 @@
       }
     }
 
-    private void Subscribe() {
+    private void Subscribe(IUserActor userActor) {
       Log.Info($"{_user.Login}");
 
       if (_syncSubscription != null) {
@@ -179,7 +183,6 @@
         .Subscribe();
 
       // Polling for updates
-      var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);
       _pollSubscription = _PollInterval
         .ObserveOn(TaskPoolScheduler.Default)
         .StartWith(0)

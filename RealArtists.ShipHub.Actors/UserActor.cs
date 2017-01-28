@@ -36,6 +36,7 @@
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
     bool _forceRepos = false;
+    bool _syncBillingState = true;
 
     public UserActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -84,6 +85,11 @@
         await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
       }
+    }
+
+    public Task OnHello() {
+      _syncBillingState = true;
+      return Task.CompletedTask;
     }
 
     public Task ForceSyncRepositories() {
@@ -142,8 +148,9 @@
           _metadata = GitHubMetadata.FromResponse(user);
         }
 
-        // TODO: Don't think this should actually happen this often
-        tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
+        if (_syncBillingState) {
+          tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
+        }
 
         // Update this user's org memberships
         if (_orgMetadata == null || _orgMetadata.Expires < DateTimeOffset.UtcNow) {
@@ -185,7 +192,7 @@
             .ToArrayAsync();
         }
 
-        if (allOrgIds.Any()) {
+        if (allOrgIds.Any() && _syncBillingState) {
           tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
           tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
         }
@@ -219,6 +226,8 @@
 
       // Await all outstanding operations.
       await Task.WhenAll(tasks);
+
+      _syncBillingState = false;
     }
   }
 }
