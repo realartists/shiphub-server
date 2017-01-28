@@ -104,7 +104,7 @@
     }
 
     private async Task SyncTimerCallback(object state) {
-      if (_forceRepos && DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
+      if (!_forceRepos && DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
         return;
       }
