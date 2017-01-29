@@ -338,13 +338,11 @@
         }
 
         // Comment Reactions
-        Dictionary<long, GitHubMetadata> commentReactionMetadata;
-        using (var context2 = _contextFactory.CreateInstance()) {
-          commentReactionMetadata = await context2.Comments
-            .AsNoTracking()
-            .Where(x => x.IssueId == _issueId)
-            .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
-        }
+        var commentReactionMetadata = await context.Comments
+          .AsNoTracking()
+          .Where(x => x.IssueId == _issueId)
+          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+        context.Database.Connection.Close();
 
         // Now, find the ones that need updating.
         var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
