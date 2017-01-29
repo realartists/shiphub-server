@@ -27,16 +27,7 @@
     // For 60 seconds, the defaults are fine.
     private static readonly TimeSpan _ProxyTimeout = TimeSpan.FromSeconds(60);
 
-    private static readonly WinHttpHandler _ProxyHandler = new WinHttpHandler() {
-      AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-      AutomaticRedirection = true,
-      CheckCertificateRevocationList = true,
-      CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
-      MaxAutomaticRedirections = 3,
-      SslProtocols = SslProtocols.Tls12,
-      WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
-      // The default timeout values are all longer than our overall timeout.
-    };
+    private static readonly HttpMessageHandler _ProxyHandler = HttpUtilities.CreateDefaultHandler(maxRedirects: 3);
 
     // Using one HttpClient for all requests should be safe according to the documentation.
     // See https://msdn.microsoft.com/en-us/library/system.net.http.httpclient(v=vs.110).aspx?f=255&mspperror=-2147217396#Anchor_5

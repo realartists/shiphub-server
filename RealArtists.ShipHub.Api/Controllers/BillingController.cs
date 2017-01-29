@@ -427,16 +427,7 @@
 
     private static readonly TimeSpan _HandlerTimeout = TimeSpan.FromSeconds(60);
 
-    private static readonly WinHttpHandler _HttpHandler = new WinHttpHandler() {
-      AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-      AutomaticRedirection = true,
-      CheckCertificateRevocationList = true,
-      CookieUsePolicy = CookieUsePolicy.IgnoreCookies,
-      MaxAutomaticRedirections = 3,
-      SslProtocols = SslProtocols.Tls12,
-      WindowsProxyUsePolicy = WindowsProxyUsePolicy.DoNotUseProxy,
-      // The default timeout values are all longer than our overall timeout.
-    };
+    private static readonly HttpMessageHandler _HttpHandler = HttpUtilities.CreateDefaultHandler(maxRedirects: 3);
 
     private static readonly HttpClient _HttpClient = new HttpClient(_HttpHandler) {
       Timeout = _HandlerTimeout
