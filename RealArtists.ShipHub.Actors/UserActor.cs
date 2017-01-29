@@ -135,7 +135,7 @@
       var tasks = new List<Task>();
       using (var context = _contextFactory.CreateInstance()) {
         // User
-        if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
+        if (_metadata.IsExpired()) {
           var user = await _github.User(_metadata);
 
           if (user.IsOk) {
@@ -153,7 +153,7 @@
         }
 
         // Update this user's org memberships
-        if (_orgMetadata == null || _orgMetadata.Expires < DateTimeOffset.UtcNow) {
+        if (_orgMetadata.IsExpired()) {
           var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata);
 
           if (orgs.IsOk) {
@@ -175,7 +175,7 @@
         }
 
         // Update this user's repo memberships
-        if (_forceRepos || _repoMetadata == null || _repoMetadata.Expires < DateTimeOffset.UtcNow) {
+        if (_forceRepos || _repoMetadata.IsExpired()) {
           var repos = await _github.Repositories(_repoMetadata);
 
           if (repos.IsOk) {
