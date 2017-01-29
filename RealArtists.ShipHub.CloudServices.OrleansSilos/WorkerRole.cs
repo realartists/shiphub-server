@@ -19,6 +19,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
     public override bool OnStart() {
       Log.Trace();
+      
+      // Set the maximum number of concurrent connections
+      HttpUtilities.SetServicePointDefaultConnectionLimit();
 
       LogTraceListener.Configure();
 
@@ -30,9 +33,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       if (!_config.RaygunApiKey.IsNullOrWhiteSpace()) {
         LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(_config.RaygunApiKey));
       }
-
-      // Set the maximum number of concurrent connections
-      ServicePointManager.DefaultConnectionLimit = int.MaxValue;
 
       // For information on handling configuration changes
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.

@@ -24,6 +24,9 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     static void Main() {
+      // Set the maximum number of concurrent connections
+      HttpUtilities.SetServicePointDefaultConnectionLimit();
+
       var shipHubConfig = new ShipHubCloudConfiguration();
       var azureWebJobsDashboard = shipHubConfig.AzureWebJobsDashboard;
       var azureWebJobsStorage = shipHubConfig.AzureWebJobsStorage;
