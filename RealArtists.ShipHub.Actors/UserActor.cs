@@ -174,29 +174,6 @@
           _orgMetadata = GitHubMetadata.FromResponse(orgs);
         }
 
-        IEnumerable<long> allOrgIds;
-        IEnumerable<AccountRepository> allRepos;
-        using (var context2 = _contextFactory.CreateInstance()) {
-          // TODO: Actually and load and maintain the list of orgs inside the object
-          // Maintain the grain references too.
-          allOrgIds = await context.OrganizationAccounts
-            .AsNoTracking()
-            .Where(x => x.UserId == _userId)
-            .Select(x => x.OrganizationId)
-            .ToArrayAsync();
-
-          // TODO: Save the repo list locally in this object
-          allRepos = await context.AccountRepositories
-            .AsNoTracking()
-            .Where(x => x.AccountId == _userId)
-            .ToArrayAsync();
-        }
-
-        if (allOrgIds.Any() && _syncBillingState) {
-          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
-          tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
-        }
-
         // Update this user's repo memberships
         if (_forceRepos || _repoMetadata == null || _repoMetadata.Expires < DateTimeOffset.UtcNow) {
           var repos = await _github.Repositories(_repoMetadata);
@@ -218,7 +195,31 @@
           _forceRepos = false;
         }
 
-        tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
+        // TODO: Save the repo list locally in this object
+        // TODO: Actually and load and maintain the list of orgs inside the object
+        // Maintain the grain references too.
+
+        var allRepos = await context.AccountRepositories
+          .AsNoTracking()
+          .Where(x => x.AccountId == _userId)
+          .ToArrayAsync();
+
+        if (allRepos.Any()) {
+          tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
+        }
+
+        var allOrgIds = await context.OrganizationAccounts
+          .AsNoTracking()
+          .Where(x => x.UserId == _userId)
+          .Select(x => x.OrganizationId)
+          .ToArrayAsync();
+
+        if (allOrgIds.Any()) {
+          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
+          if (_syncBillingState) {
+            tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
+          }
+        }
       }
 
       // Await all outstanding operations.
