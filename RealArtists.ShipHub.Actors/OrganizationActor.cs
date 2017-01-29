@@ -181,7 +181,7 @@
 
       using (var context = _contextFactory.CreateInstance()) {
         // Org itself
-        if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
+        if (_metadata.IsExpired()) {
           var org = await github.Organization(_login, _metadata);
 
           if (org.IsOk) {
@@ -195,7 +195,7 @@
           _metadata = GitHubMetadata.FromResponse(org);
         }
 
-        if (_memberMetadata == null || _memberMetadata.Expires < DateTimeOffset.UtcNow) {
+        if (_memberMetadata.IsExpired()) {
           // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
           // each member.  To workaround, we make two requests and use the filter option
           // to only get admins or non-admins on each request.
@@ -279,7 +279,7 @@
     private async Task<IChangeSummary> UpdateProjects(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
-      if (_projectMetadata == null || _projectMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_projectMetadata.IsExpired()) {
         var projects = await github.OrganizationProjects(_login, _projectMetadata);
         if (projects.IsOk) {
           var creators = projects.Result.Select(p => new AccountTableType() {

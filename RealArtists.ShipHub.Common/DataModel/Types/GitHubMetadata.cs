@@ -46,4 +46,16 @@
       };
     }
   }
+
+  public static class GitHubMetadataExtensions {
+    /// <summary>
+    /// Tests if metadata indicates a resource is expired. Returns true for:
+    /// null metadata
+    /// metadata with null Expires
+    /// metadata with Expires < NOW
+    /// </summary>
+    public static bool IsExpired(this GitHubMetadata metadata) {
+      return metadata?.Expires == null || metadata.Expires < DateTimeOffset.UtcNow;
+    }
+  }
 }

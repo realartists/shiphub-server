@@ -279,7 +279,7 @@
     private async Task<IChangeSummary> UpdateRepositoryDetails(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
-      if (_metadata == null || _metadata.Expires < DateTimeOffset.UtcNow) {
+      if (_metadata.IsExpired()) {
         var repo = await github.Repository(_fullName, _metadata);
 
         if (repo.IsOk) {
@@ -480,7 +480,7 @@
       var changes = new ChangeSummary();
 
       // Update Assignees
-      if (_assignableMetadata == null || _assignableMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_assignableMetadata.IsExpired()) {
         var assignees = await github.Assignable(_fullName, _assignableMetadata);
         if (assignees.IsOk) {
           changes.UnionWith(await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)));
@@ -496,7 +496,7 @@
     private async Task<IChangeSummary> UpdateRepositoryLabels(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
-      if (_labelMetadata == null || _labelMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_labelMetadata.IsExpired()) {
         var labels = await github.Labels(_fullName, _labelMetadata);
         if (labels.IsOk) {
           changes = await context.BulkUpdateLabels(
@@ -519,7 +519,7 @@
     private async Task<IChangeSummary> UpdateRepositoryMilestones(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
-      if (_milestoneMetadata == null || _milestoneMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_milestoneMetadata.IsExpired()) {
         var milestones = await github.Milestones(_fullName, _milestoneMetadata);
         if (milestones.IsOk) {
           changes = await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result));
@@ -534,7 +534,7 @@
     private async Task<IChangeSummary> UpdateRepositoryProjects(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
-      if (_projectMetadata == null || _projectMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_projectMetadata.IsExpired()) {
         var projects = await github.RepositoryProjects(_fullName, _projectMetadata);
         if (projects.IsOk) {
           var creators = projects.Result.Select(p => new AccountTableType() {
@@ -557,7 +557,7 @@
     private async Task<IChangeSummary> UpdateRepositoryIssues(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
-      if (_issueMetadata == null || _issueMetadata.Expires < DateTimeOffset.UtcNow) {
+      if (_issueMetadata.IsExpired()) {
         var issueResponse = await github.Issues(_fullName, _issueSince, ChunkMaxPages, _issueMetadata);
         if (issueResponse.IsOk) {
           var issues = issueResponse.Result;

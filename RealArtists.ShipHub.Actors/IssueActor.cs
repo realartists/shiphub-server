@@ -287,7 +287,7 @@
           changes.UnionWith(await context.BulkUpdateTimelineEvents(forUserId, _repoId, events, accountsParam.Select(x => x.Id)));
 
           // Issue Reactions
-          if (_reactionMetadata == null || _reactionMetadata.Expires < DateTimeOffset.UtcNow) {
+          if (_reactionMetadata.IsExpired()) {
             var issueReactionsResponse = await ghc.IssueReactions(_repoFullName, _issueNumber, _reactionMetadata);
             if (issueReactionsResponse.IsOk) {
               var reactions = issueReactionsResponse.Result;
@@ -311,7 +311,7 @@
 
           // Comments
           if (timeline.Any(x => x.Event == "commented")) {
-            if (_commentMetadata == null || _commentMetadata.Expires < DateTimeOffset.UtcNow) {
+            if (_commentMetadata.IsExpired()) {
               var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata);
               if (commentResponse.IsOk) {
                 var comments = commentResponse.Result;
@@ -347,7 +347,7 @@
         // Now, find the ones that need updating.
         var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
         foreach (var reactionMetadata in commentReactionMetadata) {
-          if (reactionMetadata.Value == null || reactionMetadata.Value.Expires < DateTimeOffset.UtcNow) {
+          if (reactionMetadata.Value.IsExpired()) {
             commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value));
           }
         }

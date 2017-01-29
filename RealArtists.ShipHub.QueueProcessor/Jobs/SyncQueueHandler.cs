@@ -46,7 +46,7 @@
           var metadata = repo.CommentMetadata;
 
           logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
+          if (metadata.IsExpired()) {
             logger.WriteLine("Polling: Repository comments.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
@@ -97,7 +97,7 @@
           var metadata = repo.EventMetadata;
 
           logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
-          if (metadata == null || metadata.Expires < DateTimeOffset.UtcNow) {
+          if (metadata.IsExpired()) {
             logger.WriteLine("Polling: Repository events.");
             var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
