@@ -166,7 +166,9 @@
           if (rateLimit?.IsExceeded == true) {
             // HACK: to quiet modal dialogs in some clients
             var limitUntil = rateLimit.Reset;
-            var thirtyMinutes = DateTimeOffset.UtcNow.AddMinutes(30);
+            var now = DateTimeOffset.UtcNow;
+            var thirtyMinutes = new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, 0, 0, now.Offset);
+            thirtyMinutes = thirtyMinutes.AddMinutes(((now.Minute / 30) + 1) * 30);
             if (limitUntil < thirtyMinutes) {
               limitUntil = thirtyMinutes;
             }
