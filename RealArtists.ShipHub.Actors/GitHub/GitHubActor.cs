@@ -35,9 +35,9 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 4;
+    public const int MaxConcurrentRequests = 2;
     public const int PageSize = 100;
-    public const bool InterpolationEnabled = true;
+    public const bool InterpolationEnabled = false;
 
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
