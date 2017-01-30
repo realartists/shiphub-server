@@ -78,29 +78,33 @@
             } else if (hook.RepositoryId != null) {
               // Find some account with admin privileges for this repo that we can
               // use to ping.
-              var accountRepository = await context.AccountRepositories
-                .Include(x => x.Account)
-                .Include(x => x.Repository)
-                .Where(x => x.RepositoryId == hook.RepositoryId && x.Admin && x.Account.Token != null)
-                .OrderBy(x => x.AccountId)
+              var createHookInfo = await context.AccountRepositories
+                .AsNoTracking()
+                .Where(x => x.Admin)
+                .Where(x => x.RepositoryId == hook.RepositoryId)
+                .Where(x => x.Account.Token != null)
+                .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+                .Select(x => new { UserId = x.AccountId, RepoFullName = x.Repository.FullName })
                 .FirstOrDefaultAsync();
 
-              if (accountRepository != null) {
-                var client = CreateGitHubClient(accountRepository.Account.Id);
-                pingTasks.Add(client.PingRepositoryWebhook(accountRepository.Repository.FullName, (long)hook.GitHubId));
+              if (createHookInfo != null) {
+                var client = CreateGitHubClient(createHookInfo.UserId);
+                pingTasks.Add(client.PingRepositoryWebhook(createHookInfo.RepoFullName, (long)hook.GitHubId));
                 pinged.Add(hook.Id);
               }
             } else if (hook.OrganizationId != null) {
-              var accountOrganization = await context.OrganizationAccounts
-                .Include(x => x.User)
-                .Include(x => x.Organization)
-                .Where(x => x.OrganizationId == hook.OrganizationId && x.Admin && x.User.Token != null)
-                .OrderBy(x => x.UserId)
+              var createHookInfo = await context.OrganizationAccounts
+                .AsNoTracking()
+                .Where(x => x.Admin)
+                .Where(x => x.OrganizationId == hook.OrganizationId)
+                .Where(x => x.User.Token != null)
+                .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
+                .Select(x => new { UserId = x.UserId, OrgLogin = x.Organization.Login })
                 .FirstOrDefaultAsync();
 
-              if (accountOrganization != null) {
-                var client = CreateGitHubClient(accountOrganization.User.Id);
-                pingTasks.Add(client.PingOrganizationWebhook(accountOrganization.Organization.Login, (long)hook.GitHubId));
+              if (createHookInfo != null) {
+                var client = CreateGitHubClient(createHookInfo.UserId);
+                pingTasks.Add(client.PingOrganizationWebhook(createHookInfo.OrgLogin, (long)hook.GitHubId));
                 pinged.Add(hook.Id);
               }
             } else {
