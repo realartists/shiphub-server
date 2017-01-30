@@ -164,8 +164,15 @@
           }
 
           if (rateLimit?.IsExceeded == true) {
+            // HACK: to quiet modal dialogs in some clients
+            var limitUntil = rateLimit.Reset;
+            var thirtyMinutes = DateTimeOffset.UtcNow.AddMinutes(30);
+            if (limitUntil < thirtyMinutes) {
+              limitUntil = thirtyMinutes;
+            }
+
             tasks.Add(_connection.SendJsonAsync(new RateLimitResponse() {
-              Until = rateLimit.Reset
+              Until = limitUntil,
             }));
           }
 
