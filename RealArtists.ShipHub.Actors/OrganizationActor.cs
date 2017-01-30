@@ -36,7 +36,7 @@
     private GitHubMetadata _projectMetadata;
 
     // Data
-    private HashSet<long> _members = new HashSet<long>();
+    //private HashSet<long> _members = new HashSet<long>();
     private HashSet<long> _admins = new HashSet<long>();
 
     // Sync logic
@@ -67,10 +67,10 @@
 
         _login = org.Login;
 
-        _members = org.OrganizationAccounts
-          .Where(x => !x.Admin)
-          .Select(x => x.UserId)
-          .ToHashSet();
+        //_members = org.OrganizationAccounts
+        //  .Where(x => !x.Admin)
+        //  .Select(x => x.UserId)
+        //  .ToHashSet();
 
         _admins = org.OrganizationAccounts
           .Where(x => x.Admin)
@@ -203,15 +203,15 @@
           var updated = false;
           var newUsers = new List<gh.Account>();
 
-          var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
-          if (members.IsOk) {
-            updated = true;
-            _members = members.Result.Select(x => x.Id).ToHashSet();
-            newUsers.AddRange(members.Result);
-            this.Info($"Changed. Members: [{string.Join(",", _members.OrderBy(x => x))}]");
-          } else if (!members.Succeeded) {
-            throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
-          }
+          //var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
+          //if (members.IsOk) {
+          //  updated = true;
+          //  _members = members.Result.Select(x => x.Id).ToHashSet();
+          //  newUsers.AddRange(members.Result);
+          //  this.Info($"Changed. Members: [{string.Join(",", _members.OrderBy(x => x))}]");
+          //} else if (!members.Succeeded) {
+          //  throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
+          //}
 
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
           if (admins.IsOk) {
@@ -226,13 +226,16 @@
           if (updated) {
             changes.UnionWith(
               await context.BulkUpdateAccounts(
-                members.Date,
+                //members.Date,
+                admins.Date,
                 _mapper.Map<IEnumerable<AccountTableType>>(newUsers)));
 
             var orgMemberChanges = await context.SetOrganizationUsers(
                 _orgId,
-                _members.Select(x => Tuple.Create(x, false))
-                  .Concat(_admins.Select(x => Tuple.Create(x, true))));
+                //_members.Select(x => Tuple.Create(x, false)).Concat(
+                  _admins.Select(x => Tuple.Create(x, true))
+                //)
+            );
 
             if (!orgMemberChanges.IsEmpty) {
               // Check for subscription changes
@@ -248,7 +251,7 @@
             changes.UnionWith(orgMemberChanges);
           }
 
-          _memberMetadata = GitHubMetadata.FromResponse(members);
+          //_memberMetadata = GitHubMetadata.FromResponse(members);
           _adminMetadata = GitHubMetadata.FromResponse(admins);
         }
 

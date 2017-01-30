@@ -81,7 +81,8 @@ BEGIN
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
     FROM @Changes as c
       INNER LOOP JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
-    WHERE c.[Action] = 'DELETE'
+    -- HACK: ALWAYS NOTIFY
+    -- WHERE c.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     COMMIT TRANSACTION

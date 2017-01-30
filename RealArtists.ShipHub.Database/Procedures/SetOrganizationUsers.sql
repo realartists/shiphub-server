@@ -24,11 +24,24 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    DELETE FROM OrganizationAccounts
-    OUTPUT DELETED.UserId, 'DELETE' INTO @Changes
+    -- HACK! ONLY SYNC ADMINS FOR NOW
+
+    --DELETE FROM OrganizationAccounts
+    --OUTPUT DELETED.UserId, 'DELETE' INTO @Changes
+    --FROM OrganizationAccounts as oa
+    --  LEFT OUTER JOIN @UserIds as uids ON (uids.Item1 = oa.UserId)
+    --WHERE oa.OrganizationId = @OrganizationId
+    --  AND uids.Item1 IS NULL
+    --OPTION (FORCE ORDER)
+
+    -- HACK: REMOVE EXTRA ADMINS
+    UPDATE OrganizationAccounts
+      SET [Admin] = 0
+    OUTPUT INSERTED.UserId, 'INSERT' INTO @Changes
     FROM OrganizationAccounts as oa
-      LEFT OUTER JOIN @UserIds as uids ON (uids.Item1 = oa.UserId)
+      LEFT OUTER JOIN @UserIds as uids ON (uids.Item1 = oa.UserId and uids.Item2 = 1)
     WHERE oa.OrganizationId = @OrganizationId
+      AND oa.[Admin] = 1
       AND uids.Item1 IS NULL
     OPTION (FORCE ORDER)
 

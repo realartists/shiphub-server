@@ -132,8 +132,37 @@
       }
     }
 
+    //[Test]
+    //public async Task SetOrganizationUsersCanDeleteAssociations() {
+    //  using (var context = new ShipHubContext()) {
+    //    var user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
+    //    var user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
+    //    var org = TestUtil.MakeTestOrg(context);
+    //    await context.SaveChangesAsync();
+
+    //    // Set a couple of associations...
+    //    await context.SetOrganizationUsers(org.Id, new[] {
+    //      Tuple.Create(user1.Id, false),
+    //      Tuple.Create(user2.Id, true),
+    //    });
+
+    //    // Them set again and omit user1 to remove it.
+    //    await context.SetOrganizationUsers(org.Id, new[] {
+    //      Tuple.Create(user2.Id, true),
+    //    });
+
+    //    var assocs = context.OrganizationAccounts
+    //      .Where(x => x.OrganizationId == org.Id)
+    //      .OrderBy(x => x.UserId)
+    //      .ToArray();
+    //    Assert.AreEqual(1, assocs.Count());
+    //    Assert.AreEqual(user2.Id, assocs[0].UserId);
+    //    Assert.AreEqual(true, assocs[0].Admin);
+    //  }
+    //}
+
     [Test]
-    public async Task SetOrganizationUsersCanDeleteAssociations() {
+    public async Task SetOrganizationUsersCanUpdateAdmins() {
       using (var context = new ShipHubContext()) {
         var user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
         var user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
@@ -155,9 +184,10 @@
           .Where(x => x.OrganizationId == org.Id)
           .OrderBy(x => x.UserId)
           .ToArray();
-        Assert.AreEqual(1, assocs.Count());
-        Assert.AreEqual(user2.Id, assocs[0].UserId);
-        Assert.AreEqual(true, assocs[0].Admin);
+        var updated = assocs.ToDictionary(x => x.UserId, x => x.Admin);
+        Assert.AreEqual(2, updated.Count);
+        Assert.IsFalse(updated[user1.Id]);
+        Assert.IsTrue(updated[user2.Id]);
       }
     }
 
