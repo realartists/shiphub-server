@@ -37,7 +37,9 @@
     public static async Task<ShipHubPrincipal> ValidateToken(string token) {
       using (var s = new ShipHubContext()) {
         var user = await s.Users
-          .SingleOrDefaultAsync(x => x.Token == token)
+          .Where(x => x.Token == token)
+          .Select(x => new { Id = x.Id, Login = x.Login, Token = x.Token })
+          .SingleOrDefaultAsync()
           .ConfigureAwait(false);
 
         if (user == null) {
