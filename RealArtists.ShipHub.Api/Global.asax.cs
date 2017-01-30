@@ -5,6 +5,9 @@
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
+      // Set the maximum number of concurrent connections
+      HttpUtilities.SetServicePointDefaultConnectionLimit();
+
       var shipHubConfig = new ShipHubCloudConfiguration();
       ApplicationInsightsConfig.Register(shipHubConfig.ApplicationInsightsKey);
       GlobalConfiguration.Configure((config) => WebApiConfig.Register(config, shipHubConfig.RaygunApiKey));

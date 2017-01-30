@@ -63,10 +63,14 @@
     public Guid CorrelationId { get; } = Guid.NewGuid();
 
     private static IGitHubHandler SharedHandler;
-    private static void EnsureHandlerPipelineCreated(IFactory<dm.ShipHubContext> shipContextFactory) {
+    private static void EnsureHandlerPipelineCreated(Uri apiRoot, IFactory<dm.ShipHubContext> shipContextFactory) {
       if (SharedHandler != null) {
         return;
       }
+      
+      // Set the maximum number of concurrent connections
+      HttpUtilities.SetServicePointConnectionLimit(apiRoot);
+
       SharedHandler = new SneakyCacheFilter(new GitHubHandler(), shipContextFactory);
     }
 
@@ -76,7 +80,7 @@
       _configuration = configuration;
 
       ApiRoot = _configuration.GitHubApiRoot;
-      EnsureHandlerPipelineCreated(_shipContextFactory);
+      EnsureHandlerPipelineCreated(ApiRoot, _shipContextFactory);
     }
 
     public override async Task OnActivateAsync() {

@@ -50,6 +50,7 @@
     <Compile Include="GitHub\GitHubRateException.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />
+    <Compile Include="HttpUtilities.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="DataModel\ShipHubContextConfiguration.cs" />
     <Compile Include="DataModel\Subscription.cs" />
