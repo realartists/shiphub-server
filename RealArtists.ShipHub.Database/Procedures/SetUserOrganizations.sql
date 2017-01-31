@@ -7,17 +7,9 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-  -- This may appear redundant when compared to SetOrganizationUsers
-  -- That's not the case. SetOrganizationUsers is only called by the
-  -- OrganizationActor, which only works when there's at least one
-  -- organization member with a valid token.
-
   -- This stored proc ensures that the first member of an organization
   -- is added, and that the last member is removed, despite having no
   -- organization members with valid tokens at either time.
-
-  -- Adding the initial member *SHOULD NOT* trigger a sync, since
-  -- SetOrganizationUsers will take care of it.
   
   -- Any removed member *MUST* trigger a sync, since there may
   -- no longer be any valid tokens for the OrganizationActor to use.
@@ -81,8 +73,6 @@ BEGIN
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
     FROM @Changes as c
       INNER LOOP JOIN SyncLog ON (OwnerType = 'org' AND OwnerId = c.OrganizationId AND ItemType = 'account' AND ItemId = c.OrganizationId)
-    -- HACK: ALWAYS NOTIFY
-    -- WHERE c.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     COMMIT TRANSACTION

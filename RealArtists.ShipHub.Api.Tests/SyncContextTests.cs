@@ -30,7 +30,7 @@
     }
 
     [Test]
-    public async Task RepoShipNeedsWebhookHelpIsFalseWhenHookIsPresent() {    
+    public async Task RepoShipNeedsWebhookHelpIsFalseWhenHookIsPresent() {
       // Don't need help - already have a hook.
       Assert.AreEqual(false, await RepoShipNeedsWebhookHelpHelper(hasHook: true, isAdmin: false));
     }
@@ -61,7 +61,7 @@
         await context.SaveChangesAsync();
 
         await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
-        await context.SetOrganizationUsers(orgAccount.Id, new[] { Tuple.Create(user.Id, false) });
+        await context.SetUserOrganizations(user.Id, new[] { orgAccount.Id });
 
         await context.SetAccountLinkedRepositories(
           userAccount.Id,
@@ -138,7 +138,7 @@
           Login = "pureimaginary",
           Type = "org",
         };
-        
+
         await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount, orgAccount });
         var user = context.Accounts.Single(x => x.Id == userAccount.Id);
         user.Token = Guid.NewGuid().ToString();
@@ -153,7 +153,9 @@
         }
         await context.SaveChangesAsync();
         await context.SetUserOrganizations(user.Id, new[] { orgAccount.Id });
-        await context.SetOrganizationUsers(orgAccount.Id, new[] { Tuple.Create(user.Id, isAdmin) });
+        if (isAdmin) {
+          await context.SetOrganizationAdmins(orgAccount.Id, new[] { user.Id });
+        }
 
         var logs = new List<SyncLogEntry>();
 

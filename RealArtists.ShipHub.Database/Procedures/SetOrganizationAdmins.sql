@@ -1,6 +1,6 @@
-﻿CREATE PROCEDURE [dbo].[SetOrganizationUsers]
+﻿CREATE PROCEDURE [dbo].[SetOrganizationAdmins]
   @OrganizationId BIGINT,
-  @UserIds MappingTableType READONLY
+  @AdminIds ItemListTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -24,40 +24,30 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    -- HACK! ONLY SYNC ADMINS FOR NOW
-
-    --DELETE FROM OrganizationAccounts
-    --OUTPUT DELETED.UserId, 'DELETE' INTO @Changes
-    --FROM OrganizationAccounts as oa
-    --  LEFT OUTER JOIN @UserIds as uids ON (uids.Item1 = oa.UserId)
-    --WHERE oa.OrganizationId = @OrganizationId
-    --  AND uids.Item1 IS NULL
-    --OPTION (FORCE ORDER)
-
-    -- HACK: REMOVE EXTRA ADMINS
+    -- Unmark any extra admins
     UPDATE OrganizationAccounts
       SET [Admin] = 0
     OUTPUT INSERTED.UserId, 'INSERT' INTO @Changes
     FROM OrganizationAccounts as oa
-      LEFT OUTER JOIN @UserIds as uids ON (uids.Item1 = oa.UserId and uids.Item2 = 1)
+      LEFT OUTER JOIN @AdminIds as uids ON (uids.Item = oa.UserId)
     WHERE oa.OrganizationId = @OrganizationId
       AND oa.[Admin] = 1
-      AND uids.Item1 IS NULL
+      AND uids.Item IS NULL
     OPTION (FORCE ORDER)
 
     MERGE INTO OrganizationAccounts WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Item1 as UserId, Item2 as [Admin] FROM @UserIds
+      SELECT Item as UserId FROM @AdminIds
     ) as [Source]
     ON ([Target].OrganizationId = @OrganizationId AND [Target].UserId = [Source].UserId)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (UserId, OrganizationId, [Admin])
-      VALUES (UserId, @OrganizationId, [Admin])
+      VALUES (UserId, @OrganizationId, 1)
    -- Update
-    WHEN MATCHED AND [Target].[Admin] != [Source].[Admin] THEN
+    WHEN MATCHED AND [Target].[Admin] != 1 THEN
       UPDATE SET
-        [Admin] = [Source].[Admin]
+        [Admin] = 1
     OUTPUT INSERTED.UserId, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

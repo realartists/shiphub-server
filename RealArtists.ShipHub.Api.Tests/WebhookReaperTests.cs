@@ -112,16 +112,17 @@
         Tuple.Create(env.repo1.Id, true),
         Tuple.Create(env.repo2.Id, true),
       });
-      await context.SetOrganizationUsers(env.org1.Id, new[] {
-        Tuple.Create(env.user1.Id, true),
-        Tuple.Create(env.user2.Id, true),
-      });
-      await context.SetOrganizationUsers(env.org2.Id, new[] {
-        Tuple.Create(env.user1.Id, true),
-        Tuple.Create(env.user2.Id, true),
-      });
       await context.SetUserOrganizations(env.user1.Id, new[] { env.org1.Id, env.org2.Id });
       await context.SetUserOrganizations(env.user2.Id, new[] { env.org1.Id, env.org2.Id });
+      await context.SetOrganizationAdmins(env.org1.Id, new[] {
+        env.user1.Id,
+        env.user2.Id,
+      });
+      await context.SetOrganizationAdmins(env.org2.Id, new[] {
+        env.user1.Id,
+        env.user2.Id,
+      });
+      
       await context.SaveChangesAsync();
 
       return env;
@@ -195,14 +196,8 @@
 
         // No admins!  We'd never be able to make the ping request
         // to GitHub.
-        await context.SetOrganizationUsers(env.org1.Id, new[] {
-          Tuple.Create(env.user1.Id, false),
-          Tuple.Create(env.user2.Id, false),
-        });
-        await context.SetOrganizationUsers(env.org2.Id, new[] {
-          Tuple.Create(env.user1.Id, false),
-          Tuple.Create(env.user2.Id, false),
-        });
+        await context.SetOrganizationAdmins(env.org1.Id, Array.Empty<long>());
+        await context.SetOrganizationAdmins(env.org2.Id, Array.Empty<long>());
 
         var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
         var mock = MockReaper(pings);
@@ -232,13 +227,13 @@
         await context.SaveChangesAsync();
 
         // Both users are admins.
-        await context.SetOrganizationUsers(env.org1.Id, new[] {
-          Tuple.Create(env.user1.Id, true),
-          Tuple.Create(env.user2.Id, true),
+        await context.SetOrganizationAdmins(env.org1.Id, new[] {
+          env.user1.Id,
+          env.user2.Id,
         });
-        await context.SetOrganizationUsers(env.org2.Id, new[] {
-          Tuple.Create(env.user1.Id, true),
-          Tuple.Create(env.user2.Id, true),
+        await context.SetOrganizationAdmins(env.org2.Id, new[] {
+          env.user1.Id,
+          env.user2.Id,
         });
 
         var pings = new Dictionary<long, List<Tuple<string, string, long>>>();

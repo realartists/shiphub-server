@@ -27,13 +27,7 @@
       env.user1.Token = Guid.NewGuid().ToString();
       env.user2 = TestUtil.MakeTestUser(context, 3002, "aroon");
       env.org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
-
-      await context.SetOrganizationUsers(
-        env.org.Id,
-        new[] {
-            Tuple.Create(env.user1.Id, false),
-        });
-
+      await context.SetUserOrganizations(env.user1.Id, new[] { env.org.Id });
       await context.SaveChangesAsync();
 
       return env;

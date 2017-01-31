@@ -398,10 +398,6 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        context.OrganizationAccounts.Add(new OrganizationAccount() {
-          UserId = user.Id,
-          OrganizationId = org.Id,
-        });
         await context.SaveChangesAsync();
 
         var mock = new Mock<IGitHubActor>();
