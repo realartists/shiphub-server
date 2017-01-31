@@ -85,6 +85,10 @@
         } catch (GitHubRateException) {
           Remove(actor);
           actor = null;
+        } catch (InvalidOperationException) {
+          // Grain activation failed
+          Remove(actor);
+          actor = null;
         }
       }
     }
