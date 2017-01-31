@@ -29,39 +29,19 @@
   [RoutePrefix("analytics")]
   public class AnalyticsController : ApiController {
     private IShipHubConfiguration _configuration;
+    private static HttpClient _Client { get; } = CreateHttpClient();
 
     public AnalyticsController(IShipHubConfiguration config) {
       _configuration = config;
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static HttpClient CreateHttpClient() {
-      var handler = new HttpClientHandler() {
-        AllowAutoRedirect = false,
-        AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-        UseCookies = false,
-        UseDefaultCredentials = false,
-        UseProxy = false,
-      };
+    private static HttpClient CreateHttpClient() {
+      HttpUtilities.SetServicePointConnectionLimit(MixpanelApi);
 
-      return CreateHttpClient(handler, true);
-    }
-
-    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static HttpClient CreateHttpClient(HttpMessageHandler handler, bool disposeHandler) {
-      var httpClient = new HttpClient(handler, disposeHandler);
+      var httpClient = new HttpClient(HttpUtilities.CreateDefaultHandler(), true);
 
       var headers = httpClient.DefaultRequestHeaders;
-      headers.AcceptEncoding.Clear();
-      headers.AcceptEncoding.ParseAdd("gzip");
-      headers.AcceptEncoding.ParseAdd("deflate");
-
-      headers.Accept.Clear();
-      headers.Accept.ParseAdd("application/json");
-
-      headers.AcceptCharset.Clear();
-      headers.AcceptCharset.ParseAdd(Encoding.UTF8.WebName);
-
       headers.UserAgent.Clear();
       headers.UserAgent.Add(new ProductInfoHeaderValue("RealArtists", "server"));
 
@@ -87,8 +67,7 @@
       var uri = new Uri("https://api.mixpanel.com/track/?data=" + jsonBase64);
       var request = new HttpRequestMessage(HttpMethod.Post, uri);
 
-      var client = CreateHttpClient();
-      return await client.SendAsync(request);
+      return await _Client.SendAsync(request);
     }
   }
 }
