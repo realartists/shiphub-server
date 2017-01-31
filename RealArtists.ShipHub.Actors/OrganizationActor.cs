@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Actors {
   using System;
   using System.Collections.Generic;
+  using System.Collections.Immutable;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -21,6 +22,8 @@
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
 
+    public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create("repository");
+
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
     private IFactory<ShipHubContext> _contextFactory;
@@ -28,6 +31,7 @@
 
     private long _orgId;
     private string _login;
+    private string _apiHostName;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -40,34 +44,34 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
-    private Random _random = new Random();
 
-    public OrganizationActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
+    public OrganizationActor(
+      IMapper mapper,
+      IGrainFactory grainFactory,
+      IFactory<ShipHubContext> contextFactory,
+      IShipHubQueueClient queueClient,
+      IShipHubConfiguration configuration) {
       _mapper = mapper;
       _grainFactory = grainFactory;
       _contextFactory = contextFactory;
       _queueClient = queueClient;
+      _apiHostName = configuration.ApiHostName;
     }
 
     public override async Task OnActivateAsync() {
       using (var context = _contextFactory.CreateInstance()) {
-        _orgId = this.GetPrimaryKeyLong();
+        var orgId = this.GetPrimaryKeyLong();
 
         // Ensure this organization actually exists
         var org = await context.Organizations
           .Include(x => x.OrganizationAccounts)
-          .SingleOrDefaultAsync(x => x.Id == _orgId);
+          .SingleOrDefaultAsync(x => x.Id == orgId);
 
         if (org == null) {
-          throw new InvalidOperationException($"Organization {_orgId} does not exist and cannot be activated.");
+          throw new InvalidOperationException($"Organization {orgId} does not exist and cannot be activated.");
         }
 
-        _login = org.Login;
-
-        //_members = org.OrganizationAccounts
-        //  .Where(x => !x.Admin)
-        //  .Select(x => x.UserId)
-        //  .ToHashSet();
+        Initialize(org.Id, org.Login);
 
         _admins = org.OrganizationAccounts
           .Where(x => x.Admin)
@@ -81,6 +85,11 @@
       }
 
       await base.OnActivateAsync();
+    }
+
+    public void Initialize(long orgId, string login) {
+      _orgId = orgId;
+      _login = login;
     }
 
     public override async Task OnDeactivateAsync() {
@@ -104,22 +113,20 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IGitHubPoolable> GetOrganizationActorPool() {
+    private async Task<IEnumerable<Tuple<long, bool>>> GetUsersWithAccess() {
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
-        var syncUserIds = await context.OrganizationAccounts
+        var users = await context.OrganizationAccounts
           .AsNoTracking()
           .Where(x => x.OrganizationId == _orgId)
           .Where(x => x.User.Token != null)
           .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
-          .Select(x => x.UserId)
+          .Select(x => new { UserId = x.UserId, Admin = x.Admin })
           .ToArrayAsync();
 
-        if (syncUserIds.Length == 0) {
-          return null;
-        }
-
-        return new GitHubActorPool(_grainFactory, syncUserIds);
+        return users
+          .Select(x => Tuple.Create(x.UserId, x.Admin))
+          .ToArray();
       }
     }
 
@@ -145,16 +152,24 @@
         return;
       }
 
-      var github = await GetOrganizationActorPool();
+      var users = await GetUsersWithAccess();
 
-      if (github == null) {
+      if (!users.Any()) {
         DeactivateOnIdle();
         return;
       }
 
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
+
+      IGitHubOrganizationAdmin admin = null;
+      var firstAdmin = users.FirstOrDefault(x => x.Item2);
+      if (firstAdmin != null) {
+        admin = _grainFactory.GetGrain<IGitHubActor>(firstAdmin.Item1);
+      }
+
       var changes = new ChangeSummary();
       try {
-        await SyncTask(github, changes);
+        await SyncTask(github, admin, changes);
       } catch (GitHubPoolEmptyException) {
         // Nothing to do.
         // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
@@ -169,7 +184,7 @@
       await Save();
     }
 
-    private async Task SyncTask(IGitHubPoolable github, ChangeSummary changes) {
+    private async Task SyncTask(IGitHubPoolable github, IGitHubOrganizationAdmin admin, ChangeSummary changes) {
       var tasks = new List<Task>();
 
       using (var context = _contextFactory.CreateInstance()) {
@@ -206,20 +221,9 @@
         // Projects
         changes.UnionWith(await UpdateProjects(context, github));
 
-        // This is OK from a DB Connection prespective since it's right at the end.
-        // If any active org members are admins, update webhooks
-        // TODO: Does this really need to happen this often?
-        var activeAdmins = await context.OrganizationAccounts
-          .AsNoTracking()
-          .Where(x => x.OrganizationId == _orgId
-            && x.Admin == true
-            && x.User.Token != null)
-          .Select(x => x.UserId)
-          .ToArrayAsync();
-
-        if (activeAdmins.Any()) {
-          var randmin = activeAdmins[_random.Next(activeAdmins.Length)];
-          tasks.Add(_queueClient.AddOrUpdateOrgWebhooks(_orgId, randmin));
+        // Webhooks
+        if (admin != null) {
+          changes.UnionWith(await AddOrUpdateOrganizationWebhooks(context, admin));
         }
       }
 
@@ -245,6 +249,97 @@
         }
 
         _projectMetadata = GitHubMetadata.FromResponse(projects);
+      }
+
+      return changes;
+    }
+
+    public async Task<IChangeSummary> AddOrUpdateOrganizationWebhooks(ShipHubContext context, IGitHubOrganizationAdmin admin) {
+      var changes = ChangeSummary.Empty;
+
+      var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.OrganizationId == _orgId);
+      context.Database.Connection.Close();
+
+      if (hook != null && hook.GitHubId == null) {
+        // We attempted to add a webhook for this earlier, but something failed
+        // and we never got a chance to learn its GitHubId.
+        await context.BulkUpdateHooks(deleted: new[] { hook.Id });
+        hook = null;
+      }
+
+      if (hook == null) {
+        var hookList = await admin.OrganizationWebhooks(_login, GitHubCacheDetails.Empty);
+        if (!hookList.IsOk) {
+          // webhooks are best effort
+          // this keeps us from spewing errors and retrying a ton when an org is unpaid
+          Log.Info($"Unable to list hooks for {_login}");
+          return changes;
+        }
+
+        var existingHooks = hookList.Result
+          .Where(x => x.Name.Equals("web"))
+          .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/", StringComparison.OrdinalIgnoreCase));
+
+        // Delete any existing hooks that already point back to us - don't
+        // want to risk adding multiple Ship hooks.
+        foreach (var existingHook in existingHooks) {
+          var deleteResponse = await admin.DeleteOrganizationWebhook(_login, existingHook.Id);
+          if (!deleteResponse.Succeeded || !deleteResponse.Result) {
+            Log.Info($"Failed to delete existing hook ({existingHook.Id}) for org '{_login}'");
+          }
+        }
+
+        //// GitHub will immediately send a ping when the webhook is created.
+        // To avoid any chance for a race, add the Hook to the DB first, then
+        // create on GitHub.
+        var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), organizationId: _orgId);
+
+        bool deleteHook = false;
+        try {
+          var addHookResponse = await admin.AddOrganizationWebhook(
+            _login,
+            new gh.Webhook() {
+              Name = "web",
+              Active = true,
+              Events = RequiredEvents,
+              Config = new gh.WebhookConfiguration() {
+                Url = $"https://{_apiHostName}/webhook/org/{_orgId}",
+                ContentType = "json",
+                Secret = newHook.Secret.ToString(),
+              },
+            });
+
+          if (addHookResponse.Succeeded) {
+            newHook.GitHubId = addHookResponse.Result.Id;
+            changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
+          } else {
+            Log.Error($"Failed to add hook for org '{_login}' ({_orgId}): {addHookResponse.Status} {addHookResponse.Error?.ToException()}");
+            deleteHook = true;
+          }
+        } catch (Exception e) {
+          e.Report($"Failed to add hook for org '{_login}' ({_orgId})");
+          deleteHook = true;
+          throw;
+        } finally {
+          if (deleteHook) {
+            await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
+          }
+        }
+      } else if (!hook.Events.Split(',').ToHashSet().SetEquals(RequiredEvents)) {
+        var editResponse = await admin.EditOrganizationWebhookEvents(_login, (long)hook.GitHubId, RequiredEvents);
+
+        if (!editResponse.Succeeded) {
+          Log.Info($"Failed to edit hook for org '{_login}' ({_orgId}): {editResponse.Status} {editResponse.Error?.ToException()}");
+        } else {
+          await context.BulkUpdateHooks(hooks: new[] {
+              new HookTableType(){
+                Id = hook.Id,
+                GitHubId = editResponse.Result.Id,
+                Secret = hook.Secret,
+                Events = string.Join(",", editResponse.Result.Events),
+              }
+            });
+        }
       }
 
       return changes;

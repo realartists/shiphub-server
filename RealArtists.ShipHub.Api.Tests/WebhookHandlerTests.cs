@@ -24,12 +24,16 @@
   public class WebhookHandlerTests {
     private static IShipHubConfiguration Configuration { get; } = new ShipHubCloudConfiguration();
 
-    public static WebhookQueueHandler CreateHandler() {
-      return new WebhookQueueHandler(Configuration, null, new DetailedExceptionLogger());
+    public static RepositoryActor CreateRepoActor(long repoId, string fullName) {
+      var repoActor = new RepositoryActor(null, null, null, null, Configuration);
+      repoActor.Initialize(repoId, fullName);
+      return repoActor;
     }
 
-    public static RepositoryActor CreateRepoActor() {
-      return new RepositoryActor(null, null, null, null, Configuration);
+    public static OrganizationActor CreateOrgActor(long orgId, string login) {
+      var orgActor = new OrganizationActor(null, null, null, null, Configuration);
+      orgActor.Initialize(orgId, login);
+      return orgActor;
     }
 
     [Test]
@@ -91,8 +95,7 @@
             return Task.FromResult(result);
           });
 
-        var repoActor = CreateRepoActor();
-        repoActor.Initialize(repo.Id, repo.FullName);
+        var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
         mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents));
@@ -172,8 +175,7 @@
             Status = HttpStatusCode.OK,
           });
 
-        var repoActor = CreateRepoActor();
-        repoActor.Initialize(repo.Id, repo.FullName);
+        var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
@@ -218,8 +220,7 @@
             installWebhook = webhook;
           });
 
-        var repoActor = CreateRepoActor();
-        repoActor.Initialize(repo.Id, repo.FullName);
+        var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
@@ -267,8 +268,7 @@
 
         bool exceptionThrown = false;
         try {
-          var repoActor = CreateRepoActor();
-          repoActor.Initialize(repo.Id, repo.FullName);
+          var repoActor = CreateRepoActor(repo.Id, repo.FullName);
           var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
         } catch {
           exceptionThrown = true;
@@ -304,9 +304,9 @@
            .ThrowsAsync(new Exception("some exception!"));
 
         bool exceptionThrown = false;
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
         try {
-          await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+          var orgActor = CreateOrgActor(org.Id, org.Login);
+          await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
         } catch {
           exceptionThrown = true;
         }
@@ -351,22 +351,11 @@
             installWebhook = webhook;
           });
 
-        var changeMessages = new List<ChangeMessage>();
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
-          .Returns((ChangeMessage msg, CancellationToken token) => {
-            changeMessages.Add(msg);
-            return Task.CompletedTask;
-          });
-
-        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        var changes = await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
-        var expectedEvents = new string[] {
-          "repository",
-        };
-
-        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(hook.Events.Split(',')));
+        Assert.AreEqual(OrganizationActor.RequiredEvents, new HashSet<string>(hook.Events.Split(',')));
         Assert.AreEqual(org.Id, hook.OrganizationId);
         Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.RepositoryId);
@@ -375,7 +364,7 @@
 
         Assert.AreEqual("web", installWebhook.Name);
         Assert.AreEqual(true, installWebhook.Active);
-        Assert.AreEqual(new HashSet<string>(expectedEvents), new HashSet<string>(installWebhook.Events));
+        Assert.AreEqual(OrganizationActor.RequiredEvents, new HashSet<string>(installWebhook.Events));
         Assert.AreEqual("json", installWebhook.Config.ContentType);
         Assert.AreEqual(false, installWebhook.Config.InsecureSsl);
         Assert.AreEqual(hook.Secret.ToString(), installWebhook.Config.Secret);
@@ -383,7 +372,7 @@
         orgLogItem = context.SyncLogs.Single(x => x.OwnerType == "org" && x.OwnerId == org.Id && x.ItemType == "account" && x.ItemId == org.Id);
         Assert.Greater(orgLogItem.RowVersion, orgLogItemRowVersion,
           "row version should get bumped so the org gets synced");
-        Assert.AreEqual(new long[] { org.Id }, changeMessages[0].Organizations.ToArray());
+        Assert.AreEqual(new long[] { org.Id }, changes.Organizations.ToArray());
       }
     }
 
@@ -405,6 +394,7 @@
         mock
           .Setup(x => x.OrganizationWebhooks(org.Login, GitHubCacheDetails.Empty))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Status = HttpStatusCode.OK,
             Result = new List<Webhook>() {
                   new Webhook() {
                     Id = 8001,
@@ -456,8 +446,8 @@
             Status = HttpStatusCode.OK,
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
         var hook = context.Hooks.Single(x => x.OrganizationId == org.Id);
 
         Assert.AreEqual(new long[] { 8001, 8002 }, deletedHookIds.ToArray());
@@ -467,10 +457,6 @@
 
     [Test]
     public async Task WillEditHookWhenEventListIsNotCompleteForOrg() {
-      var expectedEvents = new string[] {
-          "repository",
-        };
-
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
@@ -513,8 +499,8 @@
           });
 
         mock
-          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<string[]>()))
-          .Returns((string repoName, long hookId, string[] eventList) => {
+          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -533,12 +519,12 @@
             return Task.FromResult(result);
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, expectedEvents));
+        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents));
         context.Entry(hook).Reload();
-        Assert.AreEqual(expectedEvents, hook.Events.Split(','));
+        Assert.AreEqual(OrganizationActor.RequiredEvents.ToArray(), hook.Events.Split(','));
       }
     }
 
@@ -578,8 +564,8 @@
             Status = HttpStatusCode.OK,
           });
 
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        await CreateHandler().AddOrUpdateOrgWebhooksWithClient(new TargetMessage(org.Id, user.Id), mock.Object, collectorMock.Object);
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
 
         var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
         Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
@@ -620,8 +606,7 @@
             Status = HttpStatusCode.OK,
           });
 
-        var repoActor = CreateRepoActor();
-        repoActor.Initialize(repo.Id, repo.FullName);
+        var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
         var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
