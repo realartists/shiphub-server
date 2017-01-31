@@ -22,6 +22,8 @@
     string DataConnectionString { get; }
     string DeploymentId { get; }
     Uri GitHubApiRoot { get; }
+    string GitHubClientId { get; }
+    string GitHubClientSecret { get; }
     string GitHubLoggingStorage { get; }
     string MixpanelToken { get; }
     string RaygunApiKey { get; }
@@ -50,6 +52,8 @@
     public string DataConnectionString { get; set; }
     public string DeploymentId { get; set; }
     public Uri GitHubApiRoot { get; set; }
+    public string GitHubClientId { get; set; }
+    public string GitHubClientSecret { get; set; }
     public string GitHubLoggingStorage { get; set; }
     public string MixpanelToken { get; set; }
     public string RaygunApiKey { get; set; }
@@ -130,6 +134,12 @@
       }
     });
     public Uri GitHubApiRoot { get { return _gitHubApiRoot.Value; } }
+
+    private Lazy<string> _gitHubClientId = new Lazy<string>(() => GetSetting("GitHubClientId"));
+    public string GitHubClientId { get { return _gitHubClientId.Value; } }
+
+    private Lazy<string> _gitHubClientSecret = new Lazy<string>(() => GetSetting("GitHubClientSecret"));
+    public string GitHubClientSecret { get { return _gitHubClientSecret.Value; } }
 
     private Lazy<string> _gitHubLoggingStorage = new Lazy<string>(() => GetSetting("GitHubLoggingStorage"));
     public string GitHubLoggingStorage { get { return _gitHubLoggingStorage.Value; } }
