@@ -23,6 +23,7 @@
     string DeploymentId { get; }
     Uri GitHubApiRoot { get; }
     string GitHubLoggingStorage { get; }
+    string MixpanelToken { get; }
     string RaygunApiKey { get; }
     string ShipHubContext { get; }
     string SmtpPassword { get; }
@@ -50,6 +51,7 @@
     public string DeploymentId { get; set; }
     public Uri GitHubApiRoot { get; set; }
     public string GitHubLoggingStorage { get; set; }
+    public string MixpanelToken { get; set; }
     public string RaygunApiKey { get; set; }
     public string ShipHubContext { get; set; }
     public string SmtpPassword { get; set; }
@@ -134,6 +136,9 @@
 
     private Lazy<string> _raygunApiKey = new Lazy<string>(() => GetSetting("RAYGUN_APIKEY"));
     public string RaygunApiKey { get { return _raygunApiKey.Value; } }
+
+    private Lazy<string> _mixpanelToken = new Lazy<string>(() => GetSetting("MixpanelToken"));
+    public string MixpanelToken { get { return _mixpanelToken.Value; } }
 
     private Lazy<string> _shipHubContext = new Lazy<string>(() => GetSetting("ShipHubContext", required: true));
     public string ShipHubContext { get { return _shipHubContext.Value; } }
