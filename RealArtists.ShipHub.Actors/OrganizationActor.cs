@@ -32,11 +32,9 @@
     // Metadata
     private GitHubMetadata _metadata;
     private GitHubMetadata _adminMetadata;
-    private GitHubMetadata _memberMetadata;
     private GitHubMetadata _projectMetadata;
 
     // Data
-    //private HashSet<long> _members = new HashSet<long>();
     private HashSet<long> _admins = new HashSet<long>();
 
     // Sync logic
@@ -61,7 +59,6 @@
           .SingleOrDefaultAsync(x => x.Id == _orgId);
 
         if (org == null) {
-          this.Info("Cannot activate grain. Organization does not exist.");
           throw new InvalidOperationException($"Organization {_orgId} does not exist and cannot be activated.");
         }
 
@@ -77,10 +74,8 @@
           .Select(x => x.UserId)
           .ToHashSet();
 
-        // This is kind of a gross hack to save DB fields. I have mixed feelings about it.
         // MUST MATCH SAVE
         _metadata = org.Metadata;
-        _memberMetadata = org.MemberMetadata; // RepoMetadataJson behind the scenes
         _adminMetadata = org.OrganizationMetadata;
         _projectMetadata = org.ProjectMetadata;
       }
@@ -100,8 +95,6 @@
       using (var context = _contextFactory.CreateInstance()) {
         // MUST MATCH LOAD
         await context.UpdateMetadata("Accounts", _orgId, _metadata);
-        // RepoMetadataJson here IS NOT A BUG, just a nasty hack
-        await context.UpdateMetadata("Accounts", "RepoMetadataJson", _orgId, _memberMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
         await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
       }
@@ -195,63 +188,18 @@
           _metadata = GitHubMetadata.FromResponse(org);
         }
 
-        if (_memberMetadata.IsExpired()) {
-          // GitHub's `/orgs/<name>/members` endpoint does not provide role info for
-          // each member.  To workaround, we make two requests and use the filter option
-          // to only get admins or non-admins on each request.
-
-          var updated = false;
-          var newUsers = new List<gh.Account>();
-
-          //var members = await github.OrganizationMembers(_login, role: "member", cacheOptions: _memberMetadata);
-          //if (members.IsOk) {
-          //  updated = true;
-          //  _members = members.Result.Select(x => x.Id).ToHashSet();
-          //  newUsers.AddRange(members.Result);
-          //  this.Info($"Changed. Members: [{string.Join(",", _members.OrderBy(x => x))}]");
-          //} else if (!members.Succeeded) {
-          //  throw new Exception($"Unexpected response: OrganizationMembers {members.Status}");
-          //}
-
+        if (_adminMetadata.IsExpired()) {
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
           if (admins.IsOk) {
-            updated = true;
             _admins = admins.Result.Select(x => x.Id).ToHashSet();
-            newUsers.AddRange(admins.Result);
+            changes.UnionWith(await context.BulkUpdateAccounts(admins.Date, _mapper.Map<IEnumerable<AccountTableType>>(_admins)));
+            changes.UnionWith(await context.SetOrganizationAdmins(_orgId, _admins));
+
             this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
           } else if (!admins.Succeeded) {
             throw new Exception($"Unexpected response: OrganizationAdmins {admins.Status}");
           }
 
-          if (updated) {
-            changes.UnionWith(
-              await context.BulkUpdateAccounts(
-                //members.Date,
-                admins.Date,
-                _mapper.Map<IEnumerable<AccountTableType>>(newUsers)));
-
-            var orgMemberChanges = await context.SetOrganizationUsers(
-                _orgId,
-                //_members.Select(x => Tuple.Create(x, false)).Concat(
-                  _admins.Select(x => Tuple.Create(x, true))
-                //)
-            );
-
-            if (!orgMemberChanges.IsEmpty) {
-              // Check for subscription changes
-              var subscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _orgId);
-
-              if (subscription?.State == SubscriptionState.Subscribed) {
-                // If you belong to a paid organization, your personal subscription
-                // is complimentary.  We need to add or remove the coupon for this
-                // as membership changes.
-                tasks.AddRange(orgMemberChanges.Users.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
-              }
-            }
-            changes.UnionWith(orgMemberChanges);
-          }
-
-          //_memberMetadata = GitHubMetadata.FromResponse(members);
           _adminMetadata = GitHubMetadata.FromResponse(admins);
         }
 

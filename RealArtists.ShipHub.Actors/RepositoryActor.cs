@@ -90,7 +90,7 @@
         var repo = await context.Repositories.SingleOrDefaultAsync(x => x.Id == repoId);
 
         if (repo == null) {
-          throw new InvalidOperationException($"Repository {_repoId} does not exist and cannot be activated.");
+          throw new InvalidOperationException($"Repository {repoId} does not exist and cannot be activated.");
         }
 
         Initialize(repo.Id, repo.FullName);
