@@ -202,22 +202,26 @@
         var allRepos = await context.AccountRepositories
           .AsNoTracking()
           .Where(x => x.AccountId == _userId)
+          .Select(x => new { RepositoryId = x.RepositoryId, AccountId = x.Repository.AccountId })
           .ToArrayAsync();
 
         if (allRepos.Any()) {
           tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
         }
 
+        var orgsToSync = allRepos.Select(x => x.AccountId).ToHashSet(); // Accounts with accessible repos
         var allOrgIds = await context.OrganizationAccounts
           .AsNoTracking()
           .Where(x => x.UserId == _userId)
           .Select(x => x.OrganizationId)
           .ToArrayAsync();
 
-        if (allOrgIds.Any()) {
+        orgsToSync.IntersectWith(allOrgIds);
+
+        if (orgsToSync.Any()) {
           tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
           if (_syncBillingState) {
-            tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(allOrgIds, _userId));
+            tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(orgsToSync, _userId));
           }
         }
       }
