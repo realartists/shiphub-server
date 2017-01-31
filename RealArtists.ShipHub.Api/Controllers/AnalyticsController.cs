@@ -27,7 +27,7 @@
   }
 
   [RoutePrefix("analytics")]
-  public class AnalyticsController : ShipHubController {
+  public class AnalyticsController : ApiController {
     private IShipHubConfiguration _configuration;
 
     public AnalyticsController(IShipHubConfiguration config) {
