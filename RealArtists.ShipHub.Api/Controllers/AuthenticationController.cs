@@ -7,6 +7,7 @@
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Reflection;
+  using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces;
@@ -69,6 +70,30 @@
       return handler.Fetch<Common.GitHub.Models.Account>(this, request);
     }
 
+    // ///////////////////////////////////////////////////
+    // For grant revocation
+    // ///////////////////////////////////////////////////
+
+    private static HttpClient _BasicClient = new HttpClient(HttpUtilities.CreateDefaultHandler());
+    private static readonly string _GitHubClientId = ShipHubCloudConfiguration.Instance.GitHubClientId;
+    private static readonly string _GitHubClientSecret = ShipHubCloudConfiguration.Instance.GitHubClientSecret;
+
+    public async Task<bool> RevokeGrant(string accessToken) {
+      var request = new HttpRequestMessage(HttpMethod.Delete, new Uri(ApiRoot, $"applications/{_GitHubClientId}/grants/{accessToken}"));
+      request.Headers.Authorization = new AuthenticationHeaderValue(
+        "basic",
+        Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_GitHubClientId}:{_GitHubClientSecret}"))
+      );
+      request.Headers.UserAgent.Clear();
+      request.Headers.UserAgent.Add(UserAgent);
+      var response = await _BasicClient.SendAsync(request);
+      return response.StatusCode == HttpStatusCode.NoContent;
+    }
+
+    // ///////////////////////////////////////////////////
+    // Web calls
+    // ///////////////////////////////////////////////////
+
     [HttpDelete]
     [Authorize]
     [Route("login")]
@@ -87,6 +112,7 @@
         // Wait and log errors.
         string userInfo = $"{ShipHubUser.Login} ({ShipHubUser.UserId})";
         try {
+          // Ensure requests complete before we revoke our access below
           await Task.WhenAll(tasks);
           foreach (var task in tasks) {
             task.LogFailure(userInfo);
@@ -95,7 +121,7 @@
           // They're logging out. We had our chance.
         }
 
-        // TODO: Invalidate their token with GitHub
+        RevokeGrant(ShipHubUser.Token).LogFailure(userInfo);
 
         // Invalidate their token with ShipHub
         await context.RevokeAccessToken(ShipHubUser.Token);
