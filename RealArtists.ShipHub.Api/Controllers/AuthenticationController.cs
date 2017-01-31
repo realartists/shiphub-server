@@ -4,6 +4,8 @@
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
+  using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Reflection;
   using System.Threading.Tasks;
   using System.Web.Http;
@@ -24,7 +26,7 @@
 
   [AllowAnonymous]
   [RoutePrefix("api/authentication")]
-  public class AuthenticationController : ShipHubController {
+  public class AuthenticationController : ShipHubController, IGitHubClient {
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
 
     private IGrainFactory _grainFactory;
@@ -41,6 +43,30 @@
     public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
       _grainFactory = grainFactory;
       _mapper = mapper;
+    }
+
+    // ///////////////////////////////////////////////////
+    // Gross hack until I can fix UserActor to use tokens
+    // ///////////////////////////////////////////////////
+
+    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
+    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    public Uri ApiRoot { get; } = ShipHubCloudConfiguration.Instance.GitHubApiRoot;
+    public Guid CorrelationId { get; } = Guid.NewGuid();
+    public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
+    public long UserId { get; } = -1;
+    public string UserInfo { get; } = "ShipHub Authentication Controller (-1)";
+
+    public string AccessToken { get; private set; }
+
+    public int NextRequestId() {
+      return 1;
+    }
+
+    public Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken) {
+      AccessToken = accessToken;
+      var request = new GitHubRequest("user", GitHubCacheDetails.Empty);
+      return handler.Fetch<Common.GitHub.Models.Account>(this, request);
     }
 
     [HttpDelete]
@@ -88,8 +114,7 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userClient = new LoginGitHubClient(request.AccessToken, _handlerPipeline);
-      var userResponse = await userClient.User(GitHubCacheDetails.Empty);
+      var userResponse = await GitHubUser(_handlerPipeline, request.AccessToken);
 
       if (!userResponse.IsOk) {
         Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
