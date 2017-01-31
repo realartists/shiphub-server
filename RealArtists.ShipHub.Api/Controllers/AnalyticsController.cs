@@ -1,19 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Data.Entity;
-  using System.Data.Entity.Infrastructure;
   using System.Diagnostics.CodeAnalysis;
-  using System.IO;
-  using System.Linq;
-  using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
-  using System.Security.Authentication;
-  using System.Security.Cryptography;
   using System.Text;
   using System.Threading.Tasks;
-  using System.Web;
   using System.Web.Http;
   using Common;
   using Common.GitHub;
@@ -21,45 +13,29 @@
 
   public class AnalyticsEvent {
     public string Event { get; set; }
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public Dictionary<string, string> Properties { get; set; }
   }
 
   [RoutePrefix("analytics")]
-  public class AnalyticsController : ShipHubController {
+  public class AnalyticsController : ApiController {
+    public static Uri MixpanelApi { get; } = new Uri("https://api.mixpanel.com/track/");
+
     private IShipHubConfiguration _configuration;
+    private static HttpClient _Client { get; } = CreateHttpClient();
 
     public AnalyticsController(IShipHubConfiguration config) {
       _configuration = config;
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static HttpClient CreateHttpClient() {
-      var handler = new HttpClientHandler() {
-        AllowAutoRedirect = false,
-        AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-        UseCookies = false,
-        UseDefaultCredentials = false,
-        UseProxy = false,
-      };
+    private static HttpClient CreateHttpClient() {
+      HttpUtilities.SetServicePointConnectionLimit(MixpanelApi);
 
-      return CreateHttpClient(handler, true);
-    }
-
-    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static HttpClient CreateHttpClient(HttpMessageHandler handler, bool disposeHandler) {
-      var httpClient = new HttpClient(handler, disposeHandler);
+      var httpClient = new HttpClient(HttpUtilities.CreateDefaultHandler(), true);
 
       var headers = httpClient.DefaultRequestHeaders;
-      headers.AcceptEncoding.Clear();
-      headers.AcceptEncoding.ParseAdd("gzip");
-      headers.AcceptEncoding.ParseAdd("deflate");
-
-      headers.Accept.Clear();
-      headers.Accept.ParseAdd("application/json");
-
-      headers.AcceptCharset.Clear();
-      headers.AcceptCharset.ParseAdd(Encoding.UTF8.WebName);
-
       headers.UserAgent.Clear();
       headers.UserAgent.Add(new ProductInfoHeaderValue("RealArtists", "server"));
 
@@ -70,23 +46,21 @@
     [HttpPost]
     [Route("track")]
     public async Task<HttpResponseMessage> Track() {
-      var payloadString = await Request.Content.ReadAsStringAsync();
-      var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
-      var payloadEvents = JsonConvert.DeserializeObject<IEnumerable<AnalyticsEvent>>(payloadString, GitHubSerialization.JsonSerializerSettings);
-      
+      var payloadEvents = await Request.Content.ReadAsAsync<IEnumerable<AnalyticsEvent>>(GitHubSerialization.MediaTypeFormatters);
+
       foreach (var payloadEvent in payloadEvents) {
         payloadEvent.Properties["token"] = _configuration.MixpanelToken;
-        payloadEvent.Properties["ip"] = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+        payloadEvent.Properties["ip"] = Request.Headers.ParseHeader("X-Forwarded-For", x => x);
       }
-      
+
       var json = JsonConvert.SerializeObject(payloadEvents, GitHubSerialization.JsonSerializerSettings);
-      var jsonBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json), Base64FormattingOptions.None);
+      var jsonBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
-      var uri = new Uri("https://api.mixpanel.com/track/?data=" + jsonBase64);
-      var request = new HttpRequestMessage(HttpMethod.Post, uri);
+      var request = new HttpRequestMessage(HttpMethod.Post, MixpanelApi) {
+        Content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("data", jsonBase64) }),
+      };
 
-      var client = CreateHttpClient();
-      return await client.SendAsync(request);
+      return await _Client.SendAsync(request);
     }
   }
 }
