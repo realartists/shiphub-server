@@ -1,19 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
-  using System.Data.Entity;
-  using System.Data.Entity.Infrastructure;
   using System.Diagnostics.CodeAnalysis;
-  using System.IO;
-  using System.Linq;
-  using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
-  using System.Security.Authentication;
-  using System.Security.Cryptography;
   using System.Text;
   using System.Threading.Tasks;
-  using System.Web;
   using System.Web.Http;
   using Common;
   using Common.GitHub;
@@ -28,6 +20,8 @@
 
   [RoutePrefix("analytics")]
   public class AnalyticsController : ApiController {
+    public static Uri MixpanelApi { get; } = new Uri("https://api.mixpanel.com/track/");
+
     private IShipHubConfiguration _configuration;
     private static HttpClient _Client { get; } = CreateHttpClient();
 
@@ -52,20 +46,19 @@
     [HttpPost]
     [Route("track")]
     public async Task<HttpResponseMessage> Track() {
-      var payloadString = await Request.Content.ReadAsStringAsync();
-      var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
-      var payloadEvents = JsonConvert.DeserializeObject<IEnumerable<AnalyticsEvent>>(payloadString, GitHubSerialization.JsonSerializerSettings);
-      
+      var payloadEvents = await Request.Content.ReadAsAsync<IEnumerable<AnalyticsEvent>>(GitHubSerialization.MediaTypeFormatters);
+
       foreach (var payloadEvent in payloadEvents) {
         payloadEvent.Properties["token"] = _configuration.MixpanelToken;
-        payloadEvent.Properties["ip"] = HttpContext.Current.Request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+        payloadEvent.Properties["ip"] = Request.Headers.ParseHeader("X-Forwarded-For", x => x);
       }
-      
-      var json = JsonConvert.SerializeObject(payloadEvents, GitHubSerialization.JsonSerializerSettings);
-      var jsonBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json), Base64FormattingOptions.None);
 
-      var uri = new Uri("https://api.mixpanel.com/track/?data=" + jsonBase64);
-      var request = new HttpRequestMessage(HttpMethod.Post, uri);
+      var json = JsonConvert.SerializeObject(payloadEvents, GitHubSerialization.JsonSerializerSettings);
+      var jsonBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+      var request = new HttpRequestMessage(HttpMethod.Post, MixpanelApi) {
+        Content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("data", jsonBase64) }),
+      };
 
       return await _Client.SendAsync(request);
     }
