@@ -21,6 +21,8 @@
 
   public class AnalyticsEvent {
     public string Event { get; set; }
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public Dictionary<string, string> Properties { get; set; }
   }
 

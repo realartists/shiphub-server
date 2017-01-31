@@ -50,6 +50,7 @@
       <Word>ConnectionString</Word>
       <Word>DataConnectionString</Word>
       <Word>DeploymentId</Word>
+      <Word>Mixpanel</Word>
     </Recognized>
   </Words>
 </Dictionary>
