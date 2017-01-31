@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Collections.Generic;
+  using System.Collections.Immutable;
   using System.Data.Entity;
   using System.Linq;
   using System.Net;
@@ -33,12 +34,20 @@
     private IGrainFactory _grainFactory;
     private IMapper _mapper;
 
-    private static readonly IReadOnlyList<string> _requiredOauthScopes = new List<string>() {
-      "user:email",
-      "repo",
-      "read:org",
-      "admin:repo_hook",
-      "admin:org_hook",
+    private static readonly IReadOnlyList<ImmutableHashSet<string>> _validScopesCollection = new List<ImmutableHashSet<string>>() {
+      ImmutableHashSet.Create(
+        "admin:org_hook",
+        "admin:repo_hook",
+        "read:org",
+        "repo",
+        "user:email"),
+      ImmutableHashSet.Create(
+        "admin:org_hook",
+        "admin:repo_hook",
+        "notifications",
+        "public_repo",
+        "read:org",
+        "user:email"),
     }.AsReadOnly();
 
     public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
@@ -147,11 +156,10 @@
       }
 
       // Check scopes
-      var missingScopes = _requiredOauthScopes.Except(userResponse.Scopes).ToArray();
-      if (missingScopes.Any()) {
+      bool scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(userResponse.Scopes));
+      if (!scopesOk) {
         return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
           Granted = userResponse.Scopes,
-          Missing = missingScopes,
         });
       }
 
