@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "RealArtists.ShipHub.Api.Controllers.GitHubProxyController.#.cctor()")]
 [assembly: SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "RealArtists.ShipHub.Api.Controllers.BillingController.#.cctor()")]
+[assembly: SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Scope = "member", Target = "RealArtists.ShipHub.Api.Controllers.AuthenticationController.#.cctor()")]
 
 // This file is used by Code Analysis to maintain SuppressMessage 
 // attributes that are applied to this project.
