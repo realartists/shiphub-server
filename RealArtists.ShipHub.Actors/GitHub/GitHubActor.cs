@@ -432,24 +432,21 @@
       var backlog = Interlocked.Increment(ref _backlog);
 
       GitHubResponse<T> result;
-      var sw = Stopwatch.StartNew();
-      bool requestMade = false;
+      var totalWait = Stopwatch.StartNew();
+      var semaWait = Stopwatch.StartNew();
       using (var timeout = new CancellationTokenSource(GitHubRequestTimeout)) {
         try {
           await _maxConcurrentRequests.WaitAsync(timeout.Token);
-          requestMade = true;
+          semaWait.Stop();
           try {
             result = await SharedHandler.Fetch<T>(this, request, timeout.Token);
           } finally {
             _maxConcurrentRequests.Release();
           }
         } catch (TaskCanceledException exception) {
-          sw.Stop();
-          if (requestMade) {
-            exception.Report($"GitHubActor timeout for {request.Uri} after {sw.ElapsedMilliseconds} msec.");
-          } else {
-            exception.Report($"GitHubActor timeout waiting for semaphore. Backlog: {_backlog}");
-          }
+          totalWait.Stop();
+          semaWait.Stop();
+          exception.Report($"GitHubActor timeout. Backlog {_backlog}, Sema {semaWait.ElapsedMilliseconds}ms, Total {totalWait.ElapsedMilliseconds}ms for [{request.Uri}]");
           throw;
         } finally {
           Interlocked.Decrement(ref _backlog);
