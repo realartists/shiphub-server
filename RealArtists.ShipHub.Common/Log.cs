@@ -93,7 +93,7 @@ namespace RealArtists.ShipHub.Common {
         m = e.Message;
       }
       var line = new LogLine() {
-        Component = e.TargetSite?.DeclaringType.AssemblyQualifiedName,
+        Component = e.TargetSite?.DeclaringType?.Assembly?.GetName().Name,
         Level = LogLine.LogLevel.Exception,
         Message = m,
         ExceptionDetail = ExceptionDetail(e),
