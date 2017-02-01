@@ -19,7 +19,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
     public override bool OnStart() {
       Log.Trace();
-      
+
       // Set the maximum number of concurrent connections
       HttpUtilities.SetServicePointDefaultConnectionLimit();
 
@@ -54,6 +54,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
 
       try {
         var siloConfig = AzureSilo.DefaultConfiguration();
+
+        // Match client and silo timeout values.
+        siloConfig.Globals.ResponseTimeout = OrleansAzureClient.ResponseTimeout;
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
         siloConfig.Globals.DeploymentId = _config.DeploymentId;

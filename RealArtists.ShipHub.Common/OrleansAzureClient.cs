@@ -21,6 +21,7 @@
     const int MaxRetries = 120;  // 120 x 5s = Total: 10 minutes
     const string DataConnectionSettingsKey = "DataConnectionString";
     const string DeploymentIdSettingsKey = "DeploymentId";
+    public static readonly TimeSpan ResponseTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>Amount of time to pause before each retry attempt.</summary>
     static readonly TimeSpan StartupRetryPause = TimeSpan.FromSeconds(5);
@@ -42,6 +43,7 @@
         DataConnectionString = CloudConfigurationManager.GetSetting(DataConnectionSettingsKey),
         TraceFilePattern = "false",
         TraceToConsole = false,
+        ResponseTimeout = ResponseTimeout,
       };
 
       return config;
