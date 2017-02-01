@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Configuration;
   using System.Data.Entity;
+  using System.Diagnostics;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
@@ -39,6 +40,10 @@
     public const int PageSize = 100;
     public const bool InterpolationEnabled = false;
 
+    // Should be less than Orleans timeout.
+    // If changing, may also need to update values in CreateGitHubHttpClient()
+    public static readonly TimeSpan GitHubRequestTimeout = OrleansAzureClient.ResponseTimeout.Subtract(TimeSpan.FromSeconds(2));
+
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
@@ -67,7 +72,7 @@
       if (SharedHandler != null) {
         return;
       }
-      
+
       // Set the maximum number of concurrent connections
       HttpUtilities.SetServicePointConnectionLimit(apiRoot);
 
@@ -398,6 +403,7 @@
     ////////////////////////////////////////////////////////////
 
     private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
+    private long _backlog = 0;
 
     private async Task<GitHubResponse<T>> Fetch<T>(GitHubRequest request) {
       /* ALL RATE LIMIT ENFORCEMENT SHOULD EXIST HERE ONLY
@@ -423,13 +429,31 @@
       // Clear flag since we made it this far.
       _lastRequestLimited = false;
 
-      await _maxConcurrentRequests.WaitAsync();
+      var backlog = Interlocked.Increment(ref _backlog);
 
       GitHubResponse<T> result;
-      try {
-        result = await SharedHandler.Fetch<T>(this, request);
-      } finally {
-        _maxConcurrentRequests.Release();
+      var sw = Stopwatch.StartNew();
+      bool requestMade = false;
+      using (var timeout = new CancellationTokenSource(GitHubRequestTimeout)) {
+        try {
+          await _maxConcurrentRequests.WaitAsync(timeout.Token);
+          requestMade = true;
+          try {
+            result = await SharedHandler.Fetch<T>(this, request, timeout.Token);
+          } finally {
+            _maxConcurrentRequests.Release();
+          }
+        } catch (TaskCanceledException exception) {
+          sw.Stop();
+          if (requestMade) {
+            exception.Report($"GitHubActor timeout for {request.Uri} after {sw.ElapsedMilliseconds} msec.");
+          } else {
+            exception.Report($"GitHubActor timeout waiting for semaphore. Backlog: {_backlog}");
+          }
+          throw;
+        } finally {
+          Interlocked.Decrement(ref _backlog);
+        }
       }
 
       // Token revocation handling and abuse.

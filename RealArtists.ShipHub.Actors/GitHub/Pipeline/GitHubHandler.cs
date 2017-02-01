@@ -9,14 +9,14 @@
   using System.Security.Authentication;
   using System.Threading;
   using System.Threading.Tasks;
-  using Logging;
   using Common;
   using Common.GitHub;
+  using Logging;
   using Microsoft.Azure;
   using Microsoft.WindowsAzure.Storage;
 
   public interface IGitHubHandler {
-    Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request);
+    Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken);
   }
 
   /// <summary>
@@ -30,22 +30,20 @@
     public const int LastAttempt = 2; // Make three attempts
     public const int RetryMilliseconds = 1000;
 
-    // Should be less than Orleans timeout.
-    // If changing, may also need to update values in CreateGitHubHttpClient()
-    private static readonly TimeSpan _GitHubRequestTimeout = TimeSpan.FromSeconds(20);
-
     private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
-    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request) {
+    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken) {
       GitHubResponse<T> result = null;
 
       for (int attempt = 0; attempt <= LastAttempt; ++attempt) {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (attempt > 0) {
           await Task.Delay(RetryMilliseconds * attempt);
         }
 
         try {
-          result = await MakeRequest<T>(client, request, null);
+          result = await MakeRequest<T>(client, request, cancellationToken, null);
         } catch (HttpRequestException hre) {
           if (attempt < LastAttempt) {
             hre.Report($"Error making GitHub request: {request.Uri}");
@@ -70,7 +68,7 @@
       return result;
     }
 
-    private async Task<GitHubResponse<T>> MakeRequest<T>(IGitHubClient client, GitHubRequest request, GitHubRedirect redirect) {
+    private async Task<GitHubResponse<T>> MakeRequest<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken, GitHubRedirect redirect) {
       var uri = new Uri(client.ApiRoot, request.Uri);
       var httpRequest = new HttpRequestMessage(request.Method, uri) {
         Content = request.CreateBodyContent(),
@@ -110,16 +108,13 @@
       );
 
       HttpResponseMessage response;
-      var sw = new Stopwatch();
-      sw.Start();
-      using (var timeout = new CancellationTokenSource(_GitHubRequestTimeout)) {
-        try {
-          response = await _HttpClient.SendAsync(httpRequest, timeout.Token);
-        } catch (TaskCanceledException exception) {
-          sw.Stop();
-          exception.Report($"GitHub timeout for {request.Uri} after {sw.ElapsedMilliseconds} msec [{LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}]");
-          throw;
-        }
+      var sw = Stopwatch.StartNew();
+      try {
+        response = await _HttpClient.SendAsync(httpRequest, cancellationToken);
+      } catch (TaskCanceledException exception) {
+        sw.Stop();
+        exception.Report($"Request aborted for {request.Uri} after {sw.ElapsedMilliseconds} msec [{LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}]");
+        throw;
       }
 
       // Handle redirects
@@ -127,12 +122,12 @@
         case HttpStatusCode.MovedPermanently:
         case HttpStatusCode.RedirectKeepVerb:
           request = request.CloneWithNewUri(response.Headers.Location);
-          return await MakeRequest<T>(client, request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(client, request, cancellationToken, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         case HttpStatusCode.Redirect:
         case HttpStatusCode.RedirectMethod:
           request = request.CloneWithNewUri(response.Headers.Location);
           request.Method = HttpMethod.Get;
-          return await MakeRequest<T>(client, request, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
+          return await MakeRequest<T>(client, request, cancellationToken, new GitHubRedirect(response.StatusCode, uri, request.Uri, redirect));
         default:
           break;
       }
@@ -245,7 +240,7 @@
       handler = logHandler;
 
       var httpClient = new HttpClient(handler, true) {
-        Timeout = _GitHubRequestTimeout,
+        Timeout = GitHubActor.GitHubRequestTimeout,
       };
 
       var headers = httpClient.DefaultRequestHeaders;

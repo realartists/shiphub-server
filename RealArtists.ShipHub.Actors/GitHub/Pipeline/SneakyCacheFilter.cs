@@ -5,6 +5,7 @@
   using System.Linq;
   using System.Net;
   using System.Net.Http;
+  using System.Threading;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
@@ -25,9 +26,9 @@
       _shipContextFactory = shipContextFactory;
     }
 
-    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request) {
+    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken) {
       await HandleRequest(client, request);
-      var response = await _next.Fetch<T>(client, request);
+      var response = await _next.Fetch<T>(client, request, cancellationToken);
       await HandleResponse(response);
       return response;
     }
