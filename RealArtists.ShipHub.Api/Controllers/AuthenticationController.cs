@@ -9,6 +9,7 @@
   using System.Net.Http.Headers;
   using System.Reflection;
   using System.Text;
+  using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces;
@@ -73,10 +74,10 @@
       return 1;
     }
 
-    public Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken) {
+    public Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
       AccessToken = accessToken;
       var request = new GitHubRequest("user", GitHubCacheDetails.Empty);
-      return handler.Fetch<Common.GitHub.Models.Account>(this, request);
+      return handler.Fetch<Common.GitHub.Models.Account>(this, request, cancellationToken);
     }
 
     // ///////////////////////////////////////////////////
@@ -141,7 +142,7 @@
 
     [HttpPost]
     [Route("login")]
-    public async Task<IHttpActionResult> Login([FromBody] LoginRequest request) {
+    public async Task<IHttpActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken) {
       if ((request?.AccessToken).IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(request.AccessToken)} is required.");
       }
@@ -149,7 +150,7 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userResponse = await GitHubUser(_handlerPipeline, request.AccessToken);
+      var userResponse = await GitHubUser(_handlerPipeline, request.AccessToken, cancellationToken);
 
       if (!userResponse.IsOk) {
         Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
