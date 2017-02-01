@@ -207,7 +207,7 @@
           var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
           if (admins.IsOk) {
             _admins = admins.Result.Select(x => x.Id).ToHashSet();
-            changes.UnionWith(await context.BulkUpdateAccounts(admins.Date, _mapper.Map<IEnumerable<AccountTableType>>(_admins)));
+            changes.UnionWith(await context.BulkUpdateAccounts(admins.Date, _mapper.Map<IEnumerable<AccountTableType>>(admins.Result)));
             changes.UnionWith(await context.SetOrganizationAdmins(_orgId, _admins));
 
             this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
