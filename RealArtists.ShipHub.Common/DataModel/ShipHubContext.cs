@@ -675,10 +675,10 @@
       });
     }
 
-    public Task<ChangeSummary> SetOrganizationUsers(long organizationId, IEnumerable<Tuple<long, bool>> userIdAndAdminPairs) {
-      return ExecuteAndReadChanges("[dbo].[SetOrganizationUsers]", x => {
+    public Task<ChangeSummary> SetOrganizationAdmins(long organizationId, IEnumerable<long> adminIds) {
+      return ExecuteAndReadChanges("[dbo].[SetOrganizationAdmins]", x => {
         x.OrganizationId = organizationId;
-        x.UserIds = CreateMappingTable("UserIds", userIdAndAdminPairs.Select(y => new MappingTableType() { Item1 = y.Item1, Item2 = y.Item2 ? 1 : 0 }));
+        x.UserIds = CreateItemListTable("AdminIds", adminIds);
       });
     }
 

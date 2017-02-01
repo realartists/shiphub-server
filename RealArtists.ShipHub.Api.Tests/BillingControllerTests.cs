@@ -46,15 +46,7 @@
           Tuple.Create(org2Repo.Id, false),
         });
 
-        await context.SetOrganizationUsers(org1.Id, new[] {
-          Tuple.Create(user.Id, false),
-        });
-        await context.SetOrganizationUsers(org2.Id, new[] {
-          Tuple.Create(user.Id, false),
-        });
-        await context.SetOrganizationUsers(org3.Id, new[] {
-          Tuple.Create(user.Id, false),
-        });
+        await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id, org3.Id });
 
         context.Subscriptions.AddRange(new[] {
           new Subscription() {
@@ -106,14 +98,7 @@
         user.Token = Guid.NewGuid().ToString();
         var org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
         var org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
-
-        await context.SetOrganizationUsers(org1.Id, new[] {
-          Tuple.Create(user.Id, false),
-        });
-        await context.SetOrganizationUsers(org2.Id, new[] {
-          Tuple.Create(user.Id, false),
-        });
-
+        await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id });
         await context.SaveChangesAsync();
 
         var controller = new BillingController(Configuration, null, null, null);
@@ -233,7 +218,7 @@
         var user = TestUtil.MakeTestUser(context);
         user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context);
-        await context.SetOrganizationUsers(org.Id, new[] { Tuple.Create(user.Id, true) });
+        await context.SetOrganizationAdmins(org.Id, new[] { user.Id });
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = org.Id,
@@ -427,7 +412,7 @@
               NeedsReactivation = false,
             });
             Assert.AreEqual(expectedPassThruContent, data["pass_thru_content"]);
-            
+
             return new {
               hosted_page = new {
                 id = "hosted-page-id",

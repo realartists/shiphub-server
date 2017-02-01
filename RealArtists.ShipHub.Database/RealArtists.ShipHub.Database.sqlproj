@@ -103,7 +103,7 @@
     <Build Include="Procedures\BulkUpdateAccounts.sql" />
     <Build Include="Procedures\BulkUpdateRepositories.sql" />
     <Build Include="Procedures\SetUserOrganizations.sql" />
-    <Build Include="Procedures\SetOrganizationUsers.sql" />
+    <Build Include="Procedures\SetOrganizationAdmins.sql" />
     <Build Include="User Defined Types\MilestoneTableType.sql" />
     <Build Include="User Defined Types\LabelTableType.sql" />
     <Build Include="Procedures\BulkUpdateMilestones.sql" />

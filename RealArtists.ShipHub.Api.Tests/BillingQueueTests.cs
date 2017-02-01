@@ -659,9 +659,7 @@
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
-        await context.SetOrganizationUsers(org.Id, new[] {
-          Tuple.Create(user.Id, true),
-        });
+        await context.SetOrganizationAdmins(org.Id, new[] { user.Id });
         context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.Subscribed,

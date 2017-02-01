@@ -161,14 +161,11 @@
               await context.BulkUpdateAccounts(orgs.Date, _mapper.Map<IEnumerable<AccountTableType>>(orgs.Result.Select(x => x.Organization)))
             );
 
-            var userOrgChanges = await context.SetUserOrganizations(_userId, orgs.Result.Select(x => x.Organization.Id));
-            changes.UnionWith(userOrgChanges);
+            changes.UnionWith(await context.SetUserOrganizations(_userId, orgs.Result.Select(x => x.Organization.Id)));
 
-            if (!userOrgChanges.IsEmpty) {
-              // When this user's org membership changes, re-evaluate whether or not they
-              // should have a complimentary personal subscription.
-              tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
-            }
+            // When this user's org membership changes, re-evaluate whether or not they
+            // should have a complimentary personal subscription.
+            tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
           }
 
           _orgMetadata = GitHubMetadata.FromResponse(orgs);

@@ -78,9 +78,7 @@
 
           if (userBelongsToOrganization) {
             org = TestUtil.MakeTestOrg(context);
-            await context.SetOrganizationUsers(org.Id, new[] {
-              Tuple.Create(user.Id, true),
-            });
+            await context.SetOrganizationAdmins(org.Id, new[] { user.Id });
           }
         } else {
           org = TestUtil.MakeTestOrg(context);
@@ -533,8 +531,7 @@
 
         var otherOrg = TestUtil.MakeTestOrg(context, 6002, "otherOrrg");
         var otherOrgUser = TestUtil.MakeTestUser(context, 4001, "otherOrgUser");
-        await context.SetOrganizationUsers(otherOrg.Id,
-          new[] { new Tuple<long, bool>(otherOrgUser.Id, true) });
+        await context.SetOrganizationAdmins(otherOrg.Id, new[] { otherOrgUser.Id });
 
         // Pretend all 20 people use Ship in January
         foreach (var user in users) {
@@ -577,8 +574,7 @@
           await context.RecordUsage(user.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero));
         }
 
-        await context.SetOrganizationUsers(org1.Id,
-          users.Select(x => new Tuple<long, bool>(x.Id, true)));
+        await context.SetOrganizationAdmins(org1.Id, users.Select(x => x.Id));
 
         await context.SaveChangesAsync();
 
@@ -727,9 +723,9 @@
           Version = 0,
         });
 
-        await context.SetOrganizationUsers(org.Id, new[] {
-          Tuple.Create(user1.Id, true),
-          Tuple.Create(user2.Id, true),
+        await context.SetOrganizationAdmins(org.Id, new[] {
+          user1.Id,
+          user2.Id,
         });
 
         await context.SaveChangesAsync();
@@ -776,8 +772,8 @@
         }
         await context.SaveChangesAsync();
 
-        await context.SetOrganizationUsers(org.Id, users.Select(x => Tuple.Create(x.Id, false)));
         foreach (var user in users) {
+          await context.SetUserOrganizations(user.Id, new[] { org.Id });
           await context.RecordUsage(user.Id, invoiceDate.AddDays(-15));
         }
 
