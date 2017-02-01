@@ -130,7 +130,7 @@
     }
 
     [Test]
-    public async Task SetOrganizationAdminsCannotDeleteAssociations() {
+    public async Task SetOrganizationAdminsDemotesThoseNotListedToUsers() {
       using (var context = new ShipHubContext()) {
         var user1 = TestUtil.MakeTestUser(context, userId: 3001, login: "aroon");
         var user2 = TestUtil.MakeTestUser(context, userId: 3002, login: "alok");
@@ -140,7 +140,7 @@
         // Set a couple of associations...
         await context.SetOrganizationAdmins(org.Id, new[] { user1.Id, user2.Id });
 
-        // Them set again and omit user1 to remove it.
+        // Them set again and omit user1 to demote them from admin.
         await context.SetOrganizationAdmins(org.Id, new[] { user2.Id });
 
         var assocs = context.OrganizationAccounts
