@@ -9,6 +9,8 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- We don't need to track the issues modified because the client
+    -- is smart enough to remove deleted labels from issues.
     DELETE FROM IssueLabels WHERE LabelId = @LabelId
 
     DELETE FROM Labels WHERE Id = @LabelId

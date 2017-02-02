@@ -19,10 +19,22 @@ BEGIN
 
     IF (@Complete = 1)
     BEGIN
+      -- Clear foreign key references. As with labels,
+      -- we don't need to track the issues modified because the client
+      -- is smart enough to remove deleted milestones from issues.
+      UPDATE Issues
+        SET MilestoneId = NULL
+      FROM Milestones as m
+        LEFT OUTER LOOP JOIN @Milestones as mm ON (mm.Id = m.Id)
+        INNER LOOP JOIN Issues as i ON (i.MilestoneId = m.Id AND mm.Id IS NULL)
+      WHERE m.RepositoryId = @RepositoryId
+      OPTION (FORCE ORDER)
+
+      -- Delete milestones
       DELETE FROM Milestones
       OUTPUT DELETED.Id, 'DELETE' INTO @Changes
       FROM Milestones as m
-        LEFT OUTER JOIN @Milestones as mm ON (mm.Id = m.Id)
+        LEFT OUTER LOOP JOIN @Milestones as mm ON (mm.Id = m.Id)
       WHERE m.RepositoryId = @RepositoryId
         AND mm.Id IS NULL
       OPTION (FORCE ORDER)

@@ -31,4 +31,7 @@
   <SuppressedFile FilePath="Procedures\BulkUpdateReactions.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\DeleteMilestone.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
 </StaticCodeAnalysis>
