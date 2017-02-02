@@ -105,6 +105,74 @@
       }
     }
 
+    [Test]
+    public async Task WillEditHookWhenEventListIsExcessiveForRepo() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo = TestUtil.MakeTestRepo(context, user.Id);
+        var extraEvents = RepositoryActor.RequiredEvents.Add("extra");
+        var extraEventsString = string.Join(",", extraEvents);
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Events = extraEventsString,
+          GitHubId = 8001,
+          RepositoryId = repo.Id,
+          Secret = Guid.NewGuid(),
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubActor>();
+
+        mock
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>() {
+              new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = false,
+                  Secret = "*******",
+                  Url = $"https://{Configuration.ApiHostName}/webhook/repo/1234",
+                },
+                Events = extraEvents,
+                Name = "web",
+              },
+            },
+          });
+
+        mock
+          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+            var result = new GitHubResponse<Webhook>(null) {
+              Result = new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = false,
+                  Secret = "*******",
+                  Url = $"https://{Configuration.ApiHostName}/webhook/repo/1234",
+                },
+                Events = eventList,
+                Name = "web",
+              },
+              Status = HttpStatusCode.OK,
+            };
+            return Task.FromResult(result);
+          });
+
+        var repoActor = CreateRepoActor(repo.Id, repo.FullName);
+        var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
+
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents));
+        context.Entry(hook).Reload();
+        Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(hook.Events.Split(',')));
+        Assert.IsFalse(changes.Repositories.Any());
+      }
+    }
+
     /// <summary>
     /// To guard against webhooks accumulating on the GitHub side, we'll
     /// always remove any existing webhooks that point back to our host before
@@ -492,6 +560,78 @@
                   "event1",
                   "event2",
                 },
+                Name = "web",
+              },
+            },
+            Status = HttpStatusCode.OK,
+          });
+
+        mock
+          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+            var result = new GitHubResponse<Webhook>(null) {
+              Result = new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = false,
+                  Secret = "*******",
+                  Url = $"https://{Configuration.ApiHostName}/webhook/org/1234",
+                },
+                Events = eventList,
+                Name = "web",
+              },
+              Status = HttpStatusCode.OK,
+            };
+            return Task.FromResult(result);
+          });
+
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
+
+        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents));
+        context.Entry(hook).Reload();
+        Assert.AreEqual(OrganizationActor.RequiredEvents.ToArray(), hook.Events.Split(','));
+      }
+    }
+
+    [Test]
+    public async Task WillEditHookWhenEventListIsExcessiveForOrg() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        context.OrganizationAccounts.Add(new OrganizationAccount() {
+          UserId = user.Id,
+          OrganizationId = org.Id,
+        });
+        var extraEvents = OrganizationActor.RequiredEvents.Add("extra");
+        var extraEventsString = string.Join(",", extraEvents);
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Events = extraEventsString,
+          GitHubId = 8001,
+          OrganizationId = org.Id,
+          Secret = Guid.NewGuid(),
+        });
+        await context.SaveChangesAsync();
+
+        var mock = new Mock<IGitHubActor>();
+
+        mock
+          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
+            Result = new List<Webhook>() {
+              new Webhook() {
+                Id = 8001,
+                Active = true,
+                Config = new WebhookConfiguration() {
+                  ContentType = "json",
+                  InsecureSsl = false,
+                  Secret = "*******",
+                  Url = $"https://{Configuration.ApiHostName}/webhook/repo/1234",
+                },
+                Events = extraEvents,
                 Name = "web",
               },
             },

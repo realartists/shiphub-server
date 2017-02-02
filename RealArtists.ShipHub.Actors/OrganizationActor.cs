@@ -325,7 +325,7 @@
             await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
           }
         }
-      } else if (!hook.Events.Split(',').ToHashSet().SetEquals(RequiredEvents)) {
+      } else if (!RequiredEvents.SetEquals(hook.Events.Split(','))) {
         var editResponse = await admin.EditOrganizationWebhookEvents(_login, (long)hook.GitHubId, RequiredEvents);
 
         if (!editResponse.Succeeded) {
