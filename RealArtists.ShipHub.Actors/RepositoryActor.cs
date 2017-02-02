@@ -32,7 +32,7 @@
       , "issue_comment"
       , "label"
       , "milestone"
-      //,"push"
+      , "push"
     );
 
     private IMapper _mapper;
