@@ -24,17 +24,17 @@ BEGIN
       -- is smart enough to remove deleted milestones from issues.
       UPDATE Issues
         SET MilestoneId = NULL
-      FROM Issues as i
-        LEFT OUTER LOOP JOIN @Milestones as m ON (m.Id = i.MilestoneId)
-      WHERE i.RepositoryId = @RepositoryId
-        AND m.Id IS NULL
+      FROM Milestones as m
+        LEFT OUTER LOOP JOIN @Milestones as mm ON (mm.Id = m.Id)
+        INNER LOOP JOIN Issues as i ON (i.MilestoneId = m.Id AND mm.Id IS NULL)
+      WHERE m.RepositoryId = @RepositoryId
       OPTION (FORCE ORDER)
 
       -- Delete milestones
       DELETE FROM Milestones
       OUTPUT DELETED.Id, 'DELETE' INTO @Changes
       FROM Milestones as m
-        LEFT OUTER JOIN @Milestones as mm ON (mm.Id = m.Id)
+        LEFT OUTER LOOP JOIN @Milestones as mm ON (mm.Id = m.Id)
       WHERE m.RepositoryId = @RepositoryId
         AND mm.Id IS NULL
       OPTION (FORCE ORDER)
