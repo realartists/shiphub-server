@@ -9,6 +9,11 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- Clear foreign key references. As with labels,
+    -- we don't need to track the issues modified because the client
+    -- is smart enough to remove deleted milestones from issues.
+    UPDATE Issues SET MilestoneId = NULL WHERE MilestoneId = @MilestoneId
+
     DELETE FROM Milestones WHERE Id = @MilestoneId
 
     UPDATE SyncLog SET

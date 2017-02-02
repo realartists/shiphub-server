@@ -1596,12 +1596,14 @@
       Common.DataModel.User user;
       Common.DataModel.Repository repo;
       Common.DataModel.Hook hook;
+      Common.DataModel.Issue issue;
       MilestoneTableType milestone;
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         user = TestUtil.MakeTestUser(context);
         repo = TestUtil.MakeTestRepo(context, user.Id);
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
+        issue = MakeTestIssue(context, user.Id, repo.Id);
         await context.SaveChangesAsync();
 
         // Have to use official methods to make the repo log entries.
@@ -1615,6 +1617,10 @@
           UpdatedAt = new DateTimeOffset(2017, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
         await context.BulkUpdateMilestones(repo.Id, new[] { milestone });
+
+        // Ensure foreign keys are properly handled.
+        issue.MilestoneId = milestone.Id;
+        await context.SaveChangesAsync();
       }
 
       var payload = new {
