@@ -28,11 +28,11 @@
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
     
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
-      "issues",
-      "issue_comment",
-      "label",
-      "milestone",
-      "push"
+      "issues"
+      , "issue_comment"
+      , "label"
+      , "milestone"
+      //,"push"
     );
 
     private IMapper _mapper;
@@ -109,9 +109,10 @@
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
-        _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
+        //_pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
+        _pollIssueTemplate = true;
         _needsIssueTemplateSync = _contentsRootMetadata == null;
-        this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
+        //this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
       }
 
       await base.OnActivateAsync();
@@ -668,7 +669,7 @@
             await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
           }
         }
-      } else if (!hook.Events.Split(',').ToHashSet().SetEquals(RequiredEvents)) {
+      } else if (!RequiredEvents.IsSubsetOf(hook.Events.Split(','))) {
         var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
 
         if (!editResponse.Succeeded) {
