@@ -612,7 +612,7 @@
       }
 
       if (hook == null) {
-        var hookList = await admin.RepositoryWebhooks(_fullName, GitHubCacheDetails.Empty);
+        var hookList = await admin.RepositoryWebhooks(_fullName);
         if (!hookList.IsOk) {
           // webhooks are best effort
           // this keeps us from spewing errors and retrying a ton when an org is unpaid
