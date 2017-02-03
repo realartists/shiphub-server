@@ -38,7 +38,6 @@
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
-    public virtual DbSet<CacheMetadata> CacheMetadata { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
@@ -260,23 +259,6 @@
         $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",
         new SqlParameter("IssueSince", SqlDbType.DateTimeOffset) { Value = issueSince },
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
-    }
-
-    public Task UpdateCache(string cacheKey, GitHubMetadata metadata) {
-      // This can happen sometimes and doesn't make sense to handle until here.
-      // Obviously, don't update.
-      if (metadata == null) {
-        return Task.CompletedTask;
-      }
-
-      return RetryOnDeadlock(async () => {
-        using (var sp = new DynamicStoredProcedure("[dbo].[UpdateCacheMetadata]", ConnectionFactory)) {
-          dynamic dsp = sp;
-          dsp.Key = cacheKey;
-          dsp.MetadataJson = metadata.SerializeObject();
-          return await sp.ExecuteNonQueryAsync();
-        }
-      });
     }
 
     private Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {

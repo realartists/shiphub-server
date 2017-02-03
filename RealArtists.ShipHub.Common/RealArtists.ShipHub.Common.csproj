@@ -63,7 +63,6 @@
     <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\Issue.cs" />
     <Compile Include="DataModel\Label.cs" />
-    <Compile Include="DataModel\CacheMetadata.cs" />
     <Compile Include="DataModel\Milestone.cs" />
     <Compile Include="DataModel\Organization.cs" />
     <Compile Include="DataModel\Repository.cs" />
