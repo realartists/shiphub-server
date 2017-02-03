@@ -6,5 +6,6 @@
     public long? GitHubId { get; set; }
     public Guid Secret { get; set; }
     public string Events { get; set; }
+    public DateTimeOffset? LastError { get; set; }
   }
 }

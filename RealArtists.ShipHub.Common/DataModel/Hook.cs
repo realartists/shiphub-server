@@ -19,6 +19,11 @@
     public long? RepositoryId { get; set; }
     public long? OrganizationId { get; set; }
 
+    /// <summary>
+    /// Used to track troublesome hooks, for example, when there are over 20 push hooks.
+    /// </summary>
+    public DateTimeOffset? LastError { get; set; }
+
     public virtual Repository Repository { get; set; }
     public virtual Organization Organization { get; set; }
   }

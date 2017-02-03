@@ -23,10 +23,11 @@
     private const int ChunkMaxPages = 75;
 
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
+    public static readonly TimeSpan HookErrorDelay = TimeSpan.FromHours(12);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
-    
+
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
       "issues"
       , "issue_comment"
@@ -604,42 +605,52 @@
       var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
       context.Database.Connection.Close();
 
-      if (hook != null && hook.GitHubId == null) {
-        // We attempted to add a webhook for this earlier, but something failed
-        // and we never got a chance to learn its GitHubId.
-        await context.BulkUpdateHooks(deleted: new[] { hook.Id });
-        hook = null;
-      }
-
-      if (hook == null) {
-        var hookList = await admin.RepositoryWebhooks(_fullName);
-        if (!hookList.IsOk) {
-          // webhooks are best effort
-          // this keeps us from spewing errors and retrying a ton when an org is unpaid
-          Log.Info($"Unable to list hooks for {_fullName}");
-          return changes;
-        }
-
-        var existingHooks = hookList.Result
-          .Where(x => x.Name.Equals("web"))
-          .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/", StringComparison.OrdinalIgnoreCase));
-
-        // Delete any existing hooks that already point back to us - don't
-        // want to risk adding multiple Ship hooks.
-        foreach (var existingHook in existingHooks) {
-          var deleteResponse = await admin.DeleteRepositoryWebhook(_fullName, existingHook.Id);
-          if (!deleteResponse.Succeeded) {
-            Log.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'");
-          }
+      // There are now a few cases to handle
+      // If there is no record of a hook, try to make one.
+      // If there is an incomplete record, try to make it.
+      // If there is an errored record, sleep or retry
+      if (hook?.GitHubId == null) {
+        if (hook?.LastError > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
+          return changes; // Wait to try later.
         }
 
         // GitHub will immediately send a ping when the webhook is created.
         // To avoid any chance for a race, add the Hook to the DB first, then
         // create on GitHub.
-        var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
 
-        bool deleteHook = false;
+        HookTableType newHook = null;
+        if (hook == null) {
+          newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
+        } else {
+          newHook = new HookTableType() {
+            Id = hook.Id,
+            Secret = hook.Secret,
+            Events = string.Join(",", RequiredEvents),
+          };
+        }
+
+        // Assume failure until we succeed
+        newHook.LastError = DateTimeOffset.UtcNow;
+
         try {
+          var hookList = await admin.RepositoryWebhooks(_fullName);
+          if (!hookList.IsOk) {
+            throw new Exception($"Unable to list hooks for {_fullName}");
+          }
+
+          var existingHooks = hookList.Result
+            .Where(x => x.Name.Equals("web"))
+            .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/", StringComparison.OrdinalIgnoreCase));
+
+          // Delete any existing hooks that already point back to us - don't
+          // want to risk adding multiple Ship hooks.
+          foreach (var existingHook in existingHooks) {
+            var deleteResponse = await admin.DeleteRepositoryWebhook(_fullName, existingHook.Id);
+            if (!deleteResponse.Succeeded) {
+              Log.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'");
+            }
+          }
+
           var addRepoHookResponse = await admin.AddRepositoryWebhook(
             _fullName,
             new Common.GitHub.Models.Webhook() {
@@ -655,34 +666,41 @@
 
           if (addRepoHookResponse.Succeeded) {
             newHook.GitHubId = addRepoHookResponse.Result.Id;
+            newHook.LastError = null;
             changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
           } else {
-            Log.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error?.ToException()}");
-            deleteHook = true;
+            throw new Exception($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error}");
           }
         } catch (Exception e) {
-          e.Report($"Failed to add hook for repo '{_fullName}' ({_repoId})");
-          deleteHook = true;
-          throw;
-        } finally {
-          if (deleteHook) {
-            await context.BulkUpdateHooks(deleted: new[] { newHook.Id });
-          }
+          e.Report();
+          // Save LastError
+          await context.BulkUpdateHooks(hooks: new[] { newHook });
         }
       } else if (!RequiredEvents.SetEquals(hook.Events.Split(','))) {
-        var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
+        var editHook = new HookTableType() {
+          Id = hook.Id,
+          GitHubId = hook.GitHubId,
+          Secret = hook.Secret,
+          Events = hook.Events,
+          LastError = DateTimeOffset.UtcNow, // Default to faulted.
+        };
 
-        if (!editResponse.Succeeded) {
-          Log.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error?.ToException()}");
-        } else {
-          await context.BulkUpdateHooks(hooks: new[] {
-              new HookTableType(){
-                Id = hook.Id,
-                GitHubId = editResponse.Result.Id,
-                Secret = hook.Secret,
-                Events = string.Join(",", editResponse.Result.Events),
-              }
-            });
+        try {
+          Log.Info($"Updating webhook {_fullName}/{hook.GitHubId} from [{hook.Events}] to [{string.Join(",", RequiredEvents)}]");
+          var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
+
+          if (editResponse.Succeeded) {
+            editHook.LastError = null;
+            editHook.GitHubId = editResponse.Result.Id;
+            editHook.Events = string.Join(",", editResponse.Result.Events);
+            await context.BulkUpdateHooks(hooks: new[] { editHook });
+          } else {
+            throw new Exception($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error}");
+          }
+        } catch (Exception e) {
+          e.Report();
+          // Save LastError
+          await context.BulkUpdateHooks(hooks: new[] { editHook });
         }
       }
 
