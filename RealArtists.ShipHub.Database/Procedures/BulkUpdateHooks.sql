@@ -22,19 +22,16 @@ BEGIN
 
     MERGE INTO Hooks WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Id, GitHubId, [Secret], [Events]
+      SELECT Id, GitHubId, [Secret], [Events], [LastError]
       FROM @Hooks
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Update
-    WHEN MATCHED AND EXISTS (
-      SELECT [Target].GitHubId, [Target].[Secret], [Target].[Events]
-      EXCEPT
-      SELECT [Source].GitHubId, [Source].[Secret], [Source].[Events]
-    ) THEN UPDATE SET
+    WHEN MATCHED THEN UPDATE SET
       GitHubId = [Source].GitHubId,
       [Secret] = [Source].[Secret],
-      [Events] = [Source].[Events]
+      [Events] = [Source].[Events],
+      [LastError] = [Source].[LastError]
     OUTPUT INSERTED.Id, INSERTED.RepositoryId, INSERTED.OrganizationId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

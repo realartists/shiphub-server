@@ -8,6 +8,7 @@
   [PingCount]        INT              NULL,
   [RepositoryId]     BIGINT           NULL,
   [OrganizationId]   BIGINT           NULL,
+  [LastError]        DATETIMEOFFSET   NULL,
   CONSTRAINT [PK_Hooks] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [CK_Hooks_Linked] CHECK ([RepositoryId] IS NOT NULL OR [OrganizationId] IS NOT NULL),
   CONSTRAINT [FK_Hooks_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),

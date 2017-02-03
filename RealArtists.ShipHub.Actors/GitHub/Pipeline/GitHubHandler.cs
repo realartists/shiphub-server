@@ -210,6 +210,7 @@
         var mediaType = response.Content.Headers.ContentType.MediaType;
         if (mediaType.Contains("github") || mediaType.Contains("json")) {
           result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
+          result.Error.Status = response.StatusCode;
         } else {
           var body = await response.Content.ReadAsStringAsync();
           throw new GitHubException($"Invalid GitHub Response for [{request.Uri}]:\n\n{body}");

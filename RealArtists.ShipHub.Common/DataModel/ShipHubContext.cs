@@ -761,12 +761,14 @@
               Tuple.Create("GitHubId", typeof(long)),
               Tuple.Create("Secret", typeof(Guid)),
               Tuple.Create("Events", typeof(string)),
+              Tuple.Create("LastError", typeof(DateTimeOffset)),
             },
             y => new object[] {
               y.Id,
               y.GitHubId,
               y.Secret,
               y.Events,
+              y.LastError,
             },
             hooks);
         }
