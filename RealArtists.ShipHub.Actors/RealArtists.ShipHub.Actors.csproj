@@ -41,7 +41,6 @@
     <Compile Include="GitHub\GitHubPoolEmptyException.cs" />
     <Compile Include="GitHub\Logging\LoggingMessageProcessingHandler.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />
-    <Compile Include="GitHub\Pipeline\SneakyCacheFilter.cs" />
     <Compile Include="IssueActor.cs" />
     <Compile Include="GrainLog.cs" />
     <Compile Include="OrganizationActor.cs" />

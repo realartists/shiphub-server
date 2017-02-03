@@ -164,7 +164,7 @@
                 var sha = parts[numParts - 1];
                 return new {
                   Id = x,
-                  Task = ghc.Commit(repoName, sha, GitHubCacheDetails.Empty),
+                  Task = ghc.Commit(repoName, sha),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);
@@ -207,7 +207,7 @@
                 var issueNum = int.Parse(parts[numParts - 1]);
                 return new {
                   Id = x,
-                  Task = ghc.Issue(repoName, issueNum, GitHubCacheDetails.Empty),
+                  Task = ghc.Issue(repoName, issueNum),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);
@@ -224,7 +224,7 @@
                 var prNum = int.Parse(parts[numParts - 1]);
                 return new {
                   Id = url,
-                  Task = ghc.PullRequest(repoName, prNum, GitHubCacheDetails.Empty),
+                  Task = ghc.PullRequest(repoName, prNum),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);

@@ -275,10 +275,10 @@
 
     private async Task<IHttpActionResult> BuyOrganization(long actorId, long targetId, Account targetAccount) {
       var ghc = CreateGitHubActor(actorId);
-      var ghcUser = (await ghc.User(GitHubCacheDetails.Empty)).Result;
-      var ghcOrg = (await ghc.Organization(targetAccount.Login, GitHubCacheDetails.Empty)).Result;
+      var ghcUser = (await ghc.User()).Result;
+      var ghcOrg = (await ghc.Organization(targetAccount.Login)).Result;
 
-      var emails = (await ghc.UserEmails(GitHubCacheDetails.Empty)).Result;
+      var emails = (await ghc.UserEmails()).Result;
       var primaryEmail = emails.First(x => x.Primary);
 
       string firstName = null;

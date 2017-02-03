@@ -41,8 +41,8 @@
       if (customerList.Count == 0) {
         // Cannot use cache because we need fields like Name + Email which
         // we don't currently save to the DB.
-        var githubUser = (await gitHubClient.User(gh.GitHubCacheDetails.Empty)).Result;
-        var emails = (await gitHubClient.UserEmails(gh.GitHubCacheDetails.Empty)).Result;
+        var githubUser = (await gitHubClient.User()).Result;
+        var emails = (await gitHubClient.UserEmails()).Result;
         var primaryEmail = emails.First(x => x.Primary);
 
         var createRequest = _chargeBee.Customer.Create()

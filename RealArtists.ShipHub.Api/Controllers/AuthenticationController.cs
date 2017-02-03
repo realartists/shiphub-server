@@ -76,7 +76,7 @@
 
     public Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
       AccessToken = accessToken;
-      var request = new GitHubRequest("user", GitHubCacheDetails.Empty);
+      var request = new GitHubRequest("user");
       return handler.Fetch<Common.GitHub.Models.Account>(this, request, cancellationToken);
     }
 
