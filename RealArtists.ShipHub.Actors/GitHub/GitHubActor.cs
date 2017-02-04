@@ -9,7 +9,6 @@
   using System.Net.Http;
   using System.Net.Http.Headers;
   using System.Reflection;
-  using System.Text.RegularExpressions;
   using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
@@ -131,11 +130,6 @@
     ////////////////////////////////////////////////////////////
     // Helpers
     ////////////////////////////////////////////////////////////
-
-    public static Regex IssueTemplateRegex { get; } = new Regex(
-      @"^issue_template(?:\.\w+)?$",
-      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
-      TimeSpan.FromMilliseconds(200));
 
     private int _requestId = 0;
     public int NextRequestId() {

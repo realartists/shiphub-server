@@ -6,6 +6,7 @@
   using System.Linq;
   using System.Net;
   using System.Text;
+  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using ActorInterfaces.GitHub;
@@ -35,6 +36,16 @@
       , "milestone"
       , "push"
     );
+
+    public static Regex ExactMatchIssueTemplateRegex { get; } = new Regex(
+      @"^issue_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
+
+    public static Regex EndsWithIssueTemplateRegex { get; } = new Regex(
+      @"issue_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -349,7 +360,7 @@
     private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
             && file.Name != null
-            && GitHubActor.IssueTemplateRegex.IsMatch(file.Name);
+            && ExactMatchIssueTemplateRegex.IsMatch(file.Name);
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
