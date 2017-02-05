@@ -67,19 +67,16 @@ BEGIN
   ;WITH LogViewForUser AS (
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = sl.OwnerId)
+      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = sl.OwnerId AND ar.AccountId = @UserId AND ar.[Hidden] = 0)
       LEFT OUTER JOIN @RepositoryVersions as rv ON (rv.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'repo'
-      AND ar.AccountId = @UserId
-      AND ar.[Hidden] = 0
       AND ISNULL(rv.[RowVersion], 0) < sl.[RowVersion]
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = sl.OwnerId)
+      INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = sl.OwnerId AND oa.UserId = @UserId)
       LEFT OUTER JOIN @OrganizationVersions as ov ON (ov.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'org'
-      AND oa.UserId = @UserId
       AND ISNULL(ov.[RowVersion], 0) < sl.[RowVersion]
   )
   INSERT INTO @AllLogs
