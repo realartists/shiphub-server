@@ -1,0 +1,5 @@
+﻿CREATE USER [ReadOnly]
+  WITH PASSWORD = 'PRjAmPIx584ld5HuuG11'
+GO
+
+GRANT CONNECT TO [ReadOnly]

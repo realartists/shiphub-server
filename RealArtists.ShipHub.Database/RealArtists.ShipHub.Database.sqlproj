@@ -145,6 +145,7 @@
     <Build Include="User Defined Types\HookTableType.sql" />
     <Build Include="Procedures\CreateHook.sql" />
     <Build Include="Procedures\LogoutWebhooks.sql" />
+    <Build Include="Security\ReadOnly.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
