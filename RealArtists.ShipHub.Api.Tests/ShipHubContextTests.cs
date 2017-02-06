@@ -11,44 +11,97 @@
   [AutoRollback]
   public class ShipHubContextTests {
     [Test]
-    public async Task UsersCanBecomeOrgsButNotGoBack() {
+    public async Task UsersCanBecomeOrgs() {
       using (var context = new ShipHubContext()) {
-        var user = TestUtil.MakeTestUser(context);
-        var repo1 = TestUtil.MakeTestRepo(context, user.Id, 2001, "unicorns1");
-        var repo2 = TestUtil.MakeTestRepo(context, user.Id, 2002, "unicorns2");
+        var user1 = TestUtil.MakeTestUser(context, 3001, "user1");
+        var user2 = TestUtil.MakeTestUser(context, 3002, "user2");
+        var user3 = TestUtil.MakeTestUser(context, 3003, "user3");
+        var repo1 = TestUtil.MakeTestRepo(context, user1.Id, 2001, "unicorns1");
+        var repo2 = TestUtil.MakeTestRepo(context, user1.Id, 2002, "unicorns2");
+        var repo3 = TestUtil.MakeTestRepo(context, user2.Id, 2003, "unicorns3");
+        var repo4 = TestUtil.MakeTestRepo(context, user3.Id, 2004, "unicorns4");
         var org1 = TestUtil.MakeTestOrg(context, 6001, "org1");
         var org2 = TestUtil.MakeTestOrg(context, 6002, "org2");
         await context.SaveChangesAsync();
 
-        await context.SetAccountLinkedRepositories(user.Id, new[] {
+        await context.SetAccountLinkedRepositories(user1.Id, new[] {
           Tuple.Create(repo1.Id, false),
           Tuple.Create(repo2.Id, true),
         });
 
-        await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id });
+        await context.SetAccountLinkedRepositories(user2.Id, new[] {
+          Tuple.Create(repo3.Id, false),
+        });
+
+        await context.SetAccountLinkedRepositories(user3.Id, new[] {
+          Tuple.Create(repo3.Id, false),
+          Tuple.Create(repo4.Id, false),
+        });
+
+        await context.SetUserOrganizations(user1.Id, new[] { org1.Id, org2.Id });
 
         // Make the user an org.
-        var changes = await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { new AccountTableType() {
-          Id = user.Id,
-          Login = user.Login,
-          Type = "org",
-        } });
+        var changes = await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] {
+          new AccountTableType() {
+            Id = user1.Id,
+            Login = user1.Login,
+            Type = "org",
+          },
+          new AccountTableType() {
+            Id = user2.Id,
+            Login = "user2Rename",
+            Type = "user",
+          },
+          new AccountTableType(){
+            Id = user3.Id,
+            Login = user3.Login,
+            Type = "user",
+          }
+        });
+
+        // Should trigger organization change notifications for removed memberships
+        Assert.IsTrue(changes.Organizations.SetEquals(new[] { org1.Id, org2.Id }));
+
+        // Should trigger repository notifications
+        Assert.IsTrue(changes.Repositories.SetEquals(new[] { repo1.Id, repo2.Id, repo3.Id }));
 
         // now we need a new context to defeat caching.
         using (var newContext = new ShipHubContext()) {
           // Should remove account repositories
-          Assert.IsFalse(await newContext.AccountRepositories.Where(x => x.AccountId == user.Id).AnyAsync());
+          Assert.IsFalse(await newContext.AccountRepositories.Where(x => x.AccountId == user1.Id).AnyAsync());
 
           // Should clear token and rate limit
-          var account = await newContext.Accounts.SingleAsync(x => x.Id == user.Id);
+          var account = await newContext.Accounts.SingleAsync(x => x.Id == user1.Id);
           Assert.IsNull(account.Token);
           Assert.IsTrue(account.RateLimitRemaining == 0);
 
           // Should remove organization memberships
-          Assert.IsFalse(await newContext.OrganizationAccounts.Where(x => x.UserId == user.Id).AnyAsync());
+          Assert.IsFalse(await newContext.OrganizationAccounts.Where(x => x.UserId == user1.Id).AnyAsync());
 
-          // Should trigger organization change notifications for removed memberships
-          Assert.IsTrue(changes.Organizations.IsSubsetOf(new[] { org1.Id, org2.Id }));
+          
+        }
+      }
+    }
+
+    [Test]
+    public async Task OrgsCannotBecomeUsers() {
+      using (var context = new ShipHubContext()) {
+        var org1 = TestUtil.MakeTestOrg(context, 6001, "org1");
+        await context.SaveChangesAsync();
+
+        // (Try to) make the org a user
+        var changes = await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { new AccountTableType() {
+          Id = org1.Id,
+          Login = org1.Login,
+          Type = "user",
+        } });
+
+        // Should be no changes
+        Assert.IsTrue(changes.IsEmpty);
+
+        // now we need a new context to defeat caching.
+        using (var newContext = new ShipHubContext()) {
+          Assert.IsNull(await newContext.Users.SingleOrDefaultAsync(x => x.Id == org1.Id));
         }
       }
     }
