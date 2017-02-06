@@ -9,9 +9,8 @@ BEGIN
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [Id]   BIGINT NOT NULL PRIMARY KEY CLUSTERED,
-    [Type] NVARCHAR(4) NOT NULL,
-    INDEX IX_Type ([Type])
+    [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [BecameOrg] BIT NOT NULL
   )
 
   DECLARE @OrgChanges TABLE (
@@ -44,19 +43,19 @@ BEGIN
         [Type] = IIF([Target].[Type] = 'org', [Target].[Type], [Source].[Type]), 
         [Login] = [Source].[Login],
         [Date] = @Date
-    OUTPUT INSERTED.Id, INSERTED.[Type] INTO @Changes
+    OUTPUT INSERTED.Id, IIF(ISNULL(DELETED.[Type], INSERTED.[Type]) != INSERTED.[Type], 1, 0) INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Ensuring organizations reference themselves is handled by
     -- [SetUserOrganizations]
 
-    IF (EXISTS(SELECT * FROM @Changes WHERE [Type] = 'org'))
+    IF (EXISTS(SELECT * FROM @Changes WHERE BecameOrg = 1))
     BEGIN
       -- Users who transition to orgs no longer have AccountRepositories
       DELETE FROM AccountRepositories
       FROM @Changes as c
         INNER LOOP JOIN AccountRepositories as ar ON (ar.AccountId = c.Id)
-      WHERE c.[Type] = 'org'
+      WHERE c.BecameOrg = 1
       OPTION (FORCE ORDER)
 
       -- Users who transition to orgs also can't log in anymore
@@ -69,7 +68,7 @@ BEGIN
         [RateLimitReset] = DEFAULT
       FROM @Changes as c
         INNER LOOP JOIN Accounts as a ON (a.Id = c.Id)
-      WHERE c.[Type] = 'org'
+      WHERE c.BecameOrg = 1
       OPTION (FORCE ORDER)
 
       -- Users who transition to orgs can't be org members anymore
@@ -77,7 +76,7 @@ BEGIN
       OUTPUT DELETED.OrganizationId INTO @OrgChanges
       FROM @Changes as c
         INNER LOOP JOIN OrganizationAccounts as oa ON (oa.UserId = c.Id)
-      WHERE c.[Type] = 'org'
+      WHERE c.BecameOrg = 1
       OPTION (FORCE ORDER)
 
       UPDATE SyncLog SET
@@ -86,6 +85,9 @@ BEGIN
       FROM @OrgChanges as c
         INNER LOOP JOIN SyncLog as sl ON (sl.OwnerType = 'org' AND sl.OwnerId = c.Id AND sl.ItemType = 'account' and sl.ItemId = c.Id)
       OPTION (FORCE ORDER)
+
+      -- Notify the user-turned-org explcitly so they're booted from sync if connected
+      SELECT 'user' as ItemType, Id as ItemId FROM @Changes WHERE BecameOrg = 1
 
       -- Users who transition to orgs are also no longer assignable,
       -- but the RepositoryActor will pick that up soon enough, if anyone cares.

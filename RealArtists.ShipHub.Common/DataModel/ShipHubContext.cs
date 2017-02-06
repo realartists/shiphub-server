@@ -315,6 +315,7 @@
                     result.Repositories.Add(itemId);
                     break;
                   case "user":
+                  case "account": // I almost used this today accidentally.
                     result.Users.Add(itemId);
                     break;
                   default:

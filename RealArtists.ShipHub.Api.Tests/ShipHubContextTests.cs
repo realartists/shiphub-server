@@ -56,6 +56,11 @@
             Id = user3.Id,
             Login = user3.Login,
             Type = "user",
+          },
+          new AccountTableType(){
+            Id = 6003,
+            Login = "org3",
+            Type = "org",
           }
         });
 
@@ -64,6 +69,9 @@
 
         // Should trigger repository notifications
         Assert.IsTrue(changes.Repositories.SetEquals(new[] { repo1.Id, repo2.Id, repo3.Id }));
+
+        // Only the user->org user should trigger a notification
+        Assert.IsTrue(changes.Users.SetEquals(new[] { user1.Id }));
 
         // now we need a new context to defeat caching.
         using (var newContext = new ShipHubContext()) {
