@@ -67,19 +67,16 @@ BEGIN
   ;WITH LogViewForUser AS (
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = sl.OwnerId)
+      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = sl.OwnerId AND ar.AccountId = @UserId AND ar.[Hidden] = 0)
       LEFT OUTER JOIN @RepositoryVersions as rv ON (rv.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'repo'
-      AND ar.AccountId = @UserId
-      AND ar.[Hidden] = 0
       AND ISNULL(rv.[RowVersion], 0) < sl.[RowVersion]
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = sl.OwnerId)
+      INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = sl.OwnerId AND oa.UserId = @UserId)
       LEFT OUTER JOIN @OrganizationVersions as ov ON (ov.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'org'
-      AND oa.UserId = @UserId
       AND ISNULL(ov.[RowVersion], 0) < sl.[RowVersion]
   )
   INSERT INTO @AllLogs
@@ -139,7 +136,7 @@ BEGIN
   -- ------------------------------------------------------------------------------------------------------------------
 
   SELECT e.Id, e.[Type], e.[Login], uo.[Admin],
-    CAST(CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook
+    CAST(CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook
   FROM @UserOrgs as uo
     INNER LOOP JOIN Accounts as e ON (e.Id = uo.OrganizationId)
     LEFT OUTER LOOP JOIN Hooks as h ON (h.OrganizationId = e.Id)
@@ -256,7 +253,7 @@ BEGIN
 
     -- Repositories
     SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName, e.IssueTemplate, ar.[Admin],
-      [Disabled], CAST (CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasHook
+      e.[Disabled], CAST (CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasHook
     FROM @Logs as l
       INNER JOIN Repositories as e ON (l.ItemId = e.Id)
       INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = e.Id AND ar.AccountId = @UserId)
