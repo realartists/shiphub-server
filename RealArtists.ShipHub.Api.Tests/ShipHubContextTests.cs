@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
+  using System.Data.Entity;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
@@ -9,6 +10,49 @@
   [TestFixture]
   [AutoRollback]
   public class ShipHubContextTests {
+    [Test]
+    public async Task UsersCanBecomeOrgsButNotGoBack() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var repo1 = TestUtil.MakeTestRepo(context, user.Id, 2001, "unicorns1");
+        var repo2 = TestUtil.MakeTestRepo(context, user.Id, 2002, "unicorns2");
+        var org1 = TestUtil.MakeTestOrg(context, 6001, "org1");
+        var org2 = TestUtil.MakeTestOrg(context, 6002, "org2");
+        await context.SaveChangesAsync();
+
+        await context.SetAccountLinkedRepositories(user.Id, new[] {
+          Tuple.Create(repo1.Id, false),
+          Tuple.Create(repo2.Id, true),
+        });
+
+        await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id });
+
+        // Make the user an org.
+        var changes = await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { new AccountTableType() {
+          Id = user.Id,
+          Login = user.Login,
+          Type = "org",
+        } });
+
+        // now we need a new context to defeat caching.
+        using (var newContext = new ShipHubContext()) {
+          // Should remove account repositories
+          Assert.IsFalse(await newContext.AccountRepositories.Where(x => x.AccountId == user.Id).AnyAsync());
+
+          // Should clear token and rate limit
+          var account = await newContext.Accounts.SingleAsync(x => x.Id == user.Id);
+          Assert.IsNull(account.Token);
+          Assert.IsTrue(account.RateLimitRemaining == 0);
+
+          // Should remove organization memberships
+          Assert.IsFalse(await newContext.OrganizationAccounts.Where(x => x.UserId == user.Id).AnyAsync());
+
+          // Should trigger organization change notifications for removed memberships
+          Assert.IsTrue(changes.Organizations.IsSubsetOf(new[] { org1.Id, org2.Id }));
+        }
+      }
+    }
+
     [Test]
     public async Task SetAccountLinkedRepositoriesCanSetAssociations() {
       using (var context = new ShipHubContext()) {
