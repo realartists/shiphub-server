@@ -34,7 +34,8 @@ BEGIN
         SELECT [Source].[Type], [Source].[Login]
       ) THEN
       UPDATE SET
-        [Type] = [Source].[Type],
+        -- Once an org, always an org. Even if GitHub lies to us about it.
+        [Type] = IIF([Target].[Type] = 'org', [Target].[Type], [Source].[Type]), 
         [Login] = [Source].[Login],
         [Date] = @Date
     OUTPUT INSERTED.Id INTO @Changes
