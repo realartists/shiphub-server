@@ -9,8 +9,15 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    DELETE FROM Reactions
+    FROM @Comments as c
+      INNER LOOP JOIN Reactions as r ON (r.CommentId = c.Item)
+    OPTION (FORCE ORDER)
+
     DELETE FROM Comments
-    WHERE Id IN (SELECT Item FROM @Comments)
+    FROM @Comments as dc
+      INNER LOOP JOIN Comments as c ON (c.Id = dc.Item)
+    OPTION (FORCE ORDER)
 
     UPDATE SyncLog SET
       [Delete] = 1,
