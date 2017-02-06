@@ -56,6 +56,12 @@ BEGIN
     INDEX IX_OwnerType_OwnerId ([OwnerType], [OwnerId])
   )
 
+  -- Instead of using transactions, work off a single stable list of sync logs
+  DECLARE @UserOrgs TABLE (
+    [OrganizationId] BIGINT NOT NULL PRIMARY KEY CLUSTERED,
+    [Admin]          BIT    NOT NULL
+  )
+
   -- Populate work table with relevant logs
   -- TODO: Can this be made one statement (non union?)
   ;WITH LogViewForUser AS (
@@ -97,6 +103,14 @@ BEGIN
   FROM PartitionedLogs
   WHERE Occurrence = 1
 
+  -- Populate stable org list
+  INSERT INTO @UserOrgs
+  SELECT DISTINCT OwnerId, ISNULL(oa.[Admin], 0) -- Safe default
+  FROM @OwnerVersions as ov
+    LEFT OUTER LOOP JOIN OrganizationAccounts as oa ON (oa.OrganizationId = ov.OwnerId AND oa.UserId = @UserId)
+  WHERE ov.OwnerType = 'org'
+  OPTION (FORCE ORDER)
+
   -- Done with work table
   DELETE @AllLogs
 
@@ -115,27 +129,27 @@ BEGIN
   FROM @RepositoryVersions as rv
   WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId AND [Hidden] = 0)
 
-  SELECT ItemId as OrganizationId
+  SELECT ov.ItemId as OrganizationId
   FROM @OrganizationVersions as ov
-  WHERE NOT EXISTS (SELECT * FROM OrganizationAccounts WHERE UserId = @UserId AND OrganizationId = ov.ItemId)
+    LEFT OUTER JOIN @UserOrgs as uo ON (uo.OrganizationId = ov.ItemId)
+  WHERE uo.OrganizationId IS NULL
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- New/Updated Orgs
   -- ------------------------------------------------------------------------------------------------------------------
 
-  SELECT e.Id, e.[Type], e.[Login],
-    CAST(CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook,
-    CAST(ISNULL(oa.[Admin], 0) as BIT) as [Admin]
-  FROM Accounts as e
-    INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = e.Id AND oa.UserId = @UserId)
-    LEFT OUTER JOIN Hooks as h ON (h.OrganizationId = e.Id)
-  WHERE e.[Type] = 'org'
-    AND EXISTS (SELECT * FROM @OwnerVersions WHERE OwnerType = 'org' AND OwnerId = e.Id)
+  SELECT e.Id, e.[Type], e.[Login], uo.[Admin],
+    CAST(CASE WHEN h.Id IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook
+  FROM @UserOrgs as uo
+    INNER LOOP JOIN Accounts as e ON (e.Id = uo.OrganizationId)
+    LEFT OUTER LOOP JOIN Hooks as h ON (h.OrganizationId = e.Id)
+  OPTION (FORCE ORDER)
 
   -- Membership for updated orgs
   SELECT oa.OrganizationId, oa.UserId
-  FROM OrganizationAccounts as oa
-  WHERE EXISTS (SELECT * FROM @OwnerVersions WHERE OwnerType = 'org' AND OwnerId = oa.OrganizationId)
+  FROM @UserOrgs as uo
+    INNER LOOP JOIN OrganizationAccounts as oa ON (oa.OrganizationId = uo.OrganizationId)
+  OPTION (FORCE ORDER)
 
   -- Version updates occur as entities sync below
 
