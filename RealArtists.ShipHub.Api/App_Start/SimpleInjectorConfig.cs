@@ -15,7 +15,7 @@
 
   public static class SimpleInjectorConfig {
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
-    public static void Register(string chargeBeeHostAndKey) {
+    public static void Register(IShipHubConfiguration config) {
       var container = new Container();
       container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();
 
@@ -54,8 +54,8 @@
       container.Register<IShipHubMailer>(() => new ShipHubMailer(), Lifestyle.Singleton);
 
       // ChargeBee
-      if (!chargeBeeHostAndKey.IsNullOrWhiteSpace()) {
-        var parts = chargeBeeHostAndKey.Split(':');
+      if (!config.ChargeBeeHostAndKey.IsNullOrWhiteSpace()) {
+        var parts = config.ChargeBeeHostAndKey.Split(':');
         container.Register(() => new ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
       }
 

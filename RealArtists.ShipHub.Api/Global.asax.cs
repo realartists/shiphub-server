@@ -11,7 +11,7 @@
       var shipHubConfig = new ShipHubCloudConfiguration();
       ApplicationInsightsConfig.Register(shipHubConfig.ApplicationInsightsKey);
       GlobalConfiguration.Configure((config) => WebApiConfig.Register(config, shipHubConfig.RaygunApiKey));
-      SimpleInjectorConfig.Register(shipHubConfig.ChargeBeeHostAndKey);
+      SimpleInjectorConfig.Register(shipHubConfig);
     }
   }
 }
