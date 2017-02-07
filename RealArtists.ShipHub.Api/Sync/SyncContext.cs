@@ -206,6 +206,7 @@
               Entity = SyncEntityType.Organization,
               Data = new OrganizationEntry() {
                 Identifier = orgId,
+                Login = ddr.Login ?? "Sync Corruption: 0x2695",
                 Users = Array.Empty<long>()
               },
             });

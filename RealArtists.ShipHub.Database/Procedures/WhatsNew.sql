@@ -62,6 +62,14 @@ BEGIN
     [Admin]          BIT    NOT NULL
   )
 
+  DECLARE @UpdatedOrgs TABLE (
+    [OrganizationId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  )
+
+  -- Populate stable org list
+  INSERT INTO @UserOrgs
+  SELECT OrganizationId, [Admin] FROM OrganizationAccounts WHERE UserId = @UserId
+
   -- Populate work table with relevant logs
   -- TODO: Can this be made one statement (non union?)
   ;WITH LogViewForUser AS (
@@ -74,7 +82,7 @@ BEGIN
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN OrganizationAccounts as oa ON (oa.OrganizationId = sl.OwnerId AND oa.UserId = @UserId)
+      INNER JOIN @UserOrgs as uo ON (uo.OrganizationId = sl.OwnerId)
       LEFT OUTER JOIN @OrganizationVersions as ov ON (ov.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'org'
       AND ISNULL(ov.[RowVersion], 0) < sl.[RowVersion]
@@ -100,16 +108,12 @@ BEGIN
   FROM PartitionedLogs
   WHERE Occurrence = 1
 
-  -- Populate stable org list
-  INSERT INTO @UserOrgs
-  SELECT DISTINCT OwnerId, ISNULL(oa.[Admin], 0) -- Safe default
-  FROM @OwnerVersions as ov
-    LEFT OUTER LOOP JOIN OrganizationAccounts as oa ON (oa.OrganizationId = ov.OwnerId AND oa.UserId = @UserId)
-  WHERE ov.OwnerType = 'org'
-  OPTION (FORCE ORDER)
-
   -- Done with work table
   DELETE @AllLogs
+
+  -- Populate Updated Orgs
+  INSERT INTO @UpdatedOrgs
+  SELECT DISTINCT OwnerId FROM @OwnerVersions WHERE OwnerType = 'org'
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- Basic User Info
@@ -126,9 +130,10 @@ BEGIN
   FROM @RepositoryVersions as rv
   WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId AND [Hidden] = 0)
 
-  SELECT ov.ItemId as OrganizationId
+  SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov
     LEFT OUTER JOIN @UserOrgs as uo ON (uo.OrganizationId = ov.ItemId)
+    LEFT OUTER JOIN Accounts as a ON (a.Id = ov.ItemId)
   WHERE uo.OrganizationId IS NULL
 
   -- ------------------------------------------------------------------------------------------------------------------
@@ -137,14 +142,15 @@ BEGIN
 
   SELECT e.Id, e.[Type], e.[Login], uo.[Admin],
     CAST(CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook
-  FROM @UserOrgs as uo
-    INNER LOOP JOIN Accounts as e ON (e.Id = uo.OrganizationId)
+  FROM @UpdatedOrgs as u
+    INNER JOIN @UserOrgs as uo ON (uo.OrganizationId = u.OrganizationId)
+    INNER LOOP JOIN Accounts as e ON (e.Id = u.OrganizationId)
     LEFT OUTER LOOP JOIN Hooks as h ON (h.OrganizationId = e.Id)
   OPTION (FORCE ORDER)
 
   -- Membership for updated orgs
   SELECT oa.OrganizationId, oa.UserId
-  FROM @UserOrgs as uo
+  FROM @UpdatedOrgs as uo
     INNER LOOP JOIN OrganizationAccounts as oa ON (oa.OrganizationId = uo.OrganizationId)
   OPTION (FORCE ORDER)
 
