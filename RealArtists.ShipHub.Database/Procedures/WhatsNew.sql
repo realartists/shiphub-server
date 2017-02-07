@@ -126,9 +126,10 @@ BEGIN
   FROM @RepositoryVersions as rv
   WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId AND [Hidden] = 0)
 
-  SELECT ov.ItemId as OrganizationId
+  SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov
     LEFT OUTER JOIN @UserOrgs as uo ON (uo.OrganizationId = ov.ItemId)
+    LEFT OUTER JOIN Accounts as a ON (a.Id = ov.ItemId)
   WHERE uo.OrganizationId IS NULL
 
   -- ------------------------------------------------------------------------------------------------------------------
