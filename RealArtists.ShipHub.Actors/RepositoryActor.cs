@@ -616,19 +616,19 @@
       var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
       context.Database.Connection.Close();
 
+      // If our last operation on this repo hook resulted in error, delay.
+      if (hook?.LastError > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
+        return changes; // Wait to try later.
+      }
+
       // There are now a few cases to handle
       // If there is no record of a hook, try to make one.
       // If there is an incomplete record, try to make it.
       // If there is an errored record, sleep or retry
       if (hook?.GitHubId == null) {
-        if (hook?.LastError > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
-          return changes; // Wait to try later.
-        }
-
         // GitHub will immediately send a ping when the webhook is created.
         // To avoid any chance for a race, add the Hook to the DB first, then
         // create on GitHub.
-
         HookTableType newHook = null;
         if (hook == null) {
           newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
