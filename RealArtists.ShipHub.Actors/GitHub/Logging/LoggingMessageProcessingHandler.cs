@@ -81,41 +81,41 @@
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
       var blobName = ExtractBlobName(request);
       var timer = new Stopwatch();
+      HttpResponseMessage response = null;
+      Exception logException = null;
 
-      if (_blobClient == null || blobName.IsNullOrWhiteSpace()) {
-        // log that the request happened, but don't store to blob
+      try {
+        // Load the request into the buffer so we can copy it later if the request failed.
+        request.Content?.LoadIntoBufferAsync();
         timer.Restart();
-        var response = await base.SendAsync(request, cancellationToken);
+        response = await base.SendAsync(request, cancellationToken);
         timer.Stop();
-        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase} - {timer.ElapsedMilliseconds}ms");
-        return response;
-      }
+      } catch (Exception e) {
+        logException = e;
+        throw;
+      } finally {
+        long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
+        string logBlob = null;
+        string statusLine = response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}";
 
-      if (!_initialized) {
-        await Initialize();
-      }
+        if (IsFailure(response) && _blobClient != null && !blobName.IsNullOrWhiteSpace()) {
+          logBlob = blobName;
 
-      using (var ms = new MemoryStream())
-      using (var sw = new StreamWriter(ms, Encoding.UTF8)) {
-        HttpResponseMessage response = null;
-        try {
-          await WriteRequest(ms, sw, request);
-          timer.Restart();
-          response = await base.SendAsync(request, cancellationToken);
-          timer.Stop();
-          if (IsFailure(response)) {
-            await WriteResponse(ms, sw, response);
+          if (!_initialized) {
+            await Initialize();
           }
-        } catch (Exception e) {
-          sw.WriteLine("\n\nError reading response:\n\n");
-          sw.WriteLine(e.ToString());
-          throw;
-        } finally {
-          long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
-          Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}")} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {blobName} - {contentLength} bytes");
 
-          var statusCode = response?.StatusCode;
-          if (statusCode == null || (int)statusCode < 200 && (int)statusCode >= 400) {
+          using (var ms = new MemoryStream())
+          using (var sw = new StreamWriter(ms, Encoding.UTF8)) {
+            await WriteRequest(ms, sw, request);
+
+            if (logException != null) {
+              sw.WriteLine("\n\nError reading response:\n\n");
+              sw.WriteLine(logException.ToString());
+            } else {
+              await WriteResponse(ms, sw, response);
+            }
+
             _appendBlobs.OnNext(new AppendBlobEntry() {
               BlobName = blobName,
               Content = Encoding.UTF8.GetString(ms.ToArray()),
@@ -123,8 +123,10 @@
           }
         }
 
-        return response;
+        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {statusLine} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {logBlob} - {contentLength} bytes");
       }
+
+      return response;
     }
 
     private static bool IsFailure(HttpResponseMessage response) {

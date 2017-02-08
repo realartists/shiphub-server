@@ -104,7 +104,7 @@
       // For logging
       LoggingMessageProcessingHandler.SetLogDetails(
         httpRequest,
-        $"{client.UserInfo}/{DateTime.UtcNow:o}_{client.NextRequestId()}_{httpRequest.RequestUri.PathAndQuery.Replace('/', '_')}",
+        $"{client.UserInfo}/{DateTime.UtcNow:o}_{client.NextRequestId()}{httpRequest.RequestUri.PathAndQuery.Replace('/', '_')}.txt",
         request.CreationDate
       );
 
