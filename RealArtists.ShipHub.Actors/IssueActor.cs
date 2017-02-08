@@ -110,7 +110,7 @@
 
       using (var context = _contextFactory.CreateInstance()) {
         // Always refresh the issue when viewed
-        var issueResponse = await ghc.Issue(_repoFullName, _issueNumber, _metadata);
+        var issueResponse = await ghc.Issue(_repoFullName, _issueNumber, _metadata, RequestPriority.Interactive);
         if (issueResponse.IsOk) {
           var update = issueResponse.Result;
 
@@ -136,7 +136,7 @@
         _metadata = GitHubMetadata.FromResponse(issueResponse);
 
         // This will be cached per-user by the ShipHubFilter.
-        var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber, _issueId);
+        var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber, _issueId, priority: RequestPriority.Interactive);
         if (timelineResponse.IsOk) {
           var timeline = timelineResponse.Result;
 
@@ -164,7 +164,7 @@
                 var sha = parts[numParts - 1];
                 return new {
                   Id = x,
-                  Task = ghc.Commit(repoName, sha),
+                  Task = ghc.Commit(repoName, sha, priority: RequestPriority.Interactive),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);
@@ -207,7 +207,7 @@
                 var issueNum = int.Parse(parts[numParts - 1]);
                 return new {
                   Id = x,
-                  Task = ghc.Issue(repoName, issueNum),
+                  Task = ghc.Issue(repoName, issueNum, priority: RequestPriority.Interactive),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);
@@ -224,7 +224,7 @@
                 var prNum = int.Parse(parts[numParts - 1]);
                 return new {
                   Id = url,
-                  Task = ghc.PullRequest(repoName, prNum),
+                  Task = ghc.PullRequest(repoName, prNum, priority: RequestPriority.Interactive),
                 };
               })
               .ToDictionary(x => x.Id, x => x.Task);
@@ -288,7 +288,7 @@
 
           // Issue Reactions
           if (_reactionMetadata.IsExpired()) {
-            var issueReactionsResponse = await ghc.IssueReactions(_repoFullName, _issueNumber, _reactionMetadata);
+            var issueReactionsResponse = await ghc.IssueReactions(_repoFullName, _issueNumber, _reactionMetadata, RequestPriority.Interactive);
             if (issueReactionsResponse.IsOk) {
               var reactions = issueReactionsResponse.Result;
 
@@ -312,7 +312,7 @@
           // Comments
           if (timeline.Any(x => x.Event == "commented")) {
             if (_commentMetadata.IsExpired()) {
-              var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata);
+              var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata, RequestPriority.Interactive);
               if (commentResponse.IsOk) {
                 var comments = commentResponse.Result;
 
@@ -348,7 +348,7 @@
         var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
         foreach (var reactionMetadata in commentReactionMetadata) {
           if (reactionMetadata.Value.IsExpired()) {
-            commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value));
+            commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value, RequestPriority.Interactive));
           }
         }
 
