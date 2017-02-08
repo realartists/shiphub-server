@@ -12,6 +12,7 @@
   using Common.GitHub;
   using Controllers;
   using Filters;
+  using Mixpanel;
   using Moq;
   using Newtonsoft.Json;
   using NUnit.Framework;
@@ -71,7 +72,7 @@
 
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null, null, null);
+        var controller = new BillingController(Configuration, null, null, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
@@ -101,7 +102,7 @@
         await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id });
         await context.SaveChangesAsync();
 
-        var controller = new BillingController(Configuration, null, null, null);
+        var controller = new BillingController(Configuration, null, null, null, null);
         controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)await controller.Accounts();
@@ -117,6 +118,18 @@
         expectCoupon: null,
         expectTrialToEndImmediately: false,
         expectNeedsReactivation: true
+        );
+    }
+
+    [Test]
+    public Task BuyEndpointSendsMixpanelEventIfAnalyticsIdIsSet() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "cancelled",
+        trialEndIfAny: null,
+        expectCoupon: null,
+        expectTrialToEndImmediately: false,
+        expectNeedsReactivation: true,
+        analyticsId: "someAnalyticsId"
         );
     }
 
@@ -212,7 +225,8 @@
       bool expectTrialToEndImmediately,
       bool expectNeedsReactivation = false,
       bool orgIsPaid = false,
-      string existingCouponId = null
+      string existingCouponId = null,
+      string analyticsId = null
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -286,10 +300,34 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api, null);
-        var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
+        var mixpanelEvents = new List<Tuple<string, string, Dictionary<string, object>>>();
+        var mockMixpanelClient = new Mock<IMixpanelClient>();
+        mockMixpanelClient
+          .Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<object>()))
+          .Callback((string name, object distinctId, object properties) => {
+            var propDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(properties));
+            mixpanelEvents.Add(Tuple.Create(name, distinctId.ToString(), propDict));
+          })
+          .ReturnsAsync(true);
+
+        var controller = new BillingController(Configuration, null, api, null, mockMixpanelClient.Object);
+        var response = await controller.Buy(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id), analyticsId);
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
+
+        if (analyticsId != null) {
+          var mixpanelEvent = mixpanelEvents.Single();
+          Assert.AreEqual("Redirect to ChargeBee", mixpanelEvent.Item1);
+          Assert.AreEqual("someAnalyticsId", mixpanelEvent.Item2);
+          CollectionAssert.AreEquivalent(
+            new Dictionary<string, object>() {
+              { "_github_login", user.Login },
+              { "_github_id", user.Id }
+            },
+            mixpanelEvent.Item3);
+        } else {
+          Assert.AreEqual(0, mixpanelEvents.Count, "should not have logged to mixpanel since analytics id was null");
+        }
       }
     }
 
@@ -315,7 +353,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api, null);
+        var controller = new BillingController(Configuration, null, api, null, null);
         var response = await controller.Manage(user.Id, user.Id, BillingController.CreateSignature(user.Id, user.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -344,7 +382,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api, null);
+        var controller = new BillingController(Configuration, null, api, null, null);
         var response = await controller.Manage(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/portal/path/123", ((RedirectResult)response).Location.AbsoluteUri);
@@ -409,6 +447,9 @@
             Assert.AreEqual("/billing/buy/finish", new Uri(data["redirect_url"]).AbsolutePath);
 
             var expectedPassThruContent = JsonConvert.SerializeObject(new BuyPassThruContent() {
+              ActorId = user.Id,
+              ActorLogin = user.Login,
+              AnalyticsId = "someAnalyticsId",
               NeedsReactivation = false,
             });
             Assert.AreEqual(expectedPassThruContent, data["pass_thru_content"]);
@@ -425,7 +466,10 @@
           }
         });
 
-        var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
+        var mockMixpanelClient = new Mock<IMixpanelClient>();
+        mockMixpanelClient.Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<object>())).ReturnsAsync(true);
+
+        var mock = new Mock<BillingController>(Configuration, null, api, null, mockMixpanelClient.Object) { CallBase = true };
         mock
           .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
           .Returns((long forUserId) => {
@@ -433,7 +477,7 @@
             return mockClient.Object;
           });
 
-        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id), "someAnalyticsId");
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
@@ -528,7 +572,7 @@
           }
         });
 
-        var mock = new Mock<BillingController>(Configuration, null, api, null) { CallBase = true };
+        var mock = new Mock<BillingController>(Configuration, null, api, null, null) { CallBase = true };
         mock
           .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
           .Returns((long forUserId) => {
@@ -565,6 +609,7 @@
                   subscription = new {
                     id = "someSubId",
                     customer_id = $"user-{user.Id}",
+                    plan_id = "someplan",
                     resource_version = 999,
                   }
                 },
@@ -589,7 +634,7 @@
 
         var queueClientMock = new Mock<IShipHubQueueClient>();
 
-        var controller = new BillingController(Configuration, null, api, queueClientMock.Object);
+        var controller = new BillingController(Configuration, null, api, queueClientMock.Object, null);
         var response = await controller.BuyFinish("someHostedPageId", "succeeded");
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.IsTrue(doesReactivate);
@@ -606,9 +651,14 @@
               content = new {
                 subscription = new {
                   id = "someSubId",
+                  plan_id = "someplan",
                   customer_id = customerId,
                   resource_version = 1234,
-                }
+                },
+                customer = new {
+                  id = customerId,
+                  cf_github_username = "somelogin",
+                },
               },
               pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
                 NeedsReactivation = false,
@@ -630,7 +680,7 @@
           return Task.CompletedTask;
         });
 
-      var controller = new BillingController(Configuration, null, api, queueClientMock.Object);
+      var controller = new BillingController(Configuration, null, api, queueClientMock.Object, null);
       var response = await controller.BuyFinish("someHostedPageId", "succeeded");
       Assert.IsInstanceOf<RedirectResult>(response);
       Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", ((RedirectResult)response).Location.AbsoluteUri);
@@ -662,6 +712,79 @@
 
         Assert.NotNull(changes, "should have sent notification about changes");
         Assert.AreEqual(new long[] { user.Id }, changes.Users.ToArray());
+      }
+    }
+
+    [Test]
+    public async Task BuyFinishEndpointSendsMixpanelEventWhenAnalyticsIdIsSet() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        var org = TestUtil.MakeTestOrg(context);
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.NotSubscribed,
+          Version = 1,
+        });
+        await context.SaveChangesAsync();
+
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
+            return new {
+              hosted_page = new {
+                state = "succeeded",
+                url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
+                content = new {
+                  subscription = new {
+                    id = "someSubId",
+                    plan_id = "organization",
+                    customer_id = $"org-{org.Id}",
+                    resource_version = 1234,
+                  },
+                  customer = new {
+                    id = $"org-{org.Id}",
+                    cf_github_username = org.Login,
+                  },
+                },
+                pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
+                  AnalyticsId = "someAnalyticsId",
+                  NeedsReactivation = false,
+                  ActorId = user.Id,
+                  ActorLogin = user.Login,
+                }),
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var queueClientMock = new Mock<IShipHubQueueClient>();
+        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>())).Returns(Task.CompletedTask);
+
+        var mixpanelEvents = new List<Tuple<string, string, Dictionary<string, object>>>();
+        var mockMixpanelClient = new Mock<IMixpanelClient>();
+        mockMixpanelClient
+          .Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<object>()))
+          .Callback((string name, object distinctId, object properties) => {
+            var propDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(properties));
+            mixpanelEvents.Add(Tuple.Create(name, distinctId.ToString(), propDict));
+          })
+          .ReturnsAsync(true);
+
+        var controller = new BillingController(Configuration, null, api, queueClientMock.Object, mockMixpanelClient.Object);
+        var response = await controller.BuyFinish("someHostedPageId", "succeeded");
+
+        Assert.AreEqual(1, mixpanelEvents.Count, "should have sent 1 event");
+        var purchaseEvent = mixpanelEvents[0];
+        Assert.AreEqual("Purchased", purchaseEvent.Item1);
+        Assert.AreEqual("someAnalyticsId", purchaseEvent.Item2);
+        CollectionAssert.AreEquivalent(new Dictionary<string, object>() {
+          { "plan", "organization" },
+          { "customer_id", $"org-{org.Id}" },
+          { "_github_login", user.Login },
+          { "_github_id", user.Id },
+        }, purchaseEvent.Item3);
       }
     }
 
@@ -708,7 +831,7 @@
           }
         });
 
-        var controller = new BillingController(Configuration, null, api, null);
+        var controller = new BillingController(Configuration, null, api, null, null);
         var response = await controller.UpdatePaymentMethod(org.Id, BillingController.CreateSignature(org.Id, org.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/page/path/123", ((RedirectResult)response).Location.AbsoluteUri);
