@@ -93,133 +93,133 @@
       }
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Assignable(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Comments(repoFullName, since, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Comments(repoFullName, issueNumber, since, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Commit(repoFullName, hash, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Events(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Issue(repoFullName, number, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.IssueCommentReactions(repoFullName, commentId, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.IssueReactions(repoFullName, issueNumber, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Issues(repoFullName, since, maxPages, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Labels(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Milestones(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Organization(orgName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.OrganizationMembers(orgLogin, role, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequest(repoFullName, pullRequestNumber, cache),
          cacheOptions
        );
     }
 
-    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Repository(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.ListDirectoryContents(repoFullName, directoryPath, cache),
         cacheOptions
        );
     }
 
-    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.FileContents(repoFullName, filePath, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.RepositoryProjects(repoFullName, cache),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions = null) {
+    public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.OrganizationProjects(organizationLogin, cache),
         cacheOptions

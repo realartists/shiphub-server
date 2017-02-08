@@ -53,7 +53,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -75,8 +75,8 @@
           });
 
         mock
-          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
-          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>(), It.IsAny<RequestPriority>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList, RequestPriority priority) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -98,7 +98,7 @@
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents));
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
         Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(hook.Events.Split(',')));
         Assert.IsFalse(changes.Repositories.Any());
@@ -124,7 +124,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -143,8 +143,8 @@
           });
 
         mock
-          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
-          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+          .Setup(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>(), It.IsAny<RequestPriority>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList, RequestPriority priority) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -166,7 +166,7 @@
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
         var changes = await repoActor.AddOrUpdateRepositoryWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents));
+        mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
         Assert.IsTrue(RepositoryActor.RequiredEvents.SetEquals(hook.Events.Split(',')));
         Assert.IsFalse(changes.Repositories.Any());
@@ -189,7 +189,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
                   new Webhook() {
@@ -225,17 +225,17 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteRepositoryWebhook(repo.FullName, It.IsAny<long>()))
+          .Setup(x => x.DeleteRepositoryWebhook(repo.FullName, It.IsAny<long>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
             Status = HttpStatusCode.OK,
           })
-          .Callback((string fullName, long hookId) => {
+          .Callback((string fullName, long hookId, RequestPriority priority) => {
             deletedHookIds.Add(hookId);
           });
 
         mock
-          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -266,7 +266,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
             Status = HttpStatusCode.OK,
@@ -276,14 +276,14 @@
         Webhook installWebhook = null;
 
         mock
-          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             },
             Status = HttpStatusCode.OK,
           })
-          .Callback((string fullName, Webhook webhook) => {
+          .Callback((string fullName, Webhook webhook, RequestPriority priority) => {
             installRepoName = fullName;
             installWebhook = webhook;
           });
@@ -325,13 +325,13 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, null))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
             Status = HttpStatusCode.OK,
           });
         mock
-           .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
+           .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
            .ThrowsAsync(new Exception("some exception!"));
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
@@ -358,13 +358,13 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
             Status = HttpStatusCode.OK,
           });
         mock
-           .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
+           .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
            .ThrowsAsync(new Exception("some exception!"));
 
         bool exceptionThrown = false;
@@ -395,7 +395,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
             Status = HttpStatusCode.OK,
@@ -404,14 +404,14 @@
         Webhook installWebhook = null;
 
         mock
-          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
             },
             Status = HttpStatusCode.OK,
           })
-          .Callback((string login, Webhook webhook) => {
+          .Callback((string login, Webhook webhook, RequestPriority priority) => {
             installWebhook = webhook;
           });
 
@@ -456,7 +456,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Status = HttpStatusCode.OK,
             Result = new List<Webhook>() {
@@ -492,17 +492,17 @@
         var deletedHookIds = new List<long>();
 
         mock
-          .Setup(x => x.DeleteOrganizationWebhook(org.Login, It.IsAny<long>()))
+          .Setup(x => x.DeleteOrganizationWebhook(org.Login, It.IsAny<long>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<bool>(null) {
             Result = true,
             Status = HttpStatusCode.OK,
           })
-          .Callback((string fullName, long hookId) => {
+          .Callback((string fullName, long hookId, RequestPriority priority) => {
             deletedHookIds.Add(hookId);
           });
 
         mock
-          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -540,7 +540,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -563,8 +563,8 @@
           });
 
         mock
-          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
-          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>(), It.IsAny<RequestPriority>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList, RequestPriority priority) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -586,7 +586,7 @@
         var orgActor = CreateOrgActor(org.Id, org.Login);
         await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents));
+        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
         Assert.AreEqual(OrganizationActor.RequiredEvents.ToArray(), hook.Events.Split(','));
       }
@@ -615,7 +615,7 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
               new Webhook() {
@@ -635,8 +635,8 @@
           });
 
         mock
-          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>()))
-          .Returns((string repoName, long hookId, IEnumerable<string> eventList) => {
+          .Setup(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, It.IsAny<IEnumerable<string>>(), It.IsAny<RequestPriority>()))
+          .Returns((string repoName, long hookId, IEnumerable<string> eventList, RequestPriority priority) => {
             var result = new GitHubResponse<Webhook>(null) {
               Result = new Webhook() {
                 Id = 8001,
@@ -658,7 +658,7 @@
         var orgActor = CreateOrgActor(org.Id, org.Login);
         await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
 
-        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents));
+        mock.Verify(x => x.EditOrganizationWebhookEvents(org.Login, (long)hook.GitHubId, OrganizationActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
         Assert.AreEqual(OrganizationActor.RequiredEvents.ToArray(), hook.Events.Split(','));
       }
@@ -685,14 +685,14 @@
         var mock = new Mock<IGitHubActor>();
 
         mock
-          .Setup(x => x.OrganizationWebhooks(org.Login, null))
+          .Setup(x => x.OrganizationWebhooks(org.Login, null, It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>() {
             },
             Status = HttpStatusCode.OK,
           });
         mock
-          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>()))
+          .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,
@@ -754,13 +754,13 @@
 
         var mock = new Mock<IGitHubActor>();
         mock
-          .Setup(x => x.RepositoryWebhooks(repo.FullName, It.IsAny<GitHubCacheDetails>()))
+          .Setup(x => x.RepositoryWebhooks(repo.FullName, It.IsAny<GitHubCacheDetails>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<IEnumerable<Webhook>>(null) {
             Result = new List<Webhook>(),
             Status = HttpStatusCode.OK,
           });
         mock
-          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>()))
+          .Setup(x => x.AddRepositoryWebhook(repo.FullName, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
           .ReturnsAsync(new GitHubResponse<Webhook>(null) {
             Result = new Webhook() {
               Id = 9999,

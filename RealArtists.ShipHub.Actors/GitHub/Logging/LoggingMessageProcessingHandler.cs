@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Actors.GitHub.Logging {
   using System;
+  using System.Diagnostics;
   using System.IO;
   using System.Linq;
   using System.Net.Http;
@@ -21,6 +22,7 @@
 
   public class LoggingMessageProcessingHandler : DelegatingHandler {
     public const string LogBlobNameKey = "LogBlobName";
+    public const string CreationTimeKey = "CreationTime";
 
     private CloudBlobClient _blobClient;
     private string _containerName;
@@ -71,10 +73,6 @@
       }
     }
 
-    public static void SetLogBlobName(HttpRequestMessage request, string blobName) {
-      request.Properties[LogBlobNameKey] = blobName;
-    }
-
     private IObservable<T> LogError<T>(Exception exception) {
       exception.Report("Error logging GitHub request.");
       return Observable.Empty<T>();
@@ -82,11 +80,14 @@
 
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
       var blobName = ExtractBlobName(request);
+      var timer = new Stopwatch();
 
       if (_blobClient == null || blobName.IsNullOrWhiteSpace()) {
         // log that the request happened, but don't store to blob
+        timer.Restart();
         var response = await base.SendAsync(request, cancellationToken);
-        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase}");
+        timer.Stop();
+        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase} - {timer.ElapsedMilliseconds}ms");
         return response;
       }
 
@@ -96,27 +97,44 @@
 
       using (var ms = new MemoryStream())
       using (var sw = new StreamWriter(ms, Encoding.UTF8)) {
-        HttpResponseMessage response;
+        HttpResponseMessage response = null;
         try {
           await WriteRequest(ms, sw, request);
+          timer.Restart();
           response = await base.SendAsync(request, cancellationToken);
-          await WriteResponse(ms, sw, response);
+          timer.Stop();
+          if (IsFailure(response)) {
+            await WriteResponse(ms, sw, response);
+          }
         } catch (Exception e) {
           sw.WriteLine("\n\nError reading response:\n\n");
           sw.WriteLine(e.ToString());
           throw;
         } finally {
-          _appendBlobs.OnNext(new AppendBlobEntry() {
-            BlobName = blobName,
-            Content = Encoding.UTF8.GetString(ms.ToArray()),
-          });
-        }
+          long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
+          Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}")} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {blobName} - {contentLength} bytes");
 
-        long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
-        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {(int)response.StatusCode} {response.ReasonPhrase} - {blobName} - {contentLength} bytes");
+          var statusCode = response?.StatusCode;
+          if (statusCode == null || (int)statusCode < 200 && (int)statusCode >= 400) {
+            _appendBlobs.OnNext(new AppendBlobEntry() {
+              BlobName = blobName,
+              Content = Encoding.UTF8.GetString(ms.ToArray()),
+            });
+          }
+        }
 
         return response;
       }
+    }
+
+    private static bool IsFailure(HttpResponseMessage response) {
+      var statusCode = response?.StatusCode;
+      return statusCode == null || (int)statusCode < 200 || (int)statusCode >= 400;
+    }
+
+    public static void SetLogDetails(HttpRequestMessage request, string blobName, DateTimeOffset creationTime) {
+      request.Properties[LogBlobNameKey] = blobName;
+      request.Properties[CreationTimeKey] = creationTime;
     }
 
     public static string ExtractBlobName(HttpRequestMessage request) {
@@ -125,6 +143,18 @@
         blobName = request.Properties[LogBlobNameKey] as string;
       }
       return blobName;
+    }
+
+    public static TimeSpan? ExtractElapsedTime(HttpRequestMessage request) {
+      DateTimeOffset? creationTime = null;
+      if (request.Properties.ContainsKey(CreationTimeKey)) {
+        creationTime = request.Properties[CreationTimeKey] as DateTimeOffset?;
+      }
+
+      if (creationTime != null) {
+        return DateTimeOffset.UtcNow.Subtract(creationTime.Value);
+      }
+      return null;
     }
 
     private async Task WriteEntry(AppendBlobEntry entry) {

@@ -63,7 +63,6 @@
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
     public Uri ApiRoot { get; } = ShipHubCloudConfiguration.Instance.GitHubApiRoot;
-    public Guid CorrelationId { get; } = Guid.NewGuid();
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
     public long UserId { get; } = -1;
     public string UserInfo { get; } = "ShipHub Authentication Controller (-1)";
@@ -115,9 +114,9 @@
         var tasks = new List<Task>();
 
         // Delete all repo hooks where they're the only user
-        tasks.AddRange(hookDetails.RepositoryHooks.Select(x => github.DeleteRepositoryWebhook(x.Name, x.HookId)));
+        tasks.AddRange(hookDetails.RepositoryHooks.Select(x => github.DeleteRepositoryWebhook(x.Name, x.HookId, RequestPriority.Interactive)));
         // Delete all org hooks where they're the only user
-        tasks.AddRange(hookDetails.OrganizationHooks.Select(x => github.DeleteOrganizationWebhook(x.Name, x.HookId)));
+        tasks.AddRange(hookDetails.OrganizationHooks.Select(x => github.DeleteOrganizationWebhook(x.Name, x.HookId, RequestPriority.Interactive)));
 
         // Wait and log errors.
         string userInfo = $"{ShipHubUser.Login} ({ShipHubUser.UserId})";

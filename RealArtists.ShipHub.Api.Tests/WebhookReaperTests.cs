@@ -30,8 +30,8 @@
           var mockClient = new Mock<IGitHubActor>();
 
           mockClient
-            .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>()))
-            .Returns((string repoFullName, long hookId) => {
+            .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<RequestPriority>()))
+            .Returns((string repoFullName, long hookId, RequestPriority priority) => {
               pings[userId].Add(Tuple.Create("repo", repoFullName, hookId));
               return Task.FromResult(new GitHubResponse<bool>(null) {
                 Result = true,
@@ -39,8 +39,8 @@
             });
 
           mockClient
-              .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>()))
-              .Returns((string name, long hookId) => {
+              .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<RequestPriority>()))
+              .Returns((string name, long hookId, RequestPriority priority) => {
                 pings[userId].Add(Tuple.Create("org", name, hookId));
                 return Task.FromResult(new GitHubResponse<bool>(null) {
                   Result = true,

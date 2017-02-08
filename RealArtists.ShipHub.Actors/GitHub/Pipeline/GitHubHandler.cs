@@ -102,9 +102,10 @@
       httpRequest.Headers.UserAgent.Add(client.UserAgent);
 
       // For logging
-      LoggingMessageProcessingHandler.SetLogBlobName(
+      LoggingMessageProcessingHandler.SetLogDetails(
         httpRequest,
-        $"{client.UserInfo}/{client.CorrelationId}/{client.NextRequestId()}_{DateTime.UtcNow:o}{httpRequest.RequestUri.PathAndQuery}.log"
+        $"{client.UserInfo}/{DateTime.UtcNow:o}_{client.NextRequestId()}_{httpRequest.RequestUri.PathAndQuery.Replace('/', '_')}",
+        request.CreationDate
       );
 
       HttpResponseMessage response;
@@ -235,7 +236,7 @@
       var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
       var logHandler = new LoggingMessageProcessingHandler(
         gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
-        "github-logs",
+        "github-logs2",
         handler
       );
       handler = logHandler;

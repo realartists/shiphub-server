@@ -6,19 +6,20 @@
   using System.Net.Http;
 
   public class GitHubRequest {
-    public GitHubRequest(string path, GitHubCacheDetails opts = null)
-      : this(HttpMethod.Get, path, opts) { }
+    public GitHubRequest(string path, GitHubCacheDetails opts = null, RequestPriority priority = RequestPriority.Background)
+      : this(HttpMethod.Get, path, opts, priority) { }
 
-    public GitHubRequest(HttpMethod method, string path)
-      : this(method, path, null) { }
+    public GitHubRequest(HttpMethod method, string path, RequestPriority priority = RequestPriority.Background)
+      : this(method, path, null, priority) { }
 
-    private GitHubRequest(HttpMethod method, string path, GitHubCacheDetails opts) {
+    private GitHubRequest(HttpMethod method, string path, GitHubCacheDetails opts, RequestPriority priority) {
       if (path.IsNullOrWhiteSpace() || path.Contains('?')) {
         throw new ArgumentException($"path must be non null and cannot contain query parameters. provided: {path}", nameof(path));
       }
 
       Method = method;
       Path = path;
+      Priority = priority;
       CacheOptions = opts;
     }
 
@@ -26,6 +27,8 @@
     public GitHubCacheDetails CacheOptions { get; set; }
     public HttpMethod Method { get; set; }
     public string Path { get; set; }
+    public RequestPriority Priority { get; set; }
+    public DateTimeOffset CreationDate { get; } = DateTimeOffset.UtcNow;
 
     public Dictionary<string, string> Parameters { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -53,7 +56,7 @@
         throw new ArgumentException($"Only absolute URIs are supported. Given: {uri}", nameof(uri));
       }
 
-      var clone = new GitHubRequest(Method, uri.GetComponents(UriComponents.Path, UriFormat.Unescaped)) {
+      var clone = new GitHubRequest(Method, uri.GetComponents(UriComponents.Path, UriFormat.Unescaped), priority:Priority) {
         AcceptHeaderOverride = AcceptHeaderOverride,
       };
 
@@ -99,8 +102,8 @@
   /// <typeparam name="T">The type of the body content.</typeparam>
   public class GitHubRequest<T> : GitHubRequest
     where T : class {
-    public GitHubRequest(HttpMethod method, string path, T body)
-      : base(method, path) {
+    public GitHubRequest(HttpMethod method, string path, T body, RequestPriority priority)
+      : base(method, path, priority) {
       Body = body;
     }
 

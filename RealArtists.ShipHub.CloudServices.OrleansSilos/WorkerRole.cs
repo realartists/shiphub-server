@@ -14,6 +14,8 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   // For lifecycle details see https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-role-lifecycle-dotnet
   [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
+    private static readonly TimeSpan SiloRequestTimeout = TimeSpan.FromMinutes(30);
+
     private AzureSilo _silo;
     private ShipHubCloudConfiguration _config = new ShipHubCloudConfiguration();
 
@@ -55,8 +57,8 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       try {
         var siloConfig = AzureSilo.DefaultConfiguration();
 
-        // Match client and silo timeout values.
-        siloConfig.Globals.ResponseTimeout = OrleansAzureClient.ResponseTimeout;
+        // Silo timeout is substantially longer than client timeout to allow sync to wait.
+        siloConfig.Globals.ResponseTimeout = SiloRequestTimeout;
 
         // This allows App Services and Cloud Services to agree on a deploymentId.
         siloConfig.Globals.DeploymentId = _config.DeploymentId;
