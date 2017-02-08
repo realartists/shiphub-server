@@ -705,6 +705,9 @@
             editHook.GitHubId = editResponse.Result.Id;
             editHook.Events = string.Join(",", editResponse.Result.Events);
             await context.BulkUpdateHooks(hooks: new[] { editHook });
+          } else if (editResponse.Status == HttpStatusCode.NotFound) {
+            // Our record is out of date.
+            await context.BulkUpdateHooks(deleted: new[] { editHook.Id });
           } else {
             throw new Exception($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error}");
           }
