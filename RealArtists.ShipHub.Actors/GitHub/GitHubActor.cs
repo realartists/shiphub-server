@@ -26,7 +26,6 @@
   public interface IGitHubClient {
     string AccessToken { get; }
     Uri ApiRoot { get; }
-    Guid CorrelationId { get; }
     ProductInfoHeaderValue UserAgent { get; }
     string UserInfo { get; }
     long UserId { get; }
@@ -67,10 +66,7 @@
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
-    public string UserInfo { get { return $"{UserId} ({Login})"; } }
-    // TODO: Orleans has a concept of state/correlation that we can use
-    // instead of Guid.NewGuid() or adding parameters to every call.
-    public Guid CorrelationId { get; } = Guid.NewGuid();
+    public string UserInfo { get { return $"{UserId} {Login}"; } }
 
     private static IGitHubHandler SharedHandler;
     private static void EnsureHandlerPipelineCreated(Uri apiRoot) {
