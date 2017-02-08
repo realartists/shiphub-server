@@ -12,6 +12,7 @@
   using SimpleInjector;
   using SimpleInjector.Integration.WebApi;
   using Sync.Messages;
+  using Mixpanel;
 
   public static class SimpleInjectorConfig {
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
@@ -58,6 +59,14 @@
         var parts = config.ChargeBeeHostAndKey.Split(':');
         container.Register(() => new ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
       }
+
+      // Mixpanel
+      container.Register<IMixpanelClient>(() => new MixpanelClient(config.MixpanelToken, new MixpanelConfig() {
+        ErrorLogFn = (message, exception) => {
+          Log.Exception(exception, message);
+        },
+        IpAddressHandling = MixpanelIpAddressHandling.IgnoreRequestIp,
+      }));
 
       // This is an extension method from the integration package.
       container.RegisterWebApiControllers(GlobalConfiguration.Configuration);

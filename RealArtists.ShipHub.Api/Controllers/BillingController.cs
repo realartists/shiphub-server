@@ -15,12 +15,14 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using System.Web.Http.Results;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Filters;
+  using Mixpanel;
   using Newtonsoft.Json;
   using Orleans;
   using QueueClient;
@@ -45,6 +47,9 @@
   }
 
   public class BuyPassThruContent {
+    public long ActorId { get; set; }
+    public string ActorLogin { get; set; }
+    public string AnalyticsId { get; set; }
     public bool NeedsReactivation { get; set; }
   }
 
@@ -54,12 +59,14 @@
     private IShipHubQueueClient _queueClient;
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
+    private IMixpanelClient _mixpanelClient;
 
-    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient) {
+    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient, IMixpanelClient mixpanelClient) {
       _configuration = config;
       _queueClient = queueClient;
       _grainFactory = grainFactory;
       _chargeBee = chargeBee;
+      _mixpanelClient = mixpanelClient;
     }
 
     private static IEnumerable<string> GetActionLines(Account account) {
@@ -181,6 +188,20 @@
         await _queueClient.NotifyChanges(changes);
       }
 
+      if (passThruContent.AnalyticsId != null) {
+        await _mixpanelClient.TrackAsync(
+          "Purchased",
+          passThruContent.AnalyticsId,
+          new {
+            plan = hostedPage.Content.Subscription.PlanId,
+            customer_id = hostedPage.Content.Subscription.CustomerId,
+            // These refer to the account performing the action, which in the case of
+            // an org subscription, is different than the account being purchased.
+            _github_id = passThruContent.ActorId,
+            _github_login = passThruContent.ActorLogin,
+          });
+      }
+
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
     }
 
@@ -188,7 +209,7 @@
       return _grainFactory.GetGrain<IGitHubActor>(userId);
     }
 
-    private async Task<IHttpActionResult> BuyPersonal(long actorId, long targetId) {
+    private async Task<RedirectResult> BuyPersonal(Account actorAccount, long targetId, string analyticsId = null) {
       var subList = (await _chargeBee.Subscription.List()
         .CustomerId().Is($"user-{targetId}")
         .PlanId().Is("personal")
@@ -265,6 +286,9 @@
       pageRequest
         .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
         .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+          ActorId = actorAccount.Id,
+          ActorLogin = actorAccount.Login,
+          AnalyticsId = analyticsId,
           NeedsReactivation = needsReactivation,
         }));
 
@@ -273,8 +297,8 @@
       return Redirect(result.Url);
     }
 
-    private async Task<IHttpActionResult> BuyOrganization(long actorId, long targetId, Account targetAccount) {
-      var ghc = CreateGitHubActor(actorId);
+    private async Task<RedirectResult> BuyOrganization(Account actorAccount, long targetId, Account targetAccount, string analyticsId = null) {
+      var ghc = CreateGitHubActor(actorAccount.Id);
       var ghcUser = (await ghc.User()).Result;
       var ghcOrg = (await ghc.Organization(targetAccount.Login)).Result;
 
@@ -325,6 +349,9 @@
           // If they provide invalid CC info, they won't know it until after they've completed
           // the checkout page; the failure info will have to come in an email.
           .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+            ActorId = actorAccount.Id,
+            ActorLogin = actorAccount.Login,
+            AnalyticsId = analyticsId,
             NeedsReactivation = true,
           }))
           .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
@@ -340,6 +367,9 @@
        .AddParam("customer[cf_github_username]", ghcOrg.Login)
        .Embed(false)
        .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
+         ActorId = actorAccount.Id,
+         ActorLogin = actorAccount.Login,
+         AnalyticsId = analyticsId,
          NeedsReactivation = false,
        }))
        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
@@ -361,21 +391,36 @@
     [AllowAnonymous]
     [HttpGet]
     [Route("buy/{actorId}/{targetId}/{signature}")]
-    public async Task<IHttpActionResult> Buy(long actorId, long targetId, string signature) {
+    public async Task<IHttpActionResult> Buy(long actorId, long targetId, string signature, [FromUri(Name = "analytics_id")] string analyticsId = null) {
       if (!CreateSignature(actorId, targetId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
+      Account actorAccount;
       Account targetAccount;
       using (var context = new ShipHubContext()) {
+        actorAccount = await context.Accounts.SingleAsync(x => x.Id == actorId);
         targetAccount = await context.Accounts.SingleAsync(x => x.Id == targetId);
       }
 
+      RedirectResult result;
       if (targetAccount is Organization) {
-        return await BuyOrganization(actorId, targetId, targetAccount);
+        result = await BuyOrganization(actorAccount, targetId, targetAccount, analyticsId);
       } else {
-        return await BuyPersonal(actorId, targetId);
+        result = await BuyPersonal(actorAccount, targetId, analyticsId);
       }
+
+      if (analyticsId != null) {
+        await _mixpanelClient.TrackAsync(
+          "Redirect to ChargeBee",
+          analyticsId,
+          new {
+            _github_id = actorAccount.Id,
+            _github_login = actorAccount.Login,
+          });
+      }
+
+      return result;
     }
 
     [AllowAnonymous]
