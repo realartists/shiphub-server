@@ -132,11 +132,14 @@
     }
 
     private async Task SyncTask(ChangeSummary changes) {
+      // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
+      // Give them high priority.
+
       var tasks = new List<Task>();
       using (var context = _contextFactory.CreateInstance()) {
         // User
         if (_metadata.IsExpired()) {
-          var user = await _github.User(_metadata);
+          var user = await _github.User(_metadata, RequestPriority.Interactive);
 
           if (user.IsOk) {
             changes.UnionWith(
@@ -154,7 +157,7 @@
 
         // Update this user's org memberships
         if (_orgMetadata.IsExpired()) {
-          var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata);
+          var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata, priority: RequestPriority.Interactive);
 
           if (orgs.IsOk) {
             changes.UnionWith(
@@ -173,7 +176,7 @@
 
         // Update this user's repo memberships
         if (_forceRepos || _repoMetadata.IsExpired()) {
-          var repos = await _github.Repositories(_repoMetadata);
+          var repos = await _github.Repositories(_repoMetadata, RequestPriority.Interactive);
 
           if (repos.IsOk) {
             var keepRepos = repos.Result.Where(x => x.HasIssues && x.Permissions.Push);
