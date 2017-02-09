@@ -98,7 +98,8 @@
         string logBlob = null;
         string statusLine = response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}";
 
-        if (IsFailure(response) && _blobClient != null && !blobName.IsNullOrWhiteSpace()) {
+        bool skipLogging = logException != null && logException is TaskCanceledException;
+        if (!skipLogging && IsFailure(response) && _blobClient != null && !blobName.IsNullOrWhiteSpace()) {
           logBlob = blobName;
 
           if (!_initialized) {
