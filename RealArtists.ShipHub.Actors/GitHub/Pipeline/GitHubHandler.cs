@@ -104,6 +104,7 @@
       // For logging
       LoggingMessageProcessingHandler.SetLogDetails(
         httpRequest,
+        client.UserInfo,
         $"{client.UserInfo}/{DateTime.UtcNow:o}_{client.NextRequestId()}{httpRequest.RequestUri.PathAndQuery.Replace('/', '_')}.txt",
         request.CreationDate
       );
@@ -114,7 +115,7 @@
         response = await _HttpClient.SendAsync(httpRequest, cancellationToken);
       } catch (TaskCanceledException exception) {
         sw.Stop();
-        exception.Report($"Request aborted for {request.Uri} after {sw.ElapsedMilliseconds} msec [{LoggingMessageProcessingHandler.ExtractBlobName(httpRequest)}]");
+        exception.Report($"Request aborted for /{request.Uri} after {sw.ElapsedMilliseconds} msec [{LoggingMessageProcessingHandler.ExtractString(httpRequest, LoggingMessageProcessingHandler.LogBlobNameKey)}]");
         throw;
       }
 

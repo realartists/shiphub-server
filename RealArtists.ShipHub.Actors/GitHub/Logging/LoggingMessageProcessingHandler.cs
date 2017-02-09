@@ -23,6 +23,7 @@
   public class LoggingMessageProcessingHandler : DelegatingHandler {
     public const string LogBlobNameKey = "LogBlobName";
     public const string CreationTimeKey = "CreationTime";
+    public const string UserInfoKey = "UserInfo";
 
     private CloudBlobClient _blobClient;
     private string _containerName;
@@ -79,7 +80,8 @@
     }
 
     protected async override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
-      var blobName = ExtractBlobName(request);
+      var blobName = ExtractString(request, LogBlobNameKey);
+      var userInfo = ExtractString(request, UserInfoKey);
       var timer = new Stopwatch();
       HttpResponseMessage response = null;
       Exception logException = null;
@@ -124,7 +126,7 @@
           }
         }
 
-        Log.Info($"{request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {statusLine} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {logBlob} - {contentLength} bytes");
+        Log.Info($"[{userInfo}] {request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {statusLine} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {logBlob} - {contentLength} bytes");
       }
 
       return response;
@@ -135,17 +137,18 @@
       return statusCode == null || (int)statusCode < 200 || (int)statusCode >= 400;
     }
 
-    public static void SetLogDetails(HttpRequestMessage request, string blobName, DateTimeOffset creationTime) {
+    public static void SetLogDetails(HttpRequestMessage request, string userInfo, string blobName, DateTimeOffset creationTime) {
+      request.Properties[UserInfoKey] = userInfo;
       request.Properties[LogBlobNameKey] = blobName;
       request.Properties[CreationTimeKey] = creationTime;
     }
 
-    public static string ExtractBlobName(HttpRequestMessage request) {
-      string blobName = null;
-      if (request.Properties.ContainsKey(LogBlobNameKey)) {
-        blobName = request.Properties[LogBlobNameKey] as string;
+    public static string ExtractString(HttpRequestMessage request, string key) {
+      string result = null;
+      if (request.Properties.ContainsKey(key)) {
+        result = request.Properties[key] as string;
       }
-      return blobName;
+      return result;
     }
 
     public static TimeSpan? ExtractElapsedTime(HttpRequestMessage request) {
