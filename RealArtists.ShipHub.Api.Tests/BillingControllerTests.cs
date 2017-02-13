@@ -34,7 +34,6 @@
     public async Task CanGetAccounts() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-        user.Token = Guid.NewGuid().ToString();
         var org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
         var org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
         var org3 = TestUtil.MakeTestOrg(context, 6003, "myorg3");
@@ -73,7 +72,7 @@
         await context.SaveChangesAsync();
 
         var controller = new BillingController(Configuration, null, null, null, null);
-        controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)(await controller.Accounts());
         Assert.AreEqual(2, result.Content.Count);
@@ -96,14 +95,13 @@
     public async Task AccountsReturnsEmptyListWhenThereIsNoSubscriptionInfo() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-        user.Token = Guid.NewGuid().ToString();
         var org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
         var org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
         await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id });
         await context.SaveChangesAsync();
 
         var controller = new BillingController(Configuration, null, null, null, null);
-        controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        controller.RequestContext.Principal = new ShipHubPrincipal(user.Id, user.Login);
 
         var result = (OkNegotiatedContentResult<List<BillingAccountRow>>)await controller.Accounts();
         Assert.AreEqual(0, result.Content.Count);
@@ -230,7 +228,6 @@
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-        user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context);
         await context.SetOrganizationAdmins(org.Id, new[] { user.Id });
 
@@ -335,7 +332,6 @@
     public async Task ManageEndpointRedirectsToChargeBeePageForPersonal() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-        user.Token = Guid.NewGuid().ToString();
         await context.SaveChangesAsync();
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
@@ -393,7 +389,6 @@
     public async Task BuyForOrganizationDoesCheckoutNewForNewCustomer() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
@@ -487,7 +482,6 @@
     public async Task BuyForOrganizationDoesCheckoutExistingForOldCustomer() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
@@ -593,7 +587,6 @@
     public async Task BuyFinishEndpointCanReactivateSubscription() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
@@ -692,7 +685,6 @@
     public async Task BuyFinishEndpointUpdatesSubscriptionStateForUser() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        user.Token = Guid.NewGuid().ToString();
         context.Subscriptions.Add(new Subscription() {
           AccountId = user.Id,
           State = SubscriptionState.InTrial,
@@ -792,7 +784,6 @@
     public async Task BuyFinishEndpointUpdatesSubscriptionStateForOrg() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        user.Token = Guid.NewGuid().ToString();
         var org = TestUtil.MakeTestOrg(context);
         await context.SaveChangesAsync();
 

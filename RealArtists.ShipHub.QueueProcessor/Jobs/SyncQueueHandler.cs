@@ -37,8 +37,10 @@
           ChangeSummary changes = null;
 
           // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          var user = await context.Users
+            .Include(x => x.Tokens)
+            .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+          if (user == null || !user.Tokens.Any()) {
             return;
           }
 
@@ -88,8 +90,10 @@
           ChangeSummary changes = null;
 
           // Lookup requesting user and org.
-          var user = await context.Users.SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-          if (user == null || user.Token.IsNullOrWhiteSpace()) {
+          var user = await context.Users
+            .Include(x => x.Tokens)
+            .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+          if (user == null || !user.Tokens.Any()) {
             return;
           }
 

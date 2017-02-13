@@ -130,10 +130,17 @@
           // They're logging out. We had our chance.
         }
 
-        RevokeGrant(ShipHubUser.Token).LogFailure(userInfo);
+        var tokens = await context.Tokens
+          .Where(x => x.UserId == ShipHubUser.UserId)
+          .Select(x => x.Token)
+          .ToArrayAsync();
+        // Try all the tokens.
+        foreach (var token in tokens) {
+          RevokeGrant(token).LogFailure(userInfo);
+        }
 
         // Invalidate their token with ShipHub
-        await context.RevokeAccessToken(ShipHubUser.Token);
+        await context.RevokeAccessTokens(ShipHubUser.UserId);
       }
 
       return Ok();

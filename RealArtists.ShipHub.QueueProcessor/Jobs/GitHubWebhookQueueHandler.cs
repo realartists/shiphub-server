@@ -182,7 +182,7 @@
       if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
         var users = await context.OrganizationAccounts
           .Where(x => x.OrganizationId == payload.Repository.Owner.Id)
-          .Where(x => x.User.Token != null)
+          .Where(x => x.User.Tokens.Any())
           .Select(x => x.User)
           .ToListAsync();
 
@@ -195,8 +195,10 @@
       } else {
         // TODO: This should also trigger a sync for contributors of a repo, but at
         // least this is more correct than what we have now.
-        var owner = await context.Accounts.SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
-        if (owner.Token != null) {
+        var owner = await context.Users
+          .Include(x => x.Tokens)
+          .SingleOrDefaultAsync(x => x.Id == payload.Repository.Owner.Id);
+        if (owner.Tokens.Any()) {
           var userActor = _grainFactory.GetGrain<IUserActor>(owner.Id);
           await userActor.ForceSyncRepositories();
         }

@@ -36,9 +36,9 @@
 
     public static async Task<ShipHubPrincipal> ValidateToken(string token) {
       using (var s = new ShipHubContext()) {
-        var user = await s.Users
+        var user = await s.Tokens
           .Where(x => x.Token == token)
-          .Select(x => new { Id = x.Id, Login = x.Login, Token = x.Token })
+          .Select(x => new { Id = x.UserId, Login = x.User.Login })
           .SingleOrDefaultAsync()
           .ConfigureAwait(false);
 
@@ -46,7 +46,7 @@
           return null;
         }
 
-        return new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        return new ShipHubPrincipal(user.Id, user.Login);
       }
     }
 
@@ -65,7 +65,6 @@
   public static class ShipHubClaimTypes {
     public const string UserId = "ShipHub-UserId";
     public const string Login = "ShipHub-Login";
-    public const string Token = "ShipHub-Token";
   }
 
   public static class ShipHubUserExtensions {
@@ -75,7 +74,7 @@
   }
 
   public class ShipHubIdentity : ClaimsIdentity {
-    public ShipHubIdentity(long userId, string login, string token)
+    public ShipHubIdentity(long userId, string login)
        : base("ShipHub") {
       AddClaims(new Claim[] {
          // Begin required for CSRF tokens
@@ -85,22 +84,19 @@
         new Claim(ClaimTypes.Name, login),
         new Claim(ShipHubClaimTypes.UserId, userId.ToString()),
         new Claim(ShipHubClaimTypes.Login, login),
-        new Claim(ShipHubClaimTypes.Token, token),
       });
     }
   }
 
   public class ShipHubPrincipal : ClaimsPrincipal {
-    public ShipHubPrincipal(long userId, string login, string token)
-      : base(new ShipHubIdentity(userId, login, token)) {
+    public ShipHubPrincipal(long userId, string login)
+      : base(new ShipHubIdentity(userId, login)) {
       UserId = userId;
       Login = login;
-      Token = token;
     }
 
     public long UserId { get; private set; }
     public string Login { get; private set; }
-    public string Token { get; private set; }
     public string DebugIdentifier => $"{UserId} ({Login})";
   }
 

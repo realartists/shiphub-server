@@ -12,7 +12,8 @@ BEGIN
     FROM AccountRepositories as ar
       INNER JOIN Repositories as r ON (r.Id = ar.RepositoryId)
       INNER JOIN Accounts as a ON (a.Id = ar.AccountId)
-    WHERE ar.[Admin] = 1 AND a.Token IS NOT NULL
+    WHERE ar.[Admin] = 1
+      AND EXISTS (SELECT * FROM GitHubTokens WHERE UserId = ar.AccountId)
     GROUP BY r.Id
   ) SELECT r.FullName, h.GitHubId as HookId
   FROM AccountRepositories as ar
@@ -29,7 +30,8 @@ BEGIN
     SELECT oa.OrganizationId as Id, COUNT(*) as NumAdmins
     FROM OrganizationAccounts as oa
       INNER JOIN Accounts as a ON (a.Id = oa.UserId)
-    WHERE oa.[Admin] = 1 AND a.Token IS NOT NULL
+    WHERE oa.[Admin] = 1
+      AND EXISTS (SELECT * FROM GitHubTokens WHERE UserId = oa.UserId)
     GROUP BY oa.OrganizationId
   ) SELECT o.[Login], h.GitHubId as HookId
   FROM OrganizationAccounts as oa

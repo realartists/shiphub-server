@@ -94,22 +94,24 @@
 
       using (var context = _shipContextFactory.CreateInstance()) {
         // Require user and token to already exist in database.
-        var user = await context.Users.SingleOrDefaultAsync(x => x.Id == UserId);
+        var user = await context.Users
+          .Include(x => x.Tokens)
+          .SingleOrDefaultAsync(x => x.Id == UserId);
 
         if (user == null) {
           throw new InvalidOperationException($"User {UserId} does not exist.");
         }
 
-        if (user.Token.IsNullOrWhiteSpace()) {
+        if (!user.Tokens.Any()) {
           throw new InvalidOperationException($"User {UserId} has no token.");
         }
 
-        AccessToken = user.Token;
+        AccessToken = user.Tokens.First().Token;
         Login = user.Login;
 
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
           UpdateRateLimit(new GitHubRateLimit(
-            user.Token,
+            AccessToken,
             user.RateLimit,
             user.RateLimitRemaining,
             user.RateLimitReset));
@@ -501,7 +503,8 @@
       DateTimeOffset? limitUntil = null;
       if (response?.Status == HttpStatusCode.Unauthorized) {
         using (var ctx = _shipContextFactory.CreateInstance()) {
-          await ctx.RevokeAccessToken(AccessToken);
+          var changes = await ctx.RevokeAccessTokens(UserId);
+          await _queueClient.NotifyChanges(changes);
         }
         DeactivateOnIdle();
       } else if (response.Error?.IsAbuse == true) {

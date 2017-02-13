@@ -13,10 +13,13 @@ BEGIN
     RateLimit = @RateLimit,
     RateLimitRemaining =  @RateLimitRemaining,
     RateLimitReset = @RateLimitReset
-  WHERE Token = @Token -- Deliberately omit NULL rows
+  FROM GitHubTokens AS g
+    INNER LOOP JOIN Accounts AS a ON (a.Id = g.UserId)
+  WHERE g.Token = @Token
     AND (
       (@RateLimitRemaining < RateLimitRemaining AND RateLimitReset = @RateLimitReset) -- Same window, fewer remaining
       OR
       (@RateLimitReset > RateLimitReset ) -- New, future window
     )
+  OPTION (FORCE ORDER)
 END

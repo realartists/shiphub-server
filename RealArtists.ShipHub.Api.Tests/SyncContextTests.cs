@@ -37,11 +37,7 @@
 
     private async Task<bool> RepoShipNeedsWebhookHelpHelper(bool hasHook, bool isAdmin) {
       using (var context = new ShipHubContext()) {
-        var userAccount = new AccountTableType() {
-          Id = 3001,
-          Login = "aroon",
-          Type = "user",
-        };
+        var userAccount = TestUtil.MakeTestUser(context);
         var orgAccount = new AccountTableType() {
           Id = 4001,
           Login = "pureimaginary",
@@ -55,9 +51,8 @@
           Private = true,
         };
 
-        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount, orgAccount });
-        var user = context.Accounts.Single(x => x.Id == userAccount.Id);
-        user.Token = Guid.NewGuid().ToString();
+        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { orgAccount });
+        var user = context.Users.Single(x => x.Id == userAccount.Id);
         await context.SaveChangesAsync();
 
         await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
@@ -90,7 +85,7 @@
             return Task.CompletedTask;
           });
 
-        var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        var principal = new ShipHubPrincipal(user.Id, user.Login);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
         var changeSummary = new ChangeSummary();
         changeSummary.Add(userId: user.Id);
@@ -128,20 +123,15 @@
 
     private async Task<bool> OrgShipNeedsWebhookHelpHelper(bool hasHook, bool isAdmin) {
       using (var context = new ShipHubContext()) {
-        var userAccount = new AccountTableType() {
-          Id = 3001,
-          Login = "aroon",
-          Type = "user",
-        };
+        var userAccount = TestUtil.MakeTestUser(context);
         var orgAccount = new AccountTableType() {
           Id = 4001,
           Login = "pureimaginary",
           Type = "org",
         };
 
-        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount, orgAccount });
-        var user = context.Accounts.Single(x => x.Id == userAccount.Id);
-        user.Token = Guid.NewGuid().ToString();
+        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { orgAccount });
+        var user = context.Users.Single(x => x.Id == userAccount.Id);
 
         if (hasHook) {
           context.Hooks.Add(new Hook() {
@@ -170,7 +160,7 @@
             return Task.CompletedTask;
           });
 
-        var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        var principal = new ShipHubPrincipal(user.Id, user.Login);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
         var changeSummary = new ChangeSummary();
         changeSummary.Add(userId: user.Id);
@@ -194,11 +184,7 @@
     [Test]
     public async Task AddingLabelstoIssueShouldSyncIssueAndRepo() {
       using (var context = new ShipHubContext()) {
-        var userAccount = new AccountTableType() {
-          Id = 3001,
-          Login = "aroon",
-          Type = "user",
-        };
+        var userAccount = TestUtil.MakeTestUser(context);
         var repo = new RepositoryTableType() {
           Id = 4001,
           AccountId = userAccount.Id,
@@ -206,7 +192,6 @@
           FullName = $"{userAccount.Login}/things",
           Private = true,
         };
-        await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { userAccount });
         await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
         await context.SetAccountLinkedRepositories(userAccount.Id, new[] {
           Tuple.Create(repo.Id, true),
@@ -224,8 +209,7 @@
         };
         await context.BulkUpdateIssues(repo.Id, new[] { issue }, new MappingTableType[0], new MappingTableType[0]);
 
-        var user = context.Accounts.Single(x => x.Id == userAccount.Id);
-        user.Token = Guid.NewGuid().ToString();
+        var user = context.Users.Single(x => x.Id == userAccount.Id);
         await context.SaveChangesAsync();
 
         var logs = new List<SyncLogEntry>();
@@ -241,7 +225,7 @@
             return Task.CompletedTask;
           });
 
-        var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+        var principal = new ShipHubPrincipal(user.Id, user.Login);
         var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
         var changeSummary = new ChangeSummary();
         changeSummary.Add(userId: user.Id);

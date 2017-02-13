@@ -37,7 +37,7 @@
 
         cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
-          .ForMember(dest => dest.Reactions, o => o.ResolveUsing(src => src.Reactions == null ? null : src.Reactions.DeserializeObject<ReactionSummary>()))
+          .ForMember(dest => dest.Reactions, o => o.ResolveUsing(src => src.Reactions?.DeserializeObject<ReactionSummary>()))
           .ForMember(dest => dest.PullRequest, o => o.ResolveUsing(src => {
             if (src.PullRequest) {
               return new PullRequestDetails() {
@@ -1044,12 +1044,7 @@
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         user1 = TestUtil.MakeTestUser(context);
-        user2 = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
-          Id = 3002,
-          Login = "alok",
-          Date = DateTimeOffset.UtcNow,
-          Token = Guid.NewGuid().ToString(),
-        });
+        user2 = TestUtil.MakeTestUser(context, 3002, "alok");
         org = TestUtil.MakeTestOrg(context);
         context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user1.Id,
@@ -1114,13 +1109,7 @@
 
       using (var context = new Common.DataModel.ShipHubContext()) {
         user1 = TestUtil.MakeTestUser(context);
-        user2 = (Common.DataModel.User)context.Accounts.Add(new Common.DataModel.User() {
-          Id = 3002,
-          Login = "alok",
-          Date = DateTimeOffset.UtcNow,
-          Token = Guid.NewGuid().ToString(),
-        });
-
+        user2 = TestUtil.MakeTestUser(context, 3002, "alok");
         org = TestUtil.MakeTestOrg(context);
         context.OrganizationAccounts.Add(new Common.DataModel.OrganizationAccount() {
           UserId = user1.Id,

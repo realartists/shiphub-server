@@ -39,6 +39,7 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<Comment> Comments { get; set; }
+    public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
     public virtual DbSet<Issue> Issues { get; set; }
@@ -170,6 +171,11 @@
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
+      modelBuilder.Entity<User>()
+        .HasMany(e => e.Tokens)
+        .WithRequired(e => e.User)
+        .WillCascadeOnDelete(false);
+
       modelBuilder.Entity<Organization>()
         .HasMany(e => e.Projects)
         .WithOptional(e => e.Organization)
@@ -188,14 +194,8 @@
         new SqlParameter("OrgId", SqlDbType.BigInt) { Value = organizationId });
     }
 
-    public Task RevokeAccessToken(string accessToken) {
-      return RetryOnDeadlock(async () => {
-        using (var sp = new DynamicStoredProcedure("[dbo].[RevokeAccessToken]", ConnectionFactory)) {
-          dynamic dsp = sp;
-          dsp.Token = accessToken;
-          return await sp.ExecuteNonQueryAsync();
-        }
-      });
+    public Task<ChangeSummary> RevokeAccessTokens(long userId) {
+      return ExecuteAndReadChanges("[dbo].[RevokeAccessTokens]", x => { x.UserId = userId; });
     }
 
     public Task UpdateMetadata(string table, long id, GitHubResponse response) {
@@ -632,10 +632,10 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure PrepareSync(string accessToken, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
       dynamic dsp = sp;
-      dsp.Token = accessToken;
+      dsp.UserId = userId;
       dsp.PageSize = pageSize;
       dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
       dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);

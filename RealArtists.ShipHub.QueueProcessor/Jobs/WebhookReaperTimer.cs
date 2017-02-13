@@ -82,7 +82,7 @@
                 .AsNoTracking()
                 .Where(x => x.Admin)
                 .Where(x => x.RepositoryId == hook.RepositoryId)
-                .Where(x => x.Account.Token != null)
+                .Where(x => x.Account.Tokens.Any())
                 .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
                 .Select(x => new { UserId = x.AccountId, RepoFullName = x.Repository.FullName })
                 .FirstOrDefaultAsync();
@@ -97,7 +97,7 @@
                 .AsNoTracking()
                 .Where(x => x.Admin)
                 .Where(x => x.OrganizationId == hook.OrganizationId)
-                .Where(x => x.User.Token != null)
+                .Where(x => x.User.Tokens.Any())
                 .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
                 .Select(x => new { UserId = x.UserId, OrgLogin = x.Organization.Login })
                 .FirstOrDefaultAsync();

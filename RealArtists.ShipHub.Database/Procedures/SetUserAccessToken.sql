@@ -11,8 +11,15 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  MERGE INTO GitHubTokens AS [Target]
+  USING (SELECT @Token AS Token, @UserId AS UserId) AS [Source]
+  ON [Target].Token = [Source].Token AND [Target].UserId = [Source].UserId
+  WHEN NOT MATCHED BY TARGET THEN
+    INSERT(Token, UserId)
+    VALUES(Token, UserId)
+  OPTION (LOOP JOIN, FORCE ORDER);
+
   UPDATE Accounts SET
-    Token = @Token,
     Scopes = @Scopes,
     RateLimit = @RateLimit,
     RateLimitRemaining =  @RateLimitRemaining,

@@ -60,8 +60,7 @@
       request.RequestUri = builder.Uri;
 
       request.Headers.Host = request.RequestUri.Host;
-      var user = RequestContext.Principal as ShipHubPrincipal;
-      request.Headers.Authorization = new AuthenticationHeaderValue("token", user.Token);
+      // Authorization header passes through unaltered.
 
       // This is dumb
       if (_BareMethods.Contains(request.Method)) {
