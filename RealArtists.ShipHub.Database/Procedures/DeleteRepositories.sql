@@ -9,6 +9,10 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    --Projects
+    DELETE FROM Projects
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
     --Hooks
     DELETE FROM Hooks
     WHERE EXISTS (SELECT * FROM @Repositories
