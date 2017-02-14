@@ -36,9 +36,6 @@
     [NotMapped]
     public GitHubMetadata OrganizationMetadata { get; set; }
 
-    [StringLength(64)]
-    public string Token { get; set; }
-
     [StringLength(255)]
     [Required(AllowEmptyStrings = true)]
     public string Scopes { get; set; } = "";

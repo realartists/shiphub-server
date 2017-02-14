@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="ChargeBeeUtilities.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
     <Compile Include="DataModel\Types\HookTableType.cs" />

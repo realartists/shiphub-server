@@ -12,8 +12,12 @@ namespace RealArtists.ShipHub.Api.Tests {
           Type = "user",
         },
       }).GetAwaiter().GetResult();
+      context.SetUserAccessToken(
+        userId,
+        "scope,OtherScope",
+        new Common.GitHub.GitHubRateLimit(Guid.NewGuid().ToString(), 5000, 5000, DateTimeOffset.UtcNow.AddHours(1)))
+        .GetAwaiter().GetResult();
       var user = context.Users.Single(x => x.Id == userId);
-      user.Token = Guid.NewGuid().ToString();
       return user;
     }
 

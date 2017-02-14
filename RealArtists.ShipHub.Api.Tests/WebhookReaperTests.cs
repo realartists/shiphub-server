@@ -122,7 +122,7 @@
         env.user1.Id,
         env.user2.Id,
       });
-      
+
       await context.SaveChangesAsync();
 
       return env;
@@ -220,11 +220,11 @@
         env.org1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
         env.org2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-23);
 
-        // No tokens!
-        env.user1.Token = null;
-        env.user2.Token = null;
-
         await context.SaveChangesAsync();
+
+        // No tokens!
+        await context.RevokeAccessTokens(env.user1.Id);
+        await context.RevokeAccessTokens(env.user2.Id);
 
         // Both users are admins.
         await context.SetOrganizationAdmins(env.org1.Id, new[] {
@@ -331,11 +331,11 @@
         env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
         env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
 
-        // No tokens!
-        env.user1.Token = null;
-        env.user2.Token = null;
-
         await context.SaveChangesAsync();
+
+        // No tokens!
+        await context.RevokeAccessTokens(env.user1.Id);
+        await context.RevokeAccessTokens(env.user2.Id);
 
         // Both are admins.
         await context.SetAccountLinkedRepositories(env.user1.Id, new[] {
@@ -357,6 +357,5 @@
         Assert.Null(env.repo1Hook.PingCount, "ping attempt should not be counted since we had no tokens to ping with.");
       }
     }
-
   }
 }

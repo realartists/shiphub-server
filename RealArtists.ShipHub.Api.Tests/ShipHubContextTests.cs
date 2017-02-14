@@ -79,14 +79,17 @@
           Assert.IsFalse(await newContext.AccountRepositories.Where(x => x.AccountId == user1.Id).AnyAsync());
 
           // Should clear token and rate limit
-          var account = await newContext.Accounts.SingleAsync(x => x.Id == user1.Id);
-          Assert.IsNull(account.Token);
-          Assert.IsTrue(account.RateLimitRemaining == 0);
+          var a = await newContext.Accounts.SingleAsync(x => x.Id == user1.Id);
+          var u = await newContext.Users.SingleOrDefaultAsync(x => x.Id == user1.Id);
+          var o = await newContext.Organizations.SingleOrDefaultAsync(x => x.Id == user1.Id);
+          var ts = await newContext.Tokens.Where(x => x.UserId == user1.Id).ToArrayAsync();
+          Assert.IsTrue(a.RateLimitRemaining == 0); // Rate limit cleared
+          Assert.IsNull(u); // Not a user anymore
+          Assert.IsNotNull(o); // Now an org
+          Assert.IsEmpty(ts); // Tokens cleared.
 
           // Should remove organization memberships
           Assert.IsFalse(await newContext.OrganizationAccounts.Where(x => x.UserId == user1.Id).AnyAsync());
-
-          
         }
       }
     }

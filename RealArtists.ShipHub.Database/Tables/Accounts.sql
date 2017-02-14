@@ -7,7 +7,6 @@
   [RepoMetadataJson]    NVARCHAR(MAX)  NULL,
   [OrgMetadataJson]     NVARCHAR(MAX)  NULL,
   [ProjectMetadataJson] NVARCHAR(MAX)  NULL,
-  [Token]               NVARCHAR(64)   NULL,
   [Scopes]              NVARCHAR(255)  NOT NULL DEFAULT '',
   [RateLimit]           INT            NOT NULL DEFAULT 0,
   [RateLimitRemaining]  INT            NOT NULL DEFAULT 0,
@@ -20,10 +19,4 @@ CREATE NONCLUSTERED INDEX [IX_Accounts_Type] ON [dbo].[Accounts]([Type])
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Login] ON [dbo].[Accounts]([Login])
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UIX_Accounts_Token]
-  ON [dbo].[Accounts]([Token])
-  INCLUDE ([RateLimitRemaining], [RateLimitReset])
-  WHERE ([Token] IS NOT NULL)
 GO

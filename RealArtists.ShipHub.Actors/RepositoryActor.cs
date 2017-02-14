@@ -174,7 +174,7 @@
         var users = await context.AccountRepositories
           .AsNoTracking()
           .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Token != null)
+          .Where(x => x.Account.Tokens.Any())
           .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
           .Select(x => new { UserId = x.AccountId, Admin = x.Admin })
           .ToArrayAsync();

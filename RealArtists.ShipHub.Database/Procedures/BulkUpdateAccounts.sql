@@ -61,13 +61,18 @@ BEGIN
       -- Users who transition to orgs also can't log in anymore
       -- This keeps the various sync actors from adding them to pools as well.
       UPDATE Accounts SET
-        [Token] = DEFAULT,
         [Scopes] = DEFAULT,
         [RateLimit] = DEFAULT,
         [RateLimitRemaining] = DEFAULT,
         [RateLimitReset] = DEFAULT
       FROM @Changes as c
         INNER LOOP JOIN Accounts as a ON (a.Id = c.Id)
+      WHERE c.BecameOrg = 1
+      OPTION (FORCE ORDER)
+
+      DELETE FROM GitHubTokens
+      FROM @Changes as c
+        INNER LOOP JOIN GitHubTokens as g ON (g.UserId = c.Id)
       WHERE c.BecameOrg = 1
       OPTION (FORCE ORDER)
 

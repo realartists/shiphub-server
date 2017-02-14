@@ -126,7 +126,7 @@
 
       using (var context = new ShipHubContext()) {
         var dsp = context.PrepareSync(
-          _user.Token,
+          _user.UserId,
           pageSize,
           _versions.RepoVersions.Select(x => new VersionTableType() {
             ItemId = x.Key,

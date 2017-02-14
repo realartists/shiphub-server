@@ -1,5 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[WhatsNew]
-  @Token NVARCHAR(64),
+  @UserId BIGINT,
   @PageSize BIGINT = 1000,
   @RepositoryVersions VersionTableType READONLY,
   @OrganizationVersions VersionTableType READONLY
@@ -12,10 +12,10 @@ BEGIN
   IF (@PageSize < 100) SET @PageSize = 100
   IF (@PageSize > 2000) SET @PageSize = 2000
 
-  DECLARE @UserId BIGINT
-  SELECT @UserId = Id FROM Accounts WHERE Token = @Token
-
-  IF (@UserId IS NULL) RETURN
+  -- Require the user to be a user
+  IF (NOT EXISTS(SELECT * FROM Accounts WHERE Id = @UserId AND [Type] = 'user')) RETURN
+  -- Require the user to have an active token
+  IF (NOT EXISTS(SELECT * FROM GitHubTokens WHERE UserId = @UserId)) RETURN
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- Log Prep

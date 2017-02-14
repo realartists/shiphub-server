@@ -24,7 +24,6 @@
     private static async Task<Environment> MakeEnvironment(ShipHubContext context) {
       Environment env = new Environment();
       env.user1 = TestUtil.MakeTestUser(context, 3001, "alok");
-      env.user1.Token = Guid.NewGuid().ToString();
       env.user2 = TestUtil.MakeTestUser(context, 3002, "aroon");
       env.org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
       await context.SetUserOrganizations(env.user1.Id, new[] { env.org.Id });
@@ -45,7 +44,7 @@
           return Task.CompletedTask;
         });
 
-      var principal = new ShipHubPrincipal(user.Id, user.Login, user.Token);
+      var principal = new ShipHubPrincipal(user.Id, user.Login);
       var syncContext = new SyncContext(principal, mockConnection.Object, new SyncVersions());
       var changeSummary = new ChangeSummary();
       changeSummary.Add(userId: user.Id);

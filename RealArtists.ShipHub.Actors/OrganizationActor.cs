@@ -119,7 +119,7 @@
         var users = await context.OrganizationAccounts
           .AsNoTracking()
           .Where(x => x.OrganizationId == _orgId)
-          .Where(x => x.User.Token != null)
+          .Where(x => x.User.Tokens.Any())
           .Where(x => x.User.RateLimit > GitHubRateLimit.RateLimitFloor || x.User.RateLimitReset < DateTime.UtcNow)
           .Select(x => new { UserId = x.UserId, Admin = x.Admin })
           .ToArrayAsync();

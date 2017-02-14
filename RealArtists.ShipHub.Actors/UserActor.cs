@@ -50,13 +50,16 @@
         _userId = this.GetPrimaryKeyLong();
 
         // Ensure this user actually exists, and lookup their token.
-        var user = await context.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == _userId);
+        var user = await context.Users
+          .AsNoTracking()
+          .Include(x => x.Tokens)
+          .SingleOrDefaultAsync(x => x.Id == _userId);
 
         if (user == null) {
           throw new InvalidOperationException($"User {_userId} does not exist and cannot be activated.");
         }
 
-        if (user.Token.IsNullOrWhiteSpace()) {
+        if (!user.Tokens.Any()) {
           throw new InvalidOperationException($"User {_userId} has an invalid token and cannot be activated.");
         }
 

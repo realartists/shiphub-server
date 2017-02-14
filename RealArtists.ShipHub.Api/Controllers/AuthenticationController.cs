@@ -27,7 +27,6 @@
     public string ClientName { get; set; }
   }
 
-  [AllowAnonymous]
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubController, IGitHubClient {
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
@@ -73,7 +72,7 @@
       return 1;
     }
 
-    public Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
+    private Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
       AccessToken = accessToken;
       var request = new GitHubRequest("user");
       return handler.Fetch<Common.GitHub.Models.Account>(this, request, cancellationToken);
@@ -87,7 +86,7 @@
     private static readonly string _GitHubClientId = ShipHubCloudConfiguration.Instance.GitHubClientId;
     private static readonly string _GitHubClientSecret = ShipHubCloudConfiguration.Instance.GitHubClientSecret;
 
-    public async Task<bool> RevokeGrant(string accessToken) {
+    private async Task<bool> RevokeGrant(string accessToken) {
       var request = new HttpRequestMessage(HttpMethod.Delete, new Uri(ApiRoot, $"applications/{_GitHubClientId}/grants/{accessToken}"));
       request.Headers.Authorization = new AuthenticationHeaderValue(
         "basic",
@@ -104,7 +103,6 @@
     // ///////////////////////////////////////////////////
 
     [HttpDelete]
-    [Authorize]
     [Route("login")]
     public async Task<IHttpActionResult> Logout() {
       // User wants to log out.
@@ -130,16 +128,24 @@
           // They're logging out. We had our chance.
         }
 
-        RevokeGrant(ShipHubUser.Token).LogFailure(userInfo);
+        var tokens = await context.Tokens
+          .Where(x => x.UserId == ShipHubUser.UserId)
+          .Select(x => x.Token)
+          .ToArrayAsync();
+        // Try all the tokens.
+        foreach (var token in tokens) {
+          RevokeGrant(token).LogFailure(userInfo);
+        }
 
         // Invalidate their token with ShipHub
-        await context.RevokeAccessToken(ShipHubUser.Token);
+        await context.RevokeAccessTokens(ShipHubUser.UserId);
       }
 
       return Ok();
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [Route("login")]
     public async Task<IHttpActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken) {
       if ((request?.AccessToken).IsNullOrWhiteSpace()) {
