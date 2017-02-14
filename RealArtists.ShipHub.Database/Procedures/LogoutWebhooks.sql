@@ -11,7 +11,6 @@ BEGIN
     SELECT r.Id, COUNT(*) as NumAdmins
     FROM AccountRepositories as ar
       INNER JOIN Repositories as r ON (r.Id = ar.RepositoryId)
-      INNER JOIN Accounts as a ON (a.Id = ar.AccountId)
     WHERE ar.[Admin] = 1
       AND EXISTS (SELECT * FROM GitHubTokens WHERE UserId = ar.AccountId)
     GROUP BY r.Id
@@ -29,7 +28,6 @@ BEGIN
   ;WITH OrgRollup as (
     SELECT oa.OrganizationId as Id, COUNT(*) as NumAdmins
     FROM OrganizationAccounts as oa
-      INNER JOIN Accounts as a ON (a.Id = oa.UserId)
     WHERE oa.[Admin] = 1
       AND EXISTS (SELECT * FROM GitHubTokens WHERE UserId = oa.UserId)
     GROUP BY oa.OrganizationId
