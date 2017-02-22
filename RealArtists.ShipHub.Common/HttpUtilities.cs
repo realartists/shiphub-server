@@ -19,13 +19,14 @@
       var handler = new HttpClientHandler() {
         AllowAutoRedirect = maxRedirects > 0,
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
-        CheckCertificateRevocationList = true,
+        // WTF: Not supported on Windows?
+        //CheckCertificateRevocationList = true,
+        //SslProtocols = System.Security.Authentication.SslProtocols.Tls12,
         MaxConnectionsPerServer = int.MaxValue,
         MaxAutomaticRedirections = Math.Max(maxRedirects, 1),
         UseCookies = false,
         UseDefaultCredentials = false,
         UseProxy = false,
-        SslProtocols = System.Security.Authentication.SslProtocols.Tls12,
       };
 
 #if DEBUG
