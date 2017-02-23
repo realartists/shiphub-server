@@ -3,14 +3,12 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
-  using System.Reflection;
   using Common;
   using Microsoft.ApplicationInsights.Extensibility;
   using Microsoft.WindowsAzure.ServiceRuntime;
   using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
-  using Orleans.Serialization;
   using Orleans.TelemetryConsumers.AI;
 
   // For lifecycle details see https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-role-lifecycle-dotnet
@@ -66,8 +64,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         siloConfig.Globals.DeploymentId = _config.DeploymentId;
 
         // Ensure exceptions can be serialized
-        //siloConfig.Globals.RegisterBootstrapProvider<ShipHubBootstrapProvider>("shipHubBootstrap");
-        siloConfig.Globals.FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo();
+        siloConfig.Globals.RegisterBootstrapProvider<ShipHubBootstrapProvider>("shipHubBootstrap");
 
         // Dependency Injection
         siloConfig.UseStartupType<ShipStartupProvider>();
