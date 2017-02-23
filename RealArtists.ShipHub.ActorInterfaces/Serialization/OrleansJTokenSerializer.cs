@@ -27,6 +27,7 @@
       Formatting = Formatting.Indented
     };
 
+    [CopierMethod]
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
     public static object DeepCopier(object original, ICopyContext context) {
@@ -34,6 +35,7 @@
       return ((JToken)original)?.DeepClone();
     }
 
+    [SerializerMethod]
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "expected")]
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
     public static void Serializer(object untypedInput, ISerializationContext context, Type expected) {
@@ -42,6 +44,7 @@
       SerializationManager.SerializeInner(json, context, typeof(string));
     }
 
+    [DeserializerMethod]
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
     public static object Deserializer(Type expected, IDeserializationContext context) {
       var json = (string)SerializationManager.DeserializeInner(typeof(string), context);
