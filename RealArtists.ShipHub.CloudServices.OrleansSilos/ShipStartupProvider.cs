@@ -19,17 +19,15 @@
 
       // AutoMapper
       services.AddSingleton(
-        (_) => new MapperConfiguration(cfg => {
+        new MapperConfiguration(cfg => {
           cfg.AddProfile<GitHubToDataModelProfile>();
         }).CreateMapper());
 
       // Service Bus
-      services.AddSingleton<IServiceBusFactory>((_) => {
-        // HACK: This is gross
-        var sbf = new ServiceBusFactory();
-        sbf.Initialize().GetAwaiter().GetResult();
-        return sbf;
-      });
+      // HACK: This is gross
+      var sbf = new ServiceBusFactory();
+      sbf.Initialize().GetAwaiter().GetResult();
+      services.AddSingleton<IServiceBusFactory>(sbf);
 
       // Queue Client
       services.AddSingleton<IShipHubQueueClient, ShipHubQueueClient>();
