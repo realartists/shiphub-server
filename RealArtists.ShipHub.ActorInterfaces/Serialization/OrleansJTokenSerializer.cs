@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces.Serialization {
   using System;
   using System.Diagnostics.CodeAnalysis;
+  using Common;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using Orleans.CodeGeneration;
@@ -41,6 +42,8 @@
     }
 
     public static void Register() {
+      Log.Trace();
+
       SerializationManager.Register(typeof(JToken), DeepCopier, Serializer, Deserializer);
 
       // I guess maybe I have to register all descendant types too o_O

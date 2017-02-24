@@ -2,10 +2,11 @@
   using System;
   using System.Collections.Concurrent;
   using System.Threading.Tasks;
+  using Common;
   using Orleans.Providers;
   using Orleans.Serialization;
 
-  public class ShipHubBootstrapProvider : IBootstrapProvider {
+  public class ShipBootstrapProvider : IBootstrapProvider {
     public string Name { get; private set; }
 
     private ConcurrentDictionary<Type, bool> _exceptionSerializability = new ConcurrentDictionary<Type, bool>();
@@ -15,6 +16,7 @@
     }
 
     public Task Init(string name, IProviderRuntime providerRuntime, IProviderConfiguration config) {
+      Log.Trace();
       Name = name;
 
       // Force exceptions to be serializable

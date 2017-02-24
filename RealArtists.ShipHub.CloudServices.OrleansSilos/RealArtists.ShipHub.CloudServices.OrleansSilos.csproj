@@ -215,7 +215,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaygunTelemetryConsumer.cs" />
     <Compile Include="ShipStartupProvider.cs" />
-    <Compile Include="ShipHubBootstrapProvider.cs" />
+    <Compile Include="ShipBootstrapProvider.cs" />
     <Compile Include="WorkerRole.cs" />
   </ItemGroup>
   <ItemGroup>
