@@ -45,6 +45,9 @@
     public IssueRename Rename { get { return ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>(); } }
 
     [JsonIgnore]
+    public string ShaHash { get { return ExtensionDataDictionary.Val("sha")?.ToObject<string>(); } }
+
+    [JsonIgnore]
     public ReferenceSource Source { get { return ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(); } }
 
     ///////////////////////////////////
@@ -93,6 +96,9 @@
         if (Id.HasValue) {
           // normal events that have ids
           return $"N{Id}";
+        } else if (Event == "committed") {
+          // committed events (in PRs)
+          return $"C{ShaHash}";
         } else if (Source != null) {
           if (!string.IsNullOrEmpty(Source.Url)) {
             // cross-referenced by a comment (this is the comment URL)
