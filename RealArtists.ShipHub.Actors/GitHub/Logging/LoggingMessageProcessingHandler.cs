@@ -172,7 +172,11 @@
       streamWriter.WriteLine($"{message.Method} {message.RequestUri.PathAndQuery} HTTP/{message.Version}");
 
       foreach (var header in message.Headers) {
-        streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+        if (header.Key.Equals("authorization", StringComparison.OrdinalIgnoreCase)){
+          streamWriter.WriteLine($"{header.Key}: [Redacted]");
+        } else {
+          streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
+        }
       }
 
       if (message.Content != null) {
