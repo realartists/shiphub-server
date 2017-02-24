@@ -98,7 +98,7 @@
           return $"N{Id}";
         } else if (Event == "committed") {
           // committed events (in PRs)
-          return $"C{ShaHash}";
+          return $"C_{IssueId}_{ShaHash}";
         } else if (Source != null) {
           if (!string.IsNullOrEmpty(Source.Url)) {
             // cross-referenced by a comment (this is the comment URL)
