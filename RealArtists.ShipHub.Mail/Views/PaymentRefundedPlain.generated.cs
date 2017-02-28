@@ -62,12 +62,12 @@ WriteLiteral("We\'ve issued a refund for ");
             
             #line default
             #line hidden
-WriteLiteral(" to your card ending in ");
+WriteLiteral(" to your ");
 
 
             
             #line 8 "..\..\Views\PaymentRefundedPlain.cshtml"
-                                                                                          Write(Model.LastCardDigits);
+                                                                           Write(PaymentMethodSummaryPlain(Model.PaymentMethodSummary));
 
             
             #line default

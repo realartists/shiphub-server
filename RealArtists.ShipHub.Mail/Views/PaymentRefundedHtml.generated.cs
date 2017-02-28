@@ -62,17 +62,17 @@ WriteLiteral("<p>\r\n    We\'ve issued a refund for <strong>");
             
             #line default
             #line hidden
-WriteLiteral("</strong> to your card ending\r\n    in <strong>");
+WriteLiteral("</strong> to your\r\n    ");
 
 
             
             #line 10 "..\..\Views\PaymentRefundedHtml.cshtml"
-          Write(Model.LastCardDigits);
+Write(PaymentMethodSummaryHtml(Model.PaymentMethodSummary));
 
             
             #line default
             #line hidden
-WriteLiteral("</strong>.\r\n</p>\r\n<p>\r\n    <a href=\"");
+WriteLiteral(".\r\n</p>\r\n<p>\r\n    <a href=\"");
 
 
             

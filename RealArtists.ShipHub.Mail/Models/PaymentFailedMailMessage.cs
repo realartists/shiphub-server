@@ -6,7 +6,7 @@
     public DateTimeOffset? NextRetryDate { get; set; }
     public string ErrorText { get; set; }
     public string InvoicePdfUrl { get; set; }
-    public string LastCardDigits { get; set; }
+    public PaymentMethodSummary PaymentMethodSummary { get; set; }
     public string UpdatePaymentMethodUrl { get; set; }
   }
 }

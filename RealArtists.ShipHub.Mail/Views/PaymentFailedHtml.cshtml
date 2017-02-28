@@ -6,8 +6,8 @@
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutHtml() { Model = Model };
 }
 <p>
-    We tried to process a charge for <strong>@string.Format("{0:C}", Model.Amount)</strong> to your card ending
-    in <strong>@Model.LastCardDigits</strong>, but the transaction failed.
+    We tried to process a charge for <strong>@string.Format("{0:C}", Model.Amount)</strong> to your
+    @PaymentMethodSummaryHtml(Model.PaymentMethodSummary), but the transaction failed.
 </p>
 <p>
     <strong>Reason:</strong> @Model.ErrorText

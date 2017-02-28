@@ -76,6 +76,7 @@
     public long Amount { get; set; }
     public string ErrorText { get; set; }
     public string MaskedCardNumber { get; set; }
+    public string PaymentMethod { get; set; }
   }
 
   public class ChargeBeeWebhookContent {
@@ -272,6 +273,21 @@
       });
     }
 
+    private Mail.Models.PaymentMethodSummary PaymentMethodSummary(ChargeBeeWebhookTransaction transaction) {
+      if (transaction.PaymentMethod == "paypal_express_checkout") {
+        return new Mail.Models.PaymentMethodSummary() {
+          PaymentMethod = Mail.Models.PaymentMethod.PayPal,
+        };
+      } else if (transaction.PaymentMethod == "card") {
+        return new Mail.Models.PaymentMethodSummary() {
+          PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+          LastCardDigits = transaction.MaskedCardNumber.Replace("*", ""),
+        };
+      } else {
+        throw new NotSupportedException();
+      }
+    }
+
     public async Task SendCardExpiryReminderMessage(ChargeBeeWebhookPayload payload) {
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
 
@@ -296,7 +312,7 @@
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         Amount = payload.Content.Transaction.Amount / 100.0,
         InvoicePdfUrl = await InvoiceUrl(payload),
-        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
         ErrorText = payload.Content.Transaction.ErrorText,
         UpdatePaymentMethodUrl = updateUrl,
       };
@@ -315,7 +331,7 @@
         ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
         CreditNotePdfUrl = await CreditNoteUrl(payload),
-        LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+        PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
       });
     }
 
@@ -330,7 +346,7 @@
           InvoicePdfUrl = await InvoiceUrl(payload),
           AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
-          LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+          PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
         });
     }
 
@@ -384,7 +400,7 @@
           PreviousMonthActiveUsersSample = activeUsersSample,
           PreviousMonthStart = previousMonthStart,
           AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
-          LastCardDigits = payload.Content.Transaction.MaskedCardNumber.Replace("*", ""),
+          PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
         });
     }
 

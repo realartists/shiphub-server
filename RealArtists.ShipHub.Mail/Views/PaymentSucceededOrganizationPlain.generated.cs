@@ -62,22 +62,22 @@ Write(string.Format("{0:C}", Model.AmountPaid));
             
             #line default
             #line hidden
-WriteLiteral(" was charged to your card ending in \"");
+WriteLiteral(" was charged to your ");
 
 
             
             #line 10 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
-                                                                         Write(Model.LastCardDigits);
+                                                         Write(PaymentMethodSummaryPlain(Model.PaymentMethodSummary));
 
             
             #line default
             #line hidden
-WriteLiteral("\" and covers service through ");
+WriteLiteral(" and covers service through ");
 
 
             
             #line 10 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
-                                                                                                                           Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
+                                                                                                                                           Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
 
             
             #line default
