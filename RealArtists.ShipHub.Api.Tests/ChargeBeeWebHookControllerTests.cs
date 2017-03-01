@@ -824,6 +824,7 @@
               },
               Transaction = new ChargeBeeWebhookTransaction() {
                 MaskedCardNumber = "************4567",
+                PaymentMethod = "card",
               },
             },
           });
@@ -835,7 +836,8 @@
         Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
         Assert.AreEqual("Aroon", outgoingMessage.FirstName);
         Assert.AreEqual(43.00, outgoingMessage.AmountPaid);
-        Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+        Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+        Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
         Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-myorg-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
         Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
         Assert.AreEqual(invoiceDate.AddMonths(-1), outgoingMessage.PreviousMonthStart);
@@ -852,8 +854,7 @@
       }
     }
 
-    [Test]
-    public async Task PaymentSucceededForPersonalSendsMessage() {
+    private async Task<PaymentSucceededPersonalMailMessage> MessageForPaymentSucceededPersonal(ChargeBeeWebhookTransaction transaction) {
       var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
         .Returns(Task.CompletedTask);
@@ -901,22 +902,45 @@
               AmountPaid = 900,
               FirstInvoice = false,
             },
-            Transaction = new ChargeBeeWebhookTransaction() {
-              MaskedCardNumber = "************4567",
-            },
+            Transaction = transaction,
           },
         });
       await controller.Object.HandleHook(Configuration.ChargeBeeWebhookSecret);
 
       Assert.AreEqual(1, outgoingMessages.Count);
-      var outgoingMessage = (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
+      return (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
+    }
+
+    [Test]
+    public async Task PaymentSucceededForPersonalViaCardSendsMessage() {
+      var outgoingMessage = await MessageForPaymentSucceededPersonal(new ChargeBeeWebhookTransaction() {
+        MaskedCardNumber = "************4567",
+        PaymentMethod = "card",
+      });
+
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("Aroon", outgoingMessage.FirstName);
       Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
-      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+      Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
       Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
-      Assert.AreEqual(invoiceDate.AddMonths(1), outgoingMessage.ServiceThroughDate);
+      Assert.AreEqual(new DateTimeOffset(2016, 12, 15, 0, 0, 0, TimeSpan.Zero), outgoingMessage.ServiceThroughDate);
+    }
+
+    [Test]
+    public async Task PaymentSucceededForPersonalViaPayPalSendsMessage() {
+      var outgoingMessage = await MessageForPaymentSucceededPersonal(new ChargeBeeWebhookTransaction() {
+        PaymentMethod = "paypal_express_checkout",
+      });
+
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
+      Assert.AreEqual(PaymentMethod.PayPal, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+      Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
+      Assert.AreEqual(new DateTimeOffset(2016, 12, 15, 0, 0, 0, TimeSpan.Zero), outgoingMessage.ServiceThroughDate);
     }
 
     [Test]
@@ -961,6 +985,7 @@
             },
             Transaction = new ChargeBeeWebhookTransaction() {
               MaskedCardNumber = "************4567",
+              PaymentMethod = "card",
             },
           },
         });
@@ -972,7 +997,8 @@
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("Aroon", outgoingMessage.FirstName);
       Assert.AreEqual(9.00, outgoingMessage.AmountRefunded);
-      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+      Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
     }
 
@@ -1020,6 +1046,7 @@
             Transaction = new ChargeBeeWebhookTransaction() {
               Amount = 900,
               MaskedCardNumber = "************4567",
+              PaymentMethod = "card",
             },
           },
         });
@@ -1031,7 +1058,8 @@
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
       Assert.AreEqual("aroon", outgoingMessage.GitHubUserName);
       Assert.AreEqual(9.00, outgoingMessage.Amount);
-      Assert.AreEqual("4567", outgoingMessage.LastCardDigits);
+      Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+      Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
       Assert.AreEqual("/billing/invoice/inv-1234/50684b9b/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
       Assert.NotNull(outgoingMessage.UpdatePaymentMethodUrl);
       Assert.AreEqual(invoiceDate.AddDays(3), outgoingMessage.NextRetryDate);

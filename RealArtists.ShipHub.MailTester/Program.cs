@@ -37,7 +37,10 @@
           ToAddress = toAddress,
           ToName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
-          LastCardDigits = "1234",
+          PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+            PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+            LastCardDigits = "5678",
+          },
           AmountPaid = 9.00,
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
         }).Wait();
@@ -49,7 +52,10 @@
           ToAddress = toAddress,
           ToName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
-          LastCardDigits = "1234",
+          PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+            PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+            LastCardDigits = "5678",
+          },
           AmountPaid = 25.00,
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
           PreviousMonthStart = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero).AddMonths(-1),
@@ -62,7 +68,10 @@
           ToAddress = toAddress,
           ToName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
-          LastCardDigits = "1234",
+          PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+            PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+            LastCardDigits = "5678",
+          },
           AmountPaid = 25.00 + (9 * 25),
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
           PreviousMonthStart = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero).AddMonths(-1),
@@ -76,7 +85,10 @@
         ToName = toName,
         CreditNotePdfUrl = dummyInvoiceUrl,
         AmountRefunded = 9.00,
-        LastCardDigits = "5678",
+        PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+          PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+          LastCardDigits = "5678",
+        },
       }).Wait();
 
       // Payment failed, but we'll try to retry later.
@@ -86,7 +98,10 @@
         ToName = toName,
         InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
-        LastCardDigits = "5678",
+        PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+          PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+          LastCardDigits = "5678",
+        },
         ErrorText = "Insufficient funds",
         NextRetryDate = new DateTimeOffset(2016, 05, 05, 0, 0, 0, TimeSpan.Zero),
         UpdatePaymentMethodUrl = "https://www.chargebee.com",
@@ -99,7 +114,10 @@
         ToName = toName,
         InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
-        LastCardDigits = "5678",
+        PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+          PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+          LastCardDigits = "5678",
+        },
         ErrorText = "Insufficient funds",
         NextRetryDate = null,
       }).Wait();

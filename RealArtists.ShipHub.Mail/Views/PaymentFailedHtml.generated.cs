@@ -62,17 +62,17 @@ WriteLiteral("<p>\r\n    We tried to process a charge for <strong>");
             
             #line default
             #line hidden
-WriteLiteral("</strong> to your card ending\r\n    in <strong>");
+WriteLiteral("</strong> to your\r\n    ");
 
 
             
             #line 10 "..\..\Views\PaymentFailedHtml.cshtml"
-          Write(Model.LastCardDigits);
+Write(PaymentMethodSummaryHtml(Model.PaymentMethodSummary));
 
             
             #line default
             #line hidden
-WriteLiteral("</strong>, but the transaction failed.\r\n</p>\r\n<p>\r\n    <strong>Reason:</strong> ");
+WriteLiteral(", but the transaction failed.\r\n</p>\r\n<p>\r\n    <strong>Reason:</strong> ");
 
 
             

@@ -63,22 +63,22 @@ WriteLiteral("<p>\r\n    We received payment for your organization Ship subscrip
             
             #line default
             #line hidden
-WriteLiteral("</strong> was charged to your card ending\r\n    in <strong>");
+WriteLiteral("</strong> was charged to your ");
 
 
             
-            #line 13 "..\..\Views\PaymentSucceededOrganizationHtml.cshtml"
-          Write(Model.LastCardDigits);
+            #line 12 "..\..\Views\PaymentSucceededOrganizationHtml.cshtml"
+                                                                              Write(PaymentMethodSummaryHtml(Model.PaymentMethodSummary));
 
             
             #line default
             #line hidden
-WriteLiteral("</strong> and covers service through <strong>");
+WriteLiteral("\r\n    and covers service through <strong>");
 
 
             
             #line 13 "..\..\Views\PaymentSucceededOrganizationHtml.cshtml"
-                                                                            Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
+                                  Write(Model.ServiceThroughDate.ToString("MMM d, yyyy"));
 
             
             #line default

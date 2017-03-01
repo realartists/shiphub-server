@@ -9,8 +9,8 @@
     We received payment for your personal Ship subscription.
 </p>
 <p>
-    <strong>@string.Format("{0:C}", Model.AmountPaid)</strong> was charged to your card ending
-    in <strong>@Model.LastCardDigits</strong> and covers service through <strong>@Model.ServiceThroughDate.ToString("MMM d, yyyy")</strong>.
+    <strong>@string.Format("{0:C}", Model.AmountPaid)</strong> was charged to your @PaymentMethodSummaryHtml(Model.PaymentMethodSummary)
+    and covers service through <strong>@Model.ServiceThroughDate.ToString("MMM d, yyyy")</strong>.
 </p>
 <p>
     <a href="@Model.InvoicePdfUrl">Download a PDF receipt</a> for your records.

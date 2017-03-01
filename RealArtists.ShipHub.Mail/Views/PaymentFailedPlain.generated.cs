@@ -62,12 +62,12 @@ WriteLiteral("We tried to process a charge for ");
             
             #line default
             #line hidden
-WriteLiteral(" to your card ending in ");
+WriteLiteral(" to your ");
 
 
             
             #line 8 "..\..\Views\PaymentFailedPlain.cshtml"
-                                                                                         Write(Model.LastCardDigits);
+                                                                          Write(PaymentMethodSummaryPlain(Model.PaymentMethodSummary));
 
             
             #line default
