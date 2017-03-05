@@ -228,7 +228,7 @@
         throw new ArgumentException("Existing subscription is already active");
       }
 
-      var subMetaData = (sub.MetaData ?? new JObject()).ToObject<ChargeBeePersonalSubscriptionMetaData>(GitHubSerialization.JsonSerializer);
+      var subMetaData = (sub.MetaData ?? new JObject()).ToObject<ChargeBeePersonalSubscriptionMetadata>(GitHubSerialization.JsonSerializer);
 
       var needsReactivation = false;
       var pageRequest = _chargeBee.HostedPage.CheckoutExisting()

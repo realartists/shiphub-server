@@ -151,7 +151,7 @@
         trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
         expectCoupon: "trial_days_left_7_of_14",
         expectTrialToEndImmediately: true,
-        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetaData() {
+        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetadata() {
           TrialPeriodDays = 14,
         }
         );
@@ -190,7 +190,7 @@
         trialEndIfAny: DateTimeOffset.UtcNow.AddDays(31),
         expectCoupon: "trial_days_left_14_of_14",
         expectTrialToEndImmediately: true,
-        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetaData() {
+        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetadata() {
           TrialPeriodDays = 14,
         }
         );
@@ -255,7 +255,7 @@
       bool orgIsPaid = false,
       string existingCouponId = null,
       string analyticsId = null,
-      ChargeBeePersonalSubscriptionMetaData subscriptionMetaData = null
+      ChargeBeePersonalSubscriptionMetadata subscriptionMetaData = null
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);

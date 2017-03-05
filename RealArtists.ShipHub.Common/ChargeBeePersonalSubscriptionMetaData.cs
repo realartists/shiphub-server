@@ -13,7 +13,7 @@ namespace RealArtists.ShipHub.Common {
   /// each subscription in ChargeBee.  If changing the schema, be aware that
   /// older versions of this object still exist in ChargeBee.
   /// </summary>
-  public class ChargeBeePersonalSubscriptionMetaData {
+  public class ChargeBeePersonalSubscriptionMetadata {
     public int? TrialPeriodDays { get; set; }
   }
 }

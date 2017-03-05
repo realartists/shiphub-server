@@ -82,7 +82,7 @@
 
       if (subList.Count == 0) {
         var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
-        var metaData = new ChargeBeePersonalSubscriptionMetaData() {
+        var metaData = new ChargeBeePersonalSubscriptionMetadata() {
           // If someone purchases a personal subscription while their free trial is still
           // going, we'll need to know the trial peroid length so we can give the right amount
           // of credit for unused time.
