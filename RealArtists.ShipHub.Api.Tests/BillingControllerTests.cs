@@ -15,6 +15,7 @@
   using Mixpanel;
   using Moq;
   using Newtonsoft.Json;
+  using Newtonsoft.Json.Linq;
   using NUnit.Framework;
   using QueueClient;
 
@@ -143,6 +144,20 @@
     }
 
     [Test]
+    public Task CouponGivesCreditForRemainingTrialDaysFor14DayTrial() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Pretend trial ends in 7 days, so we should get the 7 day coupon
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
+        expectCoupon: "trial_days_left_7_of_14",
+        expectTrialToEndImmediately: true,
+        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetaData() {
+          TrialPeriodDays = 14,
+        }
+        );
+    }
+
+    [Test]
     public Task CouponAlwaysRoundsUpToAWholeDay() {
       return BuyEndpointRedirectsToChargeBeeHelper(
         existingState: "in_trial",
@@ -155,7 +170,7 @@
     }
 
     [Test]
-    public Task CouponIsNeverForMoreThan30Days() {
+    public Task CouponIsNeverForMoreThan30DaysFor30DayTrial() {
       return BuyEndpointRedirectsToChargeBeeHelper(
         existingState: "in_trial",
         // Even if you have more than 30 days left in your trial,
@@ -163,6 +178,21 @@
         trialEndIfAny: DateTimeOffset.UtcNow.AddDays(31),
         expectCoupon: "trial_days_left_30",
         expectTrialToEndImmediately: true
+        );
+    }
+
+    [Test]
+    public Task CouponIsNeverForMoreThan14DaysFor14DayTrial() {
+      return BuyEndpointRedirectsToChargeBeeHelper(
+        existingState: "in_trial",
+        // Even if you have more than 30 days left in your trial,
+        // just use the 30 day coupon.  It's good for 100% off.
+        trialEndIfAny: DateTimeOffset.UtcNow.AddDays(31),
+        expectCoupon: "trial_days_left_14_of_14",
+        expectTrialToEndImmediately: true,
+        subscriptionMetaData: new ChargeBeePersonalSubscriptionMetaData() {
+          TrialPeriodDays = 14,
+        }
         );
     }
 
@@ -224,7 +254,8 @@
       bool expectNeedsReactivation = false,
       bool orgIsPaid = false,
       string existingCouponId = null,
-      string analyticsId = null
+      string analyticsId = null,
+      ChargeBeePersonalSubscriptionMetaData subscriptionMetaData = null
       ) {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
@@ -243,24 +274,41 @@
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
             Assert.AreEqual("personal", data["plan_id[is]"]);
 
-            // Pretend we find an existing subscription
+            var coupons = (existingCouponId == null) ?
+              null :
+              new[] {
+                new {
+                  coupon_id = existingCouponId,
+                },
+              };
+
+            object subscription = null;
+
+            // If meta_data isn't non-null, don't send the field at all.  ChargeBee's
+            // library will choke if meta_data = null.
+            if (subscriptionMetaData != null) {
+              subscription = new {
+                id = "existing-sub-id",
+                status = existingState,
+                trial_end = trialEndIfAny?.ToUnixTimeSeconds(),
+                coupons = coupons,
+                meta_data = JToken.FromObject(subscriptionMetaData, GitHubSerialization.JsonSerializer),
+              };
+            } else {
+              subscription = new {
+                id = "existing-sub-id",
+                status = existingState,
+                trial_end = trialEndIfAny?.ToUnixTimeSeconds(),
+                coupons = coupons,
+              };
+            }
+
             return new {
               list = new object[] {
-                  new {
-                    subscription = new {
-                      id = "existing-sub-id",
-                      status = existingState,
-                      trial_end = trialEndIfAny?.ToUnixTimeSeconds(),
-                      coupons = (existingCouponId == null) ?
-                        null :
-                        new[] {
-                          new {
-                            coupon_id = existingCouponId,
-                          },
-                        },
-                    },
-                  },
+                new {
+                  subscription = subscription,
                 },
+              },
               next_offset = null as string,
             };
           } else if (method.Equals("POST") && path.Equals("/api/v2/hosted_pages/checkout_existing")) {
