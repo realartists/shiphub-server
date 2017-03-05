@@ -5,11 +5,16 @@
   using System.Data.Entity.Infrastructure;
   using System.IO;
   using System.Linq;
+  using System.Runtime.Serialization;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel.Types;
+  using Common.GitHub;
   using Microsoft.Azure.WebJobs;
+  using Newtonsoft.Json;
+  using Newtonsoft.Json.Converters;
+  using Newtonsoft.Json.Linq;
   using Orleans;
   using QueueClient;
   using QueueClient.Messages;
@@ -33,7 +38,8 @@
       UserIdMessage message,
       IAsyncCollector<ChangeMessage> notifyChanges,
       IGitHubActor gitHubClient,
-      TextWriter logger) {
+      TextWriter logger,
+      DateTimeOffset? utcNow = null) {
 
       var customerId = $"user-{message.UserId}";
       var customerList = (await _chargeBee.Customer.List().Id().Is(customerId).Request()).List;
@@ -75,9 +81,19 @@
       cbm.Subscription sub = null;
 
       if (subList.Count == 0) {
+        var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
+        var metaData = new ChargeBeePersonalSubscriptionMetaData() {
+          // If someone purchases a personal subscription while their free trial is still
+          // going, we'll need to know the trial peroid length so we can give the right amount
+          // of credit for unused time.
+          TrialPeriodDays = 14,
+        };
+
         logger.WriteLine("Billing: Creating personal subscription");
         sub = (await _chargeBee.Subscription.CreateForCustomer(customerId)
           .PlanId("personal")
+          .TrialEnd(trialEnd)
+          .MetaData(JObject.FromObject(metaData, GitHubSerialization.JsonSerializer))
           .Request()).Subscription;
       } else {
         logger.WriteLine("Billing: Subscription already exists");

@@ -64,6 +64,7 @@
 
         bool createdAccount = false;
         bool createdSubscription = false;
+        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
@@ -100,9 +101,11 @@
               next_offset = null as string,
             };
           } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
-            Assert.AreEqual(
+            CollectionAssert.AreEquivalent(
               new Dictionary<string, string> {
-                      { "plan_id", "personal"},
+                { "plan_id", "personal" },
+                { "trial_end", utcNow.AddDays(14).ToUnixTimeSeconds().ToString() },
+                { "meta_data", "{\r\n  \"trial_period_days\": 14\r\n}" },
               },
               data);
             createdSubscription = true;
@@ -111,10 +114,7 @@
               subscription = new {
                 id = "some-sub-id",
                 status = "in_trial",
-                trial_end = DateTimeOffset.Parse(
-                      "10/1/2016 08:00:00 PM +00:00",
-                      null,
-                      DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                trial_end = long.Parse(data["trial_end"]),
                 resource_version = 1234,
               },
             };
@@ -124,15 +124,16 @@
           }
         });
 
-        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(
+          new UserIdMessage(user.Id),
+          collectorMock.Object,
+          mockClient.Object,
+          Console.Out, 
+          utcNow);
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
-        Assert.AreEqual(DateTimeOffset.Parse(
-                        "10/1/2016 08:00:00 PM +00:00",
-                        null,
-                        DateTimeStyles.AssumeUniversal),
-                        sub.TrialEndDate);
+        Assert.AreEqual(DateTimeOffset.FromUnixTimeSeconds(utcNow.AddDays(14).ToUnixTimeSeconds()), sub.TrialEndDate);
         Assert.IsTrue(createdAccount);
         Assert.IsTrue(createdSubscription);
 
@@ -410,6 +411,7 @@
 
         bool createdAccount = false;
         bool createdSubscription = false;
+        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
@@ -450,9 +452,11 @@
               next_offset = null as string,
             };
           } else if (method.Equals("POST") && path.Equals($"/api/v2/customers/user-{user.Id}/subscriptions")) {
-            Assert.AreEqual(
+            CollectionAssert.AreEqual(
               new Dictionary<string, string> {
-                      { "plan_id", "personal"},
+                { "plan_id", "personal"},
+                { "trial_end", utcNow.AddDays(14).ToUnixTimeSeconds().ToString() },
+                { "meta_data", "{\r\n  \"trial_period_days\": 14\r\n}" },
               },
               data);
             createdSubscription = true;
@@ -461,10 +465,7 @@
               subscription = new {
                 id = "some-sub-id",
                 status = "in_trial",
-                trial_end = DateTimeOffset.Parse(
-                      "10/1/2016 08:00:00 PM +00:00",
-                      null,
-                      DateTimeStyles.AssumeUniversal).ToUnixTimeSeconds(),
+                trial_end = long.Parse(data["trial_end"]),
                 resource_version = 1234,
               },
             };
@@ -474,7 +475,12 @@
           }
         });
 
-        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(new UserIdMessage(user.Id), collectorMock.Object, mockClient.Object, Console.Out);
+        await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(
+          new UserIdMessage(user.Id),
+          collectorMock.Object,
+          mockClient.Object,
+          Console.Out,
+          utcNow);
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);

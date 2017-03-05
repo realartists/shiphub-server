@@ -121,6 +121,7 @@
     <Compile Include="Legacy\DynamicDataReader.cs" />
     <Compile Include="Legacy\DynamicStoredProcedure.cs" />
     <Compile Include="Legacy\SqlConnectionFactory.cs" />
+    <Compile Include="ChargeBeePersonalSubscriptionMetaData.cs" />
     <Compile Include="OrleansAzureClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShipHubConfiguration.cs" />

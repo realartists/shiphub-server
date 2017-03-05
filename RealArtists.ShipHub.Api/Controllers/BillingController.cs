@@ -24,6 +24,7 @@
   using Filters;
   using Mixpanel;
   using Newtonsoft.Json;
+  using Newtonsoft.Json.Linq;
   using Orleans;
   using QueueClient;
   using cb = ChargeBee;
@@ -226,6 +227,9 @@
       if (sub.Status == cbm.Subscription.StatusEnum.Active) {
         throw new ArgumentException("Existing subscription is already active");
       }
+
+      var subMetaData = (sub.MetaData ?? new JObject()).ToObject<ChargeBeePersonalSubscriptionMetaData>(GitHubSerialization.JsonSerializer);
+
       var needsReactivation = false;
       var pageRequest = _chargeBee.HostedPage.CheckoutExisting()
         .SubscriptionId(sub.Id)
@@ -252,9 +256,17 @@
           // still remaining.  Don't want to penalize folks that decide to buy
           // before the free trial is up.
           var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
+          var trialPeriodDays = subMetaData.TrialPeriodDays ?? 30;
+
           // Always round up to the nearest whole day.
-          var daysLeftOnTrial = (int)Math.Min(30, Math.Floor(totalDays + 1));
-          couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
+          var daysLeftOnTrial = (int)Math.Min(trialPeriodDays, Math.Floor(totalDays + 1));
+
+          if (trialPeriodDays == 30) {
+            // The original coupons for 30 day trials didn't include total days in the name.
+            couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
+          } else {
+            couponToAdd = $"trial_days_left_{daysLeftOnTrial}_of_{trialPeriodDays}";
+          }
         }
 
         pageRequest
