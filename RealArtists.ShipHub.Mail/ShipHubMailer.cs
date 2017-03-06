@@ -46,8 +46,14 @@
       var message = new MailMessage(
         new MailAddress("support@realartists.com", "Ship"),
         new MailAddress(htmlTemplate.Model.ToAddress, htmlTemplate.Model.ToName));
-      message.Bcc.Add(new MailAddress("billing-emails@realartists.com"));
-      message.Subject = subject;
+
+      if (ShipHubCloudConfiguration.Instance.ApiHostName == "hub.realartists.com") {
+        message.Bcc.Add(new MailAddress("billing-emails@realartists.com"));
+        message.Subject = subject;
+      } else {
+        // So we never have to wonder where an odd email came from.
+        message.Subject = $"[{ShipHubCloudConfiguration.Instance.ApiHostName}] {subject}";
+      }
       message.Body = plainTemplate.TransformText();
 
       if (IncludeHtmlView) {

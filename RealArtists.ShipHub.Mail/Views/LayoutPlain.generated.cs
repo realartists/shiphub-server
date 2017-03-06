@@ -42,7 +42,7 @@ WriteLiteral("Hi ");
 
             
             #line 3 "..\..\Views\LayoutPlain.cshtml"
-                              Write(Model.FirstName);
+                              Write(Model.GreetingName);
 
             
             #line default
