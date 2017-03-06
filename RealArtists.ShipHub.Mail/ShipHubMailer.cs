@@ -49,9 +49,11 @@
 
       if (ShipHubCloudConfiguration.Instance.ApiHostName == "hub.realartists.com") {
         message.Bcc.Add(new MailAddress("billing-emails@realartists.com"));
+        message.Subject = subject;
+      } else {
+        // So we never have to wonder where an odd email came from.
+        message.Subject = $"[{ShipHubCloudConfiguration.Instance.ApiHostName}] {subject}";
       }
-
-      message.Subject = subject;
       message.Body = plainTemplate.TransformText();
 
       if (IncludeHtmlView) {
