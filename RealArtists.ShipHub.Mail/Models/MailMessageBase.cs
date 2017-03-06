@@ -6,9 +6,13 @@
     public string ToName { get; set; }
     public string GitHubUserName { get; set; }
 
-    public string FirstName {
+    public string GreetingName {
       get {
-        return ToName.Split(' ').First();
+        if (!string.IsNullOrWhiteSpace(ToName)) {
+          return ToName.Split(' ').First();
+        } else {
+          return GitHubUserName;
+        }
       }
     }
   }

@@ -224,7 +224,7 @@ WriteLiteral(">\r\n                                <table>\r\n                  
 
             
             #line 455 "..\..\Views\LayoutHtml.cshtml"
-                                              Write(Model.FirstName);
+                                              Write(Model.GreetingName);
 
             
             #line default

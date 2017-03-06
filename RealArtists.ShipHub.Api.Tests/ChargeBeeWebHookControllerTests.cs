@@ -214,7 +214,7 @@
 
       Assert.AreEqual(1, messages.Count);
       var message = (PurchasePersonalMailMessage)messages.First();
-      Assert.AreEqual("Aroon", message.FirstName);
+      Assert.AreEqual("Aroon", message.GreetingName);
       Assert.AreEqual("aroon", message.GitHubUserName);
       Assert.AreEqual(true, message.BelongsToOrganization);
       Assert.AreEqual(true, message.WasGivenTrialCredit);
@@ -365,7 +365,7 @@
 
       Assert.AreEqual(1, messages.Count);
       var message = (PurchaseOrganizationMailMessage)messages.First();
-      Assert.AreEqual("Aroon", message.FirstName);
+      Assert.AreEqual("Aroon", message.GreetingName);
       Assert.AreEqual("aroon", message.GitHubUserName);
     }
 
@@ -834,7 +834,7 @@
         var outgoingMessage = (PaymentSucceededOrganizationMailMessage)outgoingMessages.First();
         Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
         Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-        Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+        Assert.AreEqual("Aroon", outgoingMessage.GreetingName);
         Assert.AreEqual(43.00, outgoingMessage.AmountPaid);
         Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
         Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
@@ -920,7 +920,7 @@
 
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual("Aroon", outgoingMessage.GreetingName);
       Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
       Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
       Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
@@ -936,7 +936,7 @@
 
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual("Aroon", outgoingMessage.GreetingName);
       Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
       Assert.AreEqual(PaymentMethod.PayPal, outgoingMessage.PaymentMethodSummary.PaymentMethod);
       Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
@@ -995,7 +995,7 @@
       var outgoingMessage = (PaymentRefundedMailMessage)outgoingMessages.First();
       Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
       Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
-      Assert.AreEqual("Aroon", outgoingMessage.FirstName);
+      Assert.AreEqual("Aroon", outgoingMessage.GreetingName);
       Assert.AreEqual(9.00, outgoingMessage.AmountRefunded);
       Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
       Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
