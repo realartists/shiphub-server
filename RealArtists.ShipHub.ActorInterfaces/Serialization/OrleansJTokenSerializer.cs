@@ -7,7 +7,15 @@
   using Orleans.CodeGeneration;
   using Orleans.Serialization;
 
-  [RegisterSerializer]
+  [Serializer(typeof(JToken))]
+  // I guess maybe I have to register all descendant types too o_O
+  [Serializer(typeof(JValue))]
+  [Serializer(typeof(JRaw))]
+  [Serializer(typeof(JContainer))]
+  [Serializer(typeof(JArray))]
+  [Serializer(typeof(JConstructor))]
+  [Serializer(typeof(JObject))]
+  [Serializer(typeof(JProperty))]
   internal class OrleansJTokenSerializer {
     // Can't make the class static or Orleans won't find it.
     private OrleansJTokenSerializer() { }
@@ -20,42 +28,28 @@
       Formatting = Formatting.Indented
     };
 
-    [SuppressMessage("Microsoft.Performance", "CA1810:InitializeReferenceTypeStaticFieldsInline")]
-    static OrleansJTokenSerializer() {
-      Register();
-    }
-
-    public static object DeepCopier(object original) {
+    [CopierMethod]
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "context")]
+    [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+    public static object DeepCopier(object original, ICopyContext context) {
       // Even though JTokens *should* only be read, they can be edited. Let's play it safe.
       return ((JToken)original)?.DeepClone();
     }
 
-    public static void Serializer(object untypedInput, BinaryTokenStreamWriter stream, Type expected) {
+    [SerializerMethod]
+    [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "expected")]
+    [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+    public static void Serializer(object untypedInput, ISerializationContext context, Type expected) {
       var input = (JToken)untypedInput;
       string json = JsonConvert.SerializeObject(input, _JsonSerializerSettings);
-      SerializationManager.SerializeInner(json, stream, typeof(string));
+      SerializationManager.SerializeInner(json, context, typeof(string));
     }
 
-    public static object Deserializer(Type expected, BinaryTokenStreamReader stream) {
-      var json = (string)SerializationManager.DeserializeInner(typeof(string), stream);
+    [DeserializerMethod]
+    [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
+    public static object Deserializer(Type expected, IDeserializationContext context) {
+      var json = (string)SerializationManager.DeserializeInner(typeof(string), context);
       return JsonConvert.DeserializeObject(json, expected, _JsonSerializerSettings);
-    }
-
-    public static void Register() {
-      Log.Trace();
-
-      SerializationManager.Register(typeof(JToken), DeepCopier, Serializer, Deserializer);
-
-      // I guess maybe I have to register all descendant types too o_O
-
-      SerializationManager.Register(typeof(JValue), DeepCopier, Serializer, Deserializer);
-      SerializationManager.Register(typeof(JRaw), DeepCopier, Serializer, Deserializer);
-
-      SerializationManager.Register(typeof(JContainer), DeepCopier, Serializer, Deserializer);
-      SerializationManager.Register(typeof(JArray), DeepCopier, Serializer, Deserializer);
-      SerializationManager.Register(typeof(JConstructor), DeepCopier, Serializer, Deserializer);
-      SerializationManager.Register(typeof(JObject), DeepCopier, Serializer, Deserializer);
-      SerializationManager.Register(typeof(JProperty), DeepCopier, Serializer, Deserializer);
     }
   }
 }

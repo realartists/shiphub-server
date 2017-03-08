@@ -6,11 +6,13 @@
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.Linq;
+  using System.Reflection;
   using System.Threading;
   using Microsoft.Azure;
   using Orleans;
   using Orleans.Runtime;
   using Orleans.Runtime.Configuration;
+  using Orleans.Serialization;
 
   /// <summary>
   /// Utility class for initializing an Orleans client running inside Azure App Services.
@@ -44,6 +46,7 @@
         TraceFilePattern = "false",
         TraceToConsole = false,
         ResponseTimeout = ResponseTimeout,
+        FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo(),
       };
 
       return config;
