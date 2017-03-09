@@ -109,7 +109,7 @@
             return $"I{IssueId}.{Source.Issue.Id}";
           }
         }
-        throw new NotSupportedException($"Cannot determine a UniqueKey for this event {ExtensionData}");
+        throw new NotSupportedException($"Cannot determine a UniqueKey for this event {this.SerializeObject()}");
       }
     }
   }

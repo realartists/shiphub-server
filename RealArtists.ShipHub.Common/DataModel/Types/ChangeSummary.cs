@@ -7,6 +7,7 @@
     IEnumerable<long> Organizations { get; }
     IEnumerable<long> Repositories { get; }
     IEnumerable<long> Users { get; }
+    bool IsEmpty { get; }
   }
 
   public class ChangeSummary : IChangeSummary {
@@ -15,6 +16,7 @@
       public IEnumerable<long> Organizations { get; } = Array.Empty<long>();
       public IEnumerable<long> Repositories { get; } = Array.Empty<long>();
       public IEnumerable<long> Users { get; } = Array.Empty<long>();
+      public bool IsEmpty { get; } = true;
     }
 
     public ISet<long> Organizations { get; private set; } = new HashSet<long>();

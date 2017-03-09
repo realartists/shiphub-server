@@ -253,24 +253,26 @@
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
         // we can access them.
-        changes.UnionWith(await UpdateRepositoryDetails(context, github));
+        changes.UnionWith(await UpdateDetails(context, github));
 
         if (_disabled) {
           DeactivateOnIdle();
         } else {
           changes.UnionWith(await UpdateIssueTemplate(context, github));
-          changes.UnionWith(await UpdateRepositoryAssignees(context, github));
-          changes.UnionWith(await UpdateRepositoryLabels(context, github));
-          changes.UnionWith(await UpdateRepositoryMilestones(context, github));
-          changes.UnionWith(await UpdateRepositoryIssues(context, github));
-
-          if (_projectsEnabled) {
-            changes.UnionWith(await UpdateRepositoryProjects(context, github));
+          changes.UnionWith(await UpdateAssignees(context, github));
+          changes.UnionWith(await UpdateLabels(context, github));
+          changes.UnionWith(await UpdateMilestones(context, github));
+          
+		  if (_projectsEnabled) {
+            changes.UnionWith(await UpdateProjects(context, github));
           }
+
+          var issueChanges = await UpdateIssues(context, github);
+          changes.UnionWith(issueChanges);
 
           // Probably best to keep last
           if (admin != null) {
-            changes.UnionWith(await AddOrUpdateRepositoryWebhooks(context, admin));
+            changes.UnionWith(await AddOrUpdateWebhooks(context, admin));
           }
         }
 
@@ -295,7 +297,7 @@
       }
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryDetails(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateDetails(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_metadata.IsExpired()) {
@@ -498,7 +500,7 @@
       }
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryAssignees(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateAssignees(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
       // Update Assignees
@@ -515,7 +517,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryLabels(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateLabels(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_labelMetadata.IsExpired()) {
@@ -538,7 +540,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryMilestones(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateMilestones(ShipHubContext context, IGitHubPoolable github) {
       var changes = ChangeSummary.Empty;
 
       if (_milestoneMetadata.IsExpired()) {
@@ -553,7 +555,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryProjects(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateProjects(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
       if (_projectMetadata.IsExpired()) {
@@ -578,7 +580,7 @@
       return changes;
     }
 
-    private async Task<IChangeSummary> UpdateRepositoryIssues(ShipHubContext context, IGitHubPoolable github) {
+    private async Task<IChangeSummary> UpdateIssues(ShipHubContext context, IGitHubPoolable github) {
       var changes = new ChangeSummary();
 
       if (_issueMetadata.IsExpired()) {
@@ -621,7 +623,7 @@
       return changes;
     }
 
-    public async Task<IChangeSummary> AddOrUpdateRepositoryWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
+    public async Task<IChangeSummary> AddOrUpdateWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
       var changes = ChangeSummary.Empty;
 
       var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);

@@ -8,7 +8,6 @@
 
   public class GitHubToDataModelProfile : Profile {
     public GitHubToDataModelProfile() {
-      CreateMap<g.Account, Account>(MemberList.Destination);
 
       // Table Types
       CreateMap<g.Account, AccountTableType>(MemberList.Destination)
@@ -19,6 +18,7 @@
             case g.GitHubAccountType.User:
             case g.GitHubAccountType.Bot:
               return Account.UserType;
+            case g.GitHubAccountType.Unspecified:
             default:
               Log.Error("Mapping untyped account: " + Environment.StackTrace);
               Debug.Assert(false, "Un-typed account");

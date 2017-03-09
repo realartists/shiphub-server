@@ -47,9 +47,9 @@ BEGIN
         [Locked] = [Source].[Locked],
         [UpdatedAt] = [Source].[UpdatedAt],
         [ClosedAt] = [Source].[ClosedAt],
-        [ClosedById] = COALESCE([Source].[ClosedById], [Target].[ClosedById]),
         [PullRequest] = [Source].[PullRequest],
-        [Reactions] = COALESCE([Source].[Reactions], [Target].[Reactions])
+        ClosedById = ISNULL([Source].ClosedById, [Target].ClosedById),
+        Reactions = ISNULL([Source].Reactions, [Target].Reactions),
     OUTPUT INSERTED.Id INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
