@@ -23,6 +23,7 @@
   public interface ISyncConnection {
     Task SendJsonAsync(object message);
     Task CloseAsync();
+    Version ClientBuild { get; }
   }
 
   public class SyncConnection : WebSocketHandler, ISyncConnection {
@@ -42,6 +43,7 @@
     private IDisposable _syncSubscription;
     private IDisposable _pollSubscription;
 
+    public Version ClientBuild { get; set; }
 
     public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IGrainFactory grainFactory)
       : base(_MaxMessageSize) {
@@ -98,6 +100,7 @@
           var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
 
           // Validate version
+          ClientBuild = hello.BuildVersion;
           if (hello.BuildVersion < _MinimumClientBuild) {
             await SendJsonAsync(new HelloResponse() {
               Upgrade = new UpgradeDetails() {
@@ -113,7 +116,8 @@
           // now start sync
           _syncContext = new SyncContext(_user, this, new SyncVersions(
             hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
-            hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version))
+            hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version),
+            hello.Versions?.PullRequestVersion)
           );
 
           var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);

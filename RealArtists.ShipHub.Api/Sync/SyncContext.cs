@@ -22,12 +22,30 @@
     private VersionDetails VersionDetails => new VersionDetails() {
       Organizations = _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
       Repositories = _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+      PullRequestVersion = _versions.PullRequestVersion,
     };
 
     public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
       _user = user;
       _connection = connection;
       _versions = initialVersions;
+
+      RunUpgradeCheck();
+    }
+
+    private static readonly Version MinimumPullRequestClientVersion = new Version(int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+    private const long MinimumPullRequestVersion = 1;
+    private void RunUpgradeCheck() {
+      if (_connection.ClientBuild > MinimumPullRequestClientVersion
+        && _versions.PullRequestVersion < MinimumPullRequestVersion) {
+        foreach (var org in _versions.OrgVersions.Keys) {
+          _versions.OrgVersions[org] = 0;
+        }
+        foreach (var repo in _versions.RepoVersions.Keys) {
+          _versions.RepoVersions[repo] = 0;
+        }
+        _versions.PullRequestVersion = MinimumPullRequestVersion;
+      }
     }
 
     private bool ShouldSync(ChangeSummary changes) {

@@ -22,6 +22,9 @@
 
     [JsonProperty("orgs")]
     public IEnumerable<OrganizationVersion> Organizations { get; set; }
+
+    [JsonProperty("prv")]
+    public long? PullRequestVersion { get; set; }
   }
 
   public class HelloRequest : SyncMessageBase {
