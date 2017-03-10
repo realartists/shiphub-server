@@ -267,6 +267,12 @@
               case "committed":
                 item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
                 break;
+              case "reviewed":
+                item.CreatedAt = item.SubmittedAt.Value;
+                break;
+              default:
+                // Leave most things alone.
+                break;
             }
 
             if (item.CreatedAt == DateTimeOffset.MinValue) {
