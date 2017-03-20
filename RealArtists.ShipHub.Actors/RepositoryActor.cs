@@ -430,6 +430,18 @@
               }
             }
           } else /* rootTemplateFile != null */ {
+            if (github == null) {
+              this.Info("github is null");
+            }
+            if (_fullName == null) {
+              this.Info("_fullName is null");
+            }
+            if (rootTemplateFile == null) {
+              this.Info("rootTemplateFile is null");
+            }
+            if (rootTemplateFile.Path == null) {
+              this.Info("rootTemplateFile.Path is null");
+            }
             templateContent = await github.FileContents(_fullName, rootTemplateFile.Path);
           }
 
