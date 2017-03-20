@@ -67,7 +67,7 @@ namespace RealArtists.ShipHub.Common.Hashing {
 
         // If the buffer is not empty, try to make a complete block
         if (_bufferLen > 0) {
-          ulong* pBuffer = (ulong*)pByteBuffer;
+          var pBuffer = (ulong*)pByteBuffer;
           var wanted = BlockSize - _bufferLen;
           var take = Math.Min(wanted, cbSize);
           Buffer.BlockCopy(array, pos, _buffer, _bufferLen, take);
@@ -82,8 +82,8 @@ namespace RealArtists.ShipHub.Common.Hashing {
 
         // for each additional complete block
         var nblocks = (cbSize - (ibStart - pos)) / BlockSize;
-        ulong* blocks = (ulong*)(pByte + pos);
-        for (int i = 0; i < nblocks; ++i) {
+        var blocks = (ulong*)(pByte + pos);
+        for (var i = 0; i < nblocks; ++i) {
           pos += BlockSize;
           MixBody(blocks[i * 2 + 0], blocks[i * 2 + 1]);
         }
@@ -103,7 +103,7 @@ namespace RealArtists.ShipHub.Common.Hashing {
         _final = true;
 
         // wipe end of buffer
-        for (int i = _bufferLen; i < BlockSize; ++i) {
+        for (var i = _bufferLen; i < BlockSize; ++i) {
           _buffer[i] = 0;
         }
 

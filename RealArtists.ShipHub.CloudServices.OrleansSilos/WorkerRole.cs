@@ -100,7 +100,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
     }
 
     private static void RoleEnvironmentChanging(object sender, RoleEnvironmentChangingEventArgs e) {
-      int i = 1;
+      var i = 1;
       foreach (var c in e.Changes) {
         Log.Info(string.Format("RoleEnvironmentChanging: #{0} Type={1} Change={2}", i++, c.GetType().FullName, c));
       }

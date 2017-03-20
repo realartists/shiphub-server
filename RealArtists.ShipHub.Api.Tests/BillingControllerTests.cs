@@ -564,8 +564,8 @@
             },
           });
 
-        bool doesCustomerUpdate = false;
-        bool doesCheckoutExisting = false;
+        var doesCustomerUpdate = false;
+        var doesCheckoutExisting = false;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
@@ -638,7 +638,7 @@
         var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
         await context.SaveChangesAsync();
 
-        bool doesReactivate = false;
+        var doesReactivate = false;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {

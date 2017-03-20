@@ -96,11 +96,11 @@
         logException = e;
         throw;
       } finally {
-        long contentLength = response?.Content?.Headers?.ContentLength ?? 0;
+        var contentLength = response?.Content?.Headers?.ContentLength ?? 0;
         string logBlob = null;
-        string statusLine = response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}";
+        var statusLine = response == null ? "FAILED" : $"{(int)response.StatusCode} {response.ReasonPhrase}";
 
-        bool skipLogging = logException != null && logException is TaskCanceledException;
+        var skipLogging = logException != null && logException is TaskCanceledException;
         if (!skipLogging && IsFailure(response) && _blobClient != null && !blobName.IsNullOrWhiteSpace()) {
           logBlob = blobName;
 

@@ -51,7 +51,7 @@
     }
 
     public override IEnumerable<string> GetDynamicMemberNames() {
-      for (int i = 0; i < _innerReader.FieldCount; ++i) {
+      for (var i = 0; i < _innerReader.FieldCount; ++i) {
         yield return _innerReader.GetName(i);
       }
     }

@@ -84,7 +84,7 @@ namespace RealArtists.ShipHub.Common {
     /// </summary>
     public static void Exception(Exception ex, string message = null) {
       var e = ex.Simplify();
-      string m = "";
+      var m = "";
       if (message != null && e.Message != null) {
         m = $"{message} - {e.Message}";
       } else if (message != null) {
@@ -312,8 +312,8 @@ namespace RealArtists.ShipHub.Common {
 
       [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
       public void WriteLines(LogLine[] lines) {
-        bool sent = false;
-        for (int i = 0; i < 2 && !sent; i++) {
+        var sent = false;
+        for (var i = 0; i < 2 && !sent; i++) {
           try {
             if (_tcp == null) {
               _tcp = new TcpClient(Host, Port);

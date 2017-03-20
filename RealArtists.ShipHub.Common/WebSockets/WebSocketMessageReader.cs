@@ -11,7 +11,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     private static readonly ArraySegment<byte> _emptyArraySegment = new ArraySegment<byte>(new byte[0]);
 
     private static byte[] BufferSliceToByteArray(byte[] buffer, int count) {
-      byte[] newArray = new byte[count];
+      var newArray = new byte[count];
       Buffer.BlockCopy(buffer, 0, newArray, 0, count);
       return newArray;
     }
@@ -24,7 +24,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
       WebSocketMessage message;
 
       // Read the first time with an empty array
-      WebSocketReceiveResult receiveResult = await webSocket.ReceiveAsync(_emptyArraySegment, disconnectToken).PreserveCultureNotContext();
+      var receiveResult = await webSocket.ReceiveAsync(_emptyArraySegment, disconnectToken).PreserveCultureNotContext();
 
       if (TryGetMessage(receiveResult, null, out message)) {
         return message;
@@ -41,9 +41,9 @@ namespace RealArtists.ShipHub.Common.WebSockets {
         return message;
       } else {
         // for multi-fragment messages, we need to coalesce
-        ByteBuffer bytebuffer = new ByteBuffer(maxMessageSize);
+        var bytebuffer = new ByteBuffer(maxMessageSize);
         bytebuffer.Append(BufferSliceToByteArray(buffer, receiveResult.Count));
-        WebSocketMessageType originalMessageType = receiveResult.MessageType;
+        var originalMessageType = receiveResult.MessageType;
 
         while (true) {
           // loop until an error occurs or we see EOF

@@ -47,7 +47,7 @@
     public async Task Run(IAsyncCollector<ChangeMessage> notifyChanges) {
       var maxPingCount = 3;
       var batchSize = 100;
-      int numStaleHooks = 0;
+      var numStaleHooks = 0;
 
       do {
         var now = UtcNow;

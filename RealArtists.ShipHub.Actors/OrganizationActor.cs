@@ -294,7 +294,7 @@
         // create on GitHub.
         var newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), organizationId: _orgId);
 
-        bool deleteHook = false;
+        var deleteHook = false;
         try {
           var addHookResponse = await admin.AddOrganizationWebhook(
             _login,

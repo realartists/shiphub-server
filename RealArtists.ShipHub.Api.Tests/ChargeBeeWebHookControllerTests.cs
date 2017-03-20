@@ -414,7 +414,7 @@
         });
         await context.SaveChangesAsync();
 
-        bool didCloseInvoice = false;
+        var didCloseInvoice = false;
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method == "POST" && path == "/api/v2/invoices/draft_inv_123/close") {
             didCloseInvoice = true;
@@ -479,7 +479,7 @@
         }
       };
 
-      bool didCloseInvoice = false;
+      var didCloseInvoice = false;
       var addons = new List<Tuple<string, int>>();
 
       var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
@@ -524,7 +524,7 @@
         var org1 = TestUtil.MakeTestOrg(context);
 
         var users = new List<User>();
-        for (int i = 0; i < 20; i++) {
+        for (var i = 0; i < 20; i++) {
           var user = TestUtil.MakeTestUser(context, 3001 + i, "aroo" + "".PadLeft(i, 'o') + "n");
           users.Add(user);
         }
@@ -766,7 +766,7 @@
         var org = TestUtil.MakeTestOrg(context);
 
         var users = new List<User>();
-        for (int i = 0; i < 7; i++) {
+        for (var i = 0; i < 7; i++) {
           var user = TestUtil.MakeTestUser(context, 3001 + i, "aroo" + "".PadLeft(i, 'o') + "n");
           users.Add(user);
         }

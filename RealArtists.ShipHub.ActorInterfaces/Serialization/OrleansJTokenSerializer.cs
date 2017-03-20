@@ -41,7 +41,7 @@
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
     public static void Serializer(object untypedInput, ISerializationContext context, Type expected) {
       var input = (JToken)untypedInput;
-      string json = JsonConvert.SerializeObject(input, _JsonSerializerSettings);
+      var json = JsonConvert.SerializeObject(input, _JsonSerializerSettings);
       SerializationManager.SerializeInner(json, context, typeof(string));
     }
 

@@ -415,13 +415,13 @@
         throw new Exception("subscription_activated should only happen on personal/user subscriptions");
       }
 
-      bool belongsToOrganization = false;
+      var belongsToOrganization = false;
 
       using (var context = new ShipHubContext()) {
         belongsToOrganization = (await context.OrganizationAccounts.CountAsync(x => x.UserId == accountId)) > 0;
       }
 
-      bool wasGivenTrialCredit = payload.Content.Invoice.Discounts?
+      var wasGivenTrialCredit = payload.Content.Invoice.Discounts?
         .Count(x => x.EntityType == "document_level_coupon" && x.EntityId.StartsWith("trial_days_left")) > 0;
 
       await _mailer.PurchasePersonal(

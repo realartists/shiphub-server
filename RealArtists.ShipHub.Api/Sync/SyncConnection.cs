@@ -72,7 +72,7 @@
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public override Task OnMessage(byte[] message) {
       var gzip = message[0] == 1;
-      string json = "";
+      var json = "";
       if (gzip) {
         using (var ms = new MemoryStream(message))
         using (var df = new GZipStream(ms, CompressionMode.Decompress))

@@ -282,7 +282,7 @@
     }
 
     private async Task<TResult> RetryOnDeadlock<TResult>(Func<Task<TResult>> query, int maxAttempts = 2) {
-      for (int attempt = 1; ; ++attempt) {
+      for (var attempt = 1; ; ++attempt) {
         try {
           return await query();
         } catch (SqlException ex) {

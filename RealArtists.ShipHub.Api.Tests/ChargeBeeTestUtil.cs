@@ -47,7 +47,7 @@
           data[key] = nvc[key];
         }
 
-        object result = callback(request.Method.Method, request.RequestUri.AbsolutePath, data);
+        var result = callback(request.Method.Method, request.RequestUri.AbsolutePath, data);
         var formatter = new JsonMediaTypeFormatter();
         formatter.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
         var response = request.CreateResponse(HttpStatusCode.OK, result, formatter);

@@ -117,7 +117,7 @@
         tasks.AddRange(hookDetails.OrganizationHooks.Select(x => github.DeleteOrganizationWebhook(x.Name, x.HookId, RequestPriority.Interactive)));
 
         // Wait and log errors.
-        string userInfo = $"{ShipHubUser.Login} ({ShipHubUser.UserId})";
+        var userInfo = $"{ShipHubUser.Login} ({ShipHubUser.UserId})";
         try {
           // Ensure requests complete before we revoke our access below
           await Task.WhenAll(tasks);
@@ -162,7 +162,7 @@
       }
 
       // Check scopes
-      bool scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(userResponse.Scopes));
+      var scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(userResponse.Scopes));
       if (!scopesOk) {
         return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
           Granted = userResponse.Scopes,

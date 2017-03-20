@@ -123,7 +123,7 @@
         GitHubSerialization.JsonSerializerSettings);
 
       var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(secret));
-      byte[] signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(json));
+      var signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(json));
 
       return new GitHubWebhookEventMessage() {
         EntityType = entityType,

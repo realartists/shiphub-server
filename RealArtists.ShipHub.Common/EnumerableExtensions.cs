@@ -17,7 +17,7 @@
     /// <param name="condition">A condition to determine the first element returned.</param>
     /// <returns>All elements in source after and and including the first element matching condition.</returns>
     public static IEnumerable<T> BeginWith<T>(this IEnumerable<T> source, Func<T, bool> condition) {
-      bool triggered = false;
+      var triggered = false;
 
       foreach (var elem in source) {
         if (triggered) {
@@ -41,7 +41,7 @@
     /// <param name="condition">A condition to determine the first element returned.</param>
     /// <returns>All elements in source after and and excluding the first element matching condition.</returns>
     public static IEnumerable<T> After<T>(this IEnumerable<T> source, Func<T, bool> condition) {
-      bool triggered = false;
+      var triggered = false;
 
       foreach (var elem in source) {
         if (triggered) {
@@ -81,7 +81,7 @@
     /// <param name="condition">A condition to determine the final element returned.</param>
     /// <returns>All elements in source up to and including the first element matching condition.</returns>
     public static IEnumerable<T> EndWith<T>(this IEnumerable<T> source, Func<T, bool> condition) {
-      bool triggered = false;
+      var triggered = false;
 
       foreach (var elem in source) {
         if (condition(elem)) {

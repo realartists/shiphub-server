@@ -22,7 +22,7 @@
     }
 
     private static async Task<Environment> MakeEnvironment(ShipHubContext context) {
-      Environment env = new Environment();
+      var env = new Environment();
       env.user1 = TestUtil.MakeTestUser(context, 3001, "alok");
       env.user2 = TestUtil.MakeTestUser(context, 3002, "aroon");
       env.org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
@@ -61,7 +61,7 @@
     [Test]
     public async Task ModeDefaultsToPaid() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
         var response = await GetSubscriptionResponse(env.user1);
         Assert.AreEqual(SubscriptionMode.Paid, response.Mode,
           "If we haven't been able to fetch the data from ChargeBee yet, act as if paid.");
@@ -71,7 +71,7 @@
     [Test]
     public async Task ModeIsFreeWithNoSubscription() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -92,7 +92,7 @@
     [Test]
     public async Task ModeIsFreeWhenTrialHasEnded() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -110,7 +110,7 @@
     [Test]
     public async Task ModeIsTrialWhenInTrial() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -128,7 +128,7 @@
     [Test]
     public async Task ModeIsPaidWithPersonalSubscription() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -145,7 +145,7 @@
     [Test]
     public async Task ModeIsPaidWithOrgSubscription() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -166,7 +166,7 @@
     [Test]
     public async Task ModeIsPaidWithOrgSubscriptionEvenIfUserHasTrial() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,
@@ -188,7 +188,7 @@
     [Test]
     public async Task TrialEndDateIsSetWhenUserIsInTrial() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         var trialEndDate = DateTimeOffset.UtcNow.AddDays(15);
 
@@ -209,7 +209,7 @@
     [Test]
     public async Task ManageSubscriptionsRefreshHashChanges() {
       using (var context = new ShipHubContext()) {
-        Environment env = await MakeEnvironment(context);
+        var env = await MakeEnvironment(context);
 
         var user1Sub = context.Subscriptions.Add(new Subscription() {
           AccountId = env.user1.Id,

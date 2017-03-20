@@ -55,7 +55,7 @@
       var body = await Request.Content.ReadAsStringAsync();
 
       var signatureHeader = Request.Headers.GetValues(SignatureHeaderName).Single();
-      byte[] signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value; // header of form "sha1=..."
+      var signature = SoapHexBinary.Parse(signatureHeader.Substring(5)).Value; // header of form "sha1=..."
 
       var message = new GitHubWebhookEventMessage() {
         EntityType = type,

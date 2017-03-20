@@ -145,7 +145,7 @@
 
     public static string CreateSignature(string actorId, string targetId) {
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("N7lowJKM71PgNdwfMTDHmNb82wiwFGl"))) {
-        byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{actorId}|{targetId}"));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{actorId}|{targetId}"));
         var hashString = string.Join("", hash.Select(x => x.ToString("x2")));
         return hashString.Substring(0, 8);
       }
@@ -236,7 +236,7 @@
         .SubscriptionPlanId("personal")
         .Embed(false);
 
-      bool isMemberOfPaidOrg = false;
+      var isMemberOfPaidOrg = false;
       using (var context = new ShipHubContext()) {
         isMemberOfPaidOrg = await context.OrganizationAccounts
           .AnyAsync(x =>
@@ -319,7 +319,7 @@
 
       string firstName = null;
       string lastName = null;
-      string companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? ghcOrg.Login : ghcOrg.Name;
+      var companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? ghcOrg.Login : ghcOrg.Name;
 
       // Name is optional for GitHub.
       if (!ghcUser.Name.IsNullOrWhiteSpace()) {

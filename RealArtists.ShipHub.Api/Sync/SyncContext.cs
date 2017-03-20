@@ -109,7 +109,7 @@
     }
 
     private async Task RecordUsage() {
-      DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+      var utcNow = DateTimeOffset.UtcNow;
 
       // We only have to record usage once per calendar day.
       if (_lastRecordedUsage == null || _lastRecordedUsage?.DayOfYear != utcNow.DayOfYear) {

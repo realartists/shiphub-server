@@ -367,7 +367,7 @@
            .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
            .ThrowsAsync(new Exception("some exception!"));
 
-        bool exceptionThrown = false;
+        var exceptionThrown = false;
         try {
           var orgActor = CreateOrgActor(org.Id, org.Login);
           await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);

@@ -499,7 +499,7 @@
 
     private async Task PostProcessResponse(GitHubResponse response) {
       // Token revocation handling and abuse.
-      bool abuse = false;
+      var abuse = false;
       DateTimeOffset? limitUntil = null;
       if (response?.Status == HttpStatusCode.Unauthorized) {
         using (var ctx = _shipContextFactory.CreateInstance()) {
@@ -571,7 +571,7 @@
 
       // TODO: Cancellation (for when errors are encountered)?
 
-      RequestPriority subRequestPriority = RequestPriority.SubRequest;
+      var subRequestPriority = RequestPriority.SubRequest;
       if (firstPage.Request.Priority == RequestPriority.Interactive) {
         subRequestPriority = RequestPriority.Interactive;
       }
@@ -603,9 +603,9 @@
         }
 
         var accum = new List<GitHubResponse<TCollection>>();
-        for (int i = 0; i < pageRequestors.Length;) {
+        for (var i = 0; i < pageRequestors.Length;) {
           var tasks = new List<Task<GitHubResponse<TCollection>>>();
-          for (int j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
+          for (var j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
             tasks.Add(pageRequestors[i]());
           }
           await Task.WhenAll(tasks);

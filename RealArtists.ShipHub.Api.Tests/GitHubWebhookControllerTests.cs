@@ -38,7 +38,7 @@
 
     private static string SignatureForPayload(string key, string payload) {
       var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(key));
-      byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+      var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
       return "sha1=" + new SoapHexBinary(hash).ToString();
     }
     
@@ -85,7 +85,7 @@
 
         var expectedJson = JsonConvert.SerializeObject(obj, GitHubSerialization.JsonSerializerSettings);
         var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("somesecret"));
-        byte[] expectedSignature = hmac.ComputeHash(Encoding.UTF8.GetBytes(expectedJson));
+        var expectedSignature = hmac.ComputeHash(Encoding.UTF8.GetBytes(expectedJson));
         
         Assert.NotNull(message, "Should have queued a message to process the webhook event");
         Assert.AreEqual(5001, message.EntityId);

@@ -61,7 +61,7 @@
       };
 
       var parsed = uri.ParseQueryString();
-      for (int i = 0; i < parsed.Count; ++i) {
+      for (var i = 0; i < parsed.Count; ++i) {
         clone.AddParameter(parsed.GetKey(i), parsed.GetValues(i).Single());
       }
 

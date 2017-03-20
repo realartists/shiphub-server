@@ -82,7 +82,7 @@
 
       Log.Info($"Initializing Orleans Client with configuration:\n{config.SerializeObject(Newtonsoft.Json.Formatting.Indented)}");
       Exception lastException = null;
-      for (int i = 0; i < MaxRetries; i++) {
+      for (var i = 0; i < MaxRetries; i++) {
         if (i > 0) {
           // Pause to let Primary silo start up and register
           Thread.Sleep(StartupRetryPause);

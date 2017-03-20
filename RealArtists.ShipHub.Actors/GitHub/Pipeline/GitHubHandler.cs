@@ -35,7 +35,7 @@
     public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken) {
       GitHubResponse<T> result = null;
 
-      for (int attempt = 0; attempt <= LastAttempt; ++attempt) {
+      for (var attempt = 0; attempt <= LastAttempt; ++attempt) {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (attempt > 0) {

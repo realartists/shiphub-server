@@ -172,7 +172,7 @@
     public string WebsiteHostName { get { return _websiteHostName.Value; } }
 
     private static string GetSetting(string key, bool required = false) {
-      string value = CloudConfigurationManager.GetSetting(key);
+      var value = CloudConfigurationManager.GetSetting(key);
       if (value == null && required) {
         throw new ConfigurationErrorsException($"'{key}' is required but not specified in configuration.");
       }

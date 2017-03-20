@@ -264,7 +264,7 @@
           .Limit(1)
           .Request()).List.FirstOrDefault()?.Subscription;
 
-        bool shouldHaveCoupon = false;
+        var shouldHaveCoupon = false;
         using (var context = new cm.ShipHubContext()) {
           var isMemberOfPaidOrg = await context.OrganizationAccounts
             .AsNoTracking()

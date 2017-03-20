@@ -120,7 +120,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     }
 
     internal async Task ProcessWebSocketRequestAsync(WebSocket webSocket, CancellationToken disconnectToken, Func<object, Task<WebSocketMessage>> messageRetriever, object state) {
-      bool closedReceived = false;
+      var closedReceived = false;
 
       try {
         // first, set primitives and initialize the object
@@ -129,7 +129,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
         // dispatch incoming messages
         while (!disconnectToken.IsCancellationRequested && !closedReceived) {
-          WebSocketMessage incomingMessage = await messageRetriever(state).PreserveCulture();
+          var incomingMessage = await messageRetriever(state).PreserveCulture();
           switch (incomingMessage.MessageType) {
             case WebSocketMessageType.Binary:
               await OnMessage((byte[])incomingMessage.Data);

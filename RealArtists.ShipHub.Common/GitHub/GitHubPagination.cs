@@ -67,7 +67,7 @@
       }
 
       var builder = new UriBuilder(Next);
-      for (int i = pageNext; i <= pageLast; ++i) {
+      for (var i = pageNext; i <= pageLast; ++i) {
         parsedNext.Set("page", i.ToString());
         builder.Query = parsedNext.ToString();
         yield return builder.Uri;

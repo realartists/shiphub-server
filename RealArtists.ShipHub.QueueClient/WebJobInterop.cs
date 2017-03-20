@@ -27,9 +27,9 @@
     // Based on azure-webjobs-sdk\src\Microsoft.Azure.WebJobs.ServiceBus\Bindings\UserTypeToBrokeredMessageConverter.cs
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public static BrokeredMessage CreateMessage<TInput>(TInput input, string messageId = null, string partitionKey = null) {
-      string text = JsonConvert.SerializeObject(input, _JsonSerializerSettings);
-      byte[] bytes = _Utf8.GetBytes(text);
-      MemoryStream stream = new MemoryStream(bytes, writable: false);
+      var text = JsonConvert.SerializeObject(input, _JsonSerializerSettings);
+      var bytes = _Utf8.GetBytes(text);
+      var stream = new MemoryStream(bytes, writable: false);
 
       var result = new BrokeredMessage(stream, ownsStream: true) {
         ContentType = _ContentType,

@@ -28,11 +28,11 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     // returns the segments as a single byte array
     public byte[] GetByteArray() {
-      byte[] newArray = new byte[_currentLength];
-      int lastOffset = 0;
+      var newArray = new byte[_currentLength];
+      var lastOffset = 0;
 
-      for (int i = 0; i < _segments.Count; i++) {
-        byte[] thisSegment = _segments[i];
+      for (var i = 0; i < _segments.Count; i++) {
+        var thisSegment = _segments[i];
         Buffer.BlockCopy(thisSegment, 0, newArray, lastOffset, thisSegment.Length);
         lastOffset += thisSegment.Length;
       }
@@ -42,15 +42,15 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     // treats the segments as UTF8-encoded information and returns the resulting string
     public string GetString() {
-      StringBuilder builder = new StringBuilder();
-      Decoder decoder = Encoding.UTF8.GetDecoder();
+      var builder = new StringBuilder();
+      var decoder = Encoding.UTF8.GetDecoder();
 
-      for (int i = 0; i < _segments.Count; i++) {
-        bool flush = (i == _segments.Count - 1);
-        byte[] thisSegment = _segments[i];
-        int charsRequired = decoder.GetCharCount(thisSegment, 0, thisSegment.Length, flush);
-        char[] thisSegmentAsChars = new char[charsRequired];
-        int numCharsConverted = decoder.GetChars(thisSegment, 0, thisSegment.Length, thisSegmentAsChars, 0, flush);
+      for (var i = 0; i < _segments.Count; i++) {
+        var flush = (i == _segments.Count - 1);
+        var thisSegment = _segments[i];
+        var charsRequired = decoder.GetCharCount(thisSegment, 0, thisSegment.Length, flush);
+        var thisSegmentAsChars = new char[charsRequired];
+        var numCharsConverted = decoder.GetChars(thisSegment, 0, thisSegment.Length, thisSegmentAsChars, 0, flush);
         builder.Append(thisSegmentAsChars, 0, numCharsConverted);
       }
 

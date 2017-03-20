@@ -62,9 +62,9 @@
             },
           });
 
-        bool createdAccount = false;
-        bool createdSubscription = false;
-        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+        var createdAccount = false;
+        var createdSubscription = false;
+        var utcNow = DateTimeOffset.UtcNow;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
@@ -409,9 +409,9 @@
             }
           });
 
-        bool createdAccount = false;
-        bool createdSubscription = false;
-        DateTimeOffset utcNow = DateTimeOffset.UtcNow;
+        var createdAccount = false;
+        var createdSubscription = false;
+        var utcNow = DateTimeOffset.UtcNow;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method.Equals("GET") && path.Equals("/api/v2/customers")) {
@@ -676,8 +676,8 @@
         });
         await context.SaveChangesAsync();
 
-        bool didAddCoupon = false;
-        bool didRemoveCoupon = false;
+        var didAddCoupon = false;
+        var didRemoveCoupon = false;
 
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method == "GET" && path == "/api/v2/subscriptions") {
