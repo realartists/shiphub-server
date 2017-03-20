@@ -405,9 +405,7 @@
     }
 
     public async Task SendPurchasePersonalMessage(ChargeBeeWebhookPayload payload) {
-      string accountType;
-      long accountId;
-      ChargeBeeUtilities.ParseCustomerId(payload.Content.Customer.Id, out accountType, out accountId);
+      ChargeBeeUtilities.ParseCustomerId(payload.Content.Customer.Id, out var accountType, out var accountId);
 
       if (accountType != "user") {
         // "activated" only happens on transition from trial -> active, and we only do trials

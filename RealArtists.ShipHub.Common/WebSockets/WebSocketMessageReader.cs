@@ -21,12 +21,11 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     }
 
     public static async Task<WebSocketMessage> ReadMessageAsync(WebSocket webSocket, int bufferSize, int? maxMessageSize, CancellationToken disconnectToken) {
-      WebSocketMessage message;
 
       // Read the first time with an empty array
       var receiveResult = await webSocket.ReceiveAsync(_emptyArraySegment, disconnectToken).PreserveCultureNotContext();
 
-      if (TryGetMessage(receiveResult, null, out message)) {
+      if (TryGetMessage(receiveResult, null, out var message)) {
         return message;
       }
 

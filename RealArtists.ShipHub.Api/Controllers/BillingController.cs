@@ -169,9 +169,7 @@
         await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
       }
 
-      string accountType;
-      long accountId;
-      ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out accountType, out accountId);
+      ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out var accountType, out var accountId);
 
       ChangeSummary changes;
       using (var context = new ShipHubContext()) {

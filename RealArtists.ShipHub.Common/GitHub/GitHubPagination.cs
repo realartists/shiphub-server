@@ -44,9 +44,8 @@
           return false;
         }
 
-        int pageNext, pageLast;
-        return int.TryParse(Next.ParseQueryString().Get("page"), out pageNext)
-          && int.TryParse(Last.ParseQueryString().Get("page"), out pageLast);
+        return int.TryParse(Next.ParseQueryString().Get("page"), out var pageNext)
+          && int.TryParse(Last.ParseQueryString().Get("page"), out var pageLast);
       }
     }
 
@@ -55,10 +54,9 @@
         throw new InvalidOperationException("Next and Last are required to interpolate.");
       }
 
-      int pageNext, pageLast;
       var parsedNext = Next.ParseQueryString();
-      if (!int.TryParse(parsedNext.Get("page"), out pageNext)
-        || !int.TryParse(Last.ParseQueryString().Get("page"), out pageLast)) {
+      if (!int.TryParse(parsedNext.Get("page"), out var pageNext)
+        || !int.TryParse(Last.ParseQueryString().Get("page"), out var pageLast)) {
         throw new InvalidOperationException("Only page based interpolation is supported.");
       }
 

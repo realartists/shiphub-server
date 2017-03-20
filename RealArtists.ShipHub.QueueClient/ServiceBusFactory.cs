@@ -72,8 +72,7 @@
 
     static async Task<T> CacheLookup<T>(ConcurrentDictionary<string, T> cache, string key, Func<Task<T>> valueCreator)
       where T : class {
-      T client = null;
-      if (!cache.TryGetValue(key, out client)) {
+      if (!cache.TryGetValue(key, out var client)) {
         client = await valueCreator();
         cache.TryAdd(key, client);
       }

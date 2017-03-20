@@ -22,9 +22,7 @@ namespace RealArtists.ShipHub.Common {
     }
 
     public static long AccountIdFromCustomerId(string customerId) {
-      string type;
-      long id;
-      ParseCustomerId(customerId, out type, out id);
+      ParseCustomerId(customerId, out var type, out var id);
       return id;
     }
   }

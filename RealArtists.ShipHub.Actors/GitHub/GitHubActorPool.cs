@@ -37,8 +37,7 @@
 
     private void Remove(IGitHubActor actor) {
       var userId = actor.GetPrimaryKeyLong();
-      IGitHubActor removed;
-      if (_actorMap.TryRemove(userId, out removed)) {
+      if (_actorMap.TryRemove(userId, out var removed)) {
         lock (this) {
           _actors.Remove(removed);
         }

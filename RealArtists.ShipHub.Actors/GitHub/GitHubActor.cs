@@ -484,10 +484,9 @@
     }
 
     private Func<Task> DequeueNextRequest() {
-      Func<Task> task;
 
       // Get next request by priority
-      if (_interactiveQueue.TryDequeue(out task)
+      if (_interactiveQueue.TryDequeue(out var task)
         || _subRequestQueue.TryDequeue(out task)
         || _backgroundQueue.TryDequeue(out task)) {
         // TODO: Drop super old requests (hours)

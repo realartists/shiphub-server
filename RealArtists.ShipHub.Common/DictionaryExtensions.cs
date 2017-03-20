@@ -10,8 +10,7 @@
     /// <returns>The value for the key or a sensible default (added).</returns>
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Vald")]
     public static TValue Vald<TKey, TValue>(this IDictionary<TKey, TValue> self, TKey key, Func<TValue> fallback = null) {
-      TValue result;
-      if (!self.TryGetValue(key, out result)) {
+      if (!self.TryGetValue(key, out var result)) {
         result = fallback == null ? default(TValue) : fallback();
         self.Add(key, result);
       }
@@ -25,8 +24,7 @@
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Valn")]
     public static TValue Valn<TKey, TValue>(this IDictionary<TKey, TValue> self, TKey key)
       where TValue : class, new() {
-      TValue result;
-      if (!self.TryGetValue(key, out result)) {
+      if (!self.TryGetValue(key, out var result)) {
         result = new TValue();
         self.Add(key, result);
       }
@@ -39,8 +37,7 @@
     /// <returns>The value for the key or a the type default (NOT added).</returns>
     [SuppressMessage("Microsoft.Naming", "CA1704:IdentifiersShouldBeSpelledCorrectly", MessageId = "Val")]
     public static TValue Val<TKey, TValue>(this IDictionary<TKey, TValue> self, TKey key, Func<TValue> fallback = null) {
-      TValue result;
-      if (!self.TryGetValue(key, out result)) {
+      if (!self.TryGetValue(key, out var result)) {
         result = fallback == null ? default(TValue) : fallback();
       }
       return result;
