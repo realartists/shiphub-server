@@ -121,10 +121,9 @@
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
-        //_pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
-        _pollIssueTemplate = true;
+        _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
         _needsIssueTemplateSync = _contentsRootMetadata == null;
-        //this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
+        this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
       }
 
       await base.OnActivateAsync();
