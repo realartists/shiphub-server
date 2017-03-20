@@ -14,7 +14,7 @@
     // Undocumented. Of course.
     private string _issueUrl;
     public string IssueUrl {
-      get { return _issueUrl; }
+      get => _issueUrl;
       set {
         _issueUrl = value;
         IssueNumber = null;

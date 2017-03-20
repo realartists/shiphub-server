@@ -13,10 +13,8 @@
 
     [JsonProperty("insecure_ssl")]
     public JToken GitHubInsecureSsl {
-      get {
-        // Unsure what GitHub wants. Follow the docs I guess?
-        return InsecureSsl ? 1 : 0;
-      }
+      // Unsure what GitHub wants. Follow the docs I guess?
+      get => InsecureSsl ? 1 : 0;
       set {
         switch (value.Type) {
           case JTokenType.Boolean:

@@ -28,11 +28,7 @@
       return _grainFactory.GetGrain<IGitHubActor>(userId);
     }
 
-    public virtual DateTimeOffset UtcNow {
-      get {
-        return DateTimeOffset.UtcNow;
-      }
-    }
+    public virtual DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
 
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
     public async Task ReaperTimer(

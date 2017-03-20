@@ -10,8 +10,8 @@
 
     [Column("RepoMetadataJson")]
     public string RepoMetadataJson {
-      get { return RepositoryMetadata.SerializeObject(); }
-      set { RepositoryMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => RepositoryMetadata.SerializeObject();
+      set => RepositoryMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]

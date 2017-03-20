@@ -18,9 +18,7 @@
 
     [JsonIgnore]
     public string ExtensionData {
-      get {
-        return ExtensionDataDictionary.SerializeObject(Formatting.None);
-      }
+      get => ExtensionDataDictionary.SerializeObject(Formatting.None);
       set {
         if (value != null) {
           ExtensionDataDictionary = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);

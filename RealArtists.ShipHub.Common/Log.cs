@@ -107,9 +107,7 @@ namespace RealArtists.ShipHub.Common {
     /* Implementation */
 
     private static Lazy<LogSink> _sink = new Lazy<LogSink>(() => new LogSink());
-    private static LogSink Sink {
-      get { return _sink.Value; }
-    }
+    private static LogSink Sink => _sink.Value;
 
     private static string ExceptionDetail(Exception e) {
       if (e == null) {
@@ -142,16 +140,8 @@ namespace RealArtists.ShipHub.Common {
         Timestamp = DateTimeOffset.Now;
       }
       public DateTimeOffset Timestamp { get; set; }
-      public string Sender {
-        get {
-          return _sender.Value;
-        }
-      }
-      public string HostName {
-        get {
-          return _hostName.Value;
-        }
-      }
+      public string Sender => _sender.Value;
+      public string HostName => _hostName.Value;
 
       public string Component { get; set; }
       public string Message { get; set; }

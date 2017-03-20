@@ -38,8 +38,8 @@ namespace RealArtists.ShipHub.Common.Hashing {
       Reset();
     }
 
-    public override int InputBlockSize { get { return BlockSize; } }
-    public override int OutputBlockSize { get { return BlockSize; } }
+    public override int InputBlockSize => BlockSize;
+    public override int OutputBlockSize => BlockSize;
 
     private void Reset() {
       _h1 = _h2 = _seed;

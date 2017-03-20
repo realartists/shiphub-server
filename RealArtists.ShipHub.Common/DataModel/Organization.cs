@@ -8,16 +8,16 @@
     // Yeah, this is a little gross.
     [Column("RepoMetadataJson")]
     public string MemberMetadataJson {
-      get { return MemberMetadata.SerializeObject(); }
-      set { MemberMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => MemberMetadata.SerializeObject();
+      set => MemberMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata MemberMetadata { get; set; }
 
     public string ProjectMetadataJson {
-      get { return ProjectMetadata.SerializeObject(); }
-      set { ProjectMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ProjectMetadata.SerializeObject();
+      set => ProjectMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]

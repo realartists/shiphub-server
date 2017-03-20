@@ -66,7 +66,7 @@
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
-    public string UserInfo { get { return $"{UserId} {Login}"; } }
+    public string UserInfo => $"{UserId} {Login}";
 
     private static IGitHubHandler SharedHandler;
     private static void EnsureHandlerPipelineCreated(Uri apiRoot) {

@@ -32,7 +32,7 @@
     /// Hack to ensure the OrleansAzureUtils assembly gets copied.
     /// </summary>
     [Obsolete("Dirty hack.")]
-    public static IEnumerable<DirectoryInfo> AppDirectoryLocations { get { return Orleans.Runtime.Host.AzureConfigUtils.AppDirectoryLocations; } }
+    public static IEnumerable<DirectoryInfo> AppDirectoryLocations => Orleans.Runtime.Host.AzureConfigUtils.AppDirectoryLocations;
 
     /// <summary>
     /// Returns default client configuration object for passing to AzureClient.

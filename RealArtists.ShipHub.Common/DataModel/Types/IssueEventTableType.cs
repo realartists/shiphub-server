@@ -32,6 +32,6 @@
               "demilestoned", "renamed", "locked", "unlocked", "merged", "head_ref_deleted", "head_ref_restored",
               "commented", "committed", "reopened", },
       StringComparer.OrdinalIgnoreCase);
-    public bool Restricted { get { return !_PublicEvents.Contains(Event); } }
+    public bool Restricted => !_PublicEvents.Contains(Event);
   }
 }

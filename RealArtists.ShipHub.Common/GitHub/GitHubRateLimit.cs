@@ -9,7 +9,7 @@
     public int Remaining { get; }
     public DateTimeOffset Reset { get; }
 
-    public bool IsExceeded { get { return Remaining < RateLimitFloor && Reset > DateTimeOffset.UtcNow; } }
+    public bool IsExceeded => Remaining < RateLimitFloor && Reset > DateTimeOffset.UtcNow;
 
     public GitHubRateLimit(string accessToken, int limit, int remaining, DateTimeOffset reset) {
       AccessToken = accessToken;

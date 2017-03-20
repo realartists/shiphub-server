@@ -17,38 +17,41 @@
     //public Milestone Milestone { get; set; } 
 
     // Only for IssueEvents, should replace Actor when set.
-    public Account Assigner { get { return Actor; } set { Actor = value; } }
+    public Account Assigner {
+      get => Actor;
+      set => Actor = value;
+    }
 
     // Only present when requesting repository events.
     public Issue Issue { get; set; }
 
     // Required for AutoMapper when Issue is null
     [JsonIgnore]
-    public long IssueId { get { return Issue?.Id ?? FallbackIssueId; } }
+    public long IssueId => Issue?.Id ?? FallbackIssueId;
 
     ///////////////////////////////////
     // We want these to be saved in _extensionData, so don't actually deserialize them.
     ///////////////////////////////////
     [JsonIgnore]
-    public Account Assignee { get { return ExtensionDataDictionary.Val("assignee")?.ToObject<Account>(); } }
+    public Account Assignee => ExtensionDataDictionary.Val("assignee")?.ToObject<Account>();
 
     [JsonIgnore]
-    public string CommitId { get { return ExtensionDataDictionary.Val("commit_id")?.ToObject<string>(); } }
+    public string CommitId => ExtensionDataDictionary.Val("commit_id")?.ToObject<string>();
 
     [JsonIgnore]
-    public string CommitUrl { get { return ExtensionDataDictionary.Val("commit_url")?.ToObject<string>(); } }
+    public string CommitUrl => ExtensionDataDictionary.Val("commit_url")?.ToObject<string>();
 
     [JsonIgnore]
-    public Label Label { get { return ExtensionDataDictionary.Val("label")?.ToObject<Label>(); } }
+    public Label Label => ExtensionDataDictionary.Val("label")?.ToObject<Label>();
 
     [JsonIgnore]
-    public IssueRename Rename { get { return ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>(); } }
+    public IssueRename Rename => ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>();
 
     [JsonIgnore]
-    public string ShaHash { get { return ExtensionDataDictionary.Val("sha")?.ToObject<string>(); } }
+    public string ShaHash => ExtensionDataDictionary.Val("sha")?.ToObject<string>();
 
     [JsonIgnore]
-    public ReferenceSource Source { get { return ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(); } }
+    public ReferenceSource Source => ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>();
 
     ///////////////////////////////////
     // Json bag
@@ -58,9 +61,7 @@
 
     [JsonIgnore]
     public string ExtensionData {
-      get {
-        return ExtensionDataDictionary.SerializeObject(Formatting.None);
-      }
+      get => ExtensionDataDictionary.SerializeObject(Formatting.None);
       set {
         if (value != null) {
           ExtensionDataDictionary = JsonConvert.DeserializeObject<Dictionary<string, JToken>>(value);

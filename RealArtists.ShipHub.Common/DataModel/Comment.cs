@@ -22,16 +22,16 @@
     public DateTimeOffset UpdatedAt { get; set; }
 
     public string MetadataJson {
-      get { return Metadata.SerializeObject(); }
-      set { Metadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => Metadata.SerializeObject();
+      set => Metadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata Metadata { get; set; }
 
     public string ReactionMetadataJson {
-      get { return ReactionMetadata.SerializeObject(); }
-      set { ReactionMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ReactionMetadata.SerializeObject();
+      set => ReactionMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]

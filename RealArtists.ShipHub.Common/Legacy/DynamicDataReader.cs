@@ -12,13 +12,13 @@
     }
 
     public void Close() { _innerReader.Close(); }
-    public int Depth { get { return _innerReader.Depth; } }
+    public int Depth => _innerReader.Depth;
     public DataTable GetSchemaTable() { return _innerReader.GetSchemaTable(); }
-    public bool IsClosed { get { return _innerReader.IsClosed; } }
+    public bool IsClosed => _innerReader.IsClosed;
     public bool NextResult() { return _innerReader.NextResult(); }
     public bool Read() { return _innerReader.Read(); }
-    public int RecordsAffected { get { return _innerReader.RecordsAffected; } }
-    public int FieldCount { get { return _innerReader.FieldCount; } }
+    public int RecordsAffected => _innerReader.RecordsAffected;
+    public int FieldCount => _innerReader.FieldCount;
     public bool GetBoolean(int i) { return _innerReader.GetBoolean(i); }
     public byte GetByte(int i) { return _innerReader.GetByte(i); }
     public char GetChar(int i) { return _innerReader.GetChar(i); }
@@ -39,8 +39,8 @@
     public object GetValue(int i) { return _innerReader.GetValue(i); }
     public int GetValues(object[] values) { return _innerReader.GetValues(values); }
     public bool IsDBNull(int i) { return _innerReader.IsDBNull(i); }
-    public object this[string name] { get { return _innerReader[name]; } }
-    public object this[int i] { get { return _innerReader[i]; } }
+    public object this[string name] => _innerReader[name];
+    public object this[int i] => _innerReader[i];
 
     public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length) {
       return _innerReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);

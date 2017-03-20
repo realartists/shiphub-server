@@ -42,9 +42,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
         _useSyncContext = useSyncContext;
       }
 
-      public bool IsCompleted {
-        get { return _awaiter.IsCompleted; }
-      }
+      public bool IsCompleted => _awaiter.IsCompleted;
 
       public void OnCompleted(Action continuation) {
         throw new NotImplementedException();
@@ -72,9 +70,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
         _useSyncContext = useSyncContext;
       }
 
-      public bool IsCompleted {
-        get { return _awaiter.IsCompleted; }
-      }
+      public bool IsCompleted => _awaiter.IsCompleted;
 
       public void OnCompleted(Action continuation) {
         throw new NotImplementedException();

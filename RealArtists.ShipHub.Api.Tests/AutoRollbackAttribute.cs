@@ -57,9 +57,7 @@ namespace RealArtists.ShipHub.Api.Tests {
       scope = new TransactionScope(ScopeOption, options, AsyncFlowOption);
     }
 
-    public ActionTargets Targets {
-      get { return ActionTargets.Test; }
-    }
+    public ActionTargets Targets => ActionTargets.Test;
   }
 
 }

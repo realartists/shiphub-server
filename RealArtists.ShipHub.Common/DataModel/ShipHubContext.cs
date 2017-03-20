@@ -52,8 +52,8 @@
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
     public virtual DbSet<Usage> Usage { get; set; }
 
-    public virtual IQueryable<User> Users { get { return Accounts.OfType<User>(); } }
-    public virtual IQueryable<Organization> Organizations { get { return Accounts.OfType<Organization>(); } }
+    public virtual IQueryable<User> Users => Accounts.OfType<User>();
+    public virtual IQueryable<Organization> Organizations => Accounts.OfType<Organization>();
 
     public SqlConnectionFactory ConnectionFactory { get; }
 

@@ -10,7 +10,7 @@
     public string Message { get; set; }
     public string DocumentationUrl { get; set; }
     public IEnumerable<GitHubEntityError> Errors { get; set; }
-    public bool IsAbuse { get { return Message.Contains("abuse"); } }
+    public bool IsAbuse => Message.Contains("abuse");
 
     public GitHubException ToException() {
       return new GitHubException(this);

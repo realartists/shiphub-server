@@ -13,7 +13,7 @@
     [NonSerialized]
     private GitHubRequest _request;
 
-    public GitHubRequest Request { get { return _request; } }
+    public GitHubRequest Request => _request;
     public HttpStatusCode Status { get; set; }
     public DateTimeOffset Date { get; set; }
     public HashSet<string> Scopes { get; } = new HashSet<string>();
@@ -21,12 +21,12 @@
     /// <summary>
     /// True if the http status code is 200 OK
     /// </summary>
-    public bool IsOk { get { return Status == HttpStatusCode.OK; } }
+    public bool IsOk => Status == HttpStatusCode.OK;
 
     /// <summary>
     /// True if the http status code is within [200-400)
     /// </summary>
-    public bool Succeeded { get { return (int)Status >= 200 && (int)Status < 400; } }
+    public bool Succeeded => (int)Status >= 200 && (int)Status < 400;
 
     public GitHubError Error { get; set; }
     public DateTimeOffset? RetryAfter { get; set; }

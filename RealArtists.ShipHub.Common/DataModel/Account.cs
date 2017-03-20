@@ -21,16 +21,16 @@
     public DateTimeOffset Date { get; set; }
 
     public string MetadataJson {
-      get { return Metadata.SerializeObject(); }
-      set { Metadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => Metadata.SerializeObject();
+      set => Metadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata Metadata { get; set; }
 
     public string OrgMetadataJson {
-      get { return OrganizationMetadata.SerializeObject(); }
-      set { OrganizationMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => OrganizationMetadata.SerializeObject();
+      set => OrganizationMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]

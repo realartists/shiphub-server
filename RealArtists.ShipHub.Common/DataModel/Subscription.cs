@@ -48,8 +48,8 @@
     [StringLength(15)]
     [Column("State")]
     public string StateName {
-      get { return State.ToString(); }
-      set { State = (SubscriptionState)Enum.Parse(typeof(SubscriptionState), value); }
+      get => State.ToString();
+      set => State = (SubscriptionState)Enum.Parse(typeof(SubscriptionState), value);
     }
 
     public DateTimeOffset? TrialEndDate { get; set; }

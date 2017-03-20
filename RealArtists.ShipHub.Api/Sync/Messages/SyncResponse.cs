@@ -56,7 +56,7 @@
   public class SyncLogEntry {
     private SyncLogAction _action;
     public SyncLogAction Action {
-      get { return _action; }
+      get => _action;
       set {
         ThrowIfInvalid(value, _entity);
         _action = value;
@@ -65,7 +65,7 @@
 
     private SyncEntityType _entity;
     public SyncEntityType Entity {
-      get { return _entity; }
+      get => _entity;
       set {
         ThrowIfInvalid(_action, value);
         _entity = value;
@@ -87,7 +87,7 @@
   }
 
   public class SyncResponse : SyncMessageBase {
-    public override string MessageType { get { return "sync"; } set { } }
+    public override string MessageType { get => "sync"; set { } }
 
     public IEnumerable<SyncLogEntry> Logs { get; set; }
     public VersionDetails Versions { get; set; }

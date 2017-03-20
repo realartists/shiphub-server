@@ -20,14 +20,10 @@
     private SyncVersions _versions;
     private DateTimeOffset? _lastRecordedUsage;
 
-    private VersionDetails VersionDetails {
-      get {
-        return new VersionDetails() {
-          Organizations = _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-          Repositories = _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-        };
-      }
-    }
+    private VersionDetails VersionDetails => new VersionDetails() {
+      Organizations = _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
+      Repositories = _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
+    };
 
     public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
       _user = user;

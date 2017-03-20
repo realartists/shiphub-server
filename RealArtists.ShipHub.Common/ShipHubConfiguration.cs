@@ -73,28 +73,28 @@
     public static IShipHubConfiguration Instance { get; } = new ShipHubCloudConfiguration();
 
     private Lazy<string> _apiHostName = new Lazy<string>(() => GetSetting("ApiHostName", required: true));
-    public string ApiHostName { get { return _apiHostName.Value; } }
+    public string ApiHostName => _apiHostName.Value;
 
     private Lazy<string> _applicationInsightsKey = new Lazy<string>(() => GetSetting("APPINSIGHTS_INSTRUMENTATIONKEY"));
-    public string ApplicationInsightsKey { get { return _applicationInsightsKey.Value; } }
+    public string ApplicationInsightsKey => _applicationInsightsKey.Value;
 
     private Lazy<string> _azureWebJobsDashboard = new Lazy<string>(() => GetSetting("AzureWebJobsDashboard"));
-    public string AzureWebJobsDashboard { get { return _azureWebJobsDashboard.Value; } }
+    public string AzureWebJobsDashboard => _azureWebJobsDashboard.Value;
 
     private Lazy<string> _azureWebJobsServiceBus = new Lazy<string>(() => GetSetting("AzureWebJobsServiceBus"));
-    public string AzureWebJobsServiceBus { get { return _azureWebJobsServiceBus.Value; } }
+    public string AzureWebJobsServiceBus => _azureWebJobsServiceBus.Value;
 
     private Lazy<string> _azureWebJobsServiceBusPair = new Lazy<string>(() => GetSetting("AzureWebJobsServiceBusPair"));
-    public string AzureWebJobsServiceBusPair { get { return _azureWebJobsServiceBusPair.Value; } }
+    public string AzureWebJobsServiceBusPair => _azureWebJobsServiceBusPair.Value;
 
     private Lazy<string> _azureWebJobsStorage = new Lazy<string>(() => GetSetting("AzureWebJobsStorage"));
-    public string AzureWebJobsStorage { get { return _azureWebJobsStorage.Value; } }
+    public string AzureWebJobsStorage => _azureWebJobsStorage.Value;
 
     private Lazy<string> _chargeBeeHostAndKey = new Lazy<string>(() => GetSetting("ChargeBeeHostAndKey", required: true));
-    public string ChargeBeeHostAndKey { get { return _chargeBeeHostAndKey.Value; } }
+    public string ChargeBeeHostAndKey => _chargeBeeHostAndKey.Value;
 
     private Lazy<string> _chargeBeeWebhookSecret = new Lazy<string>(() => GetSetting("ChargeBeeWebhookSecret", required: true));
-    public string ChargeBeeWebhookSecret { get { return _chargeBeeWebhookSecret.Value; } }
+    public string ChargeBeeWebhookSecret => _chargeBeeWebhookSecret.Value;
 
     private Lazy<ISet<string>> _chargeBeeWebhookIncludeOnlyList = new Lazy<ISet<string>>(() => {
       var list = GetSetting("ChargeBeeWebhookIncludeOnlyList");
@@ -103,7 +103,7 @@
       }
       return null;
     });
-    public ISet<string> ChargeBeeWebhookIncludeOnlyList { get { return _chargeBeeWebhookIncludeOnlyList.Value; } }
+    public ISet<string> ChargeBeeWebhookIncludeOnlyList => _chargeBeeWebhookIncludeOnlyList.Value;
 
     private Lazy<ISet<string>> _chargeBeeWebhookExcludeList = new Lazy<ISet<string>>(() => {
       var list = GetSetting("ChargeBeeWebhookExcludeList");
@@ -112,13 +112,13 @@
       }
       return null;
     });
-    public ISet<string> ChargeBeeWebhookExcludeList { get { return _chargeBeeWebhookExcludeList.Value; } }
+    public ISet<string> ChargeBeeWebhookExcludeList => _chargeBeeWebhookExcludeList.Value;
 
     private Lazy<string> _dataConnectionString = new Lazy<string>(() => GetSetting("DataConnectionString", required: true));
-    public string DataConnectionString { get { return _dataConnectionString.Value; } }
+    public string DataConnectionString => _dataConnectionString.Value;
 
     private Lazy<string> _deploymentId = new Lazy<string>(() => GetSetting("DeploymentId", required: true));
-    public string DeploymentId { get { return _deploymentId.Value; } }
+    public string DeploymentId => _deploymentId.Value;
 
     private Lazy<Uri> _gitHubApiRoot = new Lazy<Uri>(() => {
       var root = GetSetting("GitHubApiRoot");
@@ -133,43 +133,43 @@
         return apiRoot;
       }
     });
-    public Uri GitHubApiRoot { get { return _gitHubApiRoot.Value; } }
+    public Uri GitHubApiRoot => _gitHubApiRoot.Value;
 
     private Lazy<string> _gitHubClientId = new Lazy<string>(() => GetSetting("GitHubClientId"));
-    public string GitHubClientId { get { return _gitHubClientId.Value; } }
+    public string GitHubClientId => _gitHubClientId.Value;
 
     private Lazy<string> _gitHubClientSecret = new Lazy<string>(() => GetSetting("GitHubClientSecret"));
-    public string GitHubClientSecret { get { return _gitHubClientSecret.Value; } }
+    public string GitHubClientSecret => _gitHubClientSecret.Value;
 
     private Lazy<string> _gitHubLoggingStorage = new Lazy<string>(() => GetSetting("GitHubLoggingStorage"));
-    public string GitHubLoggingStorage { get { return _gitHubLoggingStorage.Value; } }
+    public string GitHubLoggingStorage => _gitHubLoggingStorage.Value;
 
     private Lazy<string> _raygunApiKey = new Lazy<string>(() => GetSetting("RAYGUN_APIKEY"));
-    public string RaygunApiKey { get { return _raygunApiKey.Value; } }
+    public string RaygunApiKey => _raygunApiKey.Value;
 
     private Lazy<string> _mixpanelToken = new Lazy<string>(() => GetSetting("MixpanelToken"));
-    public string MixpanelToken { get { return _mixpanelToken.Value; } }
+    public string MixpanelToken => _mixpanelToken.Value;
 
     private Lazy<string> _shipHubContext = new Lazy<string>(() => GetSetting("ShipHubContext", required: true));
-    public string ShipHubContext { get { return _shipHubContext.Value; } }
+    public string ShipHubContext => _shipHubContext.Value;
 
     private Lazy<string> _smtpPassword = new Lazy<string>(() => GetSetting("SmtpPassword", required: true));
-    public string SmtpPassword { get { return _smtpPassword.Value; } }
+    public string SmtpPassword => _smtpPassword.Value;
 
     private Lazy<bool> _useFiddler = new Lazy<bool>(() => {
       bool result;
       return bool.TryParse(GetSetting("UseFiddler"), out result) && result;
     });
-    public bool UseFiddler { get { return _useFiddler.Value; } }
+    public bool UseFiddler => _useFiddler.Value;
 
     private Lazy<bool> _useSqlAzureExecutionStrategy = new Lazy<bool>(() => {
       bool result;
       return bool.TryParse(GetSetting("UseSqlAzureExecutionStrategy"), out result) && result;
     });
-    public bool UseSqlAzureExecutionStrategy { get { return _useSqlAzureExecutionStrategy.Value; } }
+    public bool UseSqlAzureExecutionStrategy => _useSqlAzureExecutionStrategy.Value;
 
     private Lazy<string> _websiteHostName = new Lazy<string>(() => GetSetting("WebsiteHostName", required: true));
-    public string WebsiteHostName { get { return _websiteHostName.Value; } }
+    public string WebsiteHostName => _websiteHostName.Value;
 
     private static string GetSetting(string key, bool required = false) {
       var value = CloudConfigurationManager.GetSetting(key);

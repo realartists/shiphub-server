@@ -38,11 +38,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     private volatile bool _drained;
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is shared code")]
-    public bool IsDrained {
-      get {
-        return _drained;
-      }
-    }
+    public bool IsDrained => _drained;
 #pragma warning restore UseAutoProperty // Use auto property
 #pragma warning restore UseAutoPropertyFadedToken // Use auto property
 

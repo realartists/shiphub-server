@@ -36,7 +36,7 @@
         return dir.FullName;
       }
     });
-    private static string BaseDirectory { get { return _BaseDirectory.Value; } }
+    private static string BaseDirectory => _BaseDirectory.Value;
 
     private async Task SendMailMessage<T>(
       ShipHubTemplateBase<T> htmlTemplate,

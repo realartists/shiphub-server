@@ -33,40 +33,40 @@
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
-      get { return Metadata.SerializeObject(); }
-      set { Metadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => Metadata.SerializeObject();
+      set => Metadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata Metadata { get; set; }
 
     public string AssignableMetadataJson {
-      get { return AssignableMetadata.SerializeObject(); }
-      set { AssignableMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => AssignableMetadata.SerializeObject();
+      set => AssignableMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata AssignableMetadata { get; set; }
 
     public string CommentMetadataJson {
-      get { return CommentMetadata.SerializeObject(); }
-      set { CommentMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => CommentMetadata.SerializeObject();
+      set => CommentMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata CommentMetadata { get; set; }
 
     public string EventMetadataJson {
-      get { return EventMetadata.SerializeObject(); }
-      set { EventMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => EventMetadata.SerializeObject();
+      set => EventMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata EventMetadata { get; set; }
 
     public string IssueMetadataJson {
-      get { return IssueMetadata.SerializeObject(); }
-      set { IssueMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => IssueMetadata.SerializeObject();
+      set => IssueMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
@@ -75,48 +75,48 @@
     public DateTimeOffset? IssueSince { get; set; }
 
     public string LabelMetadataJson {
-      get { return LabelMetadata.SerializeObject(); }
-      set { LabelMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => LabelMetadata.SerializeObject();
+      set => LabelMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata LabelMetadata { get; set; }
 
     public string MilestoneMetadataJson {
-      get { return MilestoneMetadata.SerializeObject(); }
-      set { MilestoneMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => MilestoneMetadata.SerializeObject();
+      set => MilestoneMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata MilestoneMetadata { get; set; }
 
     public string ProjectMetadataJson {
-      get { return ProjectMetadata.SerializeObject(); }
-      set { ProjectMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ProjectMetadata.SerializeObject();
+      set => ProjectMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata ProjectMetadata { get; set; }
 
     public string ContentsRootMetadataJson {
-      get { return ContentsRootMetadata.SerializeObject(); }
-      set { ContentsRootMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ContentsRootMetadata.SerializeObject();
+      set => ContentsRootMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata ContentsRootMetadata { get; set; }
 
     public string ContentsDotGitHubMetadataJson {
-      get { return ContentsDotGitHubMetadata.SerializeObject(); }
-      set { ContentsDotGitHubMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ContentsDotGitHubMetadata.SerializeObject();
+      set => ContentsDotGitHubMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]
     public GitHubMetadata ContentsDotGitHubMetadata { get; set; }
 
     public string ContentsIssueTemplateMetadataJson {
-      get { return ContentsIssueTemplateMetadata.SerializeObject(); }
-      set { ContentsIssueTemplateMetadata = value.DeserializeObject<GitHubMetadata>(); }
+      get => ContentsIssueTemplateMetadata.SerializeObject();
+      set => ContentsIssueTemplateMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     [NotMapped]

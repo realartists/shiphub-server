@@ -21,11 +21,11 @@
     public ISet<long> Repositories { get; private set; } = new HashSet<long>();
     public ISet<long> Users { get; private set; } = new HashSet<long>();
 
-    public bool IsEmpty { get { return Organizations.Count == 0 && Repositories.Count == 0 && Users.Count == 0; } }
+    public bool IsEmpty => Organizations.Count == 0 && Repositories.Count == 0 && Users.Count == 0;
 
-    IEnumerable<long> IChangeSummary.Organizations { get { return Organizations; } }
-    IEnumerable<long> IChangeSummary.Repositories { get { return Repositories; } }
-    IEnumerable<long> IChangeSummary.Users { get { return Users; } }
+    IEnumerable<long> IChangeSummary.Organizations => Organizations;
+    IEnumerable<long> IChangeSummary.Repositories => Repositories;
+    IEnumerable<long> IChangeSummary.Users => Users;
 
     public ChangeSummary() { }
     public ChangeSummary(IChangeSummary initialValue) {

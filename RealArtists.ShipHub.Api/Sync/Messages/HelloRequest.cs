@@ -32,7 +32,7 @@
 
     [JsonProperty("client")]
     public string RawClientVersionString {
-      get { return _rawClientVersionString; }
+      get => _rawClientVersionString;
       set {
         _rawClientVersionString = value;
         ParseClientVersion(value);
