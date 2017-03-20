@@ -433,7 +433,7 @@
             templateContent = await github.FileContents(_fullName, rootTemplateFile.Path);
           }
 
-          _contentsIssueTemplateMetadata = templateContent.Succeeded ? GitHubMetadata.FromResponse(templateContent) : null;
+          _contentsIssueTemplateMetadata = templateContent?.Succeeded == true ? GitHubMetadata.FromResponse(templateContent) : null;
           if (templateContent != null && templateContent.IsOk) {
             return await UpdateIssueTemplateWithResult(context, templateContent.Result);
           }
