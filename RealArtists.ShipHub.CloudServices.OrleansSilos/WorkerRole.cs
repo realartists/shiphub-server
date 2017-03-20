@@ -43,8 +43,7 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       RoleEnvironment.Changing += RoleEnvironmentChanging;
       AppDomain.CurrentDomain.UnhandledException +=
         (object sender, UnhandledExceptionEventArgs e) => {
-          var ex = e.ExceptionObject as Exception;
-          if (ex != null) {
+          if (e.ExceptionObject is Exception ex) {
             ex.Report("Unhandled exception in Orleans CloudServices Worker Role.");
           }
         };

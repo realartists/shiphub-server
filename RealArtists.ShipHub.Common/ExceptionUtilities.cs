@@ -10,9 +10,8 @@
 
   public static class ExceptionUtilities {
     public static Exception Simplify(this Exception exception) {
-      var agg = exception as AggregateException;
 
-      if (agg != null) {
+      if (exception is AggregateException agg) {
         agg = agg.Flatten();
 
         if (agg.InnerExceptions.Count == 1) {

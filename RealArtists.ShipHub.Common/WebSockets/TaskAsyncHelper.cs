@@ -681,8 +681,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     internal static void SetUnwrappedException<T>(this TaskCompletionSource<T> tcs, Exception e) {
-      var aggregateException = e as AggregateException;
-      if (aggregateException != null) {
+      if (e is AggregateException aggregateException) {
         tcs.SetException(aggregateException.InnerExceptions);
       } else {
         tcs.SetException(e);
@@ -691,8 +690,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
 
     [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode", Justification = "This is a shared file")]
     internal static bool TrySetUnwrappedException<T>(this TaskCompletionSource<T> tcs, Exception e) {
-      var aggregateException = e as AggregateException;
-      if (aggregateException != null) {
+      if (e is AggregateException aggregateException) {
         return tcs.TrySetException(aggregateException.InnerExceptions);
       } else {
         return tcs.TrySetException(e);

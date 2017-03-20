@@ -54,8 +54,7 @@
           // the User concept to get this.
           client.User = requestMessage.RequestUri.PathAndQuery.Replace('/', '_');
         } else {
-          var user = HttpContext.Current?.User as ShipHubPrincipal;
-          if (user != null) {
+          if (HttpContext.Current?.User is ShipHubPrincipal user) {
             client.User = user.DebugIdentifier;
           }
         }

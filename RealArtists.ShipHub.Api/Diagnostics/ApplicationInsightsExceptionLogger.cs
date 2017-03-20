@@ -10,8 +10,7 @@
     public override void Log(ExceptionLoggerContext context) {
       IDictionary<string, string> properties = null;
 
-      var user = context.RequestContext.Principal as ShipHubPrincipal;
-      if (user != null) {
+      if (context.RequestContext.Principal is ShipHubPrincipal user) {
         properties = new Dictionary<string, string> {
           { "Login", user.Login },
           { "UserId", user.UserId.ToString() },

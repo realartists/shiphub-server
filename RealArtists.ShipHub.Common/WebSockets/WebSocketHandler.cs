@@ -175,8 +175,7 @@ namespace RealArtists.ShipHub.Common.WebSockets {
     private static bool IsFatalException(Exception ex) {
       // If this exception is due to the underlying TCP connection going away, treat as a normal close
       // rather than a fatal exception.
-      COMException ce = ex as COMException;
-      if (ce != null) {
+      if (ex is COMException ce) {
         switch ((uint)ce.ErrorCode) {
           // These are the three error codes we've seen in testing which can be caused by the TCP connection going away unexpectedly.
           case 0x800703e3:
