@@ -401,7 +401,8 @@
       if (_contentsIssueTemplateMetadata == null) {
         // then we don't have any known IssueTemplate, we have to search for it
         var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
-        _contentsRootMetadata = GitHubMetadata.FromResponse(rootListing);
+        _contentsRootMetadata = rootListing.Succeeded ? GitHubMetadata.FromResponse(rootListing) : null;
+
         if (rootListing.IsOk) {
           // search the root listing for any matching ISSUE_TEMPLATE files
           var rootTemplateFile = rootListing.Result.FirstOrDefault(IsTemplateFile);
@@ -419,7 +420,8 @@
             // / returns 200 (and not 304).
             if (hasDotGitHub) {
               var dotGitHubListing = await github.ListDirectoryContents(_fullName, "/.github", _contentsDotGithubMetadata);
-              _contentsDotGithubMetadata = GitHubMetadata.FromResponse(dotGitHubListing);
+              _contentsDotGithubMetadata = dotGitHubListing.Succeeded ? GitHubMetadata.FromResponse(dotGitHubListing) : null;
+
               if (dotGitHubListing.IsOk) {
                 var dotGitHubTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsTemplateFile);
                 if (dotGitHubTemplateFile != null) {
@@ -431,7 +433,7 @@
             templateContent = await github.FileContents(_fullName, rootTemplateFile.Path);
           }
 
-          _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
+          _contentsIssueTemplateMetadata = templateContent.Succeeded ? GitHubMetadata.FromResponse(templateContent) : null;
           if (templateContent != null && templateContent.IsOk) {
             return await UpdateIssueTemplateWithResult(context, templateContent.Result);
           }
@@ -443,7 +445,8 @@
         // If we get a 404, then we start over from the top
         var filePath = _contentsIssueTemplateMetadata.Path.Substring($"repos/{_fullName}/contents".Length);
         var templateContent = await github.FileContents(_fullName, filePath);
-        _contentsIssueTemplateMetadata = GitHubMetadata.FromResponse(templateContent);
+        _contentsIssueTemplateMetadata = templateContent.Succeeded ? GitHubMetadata.FromResponse(templateContent) : null;
+
         if (templateContent.Status == HttpStatusCode.NotFound) {
           // it's been deleted or moved. clear it optimistically, but then start a new search from the top.
           var changes = new ChangeSummary();
