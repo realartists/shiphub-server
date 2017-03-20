@@ -6,13 +6,11 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
-  using System.Security.Authentication;
   using System.Threading;
   using System.Threading.Tasks;
   using Common;
   using Common.GitHub;
   using Logging;
-  using Microsoft.Azure;
   using Microsoft.WindowsAzure.Storage;
 
   public interface IGitHubHandler {

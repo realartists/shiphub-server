@@ -3,9 +3,7 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
-  using System.Net;
   using System.Text;
-  using System.Text.RegularExpressions;
   using System.Threading.Tasks;
   using System.Web.Http;
   using Common;
@@ -16,7 +14,6 @@
   using Newtonsoft.Json;
   using QueueClient;
   using cb = ChargeBee;
-  using cbm = ChargeBee.Models;
 
   public class ChargeBeeWebhookCard {
     public long ExpiryMonth { get; set; }

@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
-  using System.Collections.Generic;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.IO.Compression;
@@ -18,8 +17,6 @@
   using Common.WebSockets;
   using Filters;
   using Messages;
-  using Microsoft.ApplicationInsights;
-  using Mindscape.Raygun4Net.WebApi;
   using Newtonsoft.Json.Linq;
   using Orleans;
 

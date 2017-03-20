@@ -2,7 +2,6 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System;
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
-  using System.Net;
   using System.Reflection;
   using Common;
   using Microsoft.ApplicationInsights.Extensibility;

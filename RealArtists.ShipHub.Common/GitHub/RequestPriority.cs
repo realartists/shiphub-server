@@ -1,6 +1,4 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub {
-  using System;
-
   /// <summary>
   /// Used to indicate the importance of requests.
   /// </summary>

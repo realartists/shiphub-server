@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-
-namespace RealArtists.ShipHub.Mail.Models {
+﻿namespace RealArtists.ShipHub.Mail.Models {
   public enum PaymentMethod {
     Unknown = 0,
     CreditCard,

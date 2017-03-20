@@ -1,24 +1,10 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
-  using System.Collections.Generic;
-  using System.Data.Entity;
-  using System.IO;
   using System.Linq;
-  using System.Net;
   using System.Runtime.Remoting.Metadata.W3cXsd2001;
-  using System.Security.Cryptography;
-  using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using ActorInterfaces;
-  using AutoMapper;
   using Common;
-  using Common.DataModel;
-  using Common.DataModel.Types;
-  using Common.GitHub;
-  using Common.GitHub.Models;
-  using Newtonsoft.Json;
-  using Orleans;
   using QueueClient;
   using QueueClient.Messages;
 

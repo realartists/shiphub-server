@@ -1,10 +1,8 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
-  using System;
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.IO;
   using System.Linq;
-  using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using AutoMapper;

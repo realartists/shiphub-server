@@ -8,7 +8,6 @@
   using Common.DataModel;
   using Microsoft.ApplicationInsights;
   using Microsoft.ApplicationInsights.Extensibility;
-  using Microsoft.Azure;
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
   using Mindscape.Raygun4Net;

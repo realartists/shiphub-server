@@ -12,7 +12,6 @@
   using Filters;
   using Messages;
   using Messages.Entries;
-  using se = Messages.Entries;
 
   public class SyncContext {
     private ShipHubPrincipal _user;

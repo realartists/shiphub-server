@@ -1,16 +1,12 @@
 ﻿namespace RealArtists.ShipHub.Mail {
   using System;
-  using System.Collections.Generic;
   using System.IO;
-  using System.IO.Compression;
   using System.Net;
   using System.Net.Mail;
   using System.Text;
   using System.Threading.Tasks;
   using Common;
-  using Mail;
   using Models;
-  using RazorGenerator.Templating;
   using Views;
 
   public interface IShipHubMailer {

@@ -2,18 +2,14 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
-  using System.Data.Entity.Infrastructure;
   using System.IO;
   using System.Linq;
-  using System.Runtime.Serialization;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
-  using Newtonsoft.Json;
-  using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Linq;
   using Orleans;
   using QueueClient;
@@ -22,7 +18,6 @@
   using cb = ChargeBee;
   using cbm = ChargeBee.Models;
   using cm = Common.DataModel;
-  using gh = Common.GitHub;
 
   public class BillingQueueHandler : LoggingHandlerBase {
     private IGrainFactory _grainFactory;

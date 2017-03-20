@@ -6,7 +6,6 @@
   using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
-  using Common;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;

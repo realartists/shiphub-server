@@ -5,7 +5,6 @@
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
-  using System.Linq;
   using System.Reflection;
   using System.Threading;
   using Microsoft.Azure;

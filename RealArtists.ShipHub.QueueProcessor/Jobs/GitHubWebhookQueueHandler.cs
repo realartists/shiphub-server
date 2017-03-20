@@ -4,8 +4,6 @@
   using System.Data.Entity;
   using System.IO;
   using System.Linq;
-  using System.Net;
-  using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Security.Cryptography;
   using System.Text;
   using System.Threading.Tasks;

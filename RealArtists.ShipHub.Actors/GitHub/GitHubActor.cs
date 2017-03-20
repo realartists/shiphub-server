@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Concurrent;
   using System.Collections.Generic;
-  using System.Configuration;
   using System.Data.Entity;
   using System.Diagnostics;
   using System.Linq;
@@ -18,7 +17,6 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
-  using Orleans.CodeGeneration;
   using Orleans.Concurrency;
   using QueueClient;
   using dm = Common.DataModel;

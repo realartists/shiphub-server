@@ -1,7 +1,6 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces.Serialization {
   using System;
   using System.Diagnostics.CodeAnalysis;
-  using Common;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using Orleans.CodeGeneration;
