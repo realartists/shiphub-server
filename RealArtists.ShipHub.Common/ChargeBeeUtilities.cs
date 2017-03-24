@@ -21,5 +21,10 @@ namespace RealArtists.ShipHub.Common {
       ParseCustomerId(customerId, out var type, out var id);
       return id;
     }
+
+    public static string[] PersonalPlanIds => new string[] {
+        "personal",
+        "personal-yearly",
+        };
   }
 }

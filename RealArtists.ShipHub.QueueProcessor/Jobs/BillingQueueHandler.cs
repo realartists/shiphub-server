@@ -69,7 +69,7 @@
 
       var subList = (await _chargeBee.Subscription.List()
         .CustomerId().Is(customerId)
-        .PlanId().Is("personal")
+        .PlanId().In(ChargeBeeUtilities.PersonalPlanIds)
         .Limit(1)
         .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
         .Request()).List;
@@ -255,7 +255,7 @@
 
         var sub = (await _chargeBee.Subscription.List()
           .CustomerId().Is($"user-{message.UserId}")
-          .PlanId().Is("personal")
+          .PlanId().In(ChargeBeeUtilities.PersonalPlanIds)
           .Limit(1)
           .Request()).List.FirstOrDefault()?.Subscription;
 
