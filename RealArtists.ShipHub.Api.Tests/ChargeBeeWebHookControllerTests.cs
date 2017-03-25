@@ -854,7 +854,10 @@
       }
     }
 
-    private async Task<PaymentSucceededPersonalMailMessage> MessageForPaymentSucceededPersonal(ChargeBeeWebhookTransaction transaction) {
+    private async Task<PaymentSucceededPersonalMailMessage> MessageForPaymentSucceededPersonal(
+      ChargeBeeWebhookTransaction transaction,
+      bool autoCollection = true,
+      bool firstInvoice = false) {
       var mockBusClient = new Mock<IShipHubQueueClient>();
       mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
         .Returns(Task.CompletedTask);
@@ -883,6 +886,7 @@
               FirstName = "Aroon",
               LastName = "Pahwa",
               GitHubUserName = "aroon",
+              AutoCollection = autoCollection ? "on" : "off",
             },
             Subscription = new ChargeBeeWebhookSubscription() {
               Status = "active",
@@ -900,7 +904,7 @@
                 },
               },
               AmountPaid = 900,
-              FirstInvoice = false,
+              FirstInvoice = firstInvoice,
             },
             Transaction = transaction,
           },
@@ -909,6 +913,26 @@
 
       Assert.AreEqual(1, outgoingMessages.Count);
       return (PaymentSucceededPersonalMailMessage)outgoingMessages.First();
+    }
+
+    [Test]
+    public async Task PaymentSucceededForPersonalWhenAutoCollectionIsOffSendsMessageEvenIfFirstInvoice() {
+      var outgoingMessage = await MessageForPaymentSucceededPersonal(
+        new ChargeBeeWebhookTransaction() {
+          MaskedCardNumber = "************4567",
+          PaymentMethod = "card",
+        },
+        autoCollection: false,
+        firstInvoice: true);
+
+      Assert.AreEqual("aroon@pureimaginary.com", outgoingMessage.ToAddress);
+      Assert.AreEqual("Aroon Pahwa", outgoingMessage.ToName);
+      Assert.AreEqual("Aroon", outgoingMessage.GreetingName);
+      Assert.AreEqual(9.00, outgoingMessage.AmountPaid);
+      Assert.AreEqual(PaymentMethod.CreditCard, outgoingMessage.PaymentMethodSummary.PaymentMethod);
+      Assert.AreEqual("4567", outgoingMessage.PaymentMethodSummary.LastCardDigits);
+      Assert.AreEqual("/billing/invoice/inv_1234/b37d7cf6/ship-invoice-aroon-2016-11-15.pdf", new Uri(outgoingMessage.InvoicePdfUrl).AbsolutePath);
+      Assert.AreEqual(new DateTimeOffset(2016, 12, 15, 0, 0, 0, TimeSpan.Zero), outgoingMessage.ServiceThroughDate);
     }
 
     [Test]

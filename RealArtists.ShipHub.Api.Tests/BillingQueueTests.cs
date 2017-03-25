@@ -93,7 +93,7 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             // Pretend no existing subscriptions found.
             return new {
@@ -192,7 +192,7 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             return new {
               list = new object[] {
@@ -274,7 +274,7 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             return new {
               list = new object[] {
@@ -347,7 +347,7 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             return new {
               list = new object[] {
@@ -444,7 +444,8 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
+
 
             // Pretend no existing subscriptions found.
             return new {
@@ -530,7 +531,7 @@
             };
           } else if (method.Equals("GET") && path.Equals("/api/v2/subscriptions")) {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             // Pretend no existing subscriptions found.
             return new {
@@ -682,7 +683,7 @@
         var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
           if (method == "GET" && path == "/api/v2/subscriptions") {
             Assert.AreEqual($"user-{user.Id}", data["customer_id[is]"]);
-            Assert.AreEqual("personal", data["plan_id[is]"]);
+            Assert.AreEqual(JsonConvert.SerializeObject(ChargeBeeUtilities.PersonalPlanIds), data["plan_id[in]"]);
 
             if (memberHasSub) {
               return new {

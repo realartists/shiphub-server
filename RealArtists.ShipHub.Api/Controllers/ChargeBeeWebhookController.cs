@@ -22,6 +22,7 @@
   }
 
   public class ChargeBeeWebhookCustomer {
+    public string AutoCollection { get; set; }
     public string FirstName { get; set; }
     [JsonProperty(PropertyName = "cf_github_username")]
     public string GitHubUserName { get; set; }
@@ -219,7 +220,7 @@
         (payload.EventType == "subscription_activated" ||
          payload.EventType == "subscription_reactivated") &&
         payload.Content.Subscription.Status == "active" &&
-        payload.Content.Subscription.PlanId == "personal") {
+        ChargeBeeUtilities.PersonalPlanIds.Contains(payload.Content.Subscription.PlanId)) {
         await SendPurchasePersonalMessage(payload);
       } else if (
         payload.EventType == "subscription_created" &&
@@ -227,8 +228,8 @@
         await SendPurchaseOrganizationMessage(payload);
       } else if (
         payload.EventType == "payment_succeeded" &&
-        !payload.Content.Invoice.FirstInvoice &&
-        payload.Content.Subscription.PlanId == "personal") {
+        (!payload.Content.Invoice.FirstInvoice || payload.Content.Customer.AutoCollection == "off") &&
+        ChargeBeeUtilities.PersonalPlanIds.Contains(payload.Content.Subscription.PlanId)) {
         await SendPaymentSucceededPersonalMessage(payload);
       } else if (
         payload.EventType == "payment_succeeded" &&
