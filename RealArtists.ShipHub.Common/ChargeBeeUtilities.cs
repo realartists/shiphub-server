@@ -22,6 +22,7 @@ namespace RealArtists.ShipHub.Common {
       return id;
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays")]
     public static string[] PersonalPlanIds => new string[] {
         "personal",
         "personal-yearly",
