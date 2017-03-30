@@ -45,7 +45,9 @@
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
     <Compile Include="DataModel\Types\HookTableType.cs" />
+    <Compile Include="DataModel\Types\IssueMappingTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
+    <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />

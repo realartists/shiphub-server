@@ -296,6 +296,25 @@
       return EnqueueRequest<PullRequest>(request);
     }
 
+    /// <summary>
+    /// List pull requests
+    /// </summary>
+    /// <param name="repoFullName">:owner/:repo</param>
+    /// <param name="sort">created, updated, popularity (comment count) or long-running</param>
+    /// <param name="direction">asc or desc</param>
+    /// <param name="skipPages">Pages to skip at beginning.</param>
+    /// <param name="maxPages">Max pages to return</param>
+    /// <param name="cacheOptions"></param>
+    /// <param name="priority"></param>
+    /// <returns>Pull requests</returns>
+    public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, ushort skipPages, ushort maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority);
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", sort);
+      request.AddParameter("direction", direction);
+      return FetchPaged(request, (PullRequest x) => x.Id, maxPages, skipPages);
+    }
+
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions, priority);
       return FetchPaged(request, (Account x) => x.Id);
@@ -529,7 +548,7 @@
         }
 
         // Force sync notification
-        var changes = new ChangeSummary();
+        var changes = new dmt.ChangeSummary();
         changes.Users.Add(UserId);
         await _queueClient.NotifyChanges(changes);
       } else if (response.RateLimit != null) {
