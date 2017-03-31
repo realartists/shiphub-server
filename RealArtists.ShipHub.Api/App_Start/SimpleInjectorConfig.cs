@@ -40,6 +40,7 @@
 
       // Orleans
       container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
+        Log.Trace();
         var orleansConfig = OrleansAzureClient.DefaultConfiguration();
         OrleansAzureClient.Initialize(orleansConfig);
         return GrainClient.GrainFactory;
