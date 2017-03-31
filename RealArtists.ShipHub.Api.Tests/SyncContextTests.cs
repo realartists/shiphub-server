@@ -197,7 +197,7 @@
           Tuple.Create(repo.Id, true),
         });
 
-        var issue = new IssueTableType() {
+        var issue = new PullRequestTableType() {
           Id = 5001,
           Number = 1,
           State = "open",
@@ -251,7 +251,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] { issue },
-          labels.Select(x => new MappingTableType() { Item1 = issue.Id, Item2 = x.Id }),
+          labels.Select(x => new MappingTableType() { Item1 = issue.Id.Value, Item2 = x.Id }),
           new MappingTableType[0]);
         await syncContext.Sync(changeSummary);
 

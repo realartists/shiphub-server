@@ -419,14 +419,14 @@
 
     public Task<ChangeSummary> BulkUpdateIssues(
       long repositoryId,
-      IEnumerable<IssueTableType> issues,
+      IEnumerable<PullRequestTableType> issues,
       IEnumerable<MappingTableType> labels,
       IEnumerable<MappingTableType> assignees) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssues]", x => {
         x.RepositoryId = repositoryId;
         x.Issues = CreateTableParameter(
           "Issues",
-          "[dbo].[IssueTableType]",
+          "[dbo].[PullRequestTableType]",
           new[] {
             Tuple.Create("Id", typeof(long)),
             Tuple.Create("UserId", typeof(long)),
@@ -442,6 +442,15 @@
             Tuple.Create("ClosedById", typeof(long)),
             Tuple.Create("PullRequest", typeof(bool)),
             Tuple.Create("Reactions", typeof(string)),
+            Tuple.Create("PullRequestId", typeof(long)),
+            Tuple.Create("MaintainerCanModify", typeof(bool)),
+            Tuple.Create("Mergeable", typeof(bool)),
+            Tuple.Create("MergeCommitSha", typeof(string)),
+            Tuple.Create("Merged", typeof(bool)),
+            Tuple.Create("MergedAt", typeof(DateTimeOffset)),
+            Tuple.Create("MergedById", typeof(long)),
+            Tuple.Create("BaseJson", typeof(string)),
+            Tuple.Create("HeadJson", typeof(string)),
           },
           y => new object[] {
             y.Id,
@@ -458,6 +467,15 @@
             y.ClosedById,
             y.PullRequest,
             y.Reactions,
+            y.PullRequestId,
+            y.MaintainerCanModify,
+            y.Mergeable,
+            y.MergeCommitSha,
+            y.Merged,
+            y.MergedAt,
+            y.MergedById,
+            y.BaseJson,
+            y.HeadJson,
           },
           issues);
 

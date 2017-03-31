@@ -107,7 +107,7 @@
     <Build Include="User Defined Types\MilestoneTableType.sql" />
     <Build Include="User Defined Types\LabelTableType.sql" />
     <Build Include="Procedures\BulkUpdateMilestones.sql" />
-    <Build Include="User Defined Types\IssueTableType.sql" />
+    <Build Include="User Defined Types\PullRequestTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssues.sql" />
     <Build Include="User Defined Types\CommentTableType.sql" />
     <Build Include="Procedures\BulkUpdateComments.sql" />

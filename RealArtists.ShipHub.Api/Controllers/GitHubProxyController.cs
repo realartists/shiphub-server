@@ -133,7 +133,7 @@
             changes.UnionWith(
               await context.BulkUpdateIssues(
               repoId,
-              _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
+              _mapper.Map<IEnumerable<PullRequestTableType>>(new[] { issue }),
               issue.Labels?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }),
               issue.Assignees?.Select(y => new MappingTableType() { Item1 = issue.Id, Item2 = y.Id }))
             );

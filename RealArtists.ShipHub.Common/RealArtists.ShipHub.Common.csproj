@@ -75,7 +75,7 @@
     <Compile Include="DataModel\Types\AccountTableType.cs" />
     <Compile Include="DataModel\Types\CommentTableType.cs" />
     <Compile Include="DataModel\Types\IssueEventTableType.cs" />
-    <Compile Include="DataModel\Types\IssueTableType.cs" />
+    <Compile Include="DataModel\Types\PullRequestTableType.cs" />
     <Compile Include="DataModel\Types\LabelTableType.cs" />
     <Compile Include="DataModel\Types\GitHubMetadata.cs" />
     <Compile Include="DataModel\Types\MappingTableType.cs" />

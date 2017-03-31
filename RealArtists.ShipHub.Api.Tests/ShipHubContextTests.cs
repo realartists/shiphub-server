@@ -438,7 +438,7 @@
         await context.BulkUpdateIssues(
           repo1.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 2001,
               Number = 1,
               State = "open",
@@ -459,7 +459,7 @@
         await context.BulkUpdateIssues(
           repo2.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 2002,
               Number = 1,
               State = "open",
@@ -525,7 +525,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -535,7 +535,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -603,7 +603,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -613,7 +613,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -667,7 +667,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -677,7 +677,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -704,7 +704,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -766,7 +766,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -798,7 +798,7 @@
         await context.BulkUpdateIssues(
           repo2.Id,
           new[] {
-            new IssueTableType() {
+            new PullRequestTableType() {
               Id = 1201,
               Number = 1,
               State = "open",

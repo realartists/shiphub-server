@@ -228,7 +228,7 @@
       }
 
       var issues = new List<Common.GitHub.Models.Issue> { payload.Issue };
-      var issuesMapped = _mapper.Map<IEnumerable<IssueTableType>>(issues);
+      var issuesMapped = _mapper.Map<IEnumerable<PullRequestTableType>>(issues);
 
       var labels = payload.Issue.Labels?.Select(x => new LabelTableType() {
         Id = x.Id,

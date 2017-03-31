@@ -606,7 +606,7 @@
             issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
           changes.UnionWith(await context.BulkUpdateIssues(
             _repoId,
-            _mapper.Map<IEnumerable<IssueTableType>>(issues),
+            _mapper.Map<IEnumerable<PullRequestTableType>>(issues),
             issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
             issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
 
