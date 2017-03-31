@@ -5,6 +5,8 @@
 
   public class WebApiApplication : HttpApplication {
     protected void Application_Start() {
+      Log.Trace();
+
       // Set the maximum number of concurrent connections
       HttpUtilities.SetServicePointDefaultConnectionLimit();
 

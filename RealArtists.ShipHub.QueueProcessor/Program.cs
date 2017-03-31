@@ -23,6 +23,7 @@
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     static void Main() {
+      Log.Trace();
       // Set the maximum number of concurrent connections
       HttpUtilities.SetServicePointDefaultConnectionLimit();
 
