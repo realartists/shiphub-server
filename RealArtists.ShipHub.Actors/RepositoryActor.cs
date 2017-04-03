@@ -74,6 +74,9 @@
     // Issue chunk tracking
     private DateTimeOffset _issueSince;
 
+    // Idle state tracking
+    bool _idle = false;
+
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
@@ -210,7 +213,7 @@
         _syncIssueTemplateTimer = null;
       }
 
-      if (DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
+      if (_idle && DateTimeOffset.UtcNow.Subtract(_lastSyncInterest) > SyncIdle) {
         DeactivateOnIdle();
         return;
       }
@@ -240,7 +243,10 @@
       }
 
       // Send Changes.
-      if (!changes.IsEmpty) {
+      if (changes.IsEmpty) {
+        _idle = true;
+      } else {
+        _idle = false;
         await _queueClient.NotifyChanges(changes);
       }
 
