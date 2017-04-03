@@ -67,7 +67,6 @@
     <Compile Include="Tracing\ApplicationInsightsTraceWriter.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Tracing\RaygunTraceWriter.cs" />
-    <Compile Include="Jobs\SyncQueueHandler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tracing\TraceBypassException.cs" />
   </ItemGroup>

@@ -273,33 +273,29 @@
             changes.UnionWith(await UpdateProjects(context, github));
           }
 
+          /* Nibblers
+           * 
+           * Things that nibble are tricky, as they have dependencies on one another.
+           * We have to sync all issues before events, comments, and PRs.
+           * This sucks but unless we drop referential integrity it's required.
+           */
           var issueChanges = await UpdateIssues(context, github);
           changes.UnionWith(issueChanges);
+
+          /* IFF there are no issue changes, it's *probably* ok to sync the rest, in
+           * priority order. It's still possible to race and discover (for example)
+           * a PR before its Issue. For now let this fail - it'll eventually complete.
+           */
+          if (issueChanges.IsEmpty) {
+            changes.UnionWith(await UpdateComments(context, github));
+            changes.UnionWith(await UpdateEvents(context, github));
+          }
 
           // Probably best to keep last
           if (admin != null) {
             changes.UnionWith(await AddOrUpdateWebhooks(context, admin));
           }
         }
-
-        /* Comments
-         * 
-         * For now primary population is on demand.
-         * Deletion is detected when checking for reactions.
-         * Each sync cycle, check a few pages before and after current watermarks.
-         * Note well: The watermarks MUST ONLY be updated from here. On demand
-         * sync will sparsely populate the comment corpus, so there's not a way
-         * to derive the overall sync status from the comments we've already synced.
-         */
-
-        /* Issue Events
-         * 
-         * For now primary population is on demand.
-         * Each sync cycle, check a few pages before and after current watermarks.
-         * Note well: The watermarks MUST ONLY be updated from here. On demand
-         * sync will sparsely populate the event corpus, so there's not a way
-         * to derive the overall sync status from the comments we've already synced.
-         */
       }
     }
 
@@ -627,6 +623,123 @@
       }
 
       return changes;
+    }
+
+    private Task<IChangeSummary> UpdateComments(ShipHubContext context, IGitHubPoolable github) {
+      /* For now primary population is on demand.
+       * Deletion is detected when checking for reactions.
+       * Each sync cycle, check a few pages before and after current watermarks.
+       * Note well: The watermarks MUST ONLY be updated from here. On demand
+       * sync will sparsely populate the comment corpus, so there's not a way
+       * to derive the overall sync status from the comments we've already synced.
+       */
+
+      //var tasks = new List<Task>();
+      //ChangeSummary changes = null;
+
+      //// Lookup requesting user and org.
+      //var user = await context.Users
+      //  .Include(x => x.Tokens)
+      //  .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+      //if (user == null || !user.Tokens.Any()) {
+      //  return;
+      //}
+
+      //var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
+      //var metadata = repo.CommentMetadata;
+
+      //logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
+      //if (metadata.IsExpired()) {
+      //  logger.WriteLine("Polling: Repository comments.");
+      //  var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+
+      //  var response = await ghc.Comments(repo.FullName, null, metadata);
+      //  if (response.IsOk) {
+      //    logger.WriteLine("Github: Changed. Saving changes.");
+      //    var comments = response.Result;
+
+      //    var users = comments
+      //      .Select(x => x.User)
+      //      .Distinct(x => x.Id);
+      //    changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
+
+      //    var issueComments = comments.Where(x => x.IssueNumber != null);
+      //    changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments)));
+
+      //    tasks.Add(notifyChanges.Send(changes));
+      //  } else {
+      //    logger.WriteLine("Github: Not modified.");
+      //  }
+
+      //  tasks.Add(context.UpdateMetadata("Repositories", "CommentMetadataJson", repo.Id, response));
+      //} else {
+      //  logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
+      //}
+
+      //await Task.WhenAll(tasks);
+
+      return Task.FromResult(ChangeSummary.Empty);
+    }
+
+    private Task<IChangeSummary> UpdateEvents(ShipHubContext context, IGitHubPoolable github) {
+      /* For now primary population is on demand.
+       * Each sync cycle, check a few pages before and after current watermarks.
+       * Note well: The watermarks MUST ONLY be updated from here. On demand
+       * sync will sparsely populate the event corpus, so there's not a way
+       * to derive the overall sync status from the comments we've already synced.
+       */
+
+      //using (var context = new ShipHubContext()) {
+      //  var tasks = new List<Task>();
+      //  ChangeSummary changes = null;
+
+      //  // Lookup requesting user and org.
+      //  var user = await context.Users
+      //    .Include(x => x.Tokens)
+      //    .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+      //  if (user == null || !user.Tokens.Any()) {
+      //    return;
+      //  }
+
+      //  var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
+      //  var metadata = repo.EventMetadata;
+
+      //  logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
+      //  if (metadata.IsExpired()) {
+      //    logger.WriteLine("Polling: Repository events.");
+      //    var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+
+      //    // TODO: Cute pagination trick to detect latest only.
+      //    var response = await ghc.Events(repo.FullName, metadata);
+      //    if (response.IsOk) {
+      //      logger.WriteLine("Github: Changed. Saving changes.");
+      //      var events = response.Result;
+
+      //      // For now only grab accounts from the response.
+      //      // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+      //      var accounts = events
+      //        .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+      //        .Where(x => x != null)
+      //        .Distinct(x => x.Login);
+      //      var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(accounts);
+      //      changes = await context.BulkUpdateAccounts(response.Date, accountsParam);
+      //      var eventsParam = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
+      //      changes.UnionWith(await context.BulkUpdateIssueEvents(user.Id, repo.Id, eventsParam, accountsParam.Select(x => x.Id)));
+
+      //      tasks.Add(notifyChanges.Send(changes));
+      //    } else {
+      //      logger.WriteLine("Github: Not modified.");
+      //    }
+
+      //    tasks.Add(context.UpdateMetadata("Repositories", "EventMetadataJson", repo.Id, response));
+      //  } else {
+      //    logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
+      //  }
+
+      //  await Task.WhenAll(tasks);
+      //}
+
+      return Task.FromResult(ChangeSummary.Empty);
     }
 
     public async Task<IChangeSummary> AddOrUpdateWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
