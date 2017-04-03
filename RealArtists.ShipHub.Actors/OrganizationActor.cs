@@ -211,7 +211,7 @@
 
             this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
           } else if (!admins.Succeeded) {
-            throw new Exception($"Unexpected response: OrganizationAdmins {admins.Status}");
+            throw new Exception($"Unexpected response: [{admins.Request.Uri}] {admins.Status}");
           }
 
           _adminMetadata = GitHubMetadata.FromResponse(admins);

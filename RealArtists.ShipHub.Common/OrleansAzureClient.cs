@@ -79,7 +79,7 @@
       Trace.Listeners.CopyTo(listeners, 0);
       Trace.Listeners.Clear();
 
-      Log.Info($"Initializing Orleans Client with configuration:\n{config.SerializeObject(Newtonsoft.Json.Formatting.Indented)}");
+      Log.Info($"Initializing Orleans Client.");
       Exception lastException = null;
       for (var i = 0; i < MaxRetries; i++) {
         if (i > 0) {
