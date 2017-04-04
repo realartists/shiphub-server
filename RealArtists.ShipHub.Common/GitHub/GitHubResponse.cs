@@ -41,6 +41,8 @@
     public GitHubResponse(GitHubRequest request) : base(request) {
     }
 
+    public ushort Pages { get; set; }
+
     private bool _resultSet = false;
     private T _result = default(T);
     public T Result {

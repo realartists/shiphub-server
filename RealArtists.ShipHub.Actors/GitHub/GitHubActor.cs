@@ -635,6 +635,7 @@
     private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, ushort? maxPages) {
       var partial = false;
       var results = new List<TItem>(firstPage.Result);
+      ushort resultPages = 1;
       var pages = firstPage.Pagination.Interpolate();
 
       if (maxPages < pages.Count()) {
@@ -685,6 +686,7 @@
 
       foreach (var response in batch) {
         if (response.IsOk) {
+          ++resultPages;
           results.AddRange(response.Result);
         } else if (maxPages != null) {
           // Return results up to this point.
@@ -698,6 +700,7 @@
       // Keep cache and other headers from first page.
       var result = firstPage;
       result.Result = results;
+      result.Pages = resultPages;
 
       var rates = batch
         .Where(x => x.RateLimit != null)
@@ -748,6 +751,7 @@
       // Keep cache from the first page, rate + pagination from the last.
       var result = firstPage;
       result.Result = results;
+      result.Pages = page;
       result.RateLimit = current.RateLimit;
 
       // Don't return cache data for partial results

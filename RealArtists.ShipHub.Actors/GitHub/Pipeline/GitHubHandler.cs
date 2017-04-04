@@ -205,6 +205,8 @@
         } else if (response.Content != null) {
           // JSON formatted result
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
+          // At this point each response represents a single page.
+          result.Pages = 1;
         }
       } else if (response.Content != null) {
         var mediaType = response.Content.Headers.ContentType.MediaType;
