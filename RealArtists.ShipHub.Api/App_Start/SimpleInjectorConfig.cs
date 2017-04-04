@@ -5,20 +5,21 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
-  using RealArtists.ChargeBee;
   using Mail;
+  using Mixpanel;
   using Orleans;
   using QueueClient;
+  using RealArtists.ChargeBee;
   using SimpleInjector;
   using SimpleInjector.Integration.WebApi;
+  using SimpleInjector.Lifestyles;
   using Sync.Messages;
-  using Mixpanel;
 
   public static class SimpleInjectorConfig {
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public static void Register(IShipHubConfiguration config) {
       var container = new Container();
-      container.Options.DefaultScopedLifestyle = new WebApiRequestLifestyle();
+      container.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
 
       // ShipHubConfiguration
       container.Register<IShipHubConfiguration, ShipHubCloudConfiguration>(Lifestyle.Singleton);
