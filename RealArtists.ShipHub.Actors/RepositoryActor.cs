@@ -58,6 +58,7 @@
     private string _issueTemplateHash;
     private bool _disabled;
     private string _apiHostName;
+    private bool _projectsEnabled;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -119,6 +120,9 @@
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
+
+        // HACK: Read this from Repository response and persist.
+        _projectsEnabled = true;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
@@ -258,8 +262,11 @@
           changes.UnionWith(await UpdateRepositoryAssignees(context, github));
           changes.UnionWith(await UpdateRepositoryLabels(context, github));
           changes.UnionWith(await UpdateRepositoryMilestones(context, github));
-          changes.UnionWith(await UpdateRepositoryProjects(context, github));
           changes.UnionWith(await UpdateRepositoryIssues(context, github));
+
+          if (_projectsEnabled) {
+            changes.UnionWith(await UpdateRepositoryProjects(context, github));
+          }
 
           // Probably best to keep last
           if (admin != null) {
@@ -561,6 +568,8 @@
             changes.UnionWith(await context.BulkUpdateAccounts(projects.Date, creators));
           }
           await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
+        } else if (projects.Status == HttpStatusCode.Gone || projects.Status == HttpStatusCode.NotFound) {
+          _projectsEnabled = false;
         }
 
         _projectMetadata = GitHubMetadata.FromResponse(projects);

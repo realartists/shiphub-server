@@ -14,6 +14,7 @@
     public string FullName { get; set; }
     public bool Private { get; set; }
     public bool HasIssues { get; set; }
+    public bool HasProjects { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public RepositoryPermissions Permissions { get; set; }
     public string DefaultBranch { get; set; }
