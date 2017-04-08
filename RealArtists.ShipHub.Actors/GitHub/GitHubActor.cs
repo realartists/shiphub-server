@@ -622,12 +622,8 @@
 
       // Response should have:
       // 1) Pagination header from last page
-      // 2) IFF not mangled: cache data from first page
-
-      // Don't cache mangled responses
-      if (skipPages > 0) {
-        response.CacheData = null;
-      }
+      // 2) Cache data from first page, IIF it's a complete result, and not truncated due to errors.
+      // 3) Number of pages returned
 
       return response.Distinct(keySelector);
     }

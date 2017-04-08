@@ -21,7 +21,9 @@
   using QueueClient;
 
   public class RepositoryActor : Grain, IRepositoryActor {
-    private const int ChunkMaxPages = 75;
+    private const int IssueChunkSize = 75;
+    private const int PullRequestChunkSize = IssueChunkSize;
+    private const int PullRequestUpdateChunkSize = 5;
 
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan HookErrorDelay = TimeSpan.FromHours(12);
@@ -70,9 +72,12 @@
     private GitHubMetadata _contentsRootMetadata;
     private GitHubMetadata _contentsDotGithubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
+    private GitHubMetadata _pullRequestMetadata;
 
-    // Issue chunk tracking
+    // Chunk tracking
     private DateTimeOffset _issueSince;
+    private ushort _pullRequestSkip;
+    private DateTimeOffset? _pullRequestUpdatedAt;
 
     // Idle state tracking
     bool _idle = false;
@@ -126,6 +131,10 @@
 
         // HACK: Read this from Repository response and persist.
         _projectsEnabled = true;
+
+        // TODO: persist this
+        _pullRequestMetadata = null; // Null signals walk in creation asc order, non-null signals walk in updated desc order
+        _pullRequestSkip = 0;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
@@ -268,8 +277,8 @@
           changes.UnionWith(await UpdateAssignees(context, github));
           changes.UnionWith(await UpdateLabels(context, github));
           changes.UnionWith(await UpdateMilestones(context, github));
-          
-		  if (_projectsEnabled) {
+
+          if (_projectsEnabled) {
             changes.UnionWith(await UpdateProjects(context, github));
           }
 
@@ -287,8 +296,9 @@
            * a PR before its Issue. For now let this fail - it'll eventually complete.
            */
           if (issueChanges.IsEmpty) {
-            changes.UnionWith(await UpdateComments(context, github));
-            changes.UnionWith(await UpdateEvents(context, github));
+            changes.UnionWith(await UpdatePullRequests(context, github));
+            //changes.UnionWith(await UpdateComments(context, github));
+            //changes.UnionWith(await UpdateEvents(context, github));
           }
 
           // Probably best to keep last
@@ -586,7 +596,7 @@
       var changes = new ChangeSummary();
 
       if (_issueMetadata.IsExpired()) {
-        var issueResponse = await github.Issues(_fullName, _issueSince, ChunkMaxPages, _issueMetadata);
+        var issueResponse = await github.Issues(_fullName, _issueSince, IssueChunkSize, _issueMetadata);
         if (issueResponse.IsOk) {
           var issues = issueResponse.Result;
 
@@ -608,9 +618,9 @@
             issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
           changes.UnionWith(await context.BulkUpdateIssues(
             _repoId,
-            _mapper.Map<IEnumerable<PullRequestTableType>>(issues),
-            issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
-            issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
+            _mapper.Map<IEnumerable<IssueTableType>>(issues),
+            issues.SelectMany(x => x.Labels?.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id })),
+            issues.SelectMany(x => x.Assignees?.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id }))));
 
           if (issues.Any()) {
             // Ensure we don't miss any when we hit the page limit.
@@ -625,122 +635,240 @@
       return changes;
     }
 
-    private Task<IChangeSummary> UpdateComments(ShipHubContext context, IGitHubPoolable github) {
-      /* For now primary population is on demand.
-       * Deletion is detected when checking for reactions.
-       * Each sync cycle, check a few pages before and after current watermarks.
-       * Note well: The watermarks MUST ONLY be updated from here. On demand
-       * sync will sparsely populate the comment corpus, so there's not a way
-       * to derive the overall sync status from the comments we've already synced.
+    private async Task<IChangeSummary> UpdatePullRequests(ShipHubContext context, IGitHubPoolable github) {
+      /* Because GitHub is evil, we can't sync PRs like we do Issues.
+       * 
+       * Per https://developer.github.com/v3/pulls/#list-pull-requests there is no
+       * "since" parameter. This forces us to sync PRs in two stages. First, sync
+       * from the bottom up in "created asc" order, skipping more pages each nibble.
+       * Then, once we have all the PRs, sync using "updated desc" with a reasonable
+       * page limit. Keep walking until we see a record we've seen before.
+       * 
+       * Alternately, we can just grab some fixed number of pages and rely on
+       * on-demand refresh and hooks to fill in anything we miss (rare).
        */
+      var changes = new ChangeSummary();
 
-      //var tasks = new List<Task>();
-      //ChangeSummary changes = null;
+      if (_pullRequestUpdatedAt == null) {
+        // Inital sync. Walk from bottom up.
+        var prCreated = await github.PullRequests(_fullName, "created", "asc", _pullRequestSkip, PullRequestChunkSize);
+        if (prCreated.IsOk) {
+          if (prCreated.Result.Any()) {
+            await UpdatePRs(prCreated);
+            // Yes, this can miss newly created issues on the last page.
+            // The updated_at base sync that takes over will catch any omissions.
+            _pullRequestSkip += prCreated.Pages;
+          } else {
+            // This is gross. Is there a more correct solution?
+            _pullRequestUpdatedAt = prCreated.Date.AddDays(-1);
+          }
+        }
+      }
 
-      //// Lookup requesting user and org.
-      //var user = await context.Users
-      //  .Include(x => x.Tokens)
-      //  .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-      //if (user == null || !user.Tokens.Any()) {
-      //  return;
-      //}
+      if (_pullRequestUpdatedAt != null) {
+        ushort skip = 0;
+        GitHubResponse<IEnumerable<Common.GitHub.Models.PullRequest>> updated = null;
+        GitHubMetadata firstPageMetadata = null;
+        var mostRecent = _pullRequestUpdatedAt ?? DateTimeOffset.MinValue;
 
-      //var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-      //var metadata = repo.CommentMetadata;
+        do {
+          // Walk from most recently updated down.
+          // If not skipping any pages, send cache metadata to (if no changes) get a 304 No Modified
+          updated = await github.PullRequests(_fullName, "updated", "desc", skip, PullRequestUpdateChunkSize, skip == 0 ? _pullRequestMetadata : null);
 
-      //logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
-      //if (metadata.IsExpired()) {
-      //  logger.WriteLine("Polling: Repository comments.");
-      //  var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+          // Grab it from the first page in case the data changes under us during pagination.
+          // Don't want to miss anything permanently.
+          if (firstPageMetadata == null) {
+            firstPageMetadata = GitHubMetadata.FromResponse(updated);
+          }
 
-      //  var response = await ghc.Comments(repo.FullName, null, metadata);
-      //  if (response.IsOk) {
-      //    logger.WriteLine("Github: Changed. Saving changes.");
-      //    var comments = response.Result;
+          if (updated.IsOk) {
+            if (updated.Result.Any()) {
+              await UpdatePRs(updated);
+              skip += updated.Pages;
 
-      //    var users = comments
-      //      .Select(x => x.User)
-      //      .Distinct(x => x.Id);
-      //    changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
+              var batchMostRecent = updated.Result
+                .Select(x => x.UpdatedAt)
+                .OrderByDescending(x => x)
+                .FirstOrDefault();
 
-      //    var issueComments = comments.Where(x => x.IssueNumber != null);
-      //    changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments)));
+              // Track the most recent update we've seen.
+              if (mostRecent < batchMostRecent) {
+                mostRecent = batchMostRecent;
+              }
 
-      //    tasks.Add(notifyChanges.Send(changes));
-      //  } else {
-      //    logger.WriteLine("Github: Not modified.");
-      //  }
+              if (batchMostRecent < _pullRequestUpdatedAt) {
+                // The most recent update in this batch is older than the data we already have - Bail.
+                break;
+              }
+            } else {
+              // All results enumerated - Bail.
+              break;
+            }
+          }
+        } while (updated.IsOk && updated.Pagination?.Next != null);
 
-      //  tasks.Add(context.UpdateMetadata("Repositories", "CommentMetadataJson", repo.Id, response));
-      //} else {
-      //  logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-      //}
+        _pullRequestMetadata = firstPageMetadata;
+        _pullRequestUpdatedAt = mostRecent;
+      }
 
-      //await Task.WhenAll(tasks);
+      return changes;
 
-      return Task.FromResult(ChangeSummary.Empty);
+      // Shared update logic
+      async Task UpdatePRs(GitHubResponse<IEnumerable<Common.GitHub.Models.PullRequest>> response)
+      {
+        var prs = response.Result;
+
+        var accounts = prs
+          .SelectMany(x => new[] { x.User, x.ClosedBy, x.MergedBy }.Concat(x.Assignees))
+          .Where(x => x != null)
+          .Distinct(x => x.Id)
+          .ToArray();
+        changes.UnionWith(await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)));
+
+        var repos = prs
+          .SelectMany(x => new[] { x.Head?.Repo, x.Base?.Repo })
+          .Where(x => x != null)
+          .Distinct(x => x.Id)
+          .ToArray();
+        if (repos.Any()) {
+          changes.UnionWith(await context.BulkUpdateRepositories(response.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(repos)));
+        }
+
+        var milestones = prs
+          .Select(x => x.Milestone)
+          .Where(x => x != null)
+          .Distinct(x => x.Id)
+          .ToArray();
+        if (milestones.Any()) {
+          changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
+        }
+
+        changes.UnionWith(await context.BulkUpdatePullRequests(
+          _repoId,
+          _mapper.Map<IEnumerable<PullRequestTableType>>(prs),
+          null, // PR responses don't include labels
+          prs.SelectMany(x => x.Assignees?.Select(y => new IssueMappingTableType(y.Id, x.Number)))
+        ));
+      }
     }
 
-    private Task<IChangeSummary> UpdateEvents(ShipHubContext context, IGitHubPoolable github) {
-      /* For now primary population is on demand.
-       * Each sync cycle, check a few pages before and after current watermarks.
-       * Note well: The watermarks MUST ONLY be updated from here. On demand
-       * sync will sparsely populate the event corpus, so there's not a way
-       * to derive the overall sync status from the comments we've already synced.
-       */
+    //private Task<IChangeSummary> UpdateComments(ShipHubContext context, IGitHubPoolable github) {
+    //  /* For now primary population is on demand.
+    //   * Deletion is detected when checking for reactions.
+    //   * Each sync cycle, check a few pages before and after current watermarks.
+    //   * Note well: The watermarks MUST ONLY be updated from here. On demand
+    //   * sync will sparsely populate the comment corpus, so there's not a way
+    //   * to derive the overall sync status from the comments we've already synced.
+    //   */
 
-      //using (var context = new ShipHubContext()) {
-      //  var tasks = new List<Task>();
-      //  ChangeSummary changes = null;
+    //  var tasks = new List<Task>();
+    //  ChangeSummary changes = null;
 
-      //  // Lookup requesting user and org.
-      //  var user = await context.Users
-      //    .Include(x => x.Tokens)
-      //    .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
-      //  if (user == null || !user.Tokens.Any()) {
-      //    return;
-      //  }
+    //  // Lookup requesting user and org.
+    //  var user = await context.Users
+    //    .Include(x => x.Tokens)
+    //    .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+    //  if (user == null || !user.Tokens.Any()) {
+    //    return;
+    //  }
 
-      //  var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
-      //  var metadata = repo.EventMetadata;
+    //  var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
+    //  var metadata = repo.CommentMetadata;
 
-      //  logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
-      //  if (metadata.IsExpired()) {
-      //    logger.WriteLine("Polling: Repository events.");
-      //    var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+    //  logger.WriteLine($"Comments for {repo.FullName} cached until {metadata?.Expires}");
+    //  if (metadata.IsExpired()) {
+    //    logger.WriteLine("Polling: Repository comments.");
+    //    var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
-      //    // TODO: Cute pagination trick to detect latest only.
-      //    var response = await ghc.Events(repo.FullName, metadata);
-      //    if (response.IsOk) {
-      //      logger.WriteLine("Github: Changed. Saving changes.");
-      //      var events = response.Result;
+    //    var response = await ghc.Comments(repo.FullName, null, metadata);
+    //    if (response.IsOk) {
+    //      logger.WriteLine("Github: Changed. Saving changes.");
+    //      var comments = response.Result;
 
-      //      // For now only grab accounts from the response.
-      //      // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
-      //      var accounts = events
-      //        .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
-      //        .Where(x => x != null)
-      //        .Distinct(x => x.Login);
-      //      var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(accounts);
-      //      changes = await context.BulkUpdateAccounts(response.Date, accountsParam);
-      //      var eventsParam = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
-      //      changes.UnionWith(await context.BulkUpdateIssueEvents(user.Id, repo.Id, eventsParam, accountsParam.Select(x => x.Id)));
+    //      var users = comments
+    //        .Select(x => x.User)
+    //        .Distinct(x => x.Id);
+    //      changes = await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(users));
 
-      //      tasks.Add(notifyChanges.Send(changes));
-      //    } else {
-      //      logger.WriteLine("Github: Not modified.");
-      //    }
+    //      var issueComments = comments.Where(x => x.IssueNumber != null);
+    //      changes.UnionWith(await context.BulkUpdateComments(repo.Id, _mapper.Map<IEnumerable<CommentTableType>>(issueComments)));
 
-      //    tasks.Add(context.UpdateMetadata("Repositories", "EventMetadataJson", repo.Id, response));
-      //  } else {
-      //    logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
-      //  }
+    //      tasks.Add(notifyChanges.Send(changes));
+    //    } else {
+    //      logger.WriteLine("Github: Not modified.");
+    //    }
 
-      //  await Task.WhenAll(tasks);
-      //}
+    //    tasks.Add(context.UpdateMetadata("Repositories", "CommentMetadataJson", repo.Id, response));
+    //  } else {
+    //    logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
+    //  }
 
-      return Task.FromResult(ChangeSummary.Empty);
-    }
+    //  await Task.WhenAll(tasks);
+
+    //  return Task.FromResult(ChangeSummary.Empty);
+    //}
+
+    //private Task<IChangeSummary> UpdateEvents(ShipHubContext context, IGitHubPoolable github) {
+    //  /* For now primary population is on demand.
+    //   * Each sync cycle, check a few pages before and after current watermarks.
+    //   * Note well: The watermarks MUST ONLY be updated from here. On demand
+    //   * sync will sparsely populate the event corpus, so there's not a way
+    //   * to derive the overall sync status from the comments we've already synced.
+    //   */
+
+    //  using (var context = new ShipHubContext()) {
+    //    var tasks = new List<Task>();
+    //    ChangeSummary changes = null;
+
+    //    // Lookup requesting user and org.
+    //    var user = await context.Users
+    //      .Include(x => x.Tokens)
+    //      .SingleOrDefaultAsync(x => x.Id == message.ForUserId);
+    //    if (user == null || !user.Tokens.Any()) {
+    //      return;
+    //    }
+
+    //    var repo = await context.Repositories.SingleAsync(x => x.Id == message.TargetId);
+    //    var metadata = repo.EventMetadata;
+
+    //    logger.WriteLine($"Events for {repo.FullName} cached until {metadata?.Expires}");
+    //    if (metadata.IsExpired()) {
+    //      logger.WriteLine("Polling: Repository events.");
+    //      var ghc = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+
+    //      // TODO: Cute pagination trick to detect latest only.
+    //      var response = await ghc.Events(repo.FullName, metadata);
+    //      if (response.IsOk) {
+    //        logger.WriteLine("Github: Changed. Saving changes.");
+    //        var events = response.Result;
+
+    //        // For now only grab accounts from the response.
+    //        // Sometimes an issue is also included, but not always, and we get them elsewhere anyway.
+    //        var accounts = events
+    //          .SelectMany(x => new[] { x.Actor, x.Assignee, x.Assigner })
+    //          .Where(x => x != null)
+    //          .Distinct(x => x.Login);
+    //        var accountsParam = _mapper.Map<IEnumerable<AccountTableType>>(accounts);
+    //        changes = await context.BulkUpdateAccounts(response.Date, accountsParam);
+    //        var eventsParam = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
+    //        changes.UnionWith(await context.BulkUpdateIssueEvents(user.Id, repo.Id, eventsParam, accountsParam.Select(x => x.Id)));
+
+    //        tasks.Add(notifyChanges.Send(changes));
+    //      } else {
+    //        logger.WriteLine("Github: Not modified.");
+    //      }
+
+    //      tasks.Add(context.UpdateMetadata("Repositories", "EventMetadataJson", repo.Id, response));
+    //    } else {
+    //      logger.WriteLine($"Waiting: Using cache from {metadata.LastRefresh:o}");
+    //    }
+
+    //    await Task.WhenAll(tasks);
+    //  }
+
+    //  return Task.FromResult(ChangeSummary.Empty);
+    //}
 
     public async Task<IChangeSummary> AddOrUpdateWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
       var changes = ChangeSummary.Empty;

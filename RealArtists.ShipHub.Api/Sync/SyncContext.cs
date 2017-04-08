@@ -12,6 +12,7 @@
   using Filters;
   using Messages;
   using Messages.Entries;
+  using Newtonsoft.Json.Linq;
 
   public class SyncContext {
     private ShipHubPrincipal _user;
@@ -520,6 +521,18 @@
                   UpdatedAt = ddr.UpdatedAt,
                   PullRequest = ddr.PullRequest,
                   User = ddr.UserId,
+
+                  // Pull Request Fields
+                  PullRequestIdentifier = ddr.PullRequestId,
+                  PullRequestUpdatedAt = ddr.PullRequestUpdatedAt,
+                  MaintainerCanModify = ddr.MaintainerCanModify,
+                  Mergeable = ddr.Mergeable,
+                  MergeCommitSha = ddr.MergeCommitSha,
+                  Merged = ddr.Merged,
+                  MergedAt = ddr.MergedAt,
+                  MergedBy = ddr.MergedById,
+                  Base = ((string)ddr.BaseJson).DeserializeObject<JToken>(),
+                  Head = ((string)ddr.HeadJson).DeserializeObject<JToken>(),
                 },
               });
             }

@@ -1,7 +1,7 @@
 ﻿CREATE TYPE [dbo].[PullRequestTableType] AS TABLE (
-  [Id]                  BIGINT         NOT NULL,
+  [Id]                  BIGINT         NULL,
   [UserId]              BIGINT         NOT NULL,
-  [Number]              INT            NOT NULL PRIMARY KEY CLUSTERED,
+  [Number]              INT            NOT NULL,
   [State]               NVARCHAR(6)    NOT NULL,
   [Title]               NVARCHAR(MAX)  NOT NULL,
   [Body]                NVARCHAR(MAX)  NULL,
@@ -13,13 +13,13 @@
   [ClosedById]          BIGINT         NULL,
   [PullRequest]         BIT            NOT NULL,
   [Reactions]           NVARCHAR(MAX)  NULL,
-  [PullRequestId]       BIGINT         NULL,
-  [MaintainerCanModify] BIT            NULL,
-  [Mergeable]           BIT            NULL,
+  [PullRequestId]       BIGINT         NOT NULL PRIMARY KEY CLUSTERED,
+  [MaintainerCanModify] BIT            NOT NULL,
+  [Mergeable]           BIT            NOT NULL,
   [MergeCommitSha]      NVARCHAR(500)  NULL,
-  [Merged]              BIT            NULL,
+  [Merged]              BIT            NOT NULL,
   [MergedAt]            DATETIMEOFFSET NULL,
   [MergedById]          BIGINT         NULL,
-  [BaseJson]            NVARCHAR(MAX)  NULL,
-  [HeadJson]            NVARCHAR(MAX)  NULL
+  [BaseJson]            NVARCHAR(MAX)  NOT NULL,
+  [HeadJson]            NVARCHAR(MAX)  NOT NULL
 )

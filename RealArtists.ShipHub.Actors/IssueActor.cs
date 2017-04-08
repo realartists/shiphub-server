@@ -127,9 +127,9 @@
 
           changes.UnionWith(await context.BulkUpdateIssues(
             _repoId,
-            _mapper.Map<IEnumerable<PullRequestTableType>>(new[] { update }),
-            update.Labels?.Select(y => new MappingTableType() { Item1 = update.Id, Item2 = y.Id }),
-            update.Assignees?.Select(y => new MappingTableType() { Item1 = update.Id, Item2 = y.Id })
+            _mapper.Map<IEnumerable<IssueTableType>>(new[] { update }),
+            update.Labels?.Select(y => new IssueMappingTableType() { IssueId = update.Id, IssueNumber = update.Number, MappedId = y.Id }),
+            update.Assignees?.Select(y => new IssueMappingTableType() { IssueId = update.Id, IssueNumber = update.Number, MappedId = y.Id })
           ));
         }
 

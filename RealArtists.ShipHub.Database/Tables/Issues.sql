@@ -15,6 +15,7 @@
   [PullRequest]          BIT            NOT NULL,
   [Reactions]            NVARCHAR(MAX)  NULL,
   [PullRequestId]        BIGINT         NULL,
+  [PullRequestUpdatedAt] DATETIMEOFFSET NULL,
   [MaintainerCanModify]  BIT            NULL,
   [Mergeable]            BIT            NULL,
   [MergeCommitSha]       NVARCHAR(500)  NULL,

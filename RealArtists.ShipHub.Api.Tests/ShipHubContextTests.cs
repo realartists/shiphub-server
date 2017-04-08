@@ -438,7 +438,7 @@
         await context.BulkUpdateIssues(
           repo1.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 2001,
               Number = 1,
               State = "open",
@@ -449,17 +449,12 @@
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
           },
-          new[] {
-            new MappingTableType() {
-              Item1 = 2001,
-              Item2 = 1001,
-            },
-          },
-          new MappingTableType[0]);
+          new[] { new IssueMappingTableType(1001, 1, 2001) },
+          Array.Empty<IssueMappingTableType>());
         await context.BulkUpdateIssues(
           repo2.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 2002,
               Number = 1,
               State = "open",
@@ -470,13 +465,8 @@
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
           },
-          new[] {
-            new MappingTableType() {
-              Item1 = 2002,
-              Item2 = 1002,
-            },
-          },
-          new MappingTableType[0]);
+          new[] { new IssueMappingTableType(1002, 1, 2002) },
+          Array.Empty<IssueMappingTableType>());
 
         // Deleting all labels in repo1 should not disturb issue label relationships in repo2
         await context.BulkUpdateLabels(repo1.Id, new LabelTableType[0], complete: true);
@@ -525,7 +515,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -535,7 +525,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -547,20 +537,11 @@
             },
           },
           new[] {
-            new MappingTableType() {
-              Item1 = 1001,
-              Item2 = 2001,
-            },
-            new MappingTableType() {
-              Item1 = 1001,
-              Item2 = 2002,
-            },
-            new MappingTableType() {
-              Item1 = 1002,
-              Item2 = 2003,
-            },
+            new IssueMappingTableType(2001, 1, 1001),
+            new IssueMappingTableType(2002, 1, 1001),
+            new IssueMappingTableType(2003, 2, 1002),
           },
-          new MappingTableType[0]);
+          Array.Empty<IssueMappingTableType>());
 
         Assert.AreEqual(4, context.Labels.Count(),
           "should have 3 repos: 3 in repo1, 1 in repo2");
@@ -603,7 +584,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -613,7 +594,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -625,16 +606,10 @@
             },
           },
           new[] {
-            new MappingTableType() {
-              Item1 = 1001,
-              Item2 = 2001,
-            },
-            new MappingTableType() {
-              Item1 = 1002,
-              Item2 = 2001,
-            },
+            new IssueMappingTableType(2001, 1, 1001),
+            new IssueMappingTableType(2001, 2, 1002),
           },
-          new MappingTableType[0]);
+          Array.Empty<IssueMappingTableType>());
 
         var issue1 = context.Issues.Single(x => x.Id == 1001);
         var issue2 = context.Issues.Single(x => x.Id == 1002);
@@ -667,7 +642,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -677,7 +652,7 @@
               CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -689,22 +664,16 @@
             },
           },
           new[] {
-            new MappingTableType() {
-              Item1 = 1001,
-              Item2 = 2001,
-            },
-            new MappingTableType() {
-              Item1 = 1002,
-              Item2 = 2003,
-            },
+            new IssueMappingTableType(2001, 1, 1001),
+            new IssueMappingTableType(2003, 2, 1002),
           },
-          new MappingTableType[0]);
+          Array.Empty<IssueMappingTableType>());
 
         // Call BulkUpdateIssue again, but only with the second issue.
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1002,
               Number = 2,
               State = "open",
@@ -715,13 +684,8 @@
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
           },
-          new[] {
-            new MappingTableType() {
-              Item1 = 1002,
-              Item2 = 2003,
-            },
-          },
-          new MappingTableType[0]);
+          new[] { new IssueMappingTableType(2003, 2, 1002) },
+          Array.Empty<IssueMappingTableType>());
 
         // Only issue 1002 is named in the second BulkUpdateIssues call, and so none
         // of the labels (i.e. IssueLabels associations) for the other issue (1001)
@@ -766,7 +730,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1001,
               Number = 1,
               State = "open",
@@ -777,13 +741,8 @@
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
           },
-          new[] {
-            new MappingTableType() {
-              Item1 = 1001,
-              Item2 = 2001,
-            },
-          },
-          new MappingTableType[0]);
+          new[] { new IssueMappingTableType(2001, 1, 1001) },
+          Array.Empty<IssueMappingTableType>());
 
         await context.BulkUpdateLabels(
           repo2.Id,
@@ -798,7 +757,7 @@
         await context.BulkUpdateIssues(
           repo2.Id,
           new[] {
-            new PullRequestTableType() {
+            new IssueTableType() {
               Id = 1201,
               Number = 1,
               State = "open",
@@ -809,13 +768,8 @@
               UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
             },
           },
-          new[] {
-            new MappingTableType() {
-              Item1 = 1201,
-              Item2 = 2201,
-            },
-          },
-          new MappingTableType[0]);
+          new[] { new IssueMappingTableType(2201, 1, 1201) },
+          Array.Empty<IssueMappingTableType>());
 
         var updatedRepo1 = context.Repositories.Single(x => x.Id == repo.Id);
         var updatedRepo2 = context.Repositories.Single(x => x.Id == repo2.Id);

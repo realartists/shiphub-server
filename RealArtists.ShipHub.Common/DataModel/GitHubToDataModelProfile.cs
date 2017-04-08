@@ -33,7 +33,7 @@
           }
         });
 
-      CreateMap<g.Issue, PullRequestTableType>(MemberList.Destination)
+      CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
         .ForMember(x => x.PullRequest, o => o.ResolveUsing(x => x.PullRequest != null))
         .ForMember(x => x.Reactions, o => o.ResolveUsing(x => x.Reactions.SerializeObject(Formatting.None)));
 
