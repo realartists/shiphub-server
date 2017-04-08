@@ -194,7 +194,7 @@
       return EnqueueRequest<Issue>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, ushort maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<Issue>>> Issues(string repoFullName, DateTimeOffset since, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions, priority) {
         // https://developer.github.com/v3/issues/#reactions-summary 
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
@@ -307,7 +307,7 @@
     /// <param name="cacheOptions"></param>
     /// <param name="priority"></param>
     /// <returns>Pull requests</returns>
-    public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, ushort skipPages, ushort maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+    public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority);
       request.AddParameter("state", "all");
       request.AddParameter("sort", sort);
@@ -558,7 +558,7 @@
       }
     }
 
-    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null, ushort? skipPages = null) {
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint? maxPages = null, uint? skipPages = null) {
       if (request.Method != HttpMethod.Get) {
         throw new InvalidOperationException("Only GETs can be paginated.");
       }
@@ -588,11 +588,11 @@
           case 1: // response.Pagination == null
             response.Result = Array.Empty<T>();
             break;
-          case ushort skip: // skipPages > 1
+          case uint skip: // skipPages > 1
             if (response.Pagination?.CanInterpolate != true) {
               throw new InvalidOperationException($"Skipping pages is not supported for [{response.Request.Uri}]: {response.Pagination?.SerializeObject()}");
             }
-            nextUri = response.Pagination.Interpolate().Skip(skip - 1).FirstOrDefault();
+            nextUri = response.Pagination.Interpolate().Skip((int)(skip - 1)).FirstOrDefault();
             if (nextUri == null) {
               // We skipped more pages than existed.
               response.Pagination = null;
@@ -628,10 +628,10 @@
       return response.Distinct(keySelector);
     }
 
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, ushort? maxPages) {
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint? maxPages) {
       var partial = false;
       var results = new List<TItem>(firstPage.Result);
-      ushort resultPages = 1;
+      uint resultPages = 1;
       var pages = firstPage.Pagination.Interpolate();
 
       if (maxPages < pages.Count()) {
@@ -718,13 +718,13 @@
       return result;
     }
 
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, ushort? maxPages) {
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint? maxPages) {
       var partial = false;
       var results = new List<TItem>(firstPage.Result);
 
       // Walks pages in order, one at a time.
       var current = firstPage;
-      ushort page = 1;
+      uint page = 1;
       while (current.Pagination?.Next != null && page < maxPages) {
         var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
         nextReq.Priority = priority;

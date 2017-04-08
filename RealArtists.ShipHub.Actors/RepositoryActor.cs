@@ -76,7 +76,7 @@
 
     // Chunk tracking
     private DateTimeOffset _issueSince;
-    private ushort _pullRequestSkip;
+    private uint _pullRequestSkip;
     private DateTimeOffset? _pullRequestUpdatedAt;
 
     // Idle state tracking
@@ -666,7 +666,7 @@
       }
 
       if (_pullRequestUpdatedAt != null) {
-        ushort skip = 0;
+        uint skip = 0;
         GitHubResponse<IEnumerable<Common.GitHub.Models.PullRequest>> updated = null;
         GitHubMetadata firstPageMetadata = null;
         var mostRecent = _pullRequestUpdatedAt ?? DateTimeOffset.MinValue;
