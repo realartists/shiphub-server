@@ -1,8 +1,8 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateIssues]
   @RepositoryId BIGINT,
   @Issues IssueTableType READONLY,
-  @Labels MappingTableType READONLY,
-  @Assignees MappingTableType READONLY
+  @Labels IssueMappingTableType READONLY,
+  @Assignees IssueMappingTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -19,37 +19,37 @@ BEGIN
 
     MERGE INTO Issues WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT [Id], [UserId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions]
+      SELECT Id, UserId, Number, [State], Title, Body, MilestoneId, Locked, CreatedAt, UpdatedAt, ClosedAt, ClosedById, PullRequest, Reactions
       FROM @Issues
     ) as [Source]
-    ON ([Target].[Id] = [Source].[Id])
+    ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [UserId], [RepositoryId], [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
-      VALUES ([Id], [UserId], @RepositoryId, [Number], [State], [Title], [Body], [MilestoneId], [Locked], [CreatedAt], [UpdatedAt], [ClosedAt], [ClosedById], [PullRequest], [Reactions])
+      INSERT (Id, UserId,  RepositoryId, Number, [State], Title, Body, MilestoneId, Locked, CreatedAt, UpdatedAt, ClosedAt, ClosedById, PullRequest, Reactions)
+      VALUES (Id, UserId, @RepositoryId, Number, [State], Title, Body, MilestoneId, Locked, CreatedAt, UpdatedAt, ClosedAt, ClosedById, PullRequest, Reactions)
     -- Update (this bumps for label only changes too)
-    WHEN MATCHED AND 
-      ([Target].[UpdatedAt] < [Source].[UpdatedAt] 
-        OR ([Target].[UpdatedAt] = [Source].[UpdatedAt] 
+    WHEN MATCHED AND (
+        [Target].UpdatedAt < [Source].UpdatedAt
+        OR ([Target].UpdatedAt = [Source].UpdatedAt
           AND (
-            ([Source].[Reactions] IS NOT NULL AND ISNULL([Target].[Reactions], '') <> ISNULL([Source].[Reactions], ''))
+            ([Source].Reactions IS NOT NULL AND ISNULL([Target].Reactions, '') <> ISNULL([Source].Reactions, ''))
             OR 
-            ([Source].[ClosedById] IS NOT NULL AND ISNULL([Target].[ClosedById], 0) <> ISNULL([Source].[ClosedById], 0))
+            ([Source].ClosedById IS NOT NULL AND ISNULL([Target].ClosedById, 0) <> ISNULL([Source].ClosedById, 0))
           )
         )
       ) THEN
       UPDATE SET
-        [UserId] = [Source].[UserId], -- This can change to ghost
+        UserId = [Source].UserId, -- This can change to ghost
         [State] = [Source].[State],
-        [Title] = [Source].[Title],
-        [Body] = [Source].[Body],
-        [MilestoneId] = [Source].[MilestoneId],
-        [Locked] = [Source].[Locked],
-        [UpdatedAt] = [Source].[UpdatedAt],
-        [ClosedAt] = [Source].[ClosedAt],
-        [ClosedById] = COALESCE([Source].[ClosedById], [Target].[ClosedById]),
-        [PullRequest] = [Source].[PullRequest],
-        [Reactions] = COALESCE([Source].[Reactions], [Target].[Reactions])
+        Title = [Source].Title,
+        Body = [Source].Body,
+        MilestoneId = [Source].MilestoneId,
+        Locked = [Source].Locked,
+        UpdatedAt = [Source].UpdatedAt,
+        ClosedAt = [Source].ClosedAt,
+        ClosedById = ISNULL([Source].ClosedById, [Target].ClosedById),
+        PullRequest = [Source].PullRequest,
+        Reactions = ISNULL([Source].Reactions, [Target].Reactions)
     OUTPUT INSERTED.Id INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
@@ -58,7 +58,7 @@ BEGIN
     -- Can't do the delete concurrently, as it'll insist on using a scan
     MERGE INTO IssueLabels WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Item1 AS IssueId, Item2 AS LabelId FROM @Labels
+      SELECT IssueId, MappedId AS LabelId FROM @Labels
     ) as [Source]
     ON ([Target].IssueId = [Source].IssueId AND [Target].LabelId = [Source].LabelId)
     -- Add
@@ -69,21 +69,22 @@ BEGIN
     OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Delete any extraneous mappings.
-    -- First, find all rows in IssueLabels for all issues in @Labels
-    -- Then join back on @Labels to find unmatched rows.
+    -- First, find all rows in IssueLabels for all issues in @WorkLabels
+    -- Then join back on @WorkLabels to find unmatched rows.
     DELETE FROM IssueLabels
     OUTPUT DELETED.IssueId INTO @Changes
     FROM @Issues as i
       INNER LOOP JOIN IssueLabels as il ON (il.IssueId = i.Id)
-      LEFT OUTER JOIN @Labels as ll ON (ll.Item1 = il.IssueId AND ll.Item2 = il.LabelId)
-    WHERE ll.Item1 IS NULL
+      LEFT OUTER JOIN @Labels as ll ON (ll.IssueId = il.IssueId AND ll.MappedId = il.LabelId)
+    WHERE ll.IssueId IS NULL
+      AND i.PullRequest = 0 -- PR responses don't include labels.
     OPTION (FORCE ORDER)
 
     -- Assignees
     -- Have to use the same tricks as above for the same reasons.
     MERGE INTO IssueAssignees WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Item1 as IssueId, Item2 as UserId FROM @Assignees
+      SELECT IssueId, MappedId as UserId FROM @Assignees
     ) as [Source]
     ON ([Target].IssueId = [Source].IssueId AND [Target].UserId = [Source].UserId)
     -- Add
@@ -99,8 +100,8 @@ BEGIN
     OUTPUT DELETED.IssueId INTO @Changes
     FROM @Issues as i
       INNER LOOP JOIN IssueAssignees as ia ON (ia.IssueId = i.Id)
-      LEFT OUTER JOIN @Assignees as aa ON (aa.Item1 = ia.IssueId AND aa.Item2 = ia.UserId)
-    WHERE aa.Item1 IS NULL
+      LEFT OUTER JOIN @Assignees as aa ON (aa.IssueId = ia.IssueId AND aa.MappedId = ia.UserId)
+    WHERE aa.IssueId IS NULL
     OPTION (FORCE ORDER)
 
     -- Update existing issues
@@ -125,9 +126,9 @@ BEGIN
       SELECT DISTINCT(UPUserId) as UserId
       FROM Issues as c
           INNER JOIN @Changes as ch ON (c.Id = ch.IssueId)
-        UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById)) as [Ignored]
+        UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById, MergedById)) as [Ignored]
       UNION
-      SELECT Item2 FROM @Assignees
+      SELECT MappedId FROM @Assignees
     ) as c
     WHERE NOT EXISTS (
       SELECT * FROM SyncLog

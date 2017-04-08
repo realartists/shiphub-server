@@ -1,13 +1,10 @@
---USE shiphub-dev
---GO
-
 SET XACT_ABORT OFF
 GO
 
 DELETE FROM [dbo].[AccountRepositories]
 DELETE FROM [dbo].[Accounts]
-DELETE FROM [dbo].[CacheMetadata]
 DELETE FROM [dbo].[Comments]
+DELETE FROM [dbo].[GitHubTokens]
 DELETE FROM [dbo].[Hooks]
 DELETE FROM [dbo].[IssueAssignees]
 DELETE FROM [dbo].[IssueEventAccess]

@@ -13,13 +13,13 @@
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
-  using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Orleans;
   using Orleans.Concurrency;
   using QueueClient;
   using dm = Common.DataModel;
+  using dmt = Common.DataModel.Types;
 
   public interface IGitHubClient {
     string AccessToken { get; }
@@ -33,7 +33,7 @@
 
   [Reentrant]
   public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 2;
+    public const int MaxConcurrentRequests = 2; // Also controls pagination fanout, if enabled.
     public const int PageSize = 100;
     public const bool InterpolationEnabled = false;
 
@@ -296,6 +296,25 @@
       return EnqueueRequest<PullRequest>(request);
     }
 
+    /// <summary>
+    /// List pull requests
+    /// </summary>
+    /// <param name="repoFullName">:owner/:repo</param>
+    /// <param name="sort">created, updated, popularity (comment count) or long-running</param>
+    /// <param name="direction">asc or desc</param>
+    /// <param name="skipPages">Pages to skip at beginning.</param>
+    /// <param name="maxPages">Max pages to return</param>
+    /// <param name="cacheOptions"></param>
+    /// <param name="priority"></param>
+    /// <returns>Pull requests</returns>
+    public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, ushort skipPages, ushort maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority);
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", sort);
+      request.AddParameter("direction", direction);
+      return FetchPaged(request, (PullRequest x) => x.Id, maxPages, skipPages);
+    }
+
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions, priority);
       return FetchPaged(request, (Account x) => x.Id);
@@ -454,6 +473,7 @@
           break;
         case RequestPriority.Background:
         case RequestPriority.Unspecified:
+        default:
           _backgroundQueue.Enqueue(executeRequestTask);
           break;
       }
@@ -482,7 +502,6 @@
     }
 
     private Func<Task> DequeueNextRequest() {
-
       // Get next request by priority
       if (_interactiveQueue.TryDequeue(out var task)
         || _subRequestQueue.TryDequeue(out task)
@@ -529,7 +548,7 @@
         }
 
         // Force sync notification
-        var changes = new ChangeSummary();
+        var changes = new dmt.ChangeSummary();
         changes.Users.Add(UserId);
         await _queueClient.NotifyChanges(changes);
       } else if (response.RateLimit != null) {
@@ -539,9 +558,12 @@
       }
     }
 
-    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null) {
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, ushort? maxPages = null, ushort? skipPages = null) {
       if (request.Method != HttpMethod.Get) {
         throw new InvalidOperationException("Only GETs can be paginated.");
+      }
+      if (maxPages == 0) {
+        throw new InvalidOperationException($"{nameof(maxPages)} must be omitted or greater than 0");
       }
 
       // Always request the largest page size
@@ -549,131 +571,191 @@
         request.AddParameter("per_page", PageSize);
       }
 
-      var result = await EnqueueRequest<IEnumerable<T>>(request);
+      // In all cases we need the first page 🙄
+      var response = await EnqueueRequest<IEnumerable<T>>(request);
 
-      if (result.IsOk
-        && result.Pagination != null
-        && (maxPages == null || maxPages > 1)) {
-        result = await EnumerateParallel<IEnumerable<T>, T>(result, maxPages);
+      // When successful, try to enumerate. Else immediately return the error.
+      if (response.IsOk) {
+        // If skipping pages, calculate here.
+        switch (skipPages) {
+          case null:
+          case 0:
+            break;
+          case 1 when response.Pagination?.Next != null:
+            var nextUri = response.Pagination.Next;
+            response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
+            break;
+          case 1: // response.Pagination == null
+            response.Result = Array.Empty<T>();
+            break;
+          case ushort skip: // skipPages > 1
+            if (response.Pagination?.CanInterpolate != true) {
+              throw new InvalidOperationException($"Skipping pages is not supported for [{response.Request.Uri}]: {response.Pagination?.SerializeObject()}");
+            }
+            nextUri = response.Pagination.Interpolate().Skip(skip - 1).FirstOrDefault();
+            if (nextUri == null) {
+              // We skipped more pages than existed.
+              response.Pagination = null;
+              response.Result = Array.Empty<T>();
+            }
+            break;
+          default:
+            break;
+        }
+
+        // Now, if there's more to do, enumerate the results
+        if ((maxPages == null || maxPages > 1) && response.Pagination?.Next != null) {
+          // By default, upgrade background => subrequest
+          var subRequestPriority = RequestPriority.SubRequest;
+          // Ensure interactive => interactive
+          if (response.Request.Priority == RequestPriority.Interactive) {
+            subRequestPriority = RequestPriority.Interactive;
+          }
+
+          if (InterpolationEnabled && response.Pagination.CanInterpolate) {
+            response = await EnumerateParallel(response, subRequestPriority, maxPages);
+          } else { // Walk in order
+            response = await EnumerateSequential(response, subRequestPriority, maxPages);
+          }
+        }
       }
 
-      return result.Distinct(keySelector);
+      // Response should have:
+      // 1) Pagination header from last page
+      // 2) Cache data from first page, IIF it's a complete result, and not truncated due to errors.
+      // 3) Number of pages returned
+
+      return response.Distinct(keySelector);
     }
 
-    private async Task<GitHubResponse<TCollection>> EnumerateParallel<TCollection, TItem>(GitHubResponse<TCollection> firstPage, ushort? maxPages)
-      where TCollection : IEnumerable<TItem> {
-      var results = new List<TItem>(firstPage.Result);
-      IEnumerable<GitHubResponse<TCollection>> batch;
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, ushort? maxPages) {
       var partial = false;
+      var results = new List<TItem>(firstPage.Result);
+      ushort resultPages = 1;
+      var pages = firstPage.Pagination.Interpolate();
 
-      // TODO: Cancellation (for when errors are encountered)?
-
-      var subRequestPriority = RequestPriority.SubRequest;
-      if (firstPage.Request.Priority == RequestPriority.Interactive) {
-        subRequestPriority = RequestPriority.Interactive;
+      if (maxPages < pages.Count()) {
+        partial = true;
+        pages = pages.Take((int)maxPages - 1);
       }
 
-      if (InterpolationEnabled && firstPage.Pagination?.CanInterpolate == true) {
-        var pages = firstPage.Pagination.Interpolate();
+      var pageRequestors = pages
+        .Select(page => {
+          Func<Task<GitHubResponse<IEnumerable<TItem>>>> requestor = () => {
+            var request = firstPage.Request.CloneWithNewUri(page);
+            request.Priority = priority;
+            return EnqueueRequest<IEnumerable<TItem>>(request);
+          };
 
-        if (maxPages < pages.Count()) {
-          partial = true;
-          pages = pages.Take((int)maxPages - 1);
+          return requestor;
+        }).ToArray();
+
+      // Check if we can request all the pages within the limit.
+      if (firstPage.RateLimit.Remaining < pageRequestors.Length) {
+        firstPage.Result = default(IEnumerable<TItem>);
+        firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
+        return firstPage;
+      }
+
+      var abort = false;
+      var batch = new List<GitHubResponse<IEnumerable<TItem>>>();
+      // TODO: Cancellation (for when errors are encountered)?
+      for (var i = 0; !abort && i < pageRequestors.Length;) {
+        var tasks = new List<Task<GitHubResponse<IEnumerable<TItem>>>>();
+        for (var j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
+          tasks.Add(pageRequestors[i]());
         }
-
-        var pageRequestors = pages
-          .Select(page => {
-            Func<Task<GitHubResponse<TCollection>>> requestor = () => {
-              var request = firstPage.Request.CloneWithNewUri(page);
-              request.Priority = subRequestPriority;
-              return EnqueueRequest<TCollection>(request);
-            };
-
-            return requestor;
-          }).ToArray();
-
-        // Check if we can request all the pages within the limit.
-        if (firstPage.RateLimit.Remaining < pageRequestors.Length) {
-          firstPage.Result = default(TCollection);
-          firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
-          return firstPage;
-        }
-
-        var accum = new List<GitHubResponse<TCollection>>();
-        for (var i = 0; i < pageRequestors.Length;) {
-          var tasks = new List<Task<GitHubResponse<TCollection>>>();
-          for (var j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
-            tasks.Add(pageRequestors[i]());
-          }
-          await Task.WhenAll(tasks);
-          foreach (var task in tasks) {
-            if (task.IsFaulted) {
-              task.Wait(); // force exception to throw
-            } else {
-              accum.Add(task.Result);
+        await Task.WhenAll(tasks);
+        foreach (var task in tasks) {
+          if (task.IsFaulted) {
+            task.Wait(); // force exception to throw
+          } else {
+            var part = task.Result;
+            batch.Add(part);
+            if (!part.IsOk) {
+              // Return error immediately.
+              abort = true;
             }
           }
         }
-        batch = accum;
+      }
 
-        foreach (var response in batch) {
-          if (response.IsOk) {
-            results.AddRange(response.Result);
-          } else if (maxPages != null) {
-            // Return results up to this point.
-            partial = true;
-            break;
-          } else {
-            return response;
-          }
+      foreach (var response in batch) {
+        if (response.IsOk) {
+          ++resultPages;
+          results.AddRange(response.Result);
+        } else if (maxPages != null) {
+          // Return results up to this point.
+          partial = true;
+          break;
+        } else {
+          return response;
         }
-      } else { // Walk in order
-        var current = firstPage;
-        ushort page = 0;
-        while (current.Pagination?.Next != null
-          && (maxPages == null || page < maxPages)) {
-
-          var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
-          nextReq.Priority = subRequestPriority;
-          current = await EnqueueRequest<TCollection>(nextReq);
-
-          if (current.IsOk) {
-            results.AddRange(current.Result);
-          } else if (maxPages != null) {
-            // Return results up to this point.
-            partial = true;
-            break;
-          } else {
-            return current;
-          }
-
-          ++page;
-        }
-        // Just use the last request.
-        batch = new[] { current };
       }
 
       // Keep cache and other headers from first page.
-      var final = firstPage;
-      final.Result = (TCollection)(IEnumerable<TItem>)results;
-
-      // Clear cache data if partial result
-      if (partial) {
-        final.CacheData = null;
-      }
+      var result = firstPage;
+      result.Result = results;
+      result.Pages = resultPages;
 
       var rates = batch
+        .Where(x => x.RateLimit != null)
         .Select(x => x.RateLimit)
         .GroupBy(x => x.Reset)
         .OrderByDescending(x => x.Key)
         .First();
-      final.RateLimit = new GitHubRateLimit(
-        final.RateLimit.AccessToken,
+      result.RateLimit = new GitHubRateLimit(
+        firstPage.RateLimit.AccessToken,
         rates.Min(x => x.Limit),
         rates.Min(x => x.Remaining),
         rates.Key);
 
-      return final;
+      // Don't return cache data for partial results
+      if (partial) {
+        result.CacheData = null;
+      }
+
+      return result;
+    }
+
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, ushort? maxPages) {
+      var partial = false;
+      var results = new List<TItem>(firstPage.Result);
+
+      // Walks pages in order, one at a time.
+      var current = firstPage;
+      ushort page = 1;
+      while (current.Pagination?.Next != null && page < maxPages) {
+        var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
+        nextReq.Priority = priority;
+        current = await EnqueueRequest<IEnumerable<TItem>>(nextReq);
+
+        if (current.IsOk) {
+          results.AddRange(current.Result);
+        } else if (maxPages != null) {
+          // Return results up to this point.
+          partial = true;
+          break;
+        } else {
+          // On error, return the error
+          return current;
+        }
+
+        ++page;
+      }
+
+      // Keep cache from the first page, rate + pagination from the last.
+      var result = firstPage;
+      result.Result = results;
+      result.Pages = page;
+      result.RateLimit = current.RateLimit;
+
+      // Don't return cache data for partial results
+      if (partial) {
+        result.CacheData = null;
+      }
+
+      return result;
     }
 
     ////////////////////////////////////////////////////////////

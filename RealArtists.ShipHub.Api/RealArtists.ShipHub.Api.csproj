@@ -96,7 +96,7 @@
     <Compile Include="Sync\SyncConnection.cs" />
     <Compile Include="Sync\SyncContext.cs" />
     <Compile Include="Sync\SyncManager.cs" />
-    <Compile Include="Sync\Messages\DataModelToSyncMessagesProfile.cs" />
+    <Compile Include="Sync\Messages\DataModelToApiModelProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sync\Messages\Entries\AccountEntry.cs" />
     <Compile Include="Sync\Messages\Entries\CommentEntry.cs" />

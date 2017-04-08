@@ -18,7 +18,7 @@ BEGIN
 
     MERGE INTO Comments WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT c.Id, COALESCE(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
+      SELECT c.Id, ISNULL(c.IssueId, i.Id) as IssueId, c.UserId, c.Body, c.CreatedAt, c.UpdatedAt
       FROM @Comments as c
         LEFT OUTER JOIN Issues as i ON (i.RepositoryId = @RepositoryId AND i.Number = c.IssueNumber AND c.IssueId IS NULL)
     ) as [Source]

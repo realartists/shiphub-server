@@ -107,7 +107,7 @@
     <Build Include="User Defined Types\MilestoneTableType.sql" />
     <Build Include="User Defined Types\LabelTableType.sql" />
     <Build Include="Procedures\BulkUpdateMilestones.sql" />
-    <Build Include="User Defined Types\IssueTableType.sql" />
+    <Build Include="User Defined Types\PullRequestTableType.sql" />
     <Build Include="Procedures\BulkUpdateIssues.sql" />
     <Build Include="User Defined Types\CommentTableType.sql" />
     <Build Include="Procedures\BulkUpdateComments.sql" />
@@ -147,6 +147,9 @@
     <Build Include="Security\ReadOnly.sql" />
     <Build Include="Tables\GitHubTokens.sql" />
     <Build Include="Procedures\RevokeAccessTokens.sql" />
+    <Build Include="User Defined Types\IssueMappingTableType.sql" />
+    <Build Include="Procedures\BulkUpdatePullRequests.sql" />
+    <Build Include="User Defined Types\IssueTableType.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

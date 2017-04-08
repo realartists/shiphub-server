@@ -33,17 +33,18 @@
       <Word>api</Word>
       <Word>deaggregate</Word>
       <Word>demilestoned</Word>
+      <Word>dir</Word>
       <Word>git</Word>
       <Word>login</Word>
+      <Word>mergeable</Word>
       <Word>milestoned</Word>
       <Word>poolable</Word>
       <Word>raygun</Word>
       <Word>webhook</Word>
       <Word>webhooks</Word>
-      <Word>symlink</Word>
-      <Word>submodule</Word>
-      <Word>dir</Word>
       <Word>sha</Word>
+      <Word>submodule</Word>
+      <Word>symlink</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
       <Word>AzureClient</Word>

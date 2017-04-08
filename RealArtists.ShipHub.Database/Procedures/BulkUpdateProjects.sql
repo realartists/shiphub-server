@@ -18,7 +18,7 @@ BEGIN
   DECLARE @OwnerId BIGINT;
   DECLARE @OwnerType NVARCHAR(4);
 
-  SET @OwnerId = COALESCE(@RepositoryId, @OrganizationId);
+  SET @OwnerId = ISNULL(@RepositoryId, @OrganizationId);
   SET @OwnerType = CASE WHEN @OrganizationId IS NULL THEN 'repo' ELSE 'org' END;
   
   -- Storage for updates to the log tables

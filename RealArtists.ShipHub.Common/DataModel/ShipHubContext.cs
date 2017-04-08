@@ -420,8 +420,8 @@
     public Task<ChangeSummary> BulkUpdateIssues(
       long repositoryId,
       IEnumerable<IssueTableType> issues,
-      IEnumerable<MappingTableType> labels,
-      IEnumerable<MappingTableType> assignees) {
+      IEnumerable<IssueMappingTableType> labels,
+      IEnumerable<IssueMappingTableType> assignees) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateIssues]", x => {
         x.RepositoryId = repositoryId;
         x.Issues = CreateTableParameter(
@@ -462,11 +462,83 @@
           issues);
 
         if (labels != null) {
-          x.Labels = CreateMappingTable("Labels", labels);
+          x.Labels = CreateIssueMappingTable("Labels", labels);
         }
 
         if (assignees != null) {
-          x.Assignees = CreateMappingTable("Assignees", assignees);
+          x.Assignees = CreateIssueMappingTable("Assignees", assignees);
+        }
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdatePullRequests(
+      long repositoryId,
+      IEnumerable<PullRequestTableType> pullRequests,
+      IEnumerable<IssueMappingTableType> labels,
+      IEnumerable<IssueMappingTableType> assignees) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdatePullRequests]", x => {
+        x.RepositoryId = repositoryId;
+        x.Issues = CreateTableParameter(
+          "PullRequests",
+          "[dbo].[PullRequestTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("UserId", typeof(long)),
+            Tuple.Create("Number", typeof(int)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("Title", typeof(string)),
+            Tuple.Create("Body", typeof(string)),
+            Tuple.Create("MilestoneId", typeof(long)),
+            Tuple.Create("Locked", typeof(bool)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
+            Tuple.Create("ClosedById", typeof(long)),
+            Tuple.Create("PullRequest", typeof(bool)),
+            Tuple.Create("Reactions", typeof(string)),
+            Tuple.Create("PullRequestId", typeof(long)),
+            Tuple.Create("MaintainerCanModify", typeof(bool)),
+            Tuple.Create("Mergeable", typeof(bool)),
+            Tuple.Create("MergeCommitSha", typeof(string)),
+            Tuple.Create("Merged", typeof(bool)),
+            Tuple.Create("MergedAt", typeof(DateTimeOffset)),
+            Tuple.Create("MergedById", typeof(long)),
+            Tuple.Create("BaseJson", typeof(string)),
+            Tuple.Create("HeadJson", typeof(string)),
+          },
+          y => new object[] {
+            y.Id,
+            y.UserId,
+            y.Number,
+            y.State,
+            y.Title,
+            y.Body,
+            y.MilestoneId,
+            y.Locked,
+            y.CreatedAt,
+            y.UpdatedAt,
+            y.ClosedAt,
+            y.ClosedById,
+            y.PullRequest,
+            y.Reactions,
+            y.PullRequestId,
+            y.MaintainerCanModify,
+            y.Mergeable,
+            y.MergeCommitSha,
+            y.Merged,
+            y.MergedAt,
+            y.MergedById,
+            y.BaseJson,
+            y.HeadJson,
+          },
+          pullRequests);
+
+        if (labels != null) {
+          x.Labels = CreateIssueMappingTable("Labels", labels);
+        }
+
+        if (assignees != null) {
+          x.Assignees = CreateIssueMappingTable("Assignees", assignees);
         }
       });
     }
@@ -913,6 +985,23 @@
           x.Name,
         },
         labels);
+    }
+
+    private static SqlParameter CreateIssueMappingTable(string parameterName, IEnumerable<IssueMappingTableType> mappings) {
+      return CreateTableParameter(
+        parameterName,
+        "[dbo].[IssueMappingTableType]",
+        new[] {
+          Tuple.Create("IssueNumber", typeof(int)),
+          Tuple.Create("IssueId", typeof(long)),
+          Tuple.Create("MappedId", typeof(long)),
+        },
+        x => new object[] {
+          x.IssueNumber,
+          x.IssueId,
+          x.MappedId,
+        },
+        mappings);
     }
 
     private static SqlParameter CreateMappingTable(string parameterName, IEnumerable<MappingTableType> mappings) {

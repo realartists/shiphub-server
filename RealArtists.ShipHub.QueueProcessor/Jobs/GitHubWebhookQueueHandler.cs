@@ -236,16 +236,17 @@
         Name = x.Name,
       });
 
-      var assigneeMappings = payload.Issue.Assignees?.Select(x => new MappingTableType() {
-        Item1 = payload.Issue.Id,
-        Item2 = x.Id,
+      var assigneeMappings = payload.Issue.Assignees?.Select(x => new IssueMappingTableType() {
+        IssueId = payload.Issue.Id,
+        IssueNumber = payload.Issue.Number,
+        MappedId = x.Id,
       });
 
       summary.UnionWith(await context.BulkUpdateLabels(payload.Repository.Id, labels));
       summary.UnionWith(await context.BulkUpdateIssues(
         payload.Repository.Id,
         issuesMapped,
-        payload.Issue.Labels?.Select(x => new MappingTableType() { Item1 = payload.Issue.Id, Item2 = x.Id }),
+        payload.Issue.Labels?.Select(x => new IssueMappingTableType() { IssueId = payload.Issue.Id, IssueNumber = payload.Issue.Number, MappedId = x.Id }),
         assigneeMappings));
 
       return summary;

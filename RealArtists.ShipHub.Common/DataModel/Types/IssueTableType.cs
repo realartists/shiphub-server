@@ -2,7 +2,8 @@
   using System;
 
   public class IssueTableType {
-    public long Id { get; set; }
+    // Issue Fields
+    public long? Id { get; set; }
     public int Number { get; set; }
     public string State { get; set; }
     public string Title { get; set; }

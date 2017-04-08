@@ -53,6 +53,9 @@
     [JsonIgnore]
     public ReferenceSource Source => ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>();
 
+    [JsonIgnore]
+    public DateTimeOffset? SubmittedAt { get => ExtensionDataDictionary.Val("submitted_at")?.ToObject<DateTimeOffset?>(); }
+
     ///////////////////////////////////
     // Json bag
     ///////////////////////////////////
@@ -100,6 +103,10 @@
         } else if (Event == "committed") {
           // committed events (in PRs)
           return $"C_{IssueId}_{ShaHash}";
+        } else if (Event == "line-commented") {
+          // line comment on PR
+          // use comment id of first comment in thread
+          return $"LC_{ExtensionDataDictionary["comments"].First["id"].ToObject<long>()}";
         } else if (Source != null) {
           if (!string.IsNullOrEmpty(Source.Url)) {
             // cross-referenced by a comment (this is the comment URL)
@@ -109,7 +116,7 @@
             return $"I{IssueId}.{Source.Issue.Id}";
           }
         }
-        throw new NotSupportedException($"Cannot determine a UniqueKey for this event {ExtensionData}");
+        throw new NotSupportedException($"Cannot determine a UniqueKey for this event {this.SerializeObject()}");
       }
     }
   }

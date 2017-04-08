@@ -207,7 +207,7 @@
           CreatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
           UpdatedAt = new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero),
         };
-        await context.BulkUpdateIssues(repo.Id, new[] { issue }, new MappingTableType[0], new MappingTableType[0]);
+        await context.BulkUpdateIssues(repo.Id, new[] { issue }, Array.Empty<IssueMappingTableType>(), Array.Empty<IssueMappingTableType>());
 
         var user = context.Users.Single(x => x.Id == userAccount.Id);
         await context.SaveChangesAsync();
@@ -251,8 +251,8 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] { issue },
-          labels.Select(x => new MappingTableType() { Item1 = issue.Id, Item2 = x.Id }),
-          new MappingTableType[0]);
+          labels.Select(x => new IssueMappingTableType() { IssueId = issue.Id.Value, IssueNumber = issue.Number, MappedId = x.Id }),
+          Array.Empty<IssueMappingTableType>());
         await syncContext.Sync(changeSummary);
 
         var labelEntries = logs.Where(x => x.Entity == SyncEntityType.Label).Select(x => (LabelEntry)x.Data);
