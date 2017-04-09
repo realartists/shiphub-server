@@ -51,18 +51,21 @@ BEGIN
     UPDATE Issues WITH (SERIALIZABLE) SET
       PullRequestId = pr.PullRequestId,
       PullRequestUpdatedAt = pr.UpdatedAt,
-      MaintainerCanModify = pr.MaintainerCanModify,
-      Mergeable = pr.Mergeable,
+      MaintainerCanModify = ISNULL(pr.MaintainerCanModify, i.MaintainerCanModify),
+      Mergeable = ISNULL(pr.Mergeable, i.Mergeable),
       MergeCommitSha = pr.MergeCommitSha,
-      Merged = pr.Merged,
+      Merged = ISNULL(pr.Merged, i.Merged),
       MergedAt = pr.MergedAt,
-      MergedById = pr.MergedById,
+      MergedById = ISNULL(pr.MergedById, i.MergedById),
       BaseJson = pr.BaseJson,
       HeadJson = pr.HeadJson
     OUTPUT INSERTED.Id INTO @Changes
     FROM @PullRequests as pr
       INNER LOOP JOIN Issues as i ON (i.Number = pr.Number AND i.RepositoryId = @RepositoryId)
     WHERE pr.UpdatedAt > ISNULL(i.PullRequestUpdatedAt, '1/1/1970')
+      OR (pr.UpdatedAt = ISNULL(i.PullRequestUpdatedAt, '1/1/1970')
+        AND pr.[Hash] IS NOT NULL
+        AND ISNULL(pr.[Hash], '00000000-0000-0000-0000-000000000000') != ISNULL(i.[Hash], '00000000-0000-0000-0000-000000000000' ))
     OPTION (FORCE ORDER)
 
     -- Update existing issues

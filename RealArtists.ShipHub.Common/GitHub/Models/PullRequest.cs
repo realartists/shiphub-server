@@ -4,21 +4,21 @@
   public class PullRequest : Issue {
     // A pull request (as of 2017-02-24) has all the same fields as an Issue save pull_request
 
+    public string MergeCommitSha { get; set; }
     public DateTimeOffset? MergedAt { get; set; }
     public CommitReference Head { get; set; }
     public CommitReference Base { get; set; }
-    public string MergeCommitSha { get; set; }
-    public bool Merged { get; set; }
-    public bool Mergeable { get; set; }
-    public Account MergedBy { get; set; }
-    public bool MaintainerCanModify { get; set; }
 
-    // Not currently used, but extracted to omit from ExtensionData
-    public int Comments { get; set; }
-    public int Commits { get; set; }
-    public int Additions { get; set; }
-    public int Deletions { get; set; }
-    public int ChangedFiles { get; set; }
+    // These aren't consistently sent 😒
+    public int? Additions { get; set; }
+    public int? ChangedFiles { get; set; }
+    public int? Comments { get; set; }
+    public int? Commits { get; set; }
+    public int? Deletions { get; set; }
+    public bool? MaintainerCanModify { get; set; }
+    public bool? Mergeable { get; set; }
+    public bool? Merged { get; set; }
+    public Account MergedBy { get; set; }
   }
 
   public class CommitReference {
