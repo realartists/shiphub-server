@@ -60,7 +60,7 @@
     private string _issueTemplateHash;
     private bool _disabled;
     private string _apiHostName;
-    private bool _projectsEnabled;
+    private bool _hasProjects;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -119,6 +119,7 @@
         _issueTemplateHash = HashIssueTemplate(repo.IssueTemplate);
         _metadata = repo.Metadata;
         _disabled = repo.Disabled;
+        _hasProjects = repo.HasProjects;
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
         _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
@@ -128,9 +129,6 @@
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
-
-        // HACK: Read this from Repository response and persist.
-        _projectsEnabled = true;
 
         // TODO: persist this
         _pullRequestMetadata = null; // Null signals walk in creation asc order, non-null signals walk in updated desc order
@@ -278,7 +276,7 @@
           changes.UnionWith(await UpdateLabels(context, github));
           changes.UnionWith(await UpdateMilestones(context, github));
 
-          if (_projectsEnabled) {
+          if (_hasProjects) {
             changes.UnionWith(await UpdateProjects(context, github));
           }
 
@@ -325,6 +323,7 @@
           changes = await context.BulkUpdateRepositories(repo.Date, new[] { repoTableType });
           _fullName = repo.Result.FullName;
           _repoSize = repo.Result.Size;
+          _hasProjects = repo.Result.HasProjects;
         } else if (repo.Status == HttpStatusCode.NotFound) {
           // private repo in unpaid org?
           _disabled = true;
@@ -583,7 +582,8 @@
           }
           await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
         } else if (projects.Status == HttpStatusCode.Gone || projects.Status == HttpStatusCode.NotFound) {
-          _projectsEnabled = false;
+          // Not enough to rely on UpdateDetails alone.
+          _hasProjects = false;
         }
 
         _projectMetadata = GitHubMetadata.FromResponse(projects);

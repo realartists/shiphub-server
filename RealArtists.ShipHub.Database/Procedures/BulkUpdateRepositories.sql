@@ -31,27 +31,28 @@ BEGIN
 
     MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT [Id], [AccountId], [Private], [Name], [FullName], [Size], [Disabled]
+      SELECT Id, AccountId, [Private], [Name], FullName, Size, HasProjects, [Disabled]
       FROM @Repositories
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT ([Id], [AccountId], [Private], [Name], [FullName], [Size], [Date], [Disabled])
-      VALUES ([Id], [AccountId], [Private], [Name], [FullName], [Size], @Date, ISNULL([Disabled], 0))
+      INSERT (Id, AccountId, [Private], [Name], FullName, Size, [Date], HasProjects, [Disabled])
+      VALUES (Id, AccountId, [Private], [Name], FullName, Size, @Date,  HasProjects, ISNULL([Disabled], 0))
     WHEN MATCHED
-      AND [Target].[Date] < @Date 
+      AND [Target].[Date] < @Date
       AND EXISTS (
-        SELECT [Target].[AccountId], [Target].[Private], [Target].[Name], [Target].[FullName], [Target].[Size], [Target].[Disabled]
+        SELECT [Target].AccountId, [Target].[Private], [Target].[Name], [Target].FullName, [Target].Size, [Target].HasProjects, [Target].[Disabled]
         EXCEPT
-        SELECT [Source].[AccountId], [Source].[Private], [Source].[Name], [Source].[FullName], [Source].[Size], ISNULL([Source].[Disabled], [Target].[Disabled])
+        SELECT [Source].AccountId, [Source].[Private], [Source].[Name], [Source].FullName, [Source].Size, [Source].HasProjects, ISNULL([Source].[Disabled], [Target].[Disabled])
       ) THEN
       UPDATE SET
-        [AccountId] = [Source].[AccountId],
+        AccountId = [Source].AccountId,
         [Private] = [Source].[Private],
         [Name] = [Source].[Name],
-        [FullName] = [Source].[FullName],
-        [Size] = [Source].[Size],
+        FullName = [Source].FullName,
+        Size = [Source].Size,
         [Date] = @Date,
+        HasProjects = [Source].HasProjects,
         [Disabled] = ISNULL([Source].[Disabled], [Target].[Disabled])
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);

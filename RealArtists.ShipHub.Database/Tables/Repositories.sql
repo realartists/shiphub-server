@@ -7,6 +7,7 @@
   [Date]                              DATETIMEOFFSET NOT NULL,
   [Size]                              BIGINT         NOT NULL DEFAULT 0,
   [Disabled]                          BIT            NOT NULL DEFAULT 0,
+  [HasProjects]                       BIT            NOT NULL DEFAULT 1,
   [IssueTemplate]                     NVARCHAR(MAX)  NULL,
   [MetadataJson]                      NVARCHAR(MAX)  NULL,
   [AssignableMetadataJson]            NVARCHAR(MAX)  NULL,

@@ -684,6 +684,7 @@
             Tuple.Create("Name", typeof(string)),
             Tuple.Create("FullName", typeof(string)),
             Tuple.Create("Size", typeof(long)),
+            Tuple.Create("HasProjects", typeof(bool)),
             Tuple.Create("Disabled", typeof(bool)),
           },
           y => new object[] {
@@ -693,6 +694,7 @@
             y.Name,
             y.FullName,
             y.Size,
+            y.HasProjects,
             y.Disabled,
           },
           repositories);
