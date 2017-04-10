@@ -49,6 +49,7 @@
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
+    <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
     <Compile Include="GitHub\Models\ReviewComment.cs" />

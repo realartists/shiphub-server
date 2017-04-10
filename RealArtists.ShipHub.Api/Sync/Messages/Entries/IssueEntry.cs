@@ -21,7 +21,6 @@
     public ReactionSummary ShipReactionSummary { get; set; }
 
     public long? PullRequestIdentifier { get; set; }
-    public DateTimeOffset? PullRequestUpdatedAt { get; set; }
     public bool? MaintainerCanModify { get; set; }
     public bool? Mergeable { get; set; }
     public string MergeCommitSha { get; set; }

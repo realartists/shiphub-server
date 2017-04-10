@@ -518,13 +518,12 @@
                   Repository = ddr.RepositoryId,
                   State = ddr.State,
                   Title = ddr.Title,
-                  UpdatedAt = ddr.UpdatedAt,
+                  UpdatedAt = DateUtilities.Max(ddr.UpdatedAt, ddr.PullRequestUpdatedAt),
                   PullRequest = ddr.PullRequest,
                   User = ddr.UserId,
 
                   // Pull Request Fields
                   PullRequestIdentifier = ddr.PullRequestId,
-                  PullRequestUpdatedAt = ddr.PullRequestUpdatedAt,
                   MaintainerCanModify = ddr.MaintainerCanModify,
                   Mergeable = ddr.Mergeable,
                   MergeCommitSha = ddr.MergeCommitSha,
