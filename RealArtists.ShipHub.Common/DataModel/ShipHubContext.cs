@@ -505,6 +505,7 @@
             Tuple.Create("MergedById", typeof(long)),
             Tuple.Create("BaseJson", typeof(string)),
             Tuple.Create("HeadJson", typeof(string)),
+            Tuple.Create("Hash", typeof(Guid)),
           },
           y => new object[] {
             y.Id,
@@ -530,6 +531,7 @@
             y.MergedById,
             y.BaseJson,
             y.HeadJson,
+            y.Hash,
           },
           pullRequests);
 
