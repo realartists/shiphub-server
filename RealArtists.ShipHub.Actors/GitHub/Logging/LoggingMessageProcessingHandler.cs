@@ -12,6 +12,7 @@
   using System.Threading;
   using System.Threading.Tasks;
   using Common;
+  using Common.GitHub;
   using Microsoft.WindowsAzure.Storage;
   using Microsoft.WindowsAzure.Storage.Blob;
 
@@ -126,7 +127,15 @@
           }
         }
 
-        Log.Info($"[{userInfo}] {request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {statusLine} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {logBlob} - {contentLength} bytes");
+        // Rate limit info
+        var rateInfo = string.Empty;
+        if (response.Headers.Contains("X-RateLimit-Limit")) {
+          var rateRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x));
+          var rateReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x)));
+          rateInfo = $" [{rateRemaining}, {rateReset:o}]";
+        }
+
+        Log.Info($"[{userInfo}] {request.Method} {request.RequestUri.PathAndQuery} HTTP/{request.Version} - {statusLine} - {timer.ElapsedMilliseconds}ms - {ExtractElapsedTime(request)} - {logBlob} - {contentLength} bytes.{rateInfo}");
       }
 
       return response;
@@ -172,7 +181,7 @@
       streamWriter.WriteLine($"{message.Method} {message.RequestUri.PathAndQuery} HTTP/{message.Version}");
 
       foreach (var header in message.Headers) {
-        if (header.Key.Equals("authorization", StringComparison.OrdinalIgnoreCase)){
+        if (header.Key.Equals("authorization", StringComparison.OrdinalIgnoreCase)) {
           streamWriter.WriteLine($"{header.Key}: [Redacted]");
         } else {
           streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
