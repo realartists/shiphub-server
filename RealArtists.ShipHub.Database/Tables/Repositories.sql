@@ -18,6 +18,9 @@
   [LabelMetadataJson]                 NVARCHAR(MAX)  NULL,
   [MilestoneMetadataJson]             NVARCHAR(MAX)  NULL,
   [ProjectMetadataJson]               NVARCHAR(MAX)  NULL,
+  [PullRequestMetadataJson]           NVARCHAR(MAX)  NULL,
+  [PullRequestUpdatedAt]              DATETIMEOFFSET NULL,
+  [PullRequestSkip]                   INT            NULL,
   [ContentsRootMetadataJson]          NVARCHAR(MAX)  NULL,
   [ContentsDotGitHubMetadataJson]     NVARCHAR(MAX)  NULL,
   [ContentsIssueTemplateMetadataJson] NVARCHAR(MAX)  NULL

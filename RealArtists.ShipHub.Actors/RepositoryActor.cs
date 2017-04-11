@@ -126,13 +126,12 @@
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
         _projectMetadata = repo.ProjectMetadata;
+        _pullRequestMetadata = repo.PullRequestMetadata; // Null signals walk in creation asc order, non-null signals walk in updated desc order
+        _pullRequestSkip = (uint)(repo.PullRequestSkip ?? 0);
+        _pullRequestUpdatedAt = repo.PullRequestUpdatedAt;
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
-
-        // TODO: persist this
-        _pullRequestMetadata = null; // Null signals walk in creation asc order, non-null signals walk in updated desc order
-        _pullRequestSkip = 0;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
@@ -173,7 +172,10 @@
           _projectMetadata,
           _contentsRootMetadata,
           _contentsDotGithubMetadata,
-          _contentsIssueTemplateMetadata);
+          _contentsIssueTemplateMetadata,
+          _pullRequestMetadata,
+          _pullRequestUpdatedAt,
+          _pullRequestSkip);
       }
     }
 
@@ -653,12 +655,15 @@
         // Inital sync. Walk from bottom up.
         var prCreated = await github.PullRequests(_fullName, "created", "asc", _pullRequestSkip, PullRequestChunkSize);
         if (prCreated.IsOk) {
-          if (prCreated.Result.Any()) {
+          var hasResults = prCreated.Result.Any();
+          if (hasResults) {
             await UpdatePRs(prCreated);
             // Yes, this can miss newly created issues on the last page.
             // The updated_at base sync that takes over will catch any omissions.
             _pullRequestSkip += prCreated.Pages;
-          } else {
+          }
+
+          if (!hasResults || prCreated.Pagination?.Next == null) {
             // This is gross. Is there a more correct solution?
             _pullRequestUpdatedAt = prCreated.Date.AddDays(-1);
           }

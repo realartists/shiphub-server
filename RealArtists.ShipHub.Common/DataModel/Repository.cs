@@ -32,6 +32,10 @@
 
     public long Size { get; set; }
 
+    public int? PullRequestSkip { get; set; }
+
+    public DateTimeOffset? PullRequestUpdatedAt { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
@@ -99,6 +103,14 @@
 
     [NotMapped]
     public GitHubMetadata ProjectMetadata { get; set; }
+
+    public string PullRequestMetadataJson {
+      get => PullRequestMetadata.SerializeObject();
+      set => PullRequestMetadata = value.DeserializeObject<GitHubMetadata>();
+    }
+
+    [NotMapped]
+    public GitHubMetadata PullRequestMetadata { get; set; }
 
     public string ContentsRootMetadataJson {
       get => ContentsRootMetadata.SerializeObject();

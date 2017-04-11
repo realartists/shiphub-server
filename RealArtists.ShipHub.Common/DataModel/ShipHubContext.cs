@@ -801,7 +801,10 @@
       GitHubMetadata projectMetadata,
       GitHubMetadata contentsRootMetadata,
       GitHubMetadata contentsDotGitHubMetadata,
-      GitHubMetadata contentsIssueTemplateMetadata) {
+      GitHubMetadata contentsIssueTemplateMetadata,
+      GitHubMetadata pullRequestMetadata,
+      DateTimeOffset? pullRequestUpdatedAt,
+      uint pullRequestSkip) {
       return RetryOnDeadlock(async () => {
         using (var sp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
           dynamic dsp = sp;
@@ -817,6 +820,9 @@
           dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
           dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
           dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
+          dsp.PullRequestMetadataJson = pullRequestMetadata.SerializeObject();
+          dsp.PullRequestUpdatedAt = pullRequestUpdatedAt;
+          dsp.PullRequestSkip = (int)pullRequestSkip;
 
           return await sp.ExecuteNonQueryAsync();
         }

@@ -10,7 +10,10 @@
   @ProjectMetadataJson NVARCHAR(MAX) = NULL,
   @ContentsRootMetadataJson NVARCHAR(MAX) = NULL,
   @ContentsDotGitHubMetadataJson NVARCHAR(MAX) = NULL,
-  @ContentsIssueTemplateMetadataJson NVARCHAR(MAX) = NULL
+  @ContentsIssueTemplateMetadataJson NVARCHAR(MAX) = NULL,
+  @PullRequestMetadataJson NVARCHAR(MAX) = NULL,
+  @PullRequestUpdatedAt DATETIMEOFFSET = NULL,
+  @PullRequestSkip INT = NULL
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -28,6 +31,9 @@ BEGIN
     ProjectMetadataJson = @ProjectMetadataJson,
     ContentsRootMetadataJson = @ContentsRootMetadataJson,
     ContentsDotGitHubMetadataJson = @ContentsDotGitHubMetadataJson,
-    ContentsIssueTemplateMetadataJson = @ContentsIssueTemplateMetadataJson
+    ContentsIssueTemplateMetadataJson = @ContentsIssueTemplateMetadataJson,
+    PullRequestMetadataJson = @PullRequestMetadataJson,
+    PullRequestUpdatedAt = @PullRequestUpdatedAt,
+    PullRequestSkip = @PullRequestSkip
   WHERE Id = @RepositoryId
 END
