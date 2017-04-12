@@ -1,6 +1,6 @@
-﻿using System;
+﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
+  using System;
 
-namespace RealArtists.ShipHub.Common.GitHub.Models {
   public class Project {
     public long Id { get; set; }
     public string Name { get; set; }

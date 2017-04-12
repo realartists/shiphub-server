@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.GitHub.Models {
   using System;
+  using System.Collections.Generic;
 
   public class PullRequest : Issue {
     // A pull request (as of 2017-02-24) has all the same fields as an Issue save pull_request
@@ -17,8 +18,13 @@
     public int? Deletions { get; set; }
     public bool? MaintainerCanModify { get; set; }
     public bool? Mergeable { get; set; }
+    public string MergeableState { get; set; }
     public bool? Merged { get; set; }
     public Account MergedBy { get; set; }
+    public bool? Rebaseable { get; set; }
+    public int? ReviewComments { get; set; }
+
+    public IEnumerable<Account> RequestedReviewers { get; set; }
   }
 
   public class CommitReference {

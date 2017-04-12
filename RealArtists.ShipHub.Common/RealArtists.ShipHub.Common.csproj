@@ -53,6 +53,7 @@
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
     <Compile Include="GitHub\Models\ReviewComment.cs" />
+    <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />
     <Compile Include="GitHub\RequestPriority.cs" />

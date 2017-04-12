@@ -318,7 +318,7 @@
           // Comments
           if (timeline.Any(x => x.Event == "commented")) {
             if (_commentMetadata.IsExpired()) {
-              var commentResponse = await ghc.Comments(_repoFullName, _issueNumber, null, _commentMetadata, RequestPriority.Interactive);
+              var commentResponse = await ghc.IssueComments(_repoFullName, _issueNumber, null, _commentMetadata, RequestPriority.Interactive);
               if (commentResponse.IsOk) {
                 var comments = commentResponse.Result;
 

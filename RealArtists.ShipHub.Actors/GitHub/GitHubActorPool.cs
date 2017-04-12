@@ -98,16 +98,16 @@
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
-        (actor, cache) => actor.Comments(repoFullName, since, cache, priority),
+        (actor, cache) => actor.IssueComments(repoFullName, since, cache, priority),
         cacheOptions
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> Comments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
-        (actor, cache) => actor.Comments(repoFullName, issueNumber, since, cache, priority),
+        (actor, cache) => actor.IssueComments(repoFullName, issueNumber, since, cache, priority),
         cacheOptions
       );
     }
@@ -192,6 +192,20 @@
     public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequests(repoFullName, sort, direction, skipPages, maxPages, cache, priority),
+         cacheOptions
+       );
+    }
+
+    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+         (actor, cache) => actor.PullRequestComments(repoFullName, since, cache, priority),
+         cacheOptions
+       );
+    }
+
+    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+         (actor, cache) => actor.PullRequestComments(repoFullName, pullRequestNumber, cache, priority),
          cacheOptions
        );
     }
