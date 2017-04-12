@@ -223,7 +223,7 @@
       return FetchPaged(request, (Reaction x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions, priority) {
         // Reactions are in beta
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
@@ -231,10 +231,10 @@
       if (since != null) {
         request.AddParameter("since", since);
       }
-      return FetchPaged(request, (Comment x) => x.Id);
+      return FetchPaged(request, (IssueComment x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority) {
         // Reactions are in beta
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
@@ -244,7 +244,7 @@
       }
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
-      return FetchPaged(request, (Comment x) => x.Id);
+      return FetchPaged(request, (IssueComment x) => x.Id);
     }
 
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions, RequestPriority priority) {

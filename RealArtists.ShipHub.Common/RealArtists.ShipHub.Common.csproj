@@ -114,7 +114,7 @@
     <Compile Include="GitHub\GitHubRequest.cs" />
     <Compile Include="GitHub\GitHubResponse.cs" />
     <Compile Include="GitHub\Models\Account.cs" />
-    <Compile Include="GitHub\Models\Comment.cs" />
+    <Compile Include="GitHub\Models\IssueComment.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
     <Compile Include="GitHub\Models\Label.cs" />

@@ -26,7 +26,7 @@
           }
         }));
 
-      CreateMap<g.Comment, CommentTableType>(MemberList.Destination)
+      CreateMap<g.IssueComment, CommentTableType>(MemberList.Destination)
         .BeforeMap((from, to) => {
           if (from.IssueNumber == null) {
             throw new InvalidOperationException("Only issue comments are supported.");

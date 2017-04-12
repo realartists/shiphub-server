@@ -10,8 +10,8 @@
   /// </summary>
   public interface IGitHubPoolable {
     Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
