@@ -607,12 +607,12 @@
           changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
           changes.UnionWith(await context.BulkUpdateLabels(
             _repoId,
-            issues.SelectMany(x => x.Labels?.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
+            issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
           changes.UnionWith(await context.BulkUpdateIssues(
             _repoId,
             _mapper.Map<IEnumerable<IssueTableType>>(issues),
-            issues.SelectMany(x => x.Labels?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
-            issues.SelectMany(x => x.Assignees?.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
+            issues.SelectMany(x => x.Labels.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id })),
+            issues.SelectMany(x => x.Assignees.Select(y => new MappingTableType() { Item1 = x.Id, Item2 = y.Id }))));
 
           if (issues.Any()) {
             // Ensure we don't miss any when we hit the page limit.
