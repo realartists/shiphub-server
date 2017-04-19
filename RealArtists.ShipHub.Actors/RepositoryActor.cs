@@ -752,8 +752,7 @@
         changes.UnionWith(await context.BulkUpdatePullRequests(
           _repoId,
           _mapper.Map<IEnumerable<PullRequestTableType>>(prs),
-          null, // PR responses don't include labels
-          prs.SelectMany(x => x.Assignees?.Select(y => new IssueMappingTableType(y.Id, x.Number)))
+          prs.SelectMany(x => x.RequestedReviewers.Select(y => new IssueMappingTableType(y.Id, x.Number)))
         ));
       }
     }

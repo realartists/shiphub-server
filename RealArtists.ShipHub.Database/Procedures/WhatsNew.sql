@@ -239,16 +239,26 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
 
+    -- Pull Request Reviewers
+    SELECT e.IssueId, e.UserId
+    FROM @Logs as l
+      INNER JOIN PullRequestReviewers as e ON (l.ItemId = e.IssueId)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'issue'
+
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,
            e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions,
            -- PRs
-           e.PullRequestId, e.PullRequestUpdatedAt, e.MaintainerCanModify,
-           e.Mergeable, e.MergeCommitSha, e.Merged, e.MergedAt,
-           e.MergedById, e.BaseJson, e.HeadJson
+           pr.Id as PullRequestId, pr.UpdatedAt as PullRequestUpdatedAt,
+           pr.MergeCommitSha, pr.MergedAt, pr.BaseJson, pr.HeadJson,
+           pr.Additions, pr.ChangedFiles, pr. Commits, pr.Deletions,
+           pr.MaintainerCanModify, pr.Mergeable, pr.MergeableState,
+           pr.MergedById, pr.Rebaseable
     FROM @Logs as l
       INNER JOIN Issues as e ON (l.ItemId = e.Id)
+      LEFT OUTER JOIN PullRequests as pr ON (pr.IssueId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
     -- End Issues ---------------------------------------------

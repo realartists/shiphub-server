@@ -68,6 +68,16 @@ BEGIN
     DELETE FROM Comments
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
+    -- Pull Request Reviewers
+    DELETE FROM PullRequestReviewers
+    FROM PullRequestReviewers as pr
+      INNER JOIN Issues as i ON (i.Id = pr.IssueId)
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
+
+    -- Pull Requests
+    DELETE FROM PullRequests
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
     --Issues
     DELETE FROM Issues
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
