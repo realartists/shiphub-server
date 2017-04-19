@@ -496,6 +496,15 @@
                 .Add((long)ddr.UserId);
             }
 
+            // Pull Request Reviewers
+            var prReviewers = new Dictionary<long, List<long>>();
+            reader.NextResult();
+            while (reader.Read()) {
+              issueAssignees
+                .Valn((long)ddr.IssueId)
+                .Add((long)ddr.UserId);
+            }
+
             // Issues
             reader.NextResult();
             while (reader.Read()) {
@@ -524,14 +533,22 @@
 
                   // Pull Request Fields
                   PullRequestIdentifier = ddr.PullRequestId,
-                  MaintainerCanModify = ddr.MaintainerCanModify,
-                  Mergeable = ddr.Mergeable,
                   MergeCommitSha = ddr.MergeCommitSha,
-                  Merged = ddr.Merged,
                   MergedAt = ddr.MergedAt,
-                  MergedBy = ddr.MergedById,
                   Base = ((string)ddr.BaseJson).DeserializeObject<JToken>(),
                   Head = ((string)ddr.HeadJson).DeserializeObject<JToken>(),
+
+                  Additions = ddr.Additions,
+                  ChangedFiles = ddr.ChangedFiles,
+                  Commits = ddr.Commits,
+                  Deletions = ddr.Deletions,
+                  MaintainerCanModify = ddr.MaintainerCanModify,
+                  Mergeable = ddr.Mergeable,
+                  MergeableState = ddr.MergeableState,
+                  MergedBy = ddr.MergedById,
+                  Rebaseable = ddr.Rebaseable,
+
+                  RequestedReviewers = prReviewers.Val((long)ddr.Id, () => new List<long>()),
                 },
               });
             }

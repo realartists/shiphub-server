@@ -1,39 +1,27 @@
 ﻿CREATE TABLE [dbo].[Issues] (
-  [Id]                   BIGINT           NOT NULL,
-  [UserId]               BIGINT           NOT NULL,
-  [RepositoryId]         BIGINT           NOT NULL,
-  [Number]               INT              NOT NULL,
-  [State]                NVARCHAR(6)      NOT NULL,
-  [Title]                NVARCHAR(MAX)    NOT NULL,
-  [Body]                 NVARCHAR(MAX)    NULL,
-  [MilestoneId]          BIGINT           NULL,
-  [Locked]               BIT              NOT NULL,
-  [CreatedAt]            DATETIMEOFFSET   NOT NULL,
-  [UpdatedAt]            DATETIMEOFFSET   NOT NULL,
-  [ClosedAt]             DATETIMEOFFSET   NULL,
-  [ClosedById]           BIGINT           NULL,
-  [PullRequest]          BIT              NOT NULL,
-  [Reactions]            NVARCHAR(MAX)    NULL,
-  [PullRequestId]        BIGINT           NULL,
-  [PullRequestUpdatedAt] DATETIMEOFFSET   NULL,
-  [MaintainerCanModify]  BIT              NULL,
-  [Mergeable]            BIT              NULL,
-  [MergeCommitSha]       NVARCHAR(500)    NULL,
-  [Merged]               BIT              NULL,
-  [MergedAt]             DATETIMEOFFSET   NULL,
-  [MergedById]           BIGINT           NULL,
-  [BaseJson]             NVARCHAR(MAX)    NULL,
-  [HeadJson]             NVARCHAR(MAX)    NULL,
-  [MetadataJson]         NVARCHAR(MAX)    NULL,
-  [CommentMetadataJson]  NVARCHAR(MAX)    NULL,
-  [ReactionMetadataJson] NVARCHAR(MAX)    NULL,
-  [Hash]                 UNIQUEIDENTIFIER NULL,
+  [Id]                   BIGINT         NOT NULL,
+  [UserId]               BIGINT         NOT NULL,
+  [RepositoryId]         BIGINT         NOT NULL,
+  [Number]               INT            NOT NULL,
+  [State]                NVARCHAR(6)    NOT NULL,
+  [Title]                NVARCHAR(MAX)  NOT NULL,
+  [Body]                 NVARCHAR(MAX)  NULL,
+  [MilestoneId]          BIGINT         NULL,
+  [Locked]               BIT            NOT NULL,
+  [CreatedAt]            DATETIMEOFFSET NOT NULL,
+  [UpdatedAt]            DATETIMEOFFSET NOT NULL,
+  [ClosedAt]             DATETIMEOFFSET NULL,
+  [ClosedById]           BIGINT         NULL,
+  [PullRequest]          BIT            NOT NULL,
+  [Reactions]            NVARCHAR(MAX)  NULL,
+  [MetadataJson]         NVARCHAR(MAX)  NULL,
+  [CommentMetadataJson]  NVARCHAR(MAX)  NULL,
+  [ReactionMetadataJson] NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Issues] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_Issues_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
   CONSTRAINT [FK_Issues_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
   CONSTRAINT [FK_Issues_MilestoneId_Milestones_Id] FOREIGN KEY ([MilestoneId]) REFERENCES [dbo].[Milestones] ([Id]),
   CONSTRAINT [FK_Issues_ClosedById_Accounts_Id] FOREIGN KEY ([ClosedById]) REFERENCES [dbo].[Accounts] ([Id]),
-  CONSTRAINT [FK_Issues_MergedById_Accounts_Id] FOREIGN KEY ([MergedById]) REFERENCES [dbo].[Accounts] ([Id]),
 )
 GO
 
@@ -47,12 +35,4 @@ CREATE NONCLUSTERED INDEX [IX_Issues_MilestoneId] ON [dbo].[Issues]([MilestoneId
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Issues_ClosedById] ON [dbo].[Issues]([ClosedById])
-GO
-
-CREATE UNIQUE NONCLUSTERED INDEX [UX_Issues_PullRequestId]
-ON [dbo].[Issues]([PullRequestId])
-WHERE [PullRequestId] IS NOT NULL
-GO
-
-CREATE NONCLUSTERED INDEX [IX_Issues_MergedById] ON [dbo].[Issues]([MergedById])
 GO

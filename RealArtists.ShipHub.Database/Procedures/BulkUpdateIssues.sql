@@ -77,7 +77,6 @@ BEGIN
       INNER LOOP JOIN IssueLabels as il ON (il.IssueId = i.Id)
       LEFT OUTER JOIN @Labels as ll ON (ll.IssueId = il.IssueId AND ll.MappedId = il.LabelId)
     WHERE ll.IssueId IS NULL
-      AND i.PullRequest = 0 -- PR responses don't include labels.
     OPTION (FORCE ORDER)
 
     -- Assignees
@@ -126,7 +125,7 @@ BEGIN
       SELECT DISTINCT(UPUserId) as UserId
       FROM Issues as c
           INNER JOIN @Changes as ch ON (c.Id = ch.IssueId)
-        UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById, MergedById)) as [Ignored]
+        UNPIVOT (UPUserId FOR [Role] IN (UserId, ClosedById)) as [Ignored]
       UNION
       SELECT MappedId FROM @Assignees
     ) as c

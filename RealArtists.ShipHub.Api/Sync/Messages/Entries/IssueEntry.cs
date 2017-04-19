@@ -20,19 +20,28 @@
     public bool PullRequest { get; set; }
     public ReactionSummary ShipReactionSummary { get; set; }
 
+    // PR only fields
     public long? PullRequestIdentifier { get; set; }
-    public bool? MaintainerCanModify { get; set; }
-    public bool? Mergeable { get; set; }
     public string MergeCommitSha { get; set; }
-    public bool? Merged { get; set; }
     public DateTimeOffset? MergedAt { get; set; }
-    public long? MergedBy { get; set; }
-
-    // Gross
     public JToken Base { get; set; }
     public JToken Head { get; set; }
 
+    public int? Additions { get; set; }
+    public int? ChangedFiles { get; set; }
+    public int? Commits { get; set; }
+    public int? Deletions { get; set; }
+    public bool? MaintainerCanModify { get; set; }
+    public bool? Mergeable { get; set; }
+    public string MergeableState { get; set; }
+    public long? MergedBy { get; set; }
+    public bool? Rebaseable { get; set; }
+
+    // Backward compatibility
+    public bool Merged => MergedBy != null;
+
     public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<long> Labels { get; set; }
+    public IEnumerable<long> RequestedReviewers { get; set; }
   }
 }

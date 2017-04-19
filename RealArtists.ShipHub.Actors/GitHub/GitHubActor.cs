@@ -300,7 +300,7 @@
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions, priority) {
         // Reactions are in beta
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
+        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json",
       };
       return EnqueueRequest<PullRequest>(request);
     }
@@ -308,7 +308,7 @@
     public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority) {
         // Reactions are in beta
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
+        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json",
       };
       request.AddParameter("state", "all");
       request.AddParameter("sort", sort);

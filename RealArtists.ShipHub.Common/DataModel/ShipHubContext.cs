@@ -474,8 +474,7 @@
     public Task<ChangeSummary> BulkUpdatePullRequests(
       long repositoryId,
       IEnumerable<PullRequestTableType> pullRequests,
-      IEnumerable<IssueMappingTableType> labels,
-      IEnumerable<IssueMappingTableType> assignees) {
+      IEnumerable<IssueMappingTableType> reviewers) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdatePullRequests]", x => {
         x.RepositoryId = repositoryId;
         x.Issues = CreateTableParameter(
@@ -483,64 +482,50 @@
           "[dbo].[PullRequestTableType]",
           new[] {
             Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
             Tuple.Create("Number", typeof(int)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("Title", typeof(string)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("MilestoneId", typeof(long)),
-            Tuple.Create("Locked", typeof(bool)),
+            Tuple.Create("IssueId", typeof(long)),
             Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
             Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedById", typeof(long)),
-            Tuple.Create("PullRequest", typeof(bool)),
-            Tuple.Create("Reactions", typeof(string)),
-            Tuple.Create("PullRequestId", typeof(long)),
-            Tuple.Create("MaintainerCanModify", typeof(bool)),
-            Tuple.Create("Mergeable", typeof(bool)),
             Tuple.Create("MergeCommitSha", typeof(string)),
-            Tuple.Create("Merged", typeof(bool)),
             Tuple.Create("MergedAt", typeof(DateTimeOffset)),
-            Tuple.Create("MergedById", typeof(long)),
             Tuple.Create("BaseJson", typeof(string)),
             Tuple.Create("HeadJson", typeof(string)),
+            Tuple.Create("Additions", typeof(int)),
+            Tuple.Create("ChangedFiles", typeof(int)),
+            Tuple.Create("Commits", typeof(int)),
+            Tuple.Create("Deletions", typeof(int)),
+            Tuple.Create("MaintainerCanModify", typeof(bool)),
+            Tuple.Create("Mergeable", typeof(string)),
+            Tuple.Create("MergeableState", typeof(string)),
+            Tuple.Create("MergedById", typeof(long)),
+            Tuple.Create("Rebaseable", typeof(bool)),
             Tuple.Create("Hash", typeof(Guid)),
           },
           y => new object[] {
             y.Id,
-            y.UserId,
             y.Number,
-            y.State,
-            y.Title,
-            y.Body,
-            y.MilestoneId,
-            y.Locked,
+            y.IssueId,
             y.CreatedAt,
             y.UpdatedAt,
-            y.ClosedAt,
-            y.ClosedById,
-            y.PullRequest,
-            y.Reactions,
-            y.PullRequestId,
-            y.MaintainerCanModify,
-            y.Mergeable,
             y.MergeCommitSha,
-            y.Merged,
             y.MergedAt,
-            y.MergedById,
             y.BaseJson,
             y.HeadJson,
+            y.Additions,
+            y.ChangedFiles,
+            y.Commits,
+            y.Deletions,
+            y.MaintainerCanModify,
+            y.Mergeable,
+            y.MergeableState,
+            y.MergedById,
+            y.Rebaseable,
             y.Hash,
           },
           pullRequests);
 
-        if (labels != null) {
-          x.Labels = CreateIssueMappingTable("Labels", labels);
-        }
-
-        if (assignees != null) {
-          x.Assignees = CreateIssueMappingTable("Assignees", assignees);
+        if (reviewers != null) {
+          x.Assignees = CreateIssueMappingTable("Reviewers", reviewers);
         }
       });
     }
