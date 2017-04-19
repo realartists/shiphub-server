@@ -3,6 +3,8 @@
   using System.Collections.Generic;
   using System.Data.Entity;
   using System.Linq;
+  using System.Net;
+  using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http.Results;
   using ActorInterfaces.GitHub;
@@ -651,6 +653,7 @@
                     id = "someSubId",
                     customer_id = $"user-{user.Id}",
                     plan_id = "someplan",
+                    plan_unit_price = 900,
                     resource_version = 999,
                   }
                 },
@@ -693,6 +696,7 @@
                 subscription = new {
                   id = "someSubId",
                   plan_id = "someplan",
+                  plan_unit_price = 900,
                   customer_id = customerId,
                   resource_version = 1234,
                 },
@@ -724,7 +728,10 @@
       var controller = new BillingController(Configuration, null, api, queueClientMock.Object, null);
       var response = await controller.BuyFinish("someHostedPageId", "succeeded");
       Assert.IsInstanceOf<RedirectResult>(response);
-      Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", ((RedirectResult)response).Location.AbsoluteUri);
+
+      var redirectUrl = ((RedirectResult)response).Location.AbsoluteUri;
+      var redirectUrlParts = redirectUrl.Split('#');
+      Assert.AreEqual($"https://{Configuration.WebsiteHostName}/signup-thankyou.html", redirectUrlParts[0]);
 
       return changes;
     }
@@ -777,6 +784,7 @@
                   subscription = new {
                     id = "someSubId",
                     plan_id = "organization",
+                    plan_unit_price = 2500,
                     customer_id = $"org-{org.Id}",
                     resource_version = 1234,
                   },
@@ -825,6 +833,73 @@
           { "_github_login", user.Login },
           { "_github_id", user.Id },
         }, purchaseEvent.Item3);
+      }
+    }
+
+    [Test]
+    public async Task BuyFinishEndpointSendsHashParamsToThankYouPage() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
+        var org = TestUtil.MakeTestOrg(context);
+        context.Subscriptions.Add(new Subscription() {
+          AccountId = user.Id,
+          State = SubscriptionState.NotSubscribed,
+          Version = 1,
+        });
+        await context.SaveChangesAsync();
+
+        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
+          if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
+            return new {
+              hosted_page = new {
+                state = "succeeded",
+                url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
+                content = new {
+                  subscription = new {
+                    id = "someSubId",
+                    plan_id = "organization",
+                    plan_unit_price = 2500,
+                    customer_id = $"org-{org.Id}",
+                    resource_version = 1234,
+                  },
+                  customer = new {
+                    id = $"org-{org.Id}",
+                    cf_github_username = org.Login,
+                  },
+                },
+                pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
+                  AnalyticsId = "someAnalyticsId",
+                  NeedsReactivation = false,
+                  ActorId = user.Id,
+                  ActorLogin = user.Login,
+                }),
+              },
+            };
+          } else {
+            Assert.Fail($"Unexpected {method} to {path}");
+            return null;
+          }
+        });
+
+        var queueClientMock = new Mock<IShipHubQueueClient>();
+        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>())).Returns(Task.CompletedTask);
+
+        var mockMixpanelClient = new Mock<IMixpanelClient>();
+        mockMixpanelClient
+          .Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<object>()))
+          .ReturnsAsync(true);
+
+        var controller = new BillingController(Configuration, null, api, queueClientMock.Object, mockMixpanelClient.Object);
+        var response = await controller.BuyFinish("someHostedPageId", "succeeded");
+        var redirectResponse = (RedirectResult)response;
+
+        var hashParamsBase64 = WebUtility.UrlDecode(((RedirectResult)response).Location.Fragment.Substring(1));
+        var hashParams = JsonConvert.DeserializeObject<ThankYouPageHashParams>(
+          Encoding.UTF8.GetString(Convert.FromBase64String(hashParamsBase64)),
+          GitHubSerialization.JsonSerializerSettings);
+
+        Assert.AreEqual(25, hashParams.Value);
+        Assert.AreEqual("organization", hashParams.PlanId);
       }
     }
 
