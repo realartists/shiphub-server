@@ -50,6 +50,11 @@
     public bool NeedsReactivation { get; set; }
   }
 
+  public class ThankYouPageHashParams {
+    public int Value { get; set; }
+    public string PlanId { get; set; }
+  }
+
   [RoutePrefix("billing")]
   public class BillingController : ShipHubController {
     private IShipHubConfiguration _configuration;
@@ -197,7 +202,14 @@
           });
       }
 
-      return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html");
+      var hashParams = new ThankYouPageHashParams() {
+        Value = hostedPage.Content.Subscription.PlanUnitPrice.Value / 100,
+        PlanId = hostedPage.Content.Subscription.PlanId,
+      };
+      var hashParamBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(
+        JsonConvert.SerializeObject(hashParams, GitHubSerialization.JsonSerializerSettings)));
+
+      return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html#{WebUtility.UrlEncode(hashParamBase64)}");
     }
 
     public virtual IGitHubActor CreateGitHubActor(long userId) {
