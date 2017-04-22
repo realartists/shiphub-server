@@ -48,11 +48,13 @@
     <Compile Include="DataModel\Types\IssueMappingTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
+    <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
+    <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
-    <Compile Include="GitHub\Models\ReviewComment.cs" />
+    <Compile Include="GitHub\Models\PullRequestComment.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />
@@ -114,7 +116,7 @@
     <Compile Include="GitHub\GitHubRequest.cs" />
     <Compile Include="GitHub\GitHubResponse.cs" />
     <Compile Include="GitHub\Models\Account.cs" />
-    <Compile Include="GitHub\Models\Comment.cs" />
+    <Compile Include="GitHub\Models\IssueComment.cs" />
     <Compile Include="GitHub\Models\CreatedAccessToken.cs" />
     <Compile Include="GitHub\Models\Issue.cs" />
     <Compile Include="GitHub\Models\Label.cs" />

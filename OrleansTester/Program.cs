@@ -17,17 +17,30 @@
       OrleansAzureClient.Initialize(orleansConfig);
       var gc = GrainClient.GrainFactory;
 
-      //var repo = gc.GetGrain<IRepositoryActor>(51336290);
-      //var repo = gc.GetGrain<IRepositoryActor>(46592358);
-      var user = gc.GetGrain<IUserActor>(87309);
+      var user = gc.GetGrain<IUserActor>(87309); // kogir
 
-      Console.WriteLine("[Q]: Quit, [Any Key]: Sync again.");
-      do {
-        //Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing repository {repo.GetPrimaryKeyLong()}.");
-        //await repo.Sync();
-        Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing user {user.GetPrimaryKeyLong()}.");
-        await user.Sync();
-      } while (Console.ReadKey().Key != ConsoleKey.Q);
+      var repo = gc.GetGrain<IRepositoryActor>(59613425); // realartists/test
+
+      var issue = gc.GetGrain<IIssueActor>(139, "realartists/test", grainClassNamePrefix: null); // realartists/test#139
+
+      Console.WriteLine("[q]: Quit, [u]: Sync user [r] Sync repo [i] Sync issue");
+      ConsoleKeyInfo keyInfo;
+      while ((keyInfo = Console.ReadKey(true)).Key != ConsoleKey.Q) {
+        switch (keyInfo.Key) {
+          case ConsoleKey.U:
+            Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing user {user.GetPrimaryKeyLong()}.");
+            await user.Sync();
+            break;
+          case ConsoleKey.R:
+            Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing repository {repo.GetPrimaryKeyLong()}.");
+            await repo.Sync();
+            break;
+          case ConsoleKey.I:
+            Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing issue {issue.GetPrimaryKeyLong(out string repoName)} in {repoName}.");
+            await issue.SyncInteractive(user.GetPrimaryKeyLong());
+            break;
+        }
+      }
     }
   }
 }

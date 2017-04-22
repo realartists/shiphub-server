@@ -1246,7 +1246,7 @@
       Issue issue,
       Common.DataModel.Account user,
       Common.DataModel.Repository repo,
-      Comment comment
+      IssueComment comment
       ) {
       return JObject.FromObject(new {
         action = action,
@@ -1288,7 +1288,7 @@
           AutoMapper.Map<Issue>(issue),
           user,
           repo,
-          new Comment() {
+          new IssueComment() {
             Id = 9001,
             Body = "some comment body",
             CreatedAt = DateTimeOffset.Parse("1/1/2016"),
@@ -1338,7 +1338,7 @@
           AutoMapper.Map<Issue>(issue),
           user,
           repo,
-          new Comment() {
+          new IssueComment() {
             Id = 9001,
             Body = "edited body",
             CreatedAt = DateTimeOffset.Parse("1/1/2016"),
@@ -1381,7 +1381,7 @@
           AutoMapper.Map<Issue>(issue),
           user,
           repo,
-          new Comment() {
+          new IssueComment() {
             Id = 9001,
             Body = "comment body",
             CreatedAt = DateTimeOffset.Parse("1/1/2016"),
@@ -1447,7 +1447,7 @@
           AutoMapper.Map<Issue>(issue),
           user,
           repo,
-          new Comment() {
+          new IssueComment() {
             Id = 9001,
             Body = "comment body",
             CreatedAt = DateTimeOffset.Parse("1/1/2016"),
@@ -1504,7 +1504,7 @@
           },
           user,
           repo,
-          new Comment() {
+          new IssueComment() {
             Id = 9001,
             Body = "comment body",
             CreatedAt = DateTimeOffset.Parse("1/1/2016"),

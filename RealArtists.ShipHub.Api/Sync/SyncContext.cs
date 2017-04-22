@@ -582,6 +582,64 @@
               });
             }
 
+            // Pull Request Reviews
+            reader.NextResult();
+            while (reader.Read()) {
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = SyncEntityType.Review,
+              };
+
+              if (entry.Action == SyncLogAction.Set) {
+                entry.Data = new ReviewEntry() {
+                  Body = ddr.Body,
+                  CommitId = ddr.CommitId,
+                  Identifier = ddr.Id,
+                  Issue = ddr.IssueId,
+                  State = ddr.State,
+                  SubmittedAt = ddr.SubmittedAt,
+                  User = ddr.UserId,
+                };
+              } else {
+                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+              }
+
+              entries.Add(entry);
+            }
+
+            // Pull Request Comments
+            reader.NextResult();
+            while (reader.Read()) {
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = SyncEntityType.PullRequestComment,
+              };
+
+              if (entry.Action == SyncLogAction.Set) {
+                entry.Data = new PullRequestCommentEntry() {
+                  Body = ddr.Body,
+                  CommitId = ddr.CommitId,
+                  CreatedAt = ddr.CreatedAt,
+                  DiffHunk = ddr.DiffHunk,
+                  Identifier = ddr.Id,
+                  InReplyTo = ddr.InReplyTo,
+                  Issue = ddr.IssueId,
+                  OriginalCommitId = ddr.OriginalCommitId,
+                  OriginalPosition = ddr.OriginalPosition,
+                  Path = ddr.Path,
+                  Position = ddr.Position,
+                  Repository = ddr.RepositoryId,
+                  Review = ddr.PullRequestReviewId,
+                  UpdatedAt = ddr.UpdatedAt,
+                  User = ddr.UserId,
+                };
+              } else {
+                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+              }
+
+              entries.Add(entry);
+            }
+
             // Versions
             reader.NextResult();
             while (reader.Read()) {

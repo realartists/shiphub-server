@@ -2,7 +2,7 @@
   using System;
   using Newtonsoft.Json;
 
-  public class ReviewComment {
+  public class PullRequestComment {
     public long Id { get; set; }
     public long PullRequestReviewId { get; set; }
     public string DiffHunk { get; set; }

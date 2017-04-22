@@ -152,6 +152,12 @@
     <Build Include="User Defined Types\IssueTableType.sql" />
     <Build Include="Tables\PullRequests.sql" />
     <Build Include="Tables\PullRequestReviewers.sql" />
+    <Build Include="Tables\Reviews.sql" />
+    <Build Include="Tables\PullRequestComments.sql" />
+    <Build Include="User Defined Types\ReviewTableType.sql" />
+    <Build Include="User Defined Types\PullRequestCommentTableType.sql" />
+    <Build Include="Procedures\BulkUpdatePullRequestComments.sql" />
+    <Build Include="Procedures\BulkUpdateReviews.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

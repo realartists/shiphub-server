@@ -10,8 +10,8 @@
   /// </summary>
   public interface IGitHubPoolable {
     Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<Comment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since = default(DateTimeOffset?), GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
@@ -24,8 +24,8 @@
     Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since = null, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
@@ -68,6 +68,6 @@
     // Not all users can see the same timeline events, reviews, and comments
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
-    Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
   }
 }
