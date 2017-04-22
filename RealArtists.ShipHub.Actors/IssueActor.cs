@@ -23,18 +23,20 @@
     private IFactory<ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
 
-    private string _repoFullName;
-    private int _issueNumber;
-
-    private long _repoId;
     private long _issueId;
+    private int _issueNumber;
+    private long _repoId;
+    private string _repoFullName;
+    private bool _isPullRequest;
 
     private GitHubMetadata _metadata;
     private GitHubMetadata _commentMetadata;
     private GitHubMetadata _reactionMetadata;
+    private GitHubMetadata _prMetadata;
+    private GitHubMetadata _prCommentMetadata;
 
     // Event sync
-    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "commit-commented", "line-commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
 
     public IssueActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -57,10 +59,13 @@
 
         _issueId = issue.Id;
         _repoId = issue.RepositoryId;
+        _isPullRequest = issue.PullRequest;
 
         _metadata = issue.Metadata;
         _commentMetadata = issue.CommentMetadata;
         _reactionMetadata = issue.ReactionMetadata;
+        _prMetadata = issue.PullRequestMetadata;
+        _prCommentMetadata = issue.PullRequestCommentMetadata;
       }
 
       await base.OnActivateAsync();
@@ -77,6 +82,8 @@
         await context.UpdateMetadata("Issues", _issueId, _metadata);
         await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
         await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
+        await context.UpdateMetadata("Issues", "PullRequestMetadataJson", _issueId, _prMetadata);
+        await context.UpdateMetadata("Issues", "PullRequestCommentMetadataJson", _issueId, _prCommentMetadata);
       }
     }
 
@@ -134,6 +141,71 @@
         }
 
         _metadata = GitHubMetadata.FromResponse(issueResponse);
+
+        // If it's a PR we need that data too.
+        if (_isPullRequest) {
+          // Sadly, the PR info doesn't contain labels 😭
+          var prResponseTask = ghc.PullRequest(_repoFullName, _issueNumber, _prMetadata, RequestPriority.Interactive);
+          var prCommentsResponseTask = ghc.PullRequestComments(_repoFullName, _issueNumber, _prCommentMetadata, RequestPriority.Interactive);
+
+          // Reviews and Review comments need to use the current user's token. Don't track metadata (yet - per user ideally)
+          var prReviewsResponseTask = ghc.PullRequestReviews(_repoFullName, _issueNumber, priority: RequestPriority.Interactive);
+
+          var prResponse = await prResponseTask;
+          if (prResponse.IsOk) {
+            var pr = prResponse.Result;
+            // Assignees, user, etc all handled by the issue endpoint.
+            if (prResponse.Result.RequestedReviewers.Any()) {
+              changes.UnionWith(await context.BulkUpdateAccounts(prResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(pr.RequestedReviewers)));
+            }
+
+            // Labels and milestones also handled by issue
+            changes.UnionWith(await context.BulkUpdatePullRequests(
+              _repoId,
+              _mapper.Map<IEnumerable<PullRequestTableType>>(new[] { pr }),
+              pr.RequestedReviewers.Select(y => new IssueMappingTableType() { IssueId = _issueId, IssueNumber = pr.Number, MappedId = y.Id }))
+            );
+          }
+
+          // Reviews (has to come before comments, since PR comments reference reviews
+          gm.Review myReview = null;
+          var prReviewsResponse = await prReviewsResponseTask;
+          if (prReviewsResponse.IsOk) {
+            var reviews = prReviewsResponse.Result;
+            myReview = reviews
+             .Where(x => x.State == "PENDING")
+             .FirstOrDefault(x => x.User.Id == forUserId);
+
+            // Persist all to DB, regardless of state.
+            // Sync will filter pending reviews
+
+            var reviewAccounts = reviews.Select(x => x.User).Distinct(x => x.Id);
+            changes.UnionWith(await context.BulkUpdateAccounts(prReviewsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(reviewAccounts)));
+            changes.UnionWith(await context.BulkUpdateReviews(_repoId, _issueId, prReviewsResponse.Date, _mapper.Map<IEnumerable<ReviewTableType>>(reviews)));
+          }
+
+          // PR Comments
+          var prCommentsResponse = await prCommentsResponseTask;
+          if (prCommentsResponse.IsOk) {
+            var prComments = prCommentsResponse.Result;
+
+            var prAccounts = prComments.Select(x => x.User).Distinct(x => x.Id);
+            changes.UnionWith(await context.BulkUpdateAccounts(prCommentsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(prAccounts)));
+            changes.UnionWith(await context.BulkUpdatePullRequestComments(_repoId, _issueId, _mapper.Map<IEnumerable<PullRequestCommentTableType>>(prComments)));
+          }
+
+          // Review Comments
+          // Only fetch if *this user* has a pending review
+          if (myReview != null) {
+            var reviewCommentsResponse = await ghc.PullRequestReviewComments(_repoFullName, _issueNumber, myReview.Id, priority: RequestPriority.Interactive);
+            if (reviewCommentsResponse.IsOk && reviewCommentsResponse.Result.Any()) {
+              var reviewComments = reviewCommentsResponse.Result;
+              var reviewCommentAccounts = reviewComments.Select(x => x.User).Distinct(x => x.Id);
+              changes.UnionWith(await context.BulkUpdateAccounts(reviewCommentsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(reviewCommentAccounts)));
+              changes.UnionWith(await context.BulkUpdatePullRequestComments(_repoId, _issueId, _mapper.Map<IEnumerable<PullRequestCommentTableType>>(reviewComments), myReview.Id));
+            }
+          }
+        }
 
         // This will be cached per-user by the ShipHubFilter.
         var timelineResponse = await ghc.Timeline(_repoFullName, _issueNumber, _issueId, priority: RequestPriority.Interactive);

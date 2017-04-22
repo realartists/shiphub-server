@@ -316,7 +316,7 @@
       return FetchPaged(request, (PullRequest x) => x.Id, maxPages, skipPages);
     }
 
-    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments", cacheOptions, priority) {
         // https://developer.github.com/v3/pulls/comments/#list-comments-in-a-repository
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
@@ -326,15 +326,15 @@
       }
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
-      return FetchPaged(request, (ReviewComment x) => x.Id);
+      return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/comments", cacheOptions, priority) {
         // https://developer.github.com/v3/pulls/comments/#list-comments-on-a-pull-request
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
       };
-      return FetchPaged(request, (ReviewComment x) => x.Id);
+      return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
@@ -345,13 +345,13 @@
       return FetchPaged(request, (Review x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews/{pullRequestReviewId}/comments", cacheOptions, priority) {
         // https://developer.github.com/v3/pulls/reviews/#get-comments-for-a-single-review
         // NOTE: Not currently possible to get reactions
         AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json"
       };
-      return FetchPaged(request, (ReviewComment x) => x.Id);
+      return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {

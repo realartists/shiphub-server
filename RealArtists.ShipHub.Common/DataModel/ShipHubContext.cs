@@ -530,6 +530,56 @@
       });
     }
 
+    public Task<ChangeSummary> BulkUpdatePullRequestComments(
+      long repositoryId,
+      long issueId,
+      IEnumerable<PullRequestCommentTableType> comments,
+      long? pendingReviewId = null) {
+      if (pendingReviewId != null && comments.Any(x => x.PullRequestReviewId != pendingReviewId)) {
+        throw new InvalidOperationException($"All comments must be for {nameof(pendingReviewId)} if specified.");
+      }
+
+      return ExecuteAndReadChanges("[dbo].[BulkUpdatePullRequestComments]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueId = issueId;
+        x.PendingReviewId = pendingReviewId;
+        x.Issues = CreateTableParameter(
+          "Comments",
+          "[dbo].[PullRequestCommentTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("UserId", typeof(long)),
+            Tuple.Create("PullRequestReviewId", typeof(long)),
+            Tuple.Create("DiffHunk", typeof(string)),
+            Tuple.Create("Path", typeof(string)),
+            Tuple.Create("Position", typeof(long)),
+            Tuple.Create("OriginalPosition", typeof(long)),
+            Tuple.Create("CommitId", typeof(string)),
+            Tuple.Create("OriginalCommitId", typeof(string)),
+            Tuple.Create("InReplyTo", typeof(long)),
+            Tuple.Create("Body", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          },
+          y => new object[] {
+            y.Id,
+            y.UserId,
+            y.PullRequestReviewId,
+            y.DiffHunk,
+            y.Path,
+            y.Position,
+            y.OriginalPosition,
+            y.CommitId,
+            y.OriginalCommitId,
+            y.InReplyTo,
+            y.Body,
+            y.CreatedAt,
+            y.UpdatedAt,
+          },
+          comments);
+      });
+    }
+
     public Task<ChangeSummary> BulkUpdateMilestones(long repositoryId, IEnumerable<MilestoneTableType> milestones, bool complete = false) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateMilestones]", x => {
         x.RepositoryId = repositoryId;
@@ -597,6 +647,36 @@
 
     public Task<ChangeSummary> BulkUpdateRepositoryProjects(long repositoryId, IEnumerable<ProjectTableType> projects) {
       return BulkUpdateProjects(projects, repositoryId: repositoryId);
+    }
+
+    public Task<ChangeSummary> BulkUpdateReviews(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<ReviewTableType> reviews) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateReviews]", x => {
+        x.RepositoryId = repositoryId;
+        x.IssueId = issueId;
+        x.Date = date;
+        x.Projects = CreateTableParameter(
+          "Reviews",
+          "[dbo].[ReviewTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("UserId", typeof(long)),
+            Tuple.Create("Body", typeof(string)),
+            Tuple.Create("CommitId", typeof(string)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("SubmittedAt", typeof(DateTimeOffset)),
+            Tuple.Create("Hash", typeof(Guid)),
+          },
+          y => new object[] {
+            y.Id,
+            y.UserId,
+            y.Body,
+            y.CommitId,
+            y.State,
+            y.SubmittedAt,
+            y.Hash,
+          },
+          reviews);
+      });
     }
 
     public Task<ChangeSummary> BulkUpdateOrganizationProjects(long organizationId, IEnumerable<ProjectTableType> projects) {

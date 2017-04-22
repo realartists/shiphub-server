@@ -196,14 +196,14 @@
        );
     }
 
-    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequestComments(repoFullName, since, cache, priority),
          cacheOptions
        );
     }
 
-    public Task<GitHubResponse<IEnumerable<ReviewComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequestComments(repoFullName, pullRequestNumber, cache, priority),
          cacheOptions

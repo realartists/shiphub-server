@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel.Types {
   using System;
   using System.Text;
+  using Newtonsoft.Json;
   using RealArtists.ShipHub.Common.Hashing;
 
   public class PullRequestTableType {
@@ -29,6 +30,7 @@
     public bool? Rebaseable { get; set; }
 
     // Change tracking(only set for full response)
+    [JsonIgnore]
     public Guid? Hash {
       get {
         // Only bother if this is a "complete" entry.

@@ -7,6 +7,6 @@
     public string Body { get; set; }
     public string CommitId { get; set; }
     public string State { get; set; }
-    public DateTimeOffset SubmittedAt { get; set; }
+    public DateTimeOffset? SubmittedAt { get; set; }
   }
 }

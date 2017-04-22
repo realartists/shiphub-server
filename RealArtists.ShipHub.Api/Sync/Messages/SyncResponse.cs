@@ -47,6 +47,12 @@
 
     [EnumMember(Value = "project")]
     Project,
+
+    [EnumMember(Value = "prcomment")]
+    PullRequestComment,
+
+    [EnumMember(Value = "prreview")]
+    Review,
   }
 
   public abstract class SyncEntity {
@@ -77,9 +83,18 @@
     private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
       if (action == SyncLogAction.Delete) {
         switch (entity) {
-          case SyncEntityType.Event:
-          case SyncEntityType.Organization:
-          case SyncEntityType.User:
+          case SyncEntityType.Comment:
+          case SyncEntityType.Label:
+          case SyncEntityType.Milestone:
+          case SyncEntityType.Project:
+          case SyncEntityType.PullRequestComment:
+          case SyncEntityType.Reaction:
+          case SyncEntityType.Repository:
+          case SyncEntityType.Review:
+          case SyncEntityType.Unspecified: // This is required to initialize objects
+            // Delete is allowed
+            break;
+          default:
             throw new InvalidOperationException($"It is not valid to {action} a {entity}.");
         }
       }

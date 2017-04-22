@@ -282,6 +282,24 @@ BEGIN
       AND l.ItemType = 'repository'
     -- End Repositories ---------------------------------------------
 
+    -- Pull Request Reviews
+    SELECT l.ItemId as Id, e.IssueId, e.UserId, e.Body,
+      e.CommitId, e.[State], e.SubmittedAt, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN Reviews as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'review'
+
+    -- Pull Request Comments
+    SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId,
+      e.PullRequestReviewId, e.DiffHunk, e.[Path], e.Position,
+      e.OriginalPosition, e.CommitId, e.OriginalCommitId, e.InReplyTo,
+      e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN PullRequestComments as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'prcomment'
+
     -- Current Versions
     SELECT OwnerType, OwnerId, MAX([RowVersion]) as [RowVersion]
     FROM @OwnerVersions
