@@ -62,7 +62,8 @@ BEGIN
       [Delete] = IIF([Action] = 'DELETE', 1, 0),
       [RowVersion] = DEFAULT
     FROM @Changes as c
-      INNER JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'label' AND ItemId = c.Id)
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'label' AND ItemId = c.Id)
+    OPTION (FORCE ORDER)
 
     -- New labels
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
