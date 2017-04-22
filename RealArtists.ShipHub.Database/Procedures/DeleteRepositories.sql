@@ -9,6 +9,14 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- Pull Request Comments
+    DELETE FROM PullRequestComments
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
+    -- Pull Request Reviews
+    DELETE FROM Reviews
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
     --Projects
     DELETE FROM Projects
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
@@ -45,6 +53,12 @@ BEGIN
     DELETE FROM IssueAssignees
     FROM IssueAssignees as ia
       INNER JOIN Issues as i ON (i.Id = ia.IssueId)
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
+
+    -- Pull Request Reviewers
+    DELETE FROM PullRequestReviewers
+    FROM PullRequestReviewers as prr
+      INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
 
     --IssueLabels
