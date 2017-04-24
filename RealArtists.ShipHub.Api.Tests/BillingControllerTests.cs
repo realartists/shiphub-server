@@ -894,7 +894,7 @@
         var redirectResponse = (RedirectResult)response;
 
         var hashParamsBase64 = WebUtility.UrlDecode(((RedirectResult)response).Location.Fragment.Substring(1));
-        var hashParams = JsonConvert.DeserializeObject<ThankYouPageHashParams>(
+        var hashParams = JsonConvert.DeserializeObject<ThankYouPageHashParameters>(
           Encoding.UTF8.GetString(Convert.FromBase64String(hashParamsBase64)),
           GitHubSerialization.JsonSerializerSettings);
 
