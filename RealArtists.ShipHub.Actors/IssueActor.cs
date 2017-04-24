@@ -122,6 +122,7 @@
           var update = issueResponse.Result;
 
           // TODO: Unify this code with other issue update places to reduce bugs.
+          _isPullRequest = update.PullRequest != null;
 
           var upAccounts = new[] { update.User, update.ClosedBy }.Concat(update.Assignees)
               .Where(x => x != null)
