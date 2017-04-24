@@ -50,7 +50,7 @@
     public bool NeedsReactivation { get; set; }
   }
 
-  public class ThankYouPageHashParams {
+  public class ThankYouPageHashParameters {
     public int Value { get; set; }
     public string PlanId { get; set; }
   }
@@ -202,7 +202,7 @@
           });
       }
 
-      var hashParams = new ThankYouPageHashParams() {
+      var hashParams = new ThankYouPageHashParameters() {
         Value = hostedPage.Content.Subscription.PlanUnitPrice.Value / 100,
         PlanId = hostedPage.Content.Subscription.PlanId,
       };
