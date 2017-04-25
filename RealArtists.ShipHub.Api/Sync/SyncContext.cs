@@ -622,7 +622,6 @@
                   CreatedAt = ddr.CreatedAt,
                   DiffHunk = ddr.DiffHunk,
                   Identifier = ddr.Id,
-                  InReplyTo = ddr.InReplyTo,
                   Issue = ddr.IssueId,
                   OriginalCommitId = ddr.OriginalCommitId,
                   OriginalPosition = ddr.OriginalPosition,

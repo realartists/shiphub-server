@@ -34,14 +34,14 @@ BEGIN
 
     MERGE INTO PullRequestComments WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT c.Id, c.UserId, c.PullRequestReviewId, c.DiffHunk, c.[Path], c.Position, c.OriginalPosition, c.CommitId, c.OriginalCommitId, c.InReplyTo, c.Body, c.CreatedAt, c.UpdatedAt
+      SELECT c.Id, c.UserId, c.PullRequestReviewId, c.DiffHunk, c.[Path], c.Position, c.OriginalPosition, c.CommitId, c.OriginalCommitId, c.Body, c.CreatedAt, c.UpdatedAt
       FROM @Comments as c
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, IssueId,  RepositoryId,  UserId, PullRequestReviewId, DiffHunk, [Path], Position, OriginalPosition, CommitId, OriginalCommitId, InReplyTo, Body, CreatedAt, UpdatedAt)
-      VALUES (Id, @IssueId, @RepositoryId, UserId, PullRequestReviewId, DiffHunk, [Path], Position, OriginalPosition, CommitId, OriginalCommitId, InReplyTo, Body, CreatedAt, UpdatedAt)
+      INSERT (Id, IssueId,  RepositoryId,  UserId, PullRequestReviewId, DiffHunk, [Path], Position, OriginalPosition, CommitId, OriginalCommitId, Body, CreatedAt, UpdatedAt)
+      VALUES (Id, @IssueId, @RepositoryId, UserId, PullRequestReviewId, DiffHunk, [Path], Position, OriginalPosition, CommitId, OriginalCommitId, Body, CreatedAt, UpdatedAt)
     -- Update
     WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
       UPDATE SET
@@ -53,7 +53,6 @@ BEGIN
         OriginalPosition = [Source].OriginalPosition,
         CommitId = [Source].CommitId,
         OriginalCommitId = [Source].OriginalCommitId,
-        InReplyTo = [Source].InReplyTo,
         Body = [Source].Body,
         UpdatedAt = [Source].UpdatedAt
     OUTPUT INSERTED.Id, INSERTED.UserId, $action INTO @Changes

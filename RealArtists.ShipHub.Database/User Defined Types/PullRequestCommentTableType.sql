@@ -8,7 +8,6 @@
   [OriginalPosition]    BIGINT         NULL,
   [CommitId]            NVARCHAR(200)  NULL,
   [OriginalCommitId]    NVARCHAR(200)  NULL,
-  [InReplyTo]           BIGINT         NULL,
   [Body]                NVARCHAR(MAX)  NOT NULL,
   [CreatedAt]           DATETIMEOFFSET NOT NULL,
   [UpdatedAt]           DATETIMEOFFSET NOT NULL

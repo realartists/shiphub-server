@@ -18,9 +18,6 @@
     public Account User { get; set; }
     public ReactionSummary Reactions { get; set; }
 
-    // Undocumented. Of course.
-    public long? InReplyTo { get; set; }
-
     private string _pullRequestUrl;
     public string PullRequestUrl {
       get => _pullRequestUrl;

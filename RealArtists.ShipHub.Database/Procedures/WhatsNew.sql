@@ -293,7 +293,7 @@ BEGIN
     -- Pull Request Comments
     SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId,
       e.PullRequestReviewId, e.DiffHunk, e.[Path], e.Position,
-      e.OriginalPosition, e.CommitId, e.OriginalCommitId, e.InReplyTo,
+      e.OriginalPosition, e.CommitId, e.OriginalCommitId,
       e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
     FROM @Logs as l
       LEFT OUTER JOIN PullRequestComments as e ON (l.ItemId = e.Id)

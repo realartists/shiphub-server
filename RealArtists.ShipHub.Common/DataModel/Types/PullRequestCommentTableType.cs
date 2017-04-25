@@ -11,7 +11,6 @@
     public long? OriginalPosition { get; set; }
     public string CommitId { get; set; }
     public string OriginalCommitId { get; set; }
-    public long? InReplyTo { get; set; }
     public string Body { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
