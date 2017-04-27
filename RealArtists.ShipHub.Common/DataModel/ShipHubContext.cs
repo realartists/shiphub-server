@@ -47,6 +47,7 @@
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Project> Projects { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
+    public virtual DbSet<PullRequest> PullRequests { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }

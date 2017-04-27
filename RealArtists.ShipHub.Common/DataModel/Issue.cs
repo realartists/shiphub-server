@@ -73,21 +73,9 @@
     [NotMapped]
     public GitHubMetadata ReactionMetadata { get; set; }
 
-    public string PullRequestMetadataJson {
-      get => PullRequestMetadata.SerializeObject();
-      set => PullRequestMetadata = value.DeserializeObject<GitHubMetadata>();
-    }
 
-    [NotMapped]
-    public GitHubMetadata PullRequestMetadata { get; set; }
 
-    public string PullRequestCommentMetadataJson {
-      get => PullRequestCommentMetadata.SerializeObject();
-      set => PullRequestCommentMetadata = value.DeserializeObject<GitHubMetadata>();
-    }
 
-    [NotMapped]
-    public GitHubMetadata PullRequestCommentMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Account> Assignees { get; set; } = new HashSet<Account>();
