@@ -639,6 +639,27 @@
               entries.Add(entry);
             }
 
+            // Commit Statuses
+            reader.NextResult();
+            while (reader.Read()) {
+              entries.Add(new SyncLogEntry() {
+                Action = SyncLogAction.Set,
+                Entity = SyncEntityType.CommitStatus,
+                Data = new CommitStatusEntry() {
+                  Context = ddr.Context,
+                  CreatedAt = ddr.CreatedAt,
+                  Creator = ddr.CreatorId,
+                  Description = ddr.Description,
+                  Identifier = ddr.Id,
+                  Reference = ddr.Reference,
+                  Repository = ddr.RepositoryId,
+                  State = ddr.State,
+                  TargetUrl = ddr.TargetUrl,
+                  UpdatedAt = ddr.UpdatedAt,
+                },
+              });
+            }
+
             // Versions
             reader.NextResult();
             while (reader.Read()) {
