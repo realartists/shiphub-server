@@ -44,6 +44,7 @@
     <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
+    <Compile Include="DataModel\Types\CommitStatusTableType.cs" />
     <Compile Include="DataModel\Types\HookTableType.cs" />
     <Compile Include="DataModel\Types\IssueMappingTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
@@ -54,6 +55,7 @@
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
+    <Compile Include="GitHub\Models\CommitStatus.cs" />
     <Compile Include="GitHub\Models\PullRequestComment.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />

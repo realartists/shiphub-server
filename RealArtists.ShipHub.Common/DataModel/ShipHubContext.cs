@@ -361,6 +361,37 @@
       });
     }
 
+    public Task<ChangeSummary> BulkUpdateCommitStatuses(long repositoryId, string reference, IEnumerable<CommitStatusTableType> statuses) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateCommitStatuses]", x => {
+        x.RepositoryId = repositoryId;
+        x.Reference = reference;
+        x.Subscriptions = CreateTableParameter(
+          "Statuses",
+          "[dbo].[CommitStatusTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("CreatorId", typeof(long)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("TargetUrl", typeof(string)),
+            Tuple.Create("Description", typeof(string)),
+            Tuple.Create("Context", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          },
+          y => new object[] {
+            y.Id,
+            y.CreatorId,
+            y.State,
+            y.TargetUrl,
+            y.Description,
+            y.Context,
+            y.CreatedAt,
+            y.UpdatedAt,
+          },
+          statuses);
+      });
+    }
+
     public Task<ChangeSummary> BulkUpdateIssueEvents(
       long userId,
       long repositoryId,

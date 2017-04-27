@@ -158,6 +158,9 @@
     <Build Include="User Defined Types\PullRequestCommentTableType.sql" />
     <Build Include="Procedures\BulkUpdatePullRequestComments.sql" />
     <Build Include="Procedures\BulkUpdateReviews.sql" />
+    <Build Include="Tables\CommitStatuses.sql" />
+    <Build Include="User Defined Types\CommitStatusTableType.sql" />
+    <Build Include="Procedures\BulkUpdateCommitStatuses.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
