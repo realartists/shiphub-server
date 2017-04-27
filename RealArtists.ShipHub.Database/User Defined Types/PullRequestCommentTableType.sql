@@ -1,7 +1,7 @@
 ﻿CREATE TYPE [dbo].[PullRequestCommentTableType] AS TABLE (
   [Id]                  BIGINT         NOT NULL PRIMARY KEY CLUSTERED,
   [UserId]              BIGINT         NOT NULL,
-  [PullRequestReviewId] BIGINT         NOT NULL,
+  [PullRequestReviewId] BIGINT         NULL,
   [DiffHunk]            NVARCHAR(MAX)  NULL,
   [Path]                NVARCHAR(MAX)  NULL,
   [Position]            BIGINT         NULL,

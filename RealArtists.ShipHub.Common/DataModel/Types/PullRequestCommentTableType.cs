@@ -4,7 +4,7 @@
   public class PullRequestCommentTableType {
     public long Id { get; set; }
     public long UserId { get; set; }
-    public long PullRequestReviewId { get; set; }
+    public long? PullRequestReviewId { get; set; }
     public string DiffHunk { get; set; }
     public string Path { get; set; }
     public long? Position { get; set; }
