@@ -300,6 +300,15 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'prcomment'
 
+    -- Commit Statuses
+    SELECT l.ItemId as Id, e.RepositoryId, e.Reference, e.CreatorId,
+      e.[State], e.TargetUrl, e.[Description], e.Context,  e.CreatedAt,
+      e.UpdatedAt, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN CommitStatuses as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'commitstatus'
+
     -- Current Versions
     SELECT OwnerType, OwnerId, MAX([RowVersion]) as [RowVersion]
     FROM @OwnerVersions

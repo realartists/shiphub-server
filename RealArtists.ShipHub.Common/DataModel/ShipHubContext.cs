@@ -47,6 +47,7 @@
     public virtual DbSet<Milestone> Milestones { get; set; }
     public virtual DbSet<Project> Projects { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
+    public virtual DbSet<PullRequest> PullRequests { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
@@ -358,6 +359,37 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
         x.RepositoryId = repositoryId;
         x.Comments = CreateCommentTable("Comments", comments);
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateCommitStatuses(long repositoryId, string reference, IEnumerable<CommitStatusTableType> statuses) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateCommitStatuses]", x => {
+        x.RepositoryId = repositoryId;
+        x.Reference = reference;
+        x.Subscriptions = CreateTableParameter(
+          "Statuses",
+          "[dbo].[CommitStatusTableType]",
+          new[] {
+            Tuple.Create("Id", typeof(long)),
+            Tuple.Create("CreatorId", typeof(long)),
+            Tuple.Create("State", typeof(string)),
+            Tuple.Create("TargetUrl", typeof(string)),
+            Tuple.Create("Description", typeof(string)),
+            Tuple.Create("Context", typeof(string)),
+            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          },
+          y => new object[] {
+            y.Id,
+            y.CreatorId,
+            y.State,
+            y.TargetUrl,
+            y.Description,
+            y.Context,
+            y.CreatedAt,
+            y.UpdatedAt,
+          },
+          statuses);
       });
     }
 

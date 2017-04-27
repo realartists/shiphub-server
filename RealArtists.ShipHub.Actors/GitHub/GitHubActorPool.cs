@@ -119,6 +119,13 @@
       );
     }
 
+    public Task<GitHubResponse<IEnumerable<CommitStatus>>> CommitStatuses(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.CommitStatuses(repoFullName, reference, cache, priority),
+        cacheOptions
+      );
+    }
+
     public Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Events(repoFullName, cache, priority),

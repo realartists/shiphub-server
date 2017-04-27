@@ -21,7 +21,8 @@
 
       var repo = gc.GetGrain<IRepositoryActor>(59613425); // realartists/test
 
-      var issue = gc.GetGrain<IIssueActor>(139, "realartists/test", grainClassNamePrefix: null); // realartists/test#139
+      //var issue = gc.GetGrain<IIssueActor>(139, "realartists/test", grainClassNamePrefix: null); // realartists/test#139
+      var issue = gc.GetGrain<IIssueActor>(423, "realartists/shiphub-server", grainClassNamePrefix: null); // realartists/shiphub-server#423
 
       Console.WriteLine("[q]: Quit, [u]: Sync user [r] Sync repo [i] Sync issue");
       ConsoleKeyInfo keyInfo;

@@ -53,6 +53,9 @@
 
     [EnumMember(Value = "prreview")]
     Review,
+
+    [EnumMember(Value = "commitstatus")]
+    CommitStatus,
   }
 
   public abstract class SyncEntity {

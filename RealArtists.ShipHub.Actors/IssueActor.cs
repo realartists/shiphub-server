@@ -23,6 +23,7 @@
     private IFactory<ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
 
+    // Issue Fields
     private long _issueId;
     private int _issueNumber;
     private long _repoId;
@@ -32,8 +33,14 @@
     private GitHubMetadata _metadata;
     private GitHubMetadata _commentMetadata;
     private GitHubMetadata _reactionMetadata;
+
+    // Pull Request Fields
+    private long? _prId;
+    private string _prHeadRef;
+
     private GitHubMetadata _prMetadata;
     private GitHubMetadata _prCommentMetadata;
+    private GitHubMetadata _prStatusMetadata;
 
     // Event sync
     private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "commit-commented", "line-commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
@@ -64,8 +71,18 @@
         _metadata = issue.Metadata;
         _commentMetadata = issue.CommentMetadata;
         _reactionMetadata = issue.ReactionMetadata;
-        _prMetadata = issue.PullRequestMetadata;
-        _prCommentMetadata = issue.PullRequestCommentMetadata;
+
+        if (_isPullRequest) {
+          var pullRequest = await context.PullRequests
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.IssueId == _issueId);
+
+          _prId = pullRequest?.Id;
+          _prHeadRef = pullRequest?.Head?.Sha;
+          _prMetadata = pullRequest?.Metadata;
+          _prCommentMetadata = pullRequest?.CommentMetadata;
+          _prStatusMetadata = pullRequest?.StatusMetadata;
+        }
       }
 
       await base.OnActivateAsync();
@@ -82,8 +99,12 @@
         await context.UpdateMetadata("Issues", _issueId, _metadata);
         await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
         await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
-        await context.UpdateMetadata("Issues", "PullRequestMetadataJson", _issueId, _prMetadata);
-        await context.UpdateMetadata("Issues", "PullRequestCommentMetadataJson", _issueId, _prCommentMetadata);
+
+        if (_prId.HasValue) {
+          await context.UpdateMetadata("PullRequests", "MetadataJson", _prId.Value, _prMetadata);
+          await context.UpdateMetadata("PullRequests", "CommentMetadataJson", _prId.Value, _prCommentMetadata);
+          await context.UpdateMetadata("PullRequests", "StatusMetadataJson", _prId.Value, _prStatusMetadata);
+        }
       }
     }
 
@@ -122,7 +143,7 @@
           var update = issueResponse.Result;
 
           // TODO: Unify this code with other issue update places to reduce bugs.
-          _isPullRequest = update.PullRequest != null;
+          _isPullRequest = update.PullRequest != null;  // Issues can become PRs
 
           var upAccounts = new[] { update.User, update.ClosedBy }.Concat(update.Assignees)
               .Where(x => x != null)
@@ -140,7 +161,6 @@
             update.Assignees?.Select(y => new IssueMappingTableType() { IssueId = update.Id, IssueNumber = update.Number, MappedId = y.Id })
           ));
         }
-
         _metadata = GitHubMetadata.FromResponse(issueResponse);
 
         // If it's a PR we need that data too.
@@ -155,6 +175,9 @@
           var prResponse = await prResponseTask;
           if (prResponse.IsOk) {
             var pr = prResponse.Result;
+            _prId = pr.Id; // Issues can become PRs
+            _prHeadRef = pr.Head.Sha;
+
             // Assignees, user, etc all handled by the issue endpoint.
             if (prResponse.Result.RequestedReviewers.Any()) {
               changes.UnionWith(await context.BulkUpdateAccounts(prResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(pr.RequestedReviewers)));
@@ -167,6 +190,7 @@
               pr.RequestedReviewers.Select(y => new IssueMappingTableType() { IssueId = _issueId, IssueNumber = pr.Number, MappedId = y.Id }))
             );
           }
+          _prMetadata = GitHubMetadata.FromResponse(prResponse);
 
           // Reviews (has to come before comments, since PR comments reference reviews
           gm.Review myReview = null;
@@ -194,6 +218,7 @@
             changes.UnionWith(await context.BulkUpdateAccounts(prCommentsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(prAccounts)));
             changes.UnionWith(await context.BulkUpdatePullRequestComments(_repoId, _issueId, _mapper.Map<IEnumerable<PullRequestCommentTableType>>(prComments)));
           }
+          _prCommentMetadata = GitHubMetadata.FromResponse(prCommentsResponse);
 
           // Review Comments
           // Only fetch if *this user* has a pending review
@@ -206,6 +231,16 @@
               changes.UnionWith(await context.BulkUpdatePullRequestComments(_repoId, _issueId, _mapper.Map<IEnumerable<PullRequestCommentTableType>>(reviewComments), myReview.Id));
             }
           }
+
+          // Commit Status
+          var commitStatusesResponse = await ghc.CommitStatuses(_repoFullName, _prHeadRef, _prStatusMetadata, RequestPriority.Interactive);
+          if (commitStatusesResponse.IsOk) {
+            var statuses = commitStatusesResponse.Result;
+            var statusAccounts = statuses.Select(x => x.Creator).Distinct(x => x.Id);
+            changes.UnionWith(await context.BulkUpdateAccounts(commitStatusesResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(statusAccounts)));
+            changes.UnionWith(await context.BulkUpdateCommitStatuses(_repoId, _prHeadRef, _mapper.Map<IEnumerable<CommitStatusTableType>>(statuses)));
+          }
+          _prStatusMetadata = GitHubMetadata.FromResponse(commitStatusesResponse);
         }
 
         // This will be cached per-user by the ShipHubFilter.

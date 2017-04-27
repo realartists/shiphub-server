@@ -152,6 +152,11 @@
     // GitHub Actions
     ////////////////////////////////////////////////////////////
 
+    public Task<GitHubResponse<IEnumerable<CommitStatus>>> CommitStatuses(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/commits/{WebUtility.UrlEncode(reference)}/statuses", cacheOptions, priority);
+      return FetchPaged(request, (CommitStatus x) => x.Id);
+    }
+
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest("user", cacheOptions, priority);
       return EnqueueRequest<Account>(request);
