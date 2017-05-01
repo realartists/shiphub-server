@@ -206,7 +206,7 @@
 
             var reviewAccounts = reviews.Select(x => x.User).Distinct(x => x.Id);
             changes.UnionWith(await context.BulkUpdateAccounts(prReviewsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(reviewAccounts)));
-            changes.UnionWith(await context.BulkUpdateReviews(_repoId, _issueId, prReviewsResponse.Date, _mapper.Map<IEnumerable<ReviewTableType>>(reviews)));
+            changes.UnionWith(await context.BulkUpdateReviews(_repoId, _issueId, prReviewsResponse.Date, forUserId, _mapper.Map<IEnumerable<ReviewTableType>>(reviews)));
           }
 
           // PR Comments

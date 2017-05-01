@@ -679,11 +679,12 @@
       return BulkUpdateProjects(projects, repositoryId: repositoryId);
     }
 
-    public Task<ChangeSummary> BulkUpdateReviews(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<ReviewTableType> reviews) {
+    public Task<ChangeSummary> BulkUpdateReviews(long repositoryId, long issueId, DateTimeOffset date, long userId, IEnumerable<ReviewTableType> reviews) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReviews]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.Date = date;
+        x.UserId = userId;
         x.Projects = CreateTableParameter(
           "Reviews",
           "[dbo].[ReviewTableType]",

@@ -2,6 +2,7 @@
   @RepositoryId BIGINT,
   @IssueId BIGINT,
   @Date DATETIMEOFFSET,
+  @UserId BIGINT,
   @Reviews ReviewTableType READONLY
 AS
 BEGIN
@@ -10,21 +11,45 @@ BEGIN
   SET NOCOUNT ON
 
   -- For tracking required updates to sync log
-  DECLARE @Changes TABLE (
+  DECLARE @ReviewChanges TABLE (
     [ReviewId] BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
     [Action]   NVARCHAR(10) NOT NULL
+  )
+
+  DECLARE @DeletedComments TABLE (
+    [CommentId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
   BEGIN TRY
     BEGIN TRANSACTION
 
-    -- Delete any extraneous reviews
-    DELETE FROM Reviews
-    OUTPUT DELETED.Id, 'DELETE' INTO @Changes
+    -- Detect any extraneous reviews
+    -- We have to delete any comments referencing it as well
+    INSERT INTO @ReviewChanges
+    SELECT r.Id, 'DELETE' 
     FROM Reviews as r
       LEFT OUTER JOIN @Reviews as rr ON (rr.Id = r.Id)
     WHERE r.IssueId = @IssueId
       AND rr.Id IS NULL
+      -- Right now only pending reviews can be deleted, but let's play it safe.
+      -- This should delete any reviews that don't match and aren't pending
+      -- plus any that are pending by this user and don't match.
+      AND (r.[State] != 'PENDING' OR r.UserId = @UserId) 
+    OPTION (FORCE ORDER)
+
+    -- Delete comments on deleted reviews
+    DELETE FROM PullRequestComments
+    OUTPUT DELETED.Id INTO @DeletedComments
+    FROM @ReviewChanges as rc
+      INNER LOOP JOIN PullRequestComments as prc ON (rc.ReviewId = prc.PullRequestReviewId)
+    WHERE rc.[Action] = 'DELETE'
+    OPTION (FORCE ORDER)
+
+    -- Delete deleted reviews
+    DELETE FROM Reviews
+    FROM @ReviewChanges as rc
+      INNER LOOP JOIN Reviews as r ON (r.Id = rc.ReviewId)
+    WHERE rc.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     MERGE INTO Reviews WITH (SERIALIZABLE) as [Target]
@@ -45,21 +70,29 @@ BEGIN
       SubmittedAt = [Source].SubmittedAt,
       [Date] = @Date,
       [Hash] = [Source].[Hash]
-    OUTPUT INSERTED.Id, $action INTO @Changes
+    OUTPUT INSERTED.Id, $action INTO @ReviewChanges
     OPTION (LOOP JOIN, FORCE ORDER);
+
+    -- Deleted comments
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    FROM @DeletedComments as c
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'prcomment' AND ItemId = c.CommentId)
+    OPTION (FORCE ORDER)
 
     -- Deleted or edited reviews
     UPDATE SyncLog SET
       [Delete] = IIF([Action] = 'DELETE', 1, 0),
       [RowVersion] = DEFAULT
-    FROM @Changes as c
+    FROM @ReviewChanges as c
       INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'review' AND ItemId = c.ReviewId)
     OPTION (FORCE ORDER)
 
     -- New reviews
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
     SELECT 'repo', @RepositoryId, 'review', c.ReviewId, 0
-    FROM @Changes as c
+    FROM @ReviewChanges as c
     WHERE c.[Action] = 'INSERT'
       AND NOT EXISTS (
         SELECT * FROM SyncLog
@@ -82,5 +115,5 @@ BEGIN
 
   -- Return sync notifications
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
-  WHERE EXISTS (SELECT * FROM @Changes)
+  WHERE EXISTS (SELECT * FROM @ReviewChanges)
 END
