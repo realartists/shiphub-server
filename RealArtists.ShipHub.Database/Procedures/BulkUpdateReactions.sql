@@ -2,6 +2,7 @@
   @RepositoryId BIGINT,
   @IssueId BIGINT = NULL,
   @CommentId BIGINT = NULL,
+  @PullRequestCommentId BIGINT = NULL,
   @Reactions ReactionTableType READONLY
 AS
 BEGIN
@@ -22,21 +23,35 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    DELETE FROM Reactions
-    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
-    FROM Reactions as r
-      LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
-    WHERE IssueId = @IssueId
-      AND rr.Id IS NULL
-    OPTION (FORCE ORDER)
+    IF(@IssueId IS NOT NULL)
+    BEGIN
+      DELETE FROM Reactions
+      OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+      FROM Reactions as r
+        LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+      WHERE IssueId = @IssueId
+        AND rr.Id IS NULL
+    END
 
-    DELETE FROM Reactions
-    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
-    FROM Reactions as r
-      LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
-    WHERE CommentId = @CommentId
-      AND rr.Id IS NULL
-    OPTION (FORCE ORDER)
+    IF(@CommentId IS NOT NULL)
+    BEGIN
+      DELETE FROM Reactions
+      OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+      FROM Reactions as r
+        LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+      WHERE CommentId = @CommentId
+        AND rr.Id IS NULL
+    END
+
+    IF(@PullRequestCommentId IS NOT NULL)
+    BEGIN
+      DELETE FROM Reactions
+      OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+      FROM Reactions as r
+        LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+      WHERE PullRequestCommentId = @PullRequestCommentId
+        AND rr.Id IS NULL
+    END
 
     MERGE INTO Reactions WITH (SERIALIZABLE) as [Target]
     USING (
@@ -46,8 +61,8 @@ BEGIN
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, UserId, IssueId, CommentId, Content, CreatedAt)
-      VALUES (Id, UserId, @IssueId, @CommentId, Content, CreatedAt)
+      INSERT (Id, UserId, IssueId,  CommentId,  PullRequestCommentId,  Content, CreatedAt)
+      VALUES (Id, UserId, @IssueId, @CommentId, @PullRequestCommentId, Content, CreatedAt)
     OUTPUT INSERTED.Id, INSERTED.UserId, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

@@ -736,18 +736,23 @@
     }
 
     public Task<ChangeSummary> BulkUpdateIssueReactions(long repositoryId, long issueId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, issueId, null, reactions);
+      return BulkUpdateReactions(repositoryId, issueId, null, null, reactions);
     }
 
     public Task<ChangeSummary> BulkUpdateCommentReactions(long repositoryId, long commentId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, null, commentId, reactions);
+      return BulkUpdateReactions(repositoryId, null, commentId, null, reactions);
     }
 
-    private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
+    public Task<ChangeSummary> BulkUpdatePullRequestCommentReactions(long repositoryId, long pullRequestCommentId, IEnumerable<ReactionTableType> reactions) {
+      return BulkUpdateReactions(repositoryId, null, null, pullRequestCommentId, reactions);
+    }
+
+    private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, long? prCommentId, IEnumerable<ReactionTableType> reactions) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.CommentId = commentId;
+        x.PullRequestCommentId = prCommentId;
         x.Reactions = CreateTableParameter(
           "Reactions",
           "[dbo].[ReactionTableType]",

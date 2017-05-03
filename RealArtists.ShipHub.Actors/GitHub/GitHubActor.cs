@@ -342,6 +342,14 @@
       return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
+    public Task<GitHubResponse<IEnumerable<Reaction>>> PullRequestCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments/{commentId}/reactions", cacheOptions, priority) {
+        // https://developer.github.com/v3/reactions/#list-reactions-for-a-pull-request-review-comment
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      return FetchPaged(request, (Reaction x) => x.Id);
+    }
+
     public Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews", cacheOptions, priority) {
         // https://developer.github.com/v3/pulls/reviews/#list-reviews-on-a-pull-request
