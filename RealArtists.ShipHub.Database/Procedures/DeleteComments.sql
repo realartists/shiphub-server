@@ -6,10 +6,15 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  DECLARE @DeletedReactions TABLE (
+    [ReactionId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  )
+
   BEGIN TRY
     BEGIN TRANSACTION
 
     DELETE FROM Reactions
+    OUTPUT DELETED.Id INTO @DeletedReactions
     FROM @Comments as c
       INNER LOOP JOIN Reactions as r ON (r.CommentId = c.Item)
     OPTION (FORCE ORDER)
@@ -18,6 +23,14 @@ BEGIN
     FROM @Comments as dc
       INNER LOOP JOIN Comments as c ON (c.Id = dc.Item)
     OPTION (FORCE ORDER)
+
+    -- Deleted reactions
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    WHERE ItemType = 'reaction'
+      AND [Delete] = 0
+      AND ItemId IN (SELECT ReactionId FROM @DeletedReactions)
 
     UPDATE SyncLog SET
       [Delete] = 1,
