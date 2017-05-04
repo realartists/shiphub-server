@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
   using System;
   using System.Collections.Generic;
+  using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
 
   public class IssueEntry : SyncEntity {
@@ -20,8 +21,17 @@
     public bool PullRequest { get; set; }
     public ReactionSummary ShipReactionSummary { get; set; }
 
-    // PR only fields
-    public long? PullRequestIdentifier { get; set; }
+    [JsonProperty("pr")]
+    public PullRequestDetails PullRequestDetails { get; set; }
+
+    public IEnumerable<long> Assignees { get; set; }
+    public IEnumerable<long> Labels { get; set; }
+  }
+
+  public class PullRequestDetails {
+    public long Identifier { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
     public string MergeCommitSha { get; set; }
     public DateTimeOffset? MergedAt { get; set; }
     public JToken Base { get; set; }
@@ -40,8 +50,6 @@
     // Backward compatibility
     public bool Merged => MergedBy != null;
 
-    public IEnumerable<long> Assignees { get; set; }
-    public IEnumerable<long> Labels { get; set; }
     public IEnumerable<long> RequestedReviewers { get; set; }
   }
 }

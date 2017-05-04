@@ -508,31 +508,32 @@
             // Issues
             reader.NextResult();
             while (reader.Read()) {
-              entries.Add(new SyncLogEntry() {
-                Action = SyncLogAction.Set,
-                Entity = SyncEntityType.Issue,
-                Data = new IssueEntry() {
-                  Assignees = issueAssignees.Val((long)ddr.Id, () => new List<long>()),
-                  Body = ddr.Body,
-                  ClosedAt = ddr.ClosedAt,
-                  ClosedBy = ddr.ClosedById,
-                  CreatedAt = ddr.CreatedAt,
-                  Identifier = ddr.Id,
-                  Labels = issueLabels.Val((long)ddr.Id, () => new List<long>()),
-                  Locked = ddr.Locked,
-                  Milestone = ddr.MilestoneId,
-                  Number = ddr.Number,
-                  // This is hack that works until GitHub changes their version
-                  ShipReactionSummary = ((string)ddr.Reactions).DeserializeObject<ReactionSummary>(),
-                  Repository = ddr.RepositoryId,
-                  State = ddr.State,
-                  Title = ddr.Title,
-                  UpdatedAt = DateUtilities.Max(ddr.UpdatedAt, ddr.PullRequestUpdatedAt),
-                  PullRequest = ddr.PullRequest,
-                  User = ddr.UserId,
+              var issueEntry = new IssueEntry() {
+                Assignees = issueAssignees.Val((long)ddr.Id, () => new List<long>()),
+                Body = ddr.Body,
+                ClosedAt = ddr.ClosedAt,
+                ClosedBy = ddr.ClosedById,
+                CreatedAt = ddr.CreatedAt,
+                Identifier = ddr.Id,
+                Labels = issueLabels.Val((long)ddr.Id, () => new List<long>()),
+                Locked = ddr.Locked,
+                Milestone = ddr.MilestoneId,
+                Number = ddr.Number,
+                // This is hack that works until GitHub changes their version
+                ShipReactionSummary = ((string)ddr.Reactions).DeserializeObject<ReactionSummary>(),
+                Repository = ddr.RepositoryId,
+                State = ddr.State,
+                Title = ddr.Title,
+                UpdatedAt = DateUtilities.Max(ddr.UpdatedAt, ddr.PullRequestUpdatedAt),
+                PullRequest = ddr.PullRequest,
+                User = ddr.UserId,
+              };
 
-                  // Pull Request Fields
-                  PullRequestIdentifier = ddr.PullRequestId,
+              if ((long?)ddr.PullRequestId != null) {
+                issueEntry.PullRequestDetails = new PullRequestDetails() {
+                  Identifier = ddr.PullRequestId,
+                  CreatedAt = ddr.PullRequestCreatedAt,
+                  UpdatedAt = ddr.PullRequestUpdatedAt,
                   MergeCommitSha = ddr.MergeCommitSha,
                   MergedAt = ddr.MergedAt,
                   Base = ((string)ddr.BaseJson).DeserializeObject<JToken>(),
@@ -549,7 +550,13 @@
                   Rebaseable = ddr.Rebaseable,
 
                   RequestedReviewers = prReviewers.Val((long)ddr.Id, () => new List<long>()),
-                },
+                };
+              }
+
+              entries.Add(new SyncLogEntry() {
+                Action = SyncLogAction.Set,
+                Entity = SyncEntityType.Issue,
+                Data = issueEntry,
               });
             }
 

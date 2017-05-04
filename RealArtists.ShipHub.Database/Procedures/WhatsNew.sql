@@ -251,10 +251,10 @@ BEGIN
            e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,
            e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions,
            -- PRs
-           pr.Id as PullRequestId, pr.UpdatedAt as PullRequestUpdatedAt,
-           pr.MergeCommitSha, pr.MergedAt, pr.BaseJson, pr.HeadJson,
-           pr.Additions, pr.ChangedFiles, pr. Commits, pr.Deletions,
-           pr.MaintainerCanModify, pr.Mergeable, pr.MergeableState,
+           pr.Id as PullRequestId, pr.CreatedAt as PullRequestCreatedAt,
+           pr.UpdatedAt as PullRequestUpdatedAt, pr.MergeCommitSha, pr.MergedAt,
+           pr.BaseJson, pr.HeadJson, pr.Additions, pr.ChangedFiles, pr. Commits,
+           pr.Deletions, pr.MaintainerCanModify, pr.Mergeable, pr.MergeableState,
            pr.MergedById, pr.Rebaseable
     FROM @Logs as l
       INNER JOIN Issues as e ON (l.ItemId = e.Id)
