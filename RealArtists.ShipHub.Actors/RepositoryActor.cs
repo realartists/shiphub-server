@@ -550,7 +550,7 @@
       if (_milestoneMetadata.IsExpired()) {
         var milestones = await github.Milestones(_fullName, _milestoneMetadata);
         if (milestones.IsOk) {
-          changes = await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result));
+          changes = await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result), complete: true);
         }
 
         _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
