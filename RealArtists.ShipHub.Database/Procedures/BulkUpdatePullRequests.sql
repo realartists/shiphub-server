@@ -11,7 +11,8 @@ BEGIN
   -- Work tables
   DECLARE @WorkPullRequests PullRequestTableType
 
-  INSERT INTO @WorkPullRequests (Id, IssueId, Number, CreatedAt, UpdatedAt, MergeCommitSha, MergedAt, BaseJson, HeadJson, Additions, ChangedFiles, Commits, Deletions, MaintainerCanModify, Mergeable, MergeableState, MergedById, Rebaseable, [Hash])
+  INSERT INTO @WorkPullRequests (
+         Id, IssueId,  Number,   CreatedAt,   UpdatedAt, MergeCommitSha, MergedAt, BaseJson, HeadJson, Additions, ChangedFiles, Commits, Deletions, MaintainerCanModify, Mergeable, MergeableState, MergedById, Rebaseable, [Hash])
   SELECT p.Id, i.Id, p.Number, p.CreatedAt, p.UpdatedAt, MergeCommitSha, MergedAt, BaseJson, HeadJson, Additions, ChangedFiles, Commits, Deletions, MaintainerCanModify, Mergeable, MergeableState, MergedById, Rebaseable, [Hash]
   FROM @PullRequests as p
     INNER JOIN Issues as i ON (i.Number = p.Number AND i.RepositoryId = @RepositoryId)
@@ -19,9 +20,9 @@ BEGIN
   DECLARE @WorkReviewers IssueMappingTableType
 
   INSERT INTO @WorkReviewers (IssueNumber, IssueId, MappedId)
-  SELECT r.IssueNumber, p.Id, r.MappedId
+  SELECT r.IssueNumber, p.IssueId, r.MappedId
   FROM @Reviewers as r
-    INNER JOIN @WorkPullRequests as p ON (p.IssueId = r.IssueId)
+    INNER JOIN @WorkPullRequests as p ON (p.Number = r.IssueNumber)
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (

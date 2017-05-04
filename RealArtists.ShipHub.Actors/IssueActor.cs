@@ -187,7 +187,7 @@
             changes.UnionWith(await context.BulkUpdatePullRequests(
               _repoId,
               _mapper.Map<IEnumerable<PullRequestTableType>>(new[] { pr }),
-              pr.RequestedReviewers.Select(y => new IssueMappingTableType() { IssueId = _issueId, IssueNumber = pr.Number, MappedId = y.Id }))
+              pr.RequestedReviewers.Select(y => new IssueMappingTableType(y.Id, _issueNumber, _issueId)))
             );
           }
           _prMetadata = GitHubMetadata.FromResponse(prResponse);
