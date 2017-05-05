@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common {
-  using System.Threading;
+  using System;
+  using System.Runtime.CompilerServices;
   using System.Threading.Tasks;
 
   public static class TaskUtilities {
@@ -10,21 +11,27 @@
     /// This will prevent the escalation of this exception to the .NET finalizer thread.
     /// </summary>
     /// <param name="task">The task to be logged.</param>
-    public static void LogFailure(this Task task, string userInfo = null) {
+    public static void LogFailure(this Task task, string userInfo = null, [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0) {
       if (task.IsCompleted) {
         if (task.IsFaulted) {
-          task.Exception.Report(userInfo: userInfo);
+          LogIt(task);
         }
       } else {
         task.ContinueWith(
           t => {
-            if (t.IsFaulted) {
-              t.Exception.Report(userInfo: userInfo);
-            }
+            LogIt(task);
           },
-          CancellationToken.None,
-          TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-          TaskScheduler.Default);
+          TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+      }
+
+      void LogIt(Task completedTask)
+      {
+        try {
+          // This is safe because we know the task has completed and cannot deadlock in the scheduler.
+          completedTask.GetAwaiter().GetResult();
+        } catch (Exception e) {
+          e.Report(userInfo: userInfo, filePath: filePath, memberName: memberName, lineNumber: lineNumber);
+        }
       }
     }
   }
