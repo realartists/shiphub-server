@@ -447,6 +447,7 @@
                   CreatedAt = ddr.CreatedAt,
                   Identifier = ddr.Id,
                   Issue = ddr.IssueId,
+                  PullRequestComment = ddr.PullRequestCommentId,
                   User = ddr.UserId,
                 };
               } else {

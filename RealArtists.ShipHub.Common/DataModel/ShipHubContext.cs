@@ -48,6 +48,7 @@
     public virtual DbSet<Project> Projects { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
     public virtual DbSet<PullRequest> PullRequests { get; set; }
+    public virtual DbSet<PullRequestComment> PullRequestComments { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
@@ -736,18 +737,23 @@
     }
 
     public Task<ChangeSummary> BulkUpdateIssueReactions(long repositoryId, long issueId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, issueId, null, reactions);
+      return BulkUpdateReactions(repositoryId, issueId, null, null, reactions);
     }
 
     public Task<ChangeSummary> BulkUpdateCommentReactions(long repositoryId, long commentId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, null, commentId, reactions);
+      return BulkUpdateReactions(repositoryId, null, commentId, null, reactions);
     }
 
-    private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, IEnumerable<ReactionTableType> reactions) {
+    public Task<ChangeSummary> BulkUpdatePullRequestCommentReactions(long repositoryId, long pullRequestCommentId, IEnumerable<ReactionTableType> reactions) {
+      return BulkUpdateReactions(repositoryId, null, null, pullRequestCommentId, reactions);
+    }
+
+    private Task<ChangeSummary> BulkUpdateReactions(long repositoryId, long? issueId, long? commentId, long? prCommentId, IEnumerable<ReactionTableType> reactions) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.CommentId = commentId;
+        x.PullRequestCommentId = prCommentId;
         x.Reactions = CreateTableParameter(
           "Reactions",
           "[dbo].[ReactionTableType]",
@@ -799,6 +805,12 @@
 
     public Task<ChangeSummary> DeleteComments(IEnumerable<long> commentIds) {
       return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
+        x.Comments = CreateItemListTable("Comments", commentIds);
+      });
+    }
+
+    public Task<ChangeSummary> DeletePullRequestComments(IEnumerable<long> commentIds) {
+      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComments]", x => {
         x.Comments = CreateItemListTable("Comments", commentIds);
       });
     }

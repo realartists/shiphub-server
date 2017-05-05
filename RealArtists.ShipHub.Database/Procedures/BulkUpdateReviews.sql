@@ -20,6 +20,10 @@ BEGIN
     [CommentId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
+  DECLARE @DeletedReactions TABLE (
+    [ReactionId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  )
+
   BEGIN TRY
     BEGIN TRANSACTION
 
@@ -35,6 +39,16 @@ BEGIN
       -- This should delete any reviews that don't match and aren't pending
       -- plus any that are pending by this user and don't match.
       AND (r.[State] != 'PENDING' OR r.UserId = @UserId) 
+    OPTION (FORCE ORDER)
+
+    -- Delete reactions on review comments
+    -- I don't think this is currently possible but let's play safe
+    DELETE FROM Reactions
+    OUTPUT DELETED.Id INTO @DeletedReactions
+    FROM @ReviewChanges as rc
+      INNER LOOP JOIN PullRequestComments as prc ON (prc.PullRequestReviewId = rc.ReviewId)
+      INNER LOOP JOIN Reactions as r ON (r.PullRequestCommentId = prc.Id)
+    WHERE rc.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     -- Delete comments on deleted reviews
@@ -72,6 +86,14 @@ BEGIN
       [Hash] = [Source].[Hash]
     OUTPUT INSERTED.Id, $action INTO @ReviewChanges
     OPTION (LOOP JOIN, FORCE ORDER);
+
+    -- Deleted reactions
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    FROM @DeletedReactions as c
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.ReactionId)
+    OPTION (FORCE ORDER)
 
     -- Deleted comments
     UPDATE SyncLog SET

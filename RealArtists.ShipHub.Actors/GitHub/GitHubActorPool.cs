@@ -217,6 +217,13 @@
        );
     }
 
+    public Task<GitHubResponse<IEnumerable<Reaction>>> PullRequestCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+         (actor, cache) => actor.PullRequestCommentReactions(repoFullName, commentId, cache, priority),
+         cacheOptions
+       );
+    }
+
     public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Repository(repoFullName, cache, priority),

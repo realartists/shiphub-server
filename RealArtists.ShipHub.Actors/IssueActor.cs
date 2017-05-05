@@ -498,6 +498,57 @@
 
           await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
         }
+
+        // Pull Request comment reactions
+        if (_isPullRequest) {
+          // Oh dear - need to overhaul this and the above code.
+          var prcReactionMetadata = await context.PullRequestComments
+            .AsNoTracking()
+            .Where(x => x.IssueId == _issueId)
+            .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+          context.Database.Connection.Close();
+
+          // Now, find the ones that need updating.
+          var prcReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
+          foreach (var reactionMetadata in prcReactionMetadata) {
+            if (reactionMetadata.Value.IsExpired()) {
+              prcReactionRequests.Add(reactionMetadata.Key, ghc.PullRequestCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value, RequestPriority.Interactive));
+            }
+          }
+
+          await Task.WhenAll(prcReactionRequests.Values);
+
+          // TODO: Optimize this a lot.
+          // Update all users at once
+          // Update reactions as batch with single call to DB
+          // Delete all comments at once.
+          foreach (var prcReactionsResponse in prcReactionRequests) {
+            var resp = await prcReactionsResponse.Value;
+            switch (resp.Status) {
+              case HttpStatusCode.NotModified:
+                break;
+              case HttpStatusCode.NotFound:
+                // Deleted
+                changes.UnionWith(await context.DeletePullRequestComments(new[] { prcReactionsResponse.Key }));
+                break;
+              default:
+                var reactions = resp.Result;
+
+                var users = reactions
+                  .Select(x => x.User)
+                  .Distinct(x => x.Id);
+                changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+                changes.UnionWith(await context.BulkUpdatePullRequestCommentReactions(
+                  _repoId,
+                  prcReactionsResponse.Key,
+                  _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+                break;
+            }
+
+            await context.UpdateMetadata("PullRequestComments", "ReactionMetadataJson", prcReactionsResponse.Key, resp);
+          }
+        }
       }
     }
   }
