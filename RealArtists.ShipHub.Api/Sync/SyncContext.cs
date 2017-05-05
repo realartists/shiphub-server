@@ -500,7 +500,7 @@
             var prReviewers = new Dictionary<long, List<long>>();
             reader.NextResult();
             while (reader.Read()) {
-              issueAssignees
+              prReviewers
                 .Valn((long)ddr.IssueId)
                 .Add((long)ddr.UserId);
             }
