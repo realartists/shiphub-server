@@ -36,7 +36,7 @@
         // Only bother if this is a "complete" entry.
         // This will break if they add Mergeable to the list response.
         // TODO: Find a better way to indicate this
-        if (Mergeable == null) {
+        if (ChangedFiles == null) {
           return null;
         }
 
