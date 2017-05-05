@@ -48,6 +48,7 @@
     public virtual DbSet<Project> Projects { get; set; }
     public virtual DbSet<OrganizationAccount> OrganizationAccounts { get; set; }
     public virtual DbSet<PullRequest> PullRequests { get; set; }
+    public virtual DbSet<PullRequestComment> PullRequestComments { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
@@ -804,6 +805,12 @@
 
     public Task<ChangeSummary> DeleteComments(IEnumerable<long> commentIds) {
       return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
+        x.Comments = CreateItemListTable("Comments", commentIds);
+      });
+    }
+
+    public Task<ChangeSummary> DeletePullRequestComments(IEnumerable<long> commentIds) {
+      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComments]", x => {
         x.Comments = CreateItemListTable("Comments", commentIds);
       });
     }
