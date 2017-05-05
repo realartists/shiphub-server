@@ -6,6 +6,7 @@
     public long User { get; set; }
     public long? Issue { get; set; }
     public long? Comment { get; set; }
+    public long? PullRequestComment { get; set; }
     public string Content { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
   }

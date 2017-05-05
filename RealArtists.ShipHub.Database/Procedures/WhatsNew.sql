@@ -211,7 +211,8 @@ BEGIN
       AND l.ItemType = 'project'
 
     -- Reactions
-    SELECT l.ItemId as Id, e.UserId, e.IssueId, e.CommentId, e.Content, e.CreatedAt, l.[Delete]
+    SELECT l.ItemId as Id, e.UserId, e.IssueId, e.CommentId, e.PullRequestCommentId,
+           e.Content, e.CreatedAt, l.[Delete]
     FROM @Logs as l
       LEFT OUTER JOIN Reactions as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
