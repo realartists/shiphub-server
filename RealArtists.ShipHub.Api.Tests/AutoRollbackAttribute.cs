@@ -51,8 +51,9 @@ namespace RealArtists.ShipHub.Api.Tests {
     /// </summary>
     public void BeforeTest(ITest test) {
       var options = new TransactionOptions { IsolationLevel = IsolationLevel };
-      if (TimeoutInMS > 0)
+      if (TimeoutInMS > 0) {
         options.Timeout = TimeSpan.FromMilliseconds(TimeoutInMS);
+      }
 
       scope = new TransactionScope(ScopeOption, options, AsyncFlowOption);
     }

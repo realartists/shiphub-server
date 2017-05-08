@@ -228,8 +228,9 @@ namespace RealArtists.ShipHub.Common {
           lock (_buffer) {
             if (_buffer.Count == 0) {
               Monitor.Wait(_buffer);
-              if (_buffer.Count == 0)
+              if (_buffer.Count == 0) {
                 continue; // skip spurious wakeup
+              }
             }
 
             lines = new LogLine[_buffer.Count];

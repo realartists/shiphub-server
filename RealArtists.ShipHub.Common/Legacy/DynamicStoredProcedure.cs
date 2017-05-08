@@ -45,8 +45,10 @@
       try {
         await OpenConnectionAsync(cancellationToken);
         var temp = await _command.ExecuteScalarAsync(cancellationToken);
-        if (temp == DBNull.Value)
+        if (temp == DBNull.Value) {
           temp = null;
+        }
+
         return (T)temp;
       } finally { CloseConnection(); }
     }
