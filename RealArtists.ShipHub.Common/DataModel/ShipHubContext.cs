@@ -389,7 +389,7 @@
       return ExecuteAndReadChanges("[dbo].[BulkUpdateCommitStatuses]", x => {
         x.RepositoryId = repositoryId;
         x.Reference = reference;
-        x.Subscriptions = CreateTableParameter(
+        x.Statuses = CreateTableParameter(
           "Statuses",
           "[dbo].[CommitStatusTableType]",
           new[] {
@@ -539,7 +539,7 @@
       IEnumerable<IssueMappingTableType> reviewers) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdatePullRequests]", x => {
         x.RepositoryId = repositoryId;
-        x.Issues = CreateTableParameter(
+        x.PullRequests = CreateTableParameter(
           "PullRequests",
           "[dbo].[PullRequestTableType]",
           new[] {
@@ -605,7 +605,7 @@
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.PendingReviewId = pendingReviewId;
-        x.Issues = CreateTableParameter(
+        x.Comments = CreateTableParameter(
           "Comments",
           "[dbo].[PullRequestCommentTableType]",
           new[] {
@@ -715,7 +715,7 @@
         x.IssueId = issueId;
         x.Date = date;
         x.UserId = userId;
-        x.Projects = CreateTableParameter(
+        x.Reviews = CreateTableParameter(
           "Reviews",
           "[dbo].[ReviewTableType]",
           new[] {
@@ -924,7 +924,7 @@
     public Task<ChangeSummary> SetOrganizationAdmins(long organizationId, IEnumerable<long> adminIds) {
       return ExecuteAndReadChanges("[dbo].[SetOrganizationAdmins]", x => {
         x.OrganizationId = organizationId;
-        x.UserIds = CreateItemListTable("AdminIds", adminIds);
+        x.AdminIds = CreateItemListTable("AdminIds", adminIds);
       });
     }
 

@@ -116,45 +116,49 @@
         return;
       }
 
-      var type = value.GetType();
-      if (type == typeof(bool))
-        _command.Parameters.Add(key, SqlDbType.Bit).Value = value;
-      else if (type == typeof(byte))
-        _command.Parameters.Add(key, SqlDbType.TinyInt).Value = value;
-      else if (type == typeof(short))
-        _command.Parameters.Add(key, SqlDbType.SmallInt).Value = value;
-      else if (type == typeof(int))
-        _command.Parameters.Add(key, SqlDbType.Int).Value = value;
-      else if (type == typeof(long))
-        _command.Parameters.Add(key, SqlDbType.BigInt).Value = value;
-      else if (type == typeof(double))
-        _command.Parameters.Add(key, SqlDbType.Float).Value = value;
-      else if (type == typeof(string))
-        _command.Parameters.Add(key, SqlDbType.NVarChar).Value = value;
-      else if (type == typeof(Guid))
-        _command.Parameters.Add(key, SqlDbType.UniqueIdentifier).Value = value;
-      else if (type == typeof(DateTimeOffset))
-        _command.Parameters.Add(key, SqlDbType.DateTimeOffset).Value = value;
-      else if (type == typeof(TimeSpan))
-        _command.Parameters.Add(key, SqlDbType.Time).Value = value;
-      else if (type.IsArray && type.GetElementType() == typeof(byte))
-        _command.Parameters.Add(key, SqlDbType.VarBinary).Value = value;
-      else if (type == typeof(SqlParameter)) {
-        _command.Parameters.Add((SqlParameter)value);
-        //} else if (type == typeof(SqlGeography)) {
-        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-        //  param.Value = value;
-        //  param.UdtTypeName = "Geography";
-        //} else if (type == typeof(SqlGeometry)) {
-        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-        //  param.Value = value;
-        //  param.UdtTypeName = "Geometry";
-        //} else if (type == typeof(SqlHierarchyId)) {
-        //  var param = _command.Parameters.Add(key, SqlDbType.Udt);
-        //  param.Value = value;
-        //  param.UdtTypeName = "HierarchyId";
-      } else
-        throw new InvalidOperationException($"Parameters of type: {type.FullName} are not supported.");
+      switch (value) {
+        case bool bit:
+          _command.Parameters.Add(key, SqlDbType.Bit).Value = bit;
+          break;
+        case byte tinyInt:
+          _command.Parameters.Add(key, SqlDbType.TinyInt).Value = tinyInt;
+          break;
+        case short smallInt:
+          _command.Parameters.Add(key, SqlDbType.SmallInt).Value = smallInt;
+          break;
+        case int intValue:
+          _command.Parameters.Add(key, SqlDbType.Int).Value = intValue;
+          break;
+        case long longValue:
+          _command.Parameters.Add(key, SqlDbType.BigInt).Value = longValue;
+          break;
+        case double floatValue:
+          _command.Parameters.Add(key, SqlDbType.Float).Value = floatValue;
+          break;
+        case string str:
+          _command.Parameters.Add(key, SqlDbType.NVarChar).Value = str;
+          break;
+        case Guid guid:
+          _command.Parameters.Add(key, SqlDbType.UniqueIdentifier).Value = guid;
+          break;
+        case DateTimeOffset dto:
+          _command.Parameters.Add(key, SqlDbType.DateTimeOffset).Value = dto;
+          break;
+        case TimeSpan ts:
+          _command.Parameters.Add(key, SqlDbType.Time).Value = ts;
+          break;
+        case byte[] bytes:
+          _command.Parameters.Add(key, SqlDbType.VarBinary).Value = bytes;
+          break;
+        case SqlParameter param:
+          if (!key.Equals(param.ParameterName, StringComparison.OrdinalIgnoreCase)) {
+            throw new InvalidOperationException($"Property name ({key}) and parameter name ({param.ParameterName}) must match!");
+          }
+          _command.Parameters.Add(param);
+          break;
+        default:
+          throw new InvalidOperationException($"Parameters of type: {value.GetType().FullName} are not supported.");
+      }
     }
 
     private bool _disposed = false; // To detect redundant calls
