@@ -229,10 +229,7 @@
     }
 
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions, priority) {
-        // Reactions are in beta
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions, priority);
       if (since != null) {
         request.AddParameter("since", since);
       }
@@ -240,10 +237,7 @@
     }
 
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority) {
-        // Reactions are in beta
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json",
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority);
       if (since != null) {
         request.AddParameter("since", since);
       }
@@ -316,10 +310,7 @@
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments", cacheOptions, priority) {
-        // https://developer.github.com/v3/pulls/comments/#list-comments-in-a-repository
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments", cacheOptions, priority);
       if (since != null) {
         request.AddParameter("since", since);
       }
@@ -329,10 +320,7 @@
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/comments", cacheOptions, priority) {
-        // https://developer.github.com/v3/pulls/comments/#list-comments-on-a-pull-request
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/comments", cacheOptions, priority);
       return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
