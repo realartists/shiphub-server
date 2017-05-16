@@ -303,18 +303,12 @@
     }
 
     public Task<GitHubResponse<PullRequest>> PullRequest(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions, priority) {
-        // Pull Request Reviews are in beta
-        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json",
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}", cacheOptions, priority);
       return EnqueueRequest<PullRequest>(request);
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority) {
-        // Pull Request Reviews are in beta
-        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json",
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls", cacheOptions, priority);
       request.AddParameter("state", "all");
       request.AddParameter("sort", sort);
       request.AddParameter("direction", direction);
@@ -351,19 +345,12 @@
     }
 
     public Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews", cacheOptions, priority) {
-        // https://developer.github.com/v3/pulls/reviews/#list-reviews-on-a-pull-request
-        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json"
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews", cacheOptions, priority);
       return FetchPaged(request, (Review x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews/{pullRequestReviewId}/comments", cacheOptions, priority) {
-        // https://developer.github.com/v3/pulls/reviews/#get-comments-for-a-single-review
-        // NOTE: Not currently possible to get reactions
-        AcceptHeaderOverride = "application/vnd.github.black-cat-preview+json"
-      };
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews/{pullRequestReviewId}/comments", cacheOptions, priority);
       return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
