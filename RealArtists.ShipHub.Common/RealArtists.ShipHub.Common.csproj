@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="ChargeBeeUtilities.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="DataModel\CommitComment.cs" />
     <Compile Include="DataModel\PullRequestComment.cs" />
     <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />
@@ -51,6 +52,7 @@
     <Compile Include="DataModel\Types\IssueMappingTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
+    <Compile Include="DataModel\Types\CommitCommentTableType.cs" />
     <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
     <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
