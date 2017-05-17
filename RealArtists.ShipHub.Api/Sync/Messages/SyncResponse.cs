@@ -19,7 +19,7 @@
     Unspecified = 0, // Catch uninitialized values
 
     [EnumMember(Value = "comment")]
-    Comment,
+    IssueComment,
 
     [EnumMember(Value = "event")]
     Event,
@@ -86,7 +86,7 @@
     private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
       if (action == SyncLogAction.Delete) {
         switch (entity) {
-          case SyncEntityType.Comment:
+          case SyncEntityType.IssueComment:
           case SyncEntityType.Label:
           case SyncEntityType.Milestone:
           case SyncEntityType.Project:

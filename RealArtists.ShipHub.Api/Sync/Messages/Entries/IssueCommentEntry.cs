@@ -1,7 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages.Entries {
   using System;
 
-  public class CommentEntry : SyncEntity {
+  public class IssueCommentEntry : SyncEntity {
     public long Identifier { get; set; }
     public long Issue { get; set; }
     public long Repository { get; set; }

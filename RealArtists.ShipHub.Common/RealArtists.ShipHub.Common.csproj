@@ -71,7 +71,7 @@
     <Compile Include="DataModel\OrganizationAccount.cs" />
     <Compile Include="DataModel\AccountRepository.cs" />
     <Compile Include="DataModel\Hook.cs" />
-    <Compile Include="DataModel\Comment.cs" />
+    <Compile Include="DataModel\IssueComment.cs" />
     <Compile Include="DataModel\IssueEvent.cs" />
     <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\Issue.cs" />

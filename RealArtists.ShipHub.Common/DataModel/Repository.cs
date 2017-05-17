@@ -137,7 +137,7 @@
     public GitHubMetadata ContentsIssueTemplateMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+    public virtual ICollection<IssueComment> Comments { get; set; } = new HashSet<IssueComment>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<IssueEvent> Events { get; set; } = new HashSet<IssueEvent>();

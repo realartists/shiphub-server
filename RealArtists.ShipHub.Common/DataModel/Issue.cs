@@ -81,7 +81,7 @@
     public virtual ICollection<Account> Assignees { get; set; } = new HashSet<Account>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
+    public virtual ICollection<IssueComment> Comments { get; set; } = new HashSet<IssueComment>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Label> Labels { get; set; } = new HashSet<Label>();

@@ -38,7 +38,7 @@
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
-    public virtual DbSet<Comment> Comments { get; set; }
+    public virtual DbSet<IssueComment> IssueComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
     public virtual DbSet<IssueEvent> IssueEvents { get; set; }
@@ -92,11 +92,6 @@
       modelBuilder.Entity<Account>()
         .Map<User>(m => m.Requires("Type").HasValue(Account.UserType))
         .Map<Organization>(m => m.Requires("Type").HasValue(Account.OrganizationType));
-
-      modelBuilder.Entity<Account>()
-        .HasMany(e => e.Comments)
-        .WithRequired(e => e.User)
-        .WillCascadeOnDelete(false);
 
       modelBuilder.Entity<Account>()
         .HasMany(e => e.Issues)
@@ -356,13 +351,6 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateComments(long repositoryId, IEnumerable<CommentTableType> comments) {
-      return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
-        x.RepositoryId = repositoryId;
-        x.Comments = CreateCommentTable("Comments", comments);
-      });
-    }
-
     public Task<ChangeSummary> BulkUpdateCommitStatuses(long repositoryId, string reference, IEnumerable<CommitStatusTableType> statuses) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateCommitStatuses]", x => {
         x.RepositoryId = repositoryId;
@@ -391,6 +379,13 @@
             y.UpdatedAt,
           },
           statuses);
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssueComments(long repositoryId, IEnumerable<CommentTableType> comments) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateComments]", x => {
+        x.RepositoryId = repositoryId;
+        x.Comments = CreateCommentTable("Comments", comments);
       });
     }
 
@@ -740,7 +735,7 @@
       return BulkUpdateReactions(repositoryId, issueId, null, null, reactions);
     }
 
-    public Task<ChangeSummary> BulkUpdateCommentReactions(long repositoryId, long commentId, IEnumerable<ReactionTableType> reactions) {
+    public Task<ChangeSummary> BulkUpdateIssueCommentReactions(long repositoryId, long issueCommentId, IEnumerable<ReactionTableType> reactions) {
       return BulkUpdateReactions(repositoryId, null, commentId, null, reactions);
     }
 
@@ -803,7 +798,7 @@
       });
     }
 
-    public Task<ChangeSummary> DeleteComments(IEnumerable<long> commentIds) {
+    public Task<ChangeSummary> DeleteIssueComments(IEnumerable<long> commentIds) {
       return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
         x.Comments = CreateItemListTable("Comments", commentIds);
       });

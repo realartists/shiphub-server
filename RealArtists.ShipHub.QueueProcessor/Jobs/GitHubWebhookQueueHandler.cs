@@ -162,13 +162,13 @@
       var summary = await HandleIssues(context, payload);
 
       if (payload.Action == "deleted") {
-        summary.UnionWith(await context.DeleteComments(new[] { payload.Comment.Id }));
+        summary.UnionWith(await context.DeleteIssueComments(new[] { payload.Comment.Id }));
       } else {
         summary.UnionWith(await context.BulkUpdateAccounts(
         DateTimeOffset.UtcNow,
         _mapper.Map<IEnumerable<AccountTableType>>(new[] { payload.Comment.User })));
 
-        summary.UnionWith(await context.BulkUpdateComments(
+        summary.UnionWith(await context.BulkUpdateIssueComments(
           payload.Repository.Id,
           _mapper.Map<IEnumerable<CommentTableType>>(new[] { payload.Comment })));
       }

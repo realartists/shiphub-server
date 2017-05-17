@@ -441,7 +441,7 @@
                   }
                 }
 
-                changes.UnionWith(await context.BulkUpdateComments(
+                changes.UnionWith(await context.BulkUpdateIssueComments(
                   _repoId,
                   _mapper.Map<IEnumerable<CommentTableType>>(comments)));
               }
@@ -452,7 +452,7 @@
         }
 
         // Comment Reactions
-        var commentReactionMetadata = await context.Comments
+        var commentReactionMetadata = await context.IssueComments
           .AsNoTracking()
           .Where(x => x.IssueId == _issueId)
           .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
@@ -479,7 +479,7 @@
               break;
             case HttpStatusCode.NotFound:
               // Deleted
-              changes.UnionWith(await context.DeleteComments(new[] { commentReactionsResponse.Key }));
+              changes.UnionWith(await context.DeleteIssueComments(new[] { commentReactionsResponse.Key }));
               break;
             default:
               var reactions = resp.Result;
@@ -489,7 +489,7 @@
                 .Distinct(x => x.Id);
               changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
 
-              changes.UnionWith(await context.BulkUpdateCommentReactions(
+              changes.UnionWith(await context.BulkUpdateIssueCommentReactions(
                 _repoId,
                 commentReactionsResponse.Key,
                 _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));

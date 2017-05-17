@@ -315,16 +315,16 @@
               }
             }
 
-            // Comments (can be deleted)
+            // Issue Comments
             reader.NextResult();
             while (reader.Read()) {
               var entry = new SyncLogEntry() {
                 Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Comment,
+                Entity = SyncEntityType.IssueComment,
               };
 
               if (entry.Action == SyncLogAction.Set) {
-                entry.Data = new CommentEntry() {
+                entry.Data = new IssueCommentEntry() {
                   Body = ddr.Body,
                   CreatedAt = ddr.CreatedAt,
                   Identifier = ddr.Id,
@@ -334,7 +334,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new IssueCommentEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -609,7 +609,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new ReviewEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -641,7 +641,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new PullRequestCommentEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
