@@ -151,7 +151,7 @@
         existingState: "in_trial",
         // Pretend trial ends in 7 days, so we should get the 7 day coupon
         trialEndIfAny: DateTimeOffset.UtcNow.AddDays(7),
-        expectCoupon: "trial_days_left_7_of_14",
+        expectCoupon: "trial_days_left_7",
         expectTrialToEndImmediately: true,
         subscriptionMetaData: new ChargeBeePersonalSubscriptionMetadata() {
           TrialPeriodDays = 14,
@@ -190,7 +190,7 @@
         // Even if you have more than 30 days left in your trial,
         // just use the 30 day coupon.  It's good for 100% off.
         trialEndIfAny: DateTimeOffset.UtcNow.AddDays(31),
-        expectCoupon: "trial_days_left_14_of_14",
+        expectCoupon: "trial_days_left_14",
         expectTrialToEndImmediately: true,
         subscriptionMetaData: new ChargeBeePersonalSubscriptionMetadata() {
           TrialPeriodDays = 14,
