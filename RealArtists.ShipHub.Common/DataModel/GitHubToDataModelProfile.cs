@@ -26,6 +26,8 @@
           }
         }));
 
+      CreateMap<g.CommitComment, CommitCommentTableType>(MemberList.Destination);
+
       CreateMap<g.CommitStatus, CommitStatusTableType>(MemberList.Destination);
 
       CreateMap<g.Issue, IssueTableType>(MemberList.Destination)
