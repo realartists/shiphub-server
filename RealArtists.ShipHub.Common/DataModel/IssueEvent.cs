@@ -11,7 +11,7 @@
 
     public long IssueId { get; set; }
 
-    public long ActorId { get; set; }
+    public long? ActorId { get; set; }
 
     [Required]
     [StringLength(64)]
