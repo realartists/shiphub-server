@@ -60,6 +60,7 @@
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
     <Compile Include="GitHub\Models\CommitStatus.cs" />
+    <Compile Include="GitHub\Models\CommitComment.cs" />
     <Compile Include="GitHub\Models\PullRequestComment.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
