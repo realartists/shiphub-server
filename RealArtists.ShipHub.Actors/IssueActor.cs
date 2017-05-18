@@ -441,7 +441,7 @@
                   }
                 }
 
-                changes.UnionWith(await context.BulkUpdateComments(
+                changes.UnionWith(await context.BulkUpdateIssueComments(
                   _repoId,
                   _mapper.Map<IEnumerable<CommentTableType>>(comments)));
               }
@@ -449,54 +449,132 @@
               _commentMetadata = GitHubMetadata.FromResponse(commentResponse);
             }
           }
+
+          // Commit Comments
+          // Comments in commit-commented events look complete.
+          // Let's run with it.
+          var commitCommentEvents = timeline.Where(x => x.Event == "commit-commented").ToArray();
+          if (commitCommentEvents.Any()) {
+            var commitComments = commitCommentEvents
+              .SelectMany(x => x.ExtensionDataDictionary["comments"].ToObject<IEnumerable<gm.CommitComment>>(GitHubSerialization.JsonSerializer))
+              .ToArray();
+
+            var users = commitComments.Select(x => x.User).Distinct(x => x.Id);
+            changes.UnionWith(await context.BulkUpdateAccounts(timelineResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+            changes.UnionWith(await context.BulkUpdateCommitComments(
+              _repoId,
+              _mapper.Map<IEnumerable<CommitCommentTableType>>(commitComments)));
+          }
         }
 
         // Comment Reactions
-        var commentReactionMetadata = await context.Comments
+        var commentReactionMetadata = await context.IssueComments
           .AsNoTracking()
           .Where(x => x.IssueId == _issueId)
           .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
         context.Database.Connection.Close();
 
-        // Now, find the ones that need updating.
-        var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
-        foreach (var reactionMetadata in commentReactionMetadata) {
-          if (reactionMetadata.Value.IsExpired()) {
-            commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value, RequestPriority.Interactive));
+        if (commentReactionMetadata.Any()) {
+          // Now, find the ones that need updating.
+          var commentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
+          foreach (var reactionMetadata in commentReactionMetadata) {
+            if (reactionMetadata.Value.IsExpired()) {
+              commentReactionRequests.Add(reactionMetadata.Key, ghc.IssueCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value, RequestPriority.Interactive));
+            }
+          }
+
+          if (commentReactionRequests.Any()) {
+            await Task.WhenAll(commentReactionRequests.Values);
+
+            // TODO: Optimize this a lot.
+            // Update all users at once
+            // Update reactions as batch with single call to DB
+            // Delete all comments at once.
+            foreach (var commentReactionsResponse in commentReactionRequests) {
+              var resp = await commentReactionsResponse.Value;
+              switch (resp.Status) {
+                case HttpStatusCode.NotModified:
+                  break;
+                case HttpStatusCode.NotFound:
+                  // Deleted
+                  changes.UnionWith(await context.DeleteIssueComments(new[] { commentReactionsResponse.Key }));
+                  break;
+                default:
+                  var reactions = resp.Result;
+
+                  var users = reactions
+                    .Select(x => x.User)
+                    .Distinct(x => x.Id);
+                  changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+                  changes.UnionWith(await context.BulkUpdateIssueCommentReactions(
+                    _repoId,
+                    commentReactionsResponse.Key,
+                    _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+                  break;
+              }
+
+              await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
+            }
           }
         }
 
-        await Task.WhenAll(commentReactionRequests.Values);
+        // Commit Comment Reactions
+        var committedEvents = await context.IssueEvents
+          .AsNoTracking()
+          .Where(x => x.IssueId == _issueId && x.Event == "committed")
+          .ToArrayAsync();
+        var commitShas = committedEvents
+          .Select(x => x.ExtensionData.DeserializeObject<JToken>().Value<string>("sha"))
+          .ToArray();
 
-        // TODO: Optimize this a lot.
-        // Update all users at once
-        // Update reactions as batch with single call to DB
-        // Delete all comments at once.
-        foreach (var commentReactionsResponse in commentReactionRequests) {
-          var resp = await commentReactionsResponse.Value;
-          switch (resp.Status) {
-            case HttpStatusCode.NotModified:
-              break;
-            case HttpStatusCode.NotFound:
-              // Deleted
-              changes.UnionWith(await context.DeleteComments(new[] { commentReactionsResponse.Key }));
-              break;
-            default:
-              var reactions = resp.Result;
+        if (commitShas.Any()) {
+          var commitCommentCommentMetadata = await context.CommitComments
+            .AsNoTracking()
+            .Where(x => commitShas.Contains(x.CommitId))
+            .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+          // I think... I think I threw up in my mouth a little.
 
-              var users = reactions
-                .Select(x => x.User)
-                .Distinct(x => x.Id);
-              changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
-
-              changes.UnionWith(await context.BulkUpdateCommentReactions(
-                _repoId,
-                commentReactionsResponse.Key,
-                _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
-              break;
+          // Now, find the ones that need updating.
+          var commentCommentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
+          foreach (var reactionMetadata in commitCommentCommentMetadata) {
+            if (reactionMetadata.Value.IsExpired()) {
+              commentCommentReactionRequests.Add(reactionMetadata.Key, ghc.CommitCommentReactions(_repoFullName, reactionMetadata.Key, reactionMetadata.Value, RequestPriority.Interactive));
+            }
           }
 
-          await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
+          if (commentCommentReactionRequests.Any()) {
+            await Task.WhenAll(commentCommentReactionRequests.Values);
+
+            // Shame. The weight of it...
+            foreach (var commitCommentReactionsResponse in commentCommentReactionRequests) {
+              var resp = await commitCommentReactionsResponse.Value;
+              switch (resp.Status) {
+                case HttpStatusCode.NotModified:
+                  break;
+                case HttpStatusCode.NotFound:
+                  // Deleted
+                  changes.UnionWith(await context.DeleteCommitComments(new[] { commitCommentReactionsResponse.Key }));
+                  break;
+                default:
+                  var reactions = resp.Result;
+
+                  var users = reactions
+                    .Select(x => x.User)
+                    .Distinct(x => x.Id);
+                  changes.UnionWith(await context.BulkUpdateAccounts(resp.Date, _mapper.Map<IEnumerable<AccountTableType>>(users)));
+
+                  changes.UnionWith(await context.BulkUpdateCommitCommentReactions(
+                    _repoId,
+                    commitCommentReactionsResponse.Key,
+                    _mapper.Map<IEnumerable<ReactionTableType>>(reactions)));
+                  break;
+              }
+
+              await context.UpdateMetadata("CommitComments", "ReactionMetadataJson", commitCommentReactionsResponse.Key, resp);
+            }
+          }
         }
 
         // Pull Request comment reactions

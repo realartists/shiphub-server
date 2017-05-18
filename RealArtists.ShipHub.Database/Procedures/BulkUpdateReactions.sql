@@ -1,8 +1,9 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateReactions]
   @RepositoryId BIGINT,
   @IssueId BIGINT = NULL,
-  @CommentId BIGINT = NULL,
+  @IssueCommentId BIGINT = NULL,
   @PullRequestCommentId BIGINT = NULL,
+  @CommitCommentId BIGINT = NULL,
   @Reactions ReactionTableType READONLY
 AS
 BEGIN
@@ -33,13 +34,13 @@ BEGIN
         AND rr.Id IS NULL
     END
 
-    IF(@CommentId IS NOT NULL)
+    IF(@IssueCommentId IS NOT NULL)
     BEGIN
       DELETE FROM Reactions
       OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
       FROM Reactions as r
         LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
-      WHERE CommentId = @CommentId
+      WHERE CommentId = @IssueCommentId
         AND rr.Id IS NULL
     END
 
@@ -53,6 +54,16 @@ BEGIN
         AND rr.Id IS NULL
     END
 
+    IF(@CommitCommentId IS NOT NULL)
+    BEGIN
+      DELETE FROM Reactions
+      OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+      FROM Reactions as r
+        LEFT OUTER JOIN @Reactions as rr ON (rr.Id = r.Id)
+      WHERE CommitCommentId = @CommitCommentId
+        AND rr.Id IS NULL
+    END
+
     MERGE INTO Reactions WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, UserId, Content, CreatedAt
@@ -61,8 +72,8 @@ BEGIN
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, UserId, IssueId,  CommentId,  PullRequestCommentId,  Content, CreatedAt)
-      VALUES (Id, UserId, @IssueId, @CommentId, @PullRequestCommentId, Content, CreatedAt)
+      INSERT (Id, UserId, IssueId,  CommentId,       PullRequestCommentId,  CommitCommentId,  Content, CreatedAt)
+      VALUES (Id, UserId, @IssueId, @IssueCommentId, @PullRequestCommentId, @CommitCommentId, Content, CreatedAt)
     OUTPUT INSERTED.Id, INSERTED.UserId, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

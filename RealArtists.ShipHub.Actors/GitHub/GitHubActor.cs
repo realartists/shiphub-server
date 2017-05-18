@@ -152,6 +152,19 @@
     // GitHub Actions
     ////////////////////////////////////////////////////////////
 
+    public Task<GitHubResponse<IEnumerable<CommitComment>>> CommitComments(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/commits/{WebUtility.UrlEncode(reference)}/comments", cacheOptions, priority);
+      return FetchPaged(request, (CommitComment x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Reaction>>> CommitCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/comments/{commentId}/reactions", cacheOptions, priority) {
+        // https://developer.github.com/v3/reactions/#list-reactions-for-a-commit-comment
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      return FetchPaged(request, (Reaction x) => x.Id);
+    }
+
     public Task<GitHubResponse<IEnumerable<CommitStatus>>> CommitStatuses(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/commits/{WebUtility.UrlEncode(reference)}/statuses", cacheOptions, priority);
       return FetchPaged(request, (CommitStatus x) => x.Id);

@@ -315,16 +315,44 @@
               }
             }
 
-            // Comments (can be deleted)
+            // Commit Comments
             reader.NextResult();
             while (reader.Read()) {
               var entry = new SyncLogEntry() {
                 Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
-                Entity = SyncEntityType.Comment,
+                Entity = SyncEntityType.CommitComment,
               };
 
               if (entry.Action == SyncLogAction.Set) {
-                entry.Data = new CommentEntry() {
+                entry.Data = new CommitCommentEntry() {
+                  Body = ddr.Body,
+                  CommitId = ddr.CommitId,
+                  CreatedAt = ddr.CreatedAt,
+                  Identifier = ddr.Id,
+                  Line = ddr.Line,
+                  Path = ddr.Path,
+                  Position = ddr.Position,
+                  Repository = ddr.RepositoryId,
+                  UpdatedAt = ddr.UpdatedAt,
+                  User = ddr.UserId,
+                };
+              } else {
+                entry.Data = new CommitCommentEntry() { Identifier = ddr.Id };
+              }
+
+              entries.Add(entry);
+            }
+
+            // Issue Comments
+            reader.NextResult();
+            while (reader.Read()) {
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = SyncEntityType.IssueComment,
+              };
+
+              if (entry.Action == SyncLogAction.Set) {
+                entry.Data = new IssueCommentEntry() {
                   Body = ddr.Body,
                   CreatedAt = ddr.CreatedAt,
                   Identifier = ddr.Id,
@@ -334,7 +362,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new IssueCommentEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -609,7 +637,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new ReviewEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -641,7 +669,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommentEntry() { Identifier = ddr.Id };
+                entry.Data = new PullRequestCommentEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);

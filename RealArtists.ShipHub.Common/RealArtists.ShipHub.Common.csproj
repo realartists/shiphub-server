@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="ChargeBeeUtilities.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="DataModel\CommitComment.cs" />
     <Compile Include="DataModel\PullRequestComment.cs" />
     <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />
@@ -51,6 +52,7 @@
     <Compile Include="DataModel\Types\IssueMappingTableType.cs" />
     <Compile Include="DataModel\Types\ProjectTableType.cs" />
     <Compile Include="DataModel\Types\IssueTableType.cs" />
+    <Compile Include="DataModel\Types\CommitCommentTableType.cs" />
     <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
     <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
@@ -58,6 +60,7 @@
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
     <Compile Include="GitHub\Models\CommitStatus.cs" />
+    <Compile Include="GitHub\Models\CommitComment.cs" />
     <Compile Include="GitHub\Models\PullRequestComment.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
@@ -71,7 +74,7 @@
     <Compile Include="DataModel\OrganizationAccount.cs" />
     <Compile Include="DataModel\AccountRepository.cs" />
     <Compile Include="DataModel\Hook.cs" />
-    <Compile Include="DataModel\Comment.cs" />
+    <Compile Include="DataModel\IssueComment.cs" />
     <Compile Include="DataModel\IssueEvent.cs" />
     <Compile Include="DataModel\GitHubToDataModelProfile.cs" />
     <Compile Include="DataModel\Issue.cs" />

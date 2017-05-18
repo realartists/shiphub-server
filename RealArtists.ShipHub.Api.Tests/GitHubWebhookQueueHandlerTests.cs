@@ -50,7 +50,7 @@
         cfg.CreateMap<Common.DataModel.Account, Account>(MemberList.Destination)
           .ForMember(x => x.Type, o => o.ResolveUsing(x => x is Common.DataModel.User ? GitHubAccountType.User : GitHubAccountType.Organization));
 
-        cfg.CreateMap<Common.DataModel.Comment, CommentTableType>(MemberList.Destination);
+        cfg.CreateMap<Common.DataModel.IssueComment, CommentTableType>(MemberList.Destination);
       });
 
       var mapper = config.CreateMapper();
@@ -1302,7 +1302,7 @@
           });
         var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
-        var comment = context.Comments.SingleOrDefault(x => x.IssueId == issue.Id);
+        var comment = context.IssueComments.SingleOrDefault(x => x.IssueId == issue.Id);
         Assert.NotNull(comment, "should have created comment");
 
         Assert.AreEqual(new[] { repo.Id }, changeSummary.Repositories.ToArray());
@@ -1322,7 +1322,7 @@
         hook = MakeTestRepoHook(context, user.Id, repo.Id);
         issue = MakeTestIssue(context, user.Id, repo.Id);
 
-        var comment = context.Comments.Add(new Common.DataModel.Comment() {
+        var comment = context.IssueComments.Add(new Common.DataModel.IssueComment() {
           Id = 9001,
           Body = "original body",
           CreatedAt = DateTimeOffset.Parse("1/1/2016"),
@@ -1395,7 +1395,7 @@
           });
         var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
 
-        var comment = context.Comments.SingleOrDefault(x => x.Id == 9001);
+        var comment = context.IssueComments.SingleOrDefault(x => x.Id == 9001);
         Assert.NotNull(comment, "should have created comment");
         Assert.AreEqual("comment body", comment.Body);
 
@@ -1423,7 +1423,7 @@
         await context.SaveChangesAsync();
 
         // Have to use official channels if you actually want correct change notifications.
-        await context.BulkUpdateComments(repo.Id, new[] {
+        await context.BulkUpdateIssueComments(repo.Id, new[] {
           new CommentTableType() {
             Id = 9001,
             Body = "comment body #1",
@@ -1463,7 +1463,7 @@
 
         Assert.AreEqual(
           new long[] { 9002 },
-          context.Comments
+          context.IssueComments
             .Where(x => x.IssueId == issue.Id)
             .Select(x => x.Id).ToArray(),
           "only one comment should have been deleted");

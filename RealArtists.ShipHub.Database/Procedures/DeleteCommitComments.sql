@@ -1,4 +1,4 @@
-﻿CREATE PROCEDURE [dbo].[DeletePullRequestComments]
+﻿CREATE PROCEDURE [dbo].[DeleteCommitComments]
   @Comments ItemListTableType READONLY
 AS
 BEGIN
@@ -16,12 +16,12 @@ BEGIN
     DELETE FROM Reactions
     OUTPUT DELETED.Id INTO @DeletedReactions
     FROM @Comments as c
-      INNER LOOP JOIN Reactions as r ON (r.PullRequestCommentId = c.Item)
+      INNER LOOP JOIN Reactions as r ON (r.CommitCommentId = c.Item)
     OPTION (FORCE ORDER)
 
-    DELETE FROM PullRequestComments
+    DELETE FROM CommitComments
     FROM @Comments as dc
-      INNER LOOP JOIN PullRequestComments as c ON (c.Id = dc.Item)
+      INNER LOOP JOIN CommitComments as c ON (c.Id = dc.Item)
     OPTION (FORCE ORDER)
 
     -- Deleted reactions
@@ -37,7 +37,7 @@ BEGIN
       [RowVersion] = DEFAULT
     -- Crafty change output
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
-    WHERE ItemType = 'prcomment'
+    WHERE ItemType = 'commitcomment'
       AND [Delete] = 0
       AND ItemId IN (SELECT Item FROM @Comments)
 

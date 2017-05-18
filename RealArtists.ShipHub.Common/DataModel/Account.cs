@@ -47,9 +47,6 @@
     public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
-    public virtual ICollection<Comment> Comments { get; set; } = new HashSet<Comment>();
-
-    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> AssignedIssues { get; set; } = new HashSet<Issue>();
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]

@@ -33,7 +33,7 @@
     // We want these to be saved in _extensionData, so don't actually deserialize them.
     ///////////////////////////////////
     [JsonIgnore]
-    public Account Assignee => ExtensionDataDictionary.Val("assignee")?.ToObject<Account>();
+    public Account Assignee => ExtensionDataDictionary.Val("assignee")?.ToObject<Account>(GitHubSerialization.JsonSerializer);
 
     [JsonIgnore]
     public string CommitId => ExtensionDataDictionary.Val("commit_id")?.ToObject<string>();
@@ -42,16 +42,16 @@
     public string CommitUrl => ExtensionDataDictionary.Val("commit_url")?.ToObject<string>();
 
     [JsonIgnore]
-    public Label Label => ExtensionDataDictionary.Val("label")?.ToObject<Label>();
+    public Label Label => ExtensionDataDictionary.Val("label")?.ToObject<Label>(GitHubSerialization.JsonSerializer);
 
     [JsonIgnore]
-    public IssueRename Rename => ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>();
+    public IssueRename Rename => ExtensionDataDictionary.Val("rename")?.ToObject<IssueRename>(GitHubSerialization.JsonSerializer);
 
     [JsonIgnore]
     public string ShaHash => ExtensionDataDictionary.Val("sha")?.ToObject<string>();
 
     [JsonIgnore]
-    public ReferenceSource Source => ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>();
+    public ReferenceSource Source => ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(GitHubSerialization.JsonSerializer);
 
     [JsonIgnore]
     public DateTimeOffset? SubmittedAt { get => ExtensionDataDictionary.Val("submitted_at")?.ToObject<DateTimeOffset?>(); }

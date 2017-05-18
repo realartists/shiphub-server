@@ -19,7 +19,7 @@
     Unspecified = 0, // Catch uninitialized values
 
     [EnumMember(Value = "comment")]
-    Comment,
+    IssueComment,
 
     [EnumMember(Value = "event")]
     Event,
@@ -56,6 +56,9 @@
 
     [EnumMember(Value = "commitstatus")]
     CommitStatus,
+
+    [EnumMember(Value = "commitcomment")]
+    CommitComment,
   }
 
   public abstract class SyncEntity {
@@ -86,7 +89,8 @@
     private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
       if (action == SyncLogAction.Delete) {
         switch (entity) {
-          case SyncEntityType.Comment:
+          case SyncEntityType.CommitComment:
+          case SyncEntityType.IssueComment:
           case SyncEntityType.Label:
           case SyncEntityType.Milestone:
           case SyncEntityType.Project:

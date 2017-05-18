@@ -87,6 +87,7 @@
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Sync\Messages\Entries\CommitStatusEntry.cs" />
+    <Compile Include="Sync\Messages\Entries\CommitCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\PullRequestCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ProjectEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionEntry.cs" />
@@ -102,7 +103,7 @@
     <Compile Include="Sync\Messages\DataModelToApiModelProfile.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sync\Messages\Entries\AccountEntry.cs" />
-    <Compile Include="Sync\Messages\Entries\CommentEntry.cs" />
+    <Compile Include="Sync\Messages\Entries\IssueCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\IssueEventEntry.cs" />
     <Compile Include="Sync\Messages\Entries\IssueEntry.cs" />
     <Compile Include="Sync\Messages\Entries\LabelEntry.cs" />

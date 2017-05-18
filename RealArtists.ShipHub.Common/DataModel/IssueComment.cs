@@ -4,7 +4,8 @@
   using System.ComponentModel.DataAnnotations.Schema;
   using Types;
 
-  public class Comment {
+  [Table("Comments")]
+  public class IssueComment {
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long Id { get; set; }
 

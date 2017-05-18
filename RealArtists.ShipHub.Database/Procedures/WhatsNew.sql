@@ -178,7 +178,15 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'account'
 
-    -- Comments
+    -- Commit Comments
+    SELECT l.ItemId as Id, e.RepositoryId, e.UserId, e.CommitId,
+      e.[Path], e.Line, e.Position, e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN CommitComments as e ON (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'commitcomment'
+
+    -- Issue Comments
     SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId, e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
     FROM @Logs as l
       LEFT OUTER JOIN Comments as e ON (l.ItemId = e.Id)
