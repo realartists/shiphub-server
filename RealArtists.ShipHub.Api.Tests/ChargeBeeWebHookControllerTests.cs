@@ -524,7 +524,7 @@
         var org1 = TestUtil.MakeTestOrg(context);
 
         var users = new List<User>();
-        for (var i = 0; i < 20; i++) {
+        for (var i = 0; i < 10; i++) {
           var user = TestUtil.MakeTestUser(context, 3001 + i, "aroo" + "".PadLeft(i, 'o') + "n");
           users.Add(user);
         }
@@ -533,7 +533,7 @@
         var otherOrgUser = TestUtil.MakeTestUser(context, 4001, "otherOrgUser");
         await context.SetOrganizationAdmins(otherOrg.Id, new[] { otherOrgUser.Id });
 
-        // Pretend all 20 people use Ship in January
+        // Pretend all 10 people use Ship in January
         foreach (var user in users) {
           await context.RecordUsage(user.Id, new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero));
         }
@@ -541,18 +541,10 @@
         // active users.
         await context.RecordUsage(otherOrgUser.Id, new DateTimeOffset(2016, 1, 1, 0, 0, 0, TimeSpan.Zero));
 
+        // Pretend only 1 user was active in Feb - should have no extra seat charges for this month.
+        await context.RecordUsage(users.First().Id, new DateTimeOffset(2016, 2, 1, 0, 0, 0, TimeSpan.Zero));
 
-        // Only 5 people use it in February
-        foreach (var user in users.Take(5)) {
-          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 2, 1, 0, 0, 0, TimeSpan.Zero));
-        }
-
-        // Only 5 people use it in February
-        foreach (var user in users.Take(5)) {
-          await context.RecordUsage(user.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero));
-        }
-
-        // Pretend all 20 people use Ship on March 1
+        // Pretend all 10 people use Ship on March 1
         foreach (var user in users) {
           await context.RecordUsage(user.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero));
         }
@@ -569,7 +561,7 @@
         await context.RecordUsage(users[6].Id, new DateTimeOffset(2016, 3, 29, 0, 0, 0, TimeSpan.Zero));
         await context.RecordUsage(users[7].Id, new DateTimeOffset(2016, 4, 1, 0, 0, 0, TimeSpan.Zero));
 
-        // Pretend all 20 people use Ship on April 2
+        // Pretend all 10 people use Ship on April 2
         foreach (var user in users) {
           await context.RecordUsage(user.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero));
         }
@@ -578,18 +570,18 @@
 
         await context.SaveChangesAsync();
 
-        Assert.AreEqual(
-          new[] { Tuple.Create("additional-seats", 15) },
+        CollectionAssert.AreEqual(
+          new[] { Tuple.Create("additional-seats", 9) },
           await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 2, 1, 0, 0, 0, TimeSpan.Zero)),
-          "For billing period [1/1 - 1/31], we should get billed for 15 extra seats.");
+          "For billing period [1/1 - 1/31], we should get billed for 19 extra seats.");
 
-        Assert.AreEqual(
+        CollectionAssert.AreEqual(
           new Tuple<string, int>[0],
           await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 3, 1, 0, 0, 0, TimeSpan.Zero)),
-          "For billing period [2/1 - 2/31], we should not see any extra charge - only 5 people were active.");
+          "For billing period [2/1 - 2/31], we should not see any extra charge - only 1 person was active.");
 
-        Assert.AreEqual(
-          new[] { Tuple.Create("additional-seats", 3) },
+        CollectionAssert.AreEqual(
+          new[] { Tuple.Create("additional-seats", 7) },
           await PendingInvoiceCreatedHelper(org1.Id, new DateTimeOffset(2016, 4, 2, 0, 0, 0, TimeSpan.Zero)),
           "For billing period [3/2 - 4/1], there were only 8 active users.");
       };

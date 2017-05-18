@@ -77,11 +77,11 @@
         return new string[0];
       } else if (account is Organization) {
         return new[] {
-          "$9 per active user / month",
-          "$25 per month for first 5 active users",
+          "$5 per active user / month",
+          "Minimum charge of $5 per month",
         };
       } else {
-        return new[] { "$9 per month" };
+        return new[] { "$5 per month" };
       }
     }
 

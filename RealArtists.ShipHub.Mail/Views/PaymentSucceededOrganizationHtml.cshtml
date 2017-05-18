@@ -15,27 +15,27 @@
 <p>
     <a href="@Model.InvoicePdfUrl">Download a PDF receipt</a> for your records.
 </p>
-@if (Model.PreviousMonthActiveUsersCount <= 5) {
+
 <p>
-    The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization
-    had <strong>@Model.PreviousMonthActiveUsersCount active Ship users</strong> in the prior month beginning on
-    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so there were no additional usage charges.
+    In the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"), your organization
+    had <strong>@Model.PreviousMonthActiveUsersCount active Ship user@(Model.PreviousMonthActiveUsersCount == 1 ? "" : "s")</strong>.
 </p>
-} else {
+@if (Model.PreviousMonthActiveUsersCount > 1) {
 <p>
-    The base monthly fee of your subscription covers the first 5 active Ship users per month.  Your organization
-    had <strong>@Model.PreviousMonthActiveUsersCount active Ship users</strong> in the prior month beginning on
-    @Model.PreviousMonthStart.ToString("MMM d, yyyy"), so you were billed for <strong>@(Model.PreviousMonthActiveUsersCount - 5) additional active user@((Model.PreviousMonthActiveUsersCount - 5) > 1 ? "s" : "").</strong>
+    The base monthly fee (paid as part of your last invoice) covers the first active Ship user, so you were billed for @(Model.PreviousMonthActiveUsersCount - 1)
+    additional active user@((Model.PreviousMonthActiveUsersCount - 1) == 1 ? "" : "s") on this invoice.
 </p>
 }
-@if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
-<p>
-    Active Ship users in your organization in the prior month were @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))).
-</p>
-} else {
-<p>
-    Active Ship users in your organization in the prior month included: @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))), and <strong>@(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others</strong>.
-</p>
+@if (Model.PreviousMonthActiveUsersCount > 0) {
+    @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
+    <p>
+        Active Ship users in your organization in the prior month were: @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))).
+    </p>
+    } else {
+    <p>
+        Active Ship users in your organization in the prior month included: @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))), and <strong>@(Model.PreviousMonthActiveUsersCount - Model.PreviousMonthActiveUsersSample.Count()) others</strong>.
+    </p>
+    }
 }
 <p class="last">
     We appreciate your business!
