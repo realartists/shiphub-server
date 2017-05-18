@@ -456,7 +456,7 @@
           var commitCommentEvents = timeline.Where(x => x.Event == "commit-commented").ToArray();
           if (commitCommentEvents.Any()) {
             var commitComments = commitCommentEvents
-              .SelectMany(x => x.ExtensionDataDictionary["comments"].ToObject<IEnumerable<gm.CommitComment>>())
+              .SelectMany(x => x.ExtensionDataDictionary["comments"].ToObject<IEnumerable<gm.CommitComment>>(GitHubSerialization.JsonSerializer))
               .ToArray();
 
             var users = commitComments.Select(x => x.User).Distinct(x => x.Id);
