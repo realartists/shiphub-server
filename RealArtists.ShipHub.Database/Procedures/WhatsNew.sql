@@ -298,6 +298,7 @@ BEGIN
       LEFT OUTER JOIN Reviews as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'review'
+      AND (e.[State] != 'PENDING' OR e.UserId = @UserId)
 
     -- Pull Request Comments
     SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId,
@@ -306,8 +307,10 @@ BEGIN
       e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
     FROM @Logs as l
       LEFT OUTER JOIN PullRequestComments as e ON (l.ItemId = e.Id)
+      LEFT OUTER JOIN Reviews as r ON (r.Id = e.PullRequestReviewId)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'prcomment'
+      AND (ISNULL(r.[State], '') != 'PENDING' OR r.UserId = @UserId)
 
     -- Commit Statuses
     SELECT l.ItemId as Id, e.RepositoryId, e.Reference, e.CreatorId,
