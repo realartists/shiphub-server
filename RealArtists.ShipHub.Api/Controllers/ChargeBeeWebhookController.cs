@@ -564,10 +564,10 @@
             .CountAsync();
         }
 
-        if (activeUsers > 5) {
+        if (activeUsers > 1) {
           await _chargeBee.Invoice.AddAddonCharge(payload.Content.Invoice.Id)
             .AddonId("additional-seats")
-            .AddonQuantity(Math.Max(activeUsers - 5, 0))
+            .AddonQuantity(Math.Max(activeUsers - 1, 0))
             .Request();
         }
       }

@@ -45,7 +45,7 @@
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
         }).Wait();
 
-      // Version with <= 5 active users
+      // Version with 0 active users
       mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
@@ -56,12 +56,13 @@
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
             LastCardDigits = "5678",
           },
-          AmountPaid = 25.00,
+          AmountPaid = 5.00,
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
           PreviousMonthStart = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero).AddMonths(-1),
-          PreviousMonthActiveUsersCount = 4,
-          PreviousMonthActiveUsersSample = Enumerable.Range(1, 4).Select(x => "user_" + x).ToArray()
+          PreviousMonthActiveUsersCount = 0,
+          PreviousMonthActiveUsersSample = new string[0],
         }).Wait();
+      // Version with 1 active user
       mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
@@ -72,7 +73,24 @@
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
             LastCardDigits = "5678",
           },
-          AmountPaid = 25.00 + (9 * 25),
+          AmountPaid = 5.00,
+          ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
+          PreviousMonthStart = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero).AddMonths(-1),
+          PreviousMonthActiveUsersCount = 1,
+          PreviousMonthActiveUsersSample = new string[] { "user_1" },
+        }).Wait();
+      // Version with 25 active users
+      mailer.PaymentSucceededOrganization(
+        new Mail.Models.PaymentSucceededOrganizationMailMessage() {
+          GitHubUserName = githubUsername,
+          ToAddress = toAddress,
+          ToName = toName,
+          InvoicePdfUrl = dummyInvoiceUrl,
+          PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
+            PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
+            LastCardDigits = "5678",
+          },
+          AmountPaid = 5.00 + (5 * 24),
           ServiceThroughDate = new DateTimeOffset(2016, 06, 01, 0, 0, 0, TimeSpan.Zero),
           PreviousMonthStart = new DateTimeOffset(2016, 05, 01, 0, 0, 0, TimeSpan.Zero).AddMonths(-1),
           PreviousMonthActiveUsersCount = 25,
