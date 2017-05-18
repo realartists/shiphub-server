@@ -266,13 +266,7 @@
 
           // Always round up to the nearest whole day.
           var daysLeftOnTrial = (int)Math.Min(trialPeriodDays, Math.Floor(totalDays + 1));
-
-          if (trialPeriodDays == 30) {
-            // The original coupons for 30 day trials didn't include total days in the name.
-            couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
-          } else {
-            couponToAdd = $"trial_days_left_{daysLeftOnTrial}_of_{trialPeriodDays}";
-          }
+          couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
         }
 
         pageRequest
