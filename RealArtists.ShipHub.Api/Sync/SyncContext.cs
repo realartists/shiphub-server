@@ -476,6 +476,7 @@
                   Identifier = ddr.Id,
                   Issue = ddr.IssueId,
                   PullRequestComment = ddr.PullRequestCommentId,
+                  CommitComment = ddr.CommitCommentId,
                   User = ddr.UserId,
                 };
               } else {

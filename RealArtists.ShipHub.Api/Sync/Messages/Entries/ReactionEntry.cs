@@ -7,6 +7,7 @@
     public long? Issue { get; set; }
     public long? Comment { get; set; }
     public long? PullRequestComment { get; set; }
+    public long? CommitComment { get; set; }
     public string Content { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
   }
