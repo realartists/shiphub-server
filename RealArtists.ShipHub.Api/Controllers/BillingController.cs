@@ -295,6 +295,13 @@
         pageRequest.SubscriptionCoupon(couponToAdd);
       }
 
+      if (sub.PlanUnitPrice == 900) {
+        // This was an old subscription that was started before the price change.  ChargeBee
+        // provided us no way to update the "Plan Unit Price" for a subscription/customer that
+        // had no payment info set.  As a workaround, we override the price at checkout time.
+        pageRequest.SubscriptionPlanUnitPrice(500);
+      }
+
       pageRequest
         .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
         .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
