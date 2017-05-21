@@ -554,39 +554,48 @@
                 Repository = ddr.RepositoryId,
                 State = ddr.State,
                 Title = ddr.Title,
-                UpdatedAt = DateUtilities.Max(ddr.UpdatedAt, ddr.PullRequestUpdatedAt),
+                UpdatedAt = ddr.UpdatedAt,
                 PullRequest = ddr.PullRequest,
                 User = ddr.UserId,
               };
-
-              if ((long?)ddr.PullRequestId != null) {
-                issueEntry.PullRequestDetails = new PullRequestDetails() {
-                  Identifier = ddr.PullRequestId,
-                  CreatedAt = ddr.PullRequestCreatedAt,
-                  UpdatedAt = ddr.PullRequestUpdatedAt,
-                  MergeCommitSha = ddr.MergeCommitSha,
-                  MergedAt = ddr.MergedAt,
-                  Base = ((string)ddr.BaseJson).DeserializeObject<JToken>(),
-                  Head = ((string)ddr.HeadJson).DeserializeObject<JToken>(),
-
-                  Additions = ddr.Additions,
-                  ChangedFiles = ddr.ChangedFiles,
-                  Commits = ddr.Commits,
-                  Deletions = ddr.Deletions,
-                  MaintainerCanModify = ddr.MaintainerCanModify,
-                  Mergeable = ddr.Mergeable,
-                  MergeableState = ddr.MergeableState,
-                  MergedBy = ddr.MergedById,
-                  Rebaseable = ddr.Rebaseable,
-
-                  RequestedReviewers = prReviewers.Val((long)ddr.Id, () => new List<long>()),
-                };
-              }
 
               entries.Add(new SyncLogEntry() {
                 Action = SyncLogAction.Set,
                 Entity = SyncEntityType.Issue,
                 Data = issueEntry,
+              });
+            }
+
+            // Pull Requests
+            reader.NextResult();
+            while (reader.Read()) {
+              var prEntry = new PullRequestEntry() {
+                Identifier = ddr.Id,
+                Issue = ddr.IssueId,
+                CreatedAt = ddr.CreatedAt,
+                UpdatedAt = ddr.UpdatedAt,
+                MergeCommitSha = ddr.MergeCommitSha,
+                MergedAt = ddr.MergedAt,
+                Base = ((string)ddr.BaseJson).DeserializeObject<JToken>(),
+                Head = ((string)ddr.HeadJson).DeserializeObject<JToken>(),
+
+                Additions = ddr.Additions,
+                ChangedFiles = ddr.ChangedFiles,
+                Commits = ddr.Commits,
+                Deletions = ddr.Deletions,
+                MaintainerCanModify = ddr.MaintainerCanModify,
+                Mergeable = ddr.Mergeable,
+                MergeableState = ddr.MergeableState,
+                MergedBy = ddr.MergedById,
+                Rebaseable = ddr.Rebaseable,
+
+                RequestedReviewers = prReviewers.Val((long)ddr.Id, () => new List<long>()),
+              };
+
+              entries.Add(new SyncLogEntry() {
+                Action = SyncLogAction.Set,
+                Entity = SyncEntityType.PullRequest,
+                Data = prEntry,
               });
             }
 
