@@ -843,21 +843,21 @@
       });
     }
 
-    public Task<ChangeSummary> DeleteIssueComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeleteIssueComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteIssueComment]", x => {
+        x.CommentId = commentId;
       });
     }
 
-    public Task<ChangeSummary> DeleteCommitComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeleteCommitComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeleteCommitComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteCommitComment]", x => {
+        x.CommentId = commentId;
       });
     }
 
-    public Task<ChangeSummary> DeletePullRequestComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeletePullRequestComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComment]", x => {
+        x.CommentId = commentId;
       });
     }
 

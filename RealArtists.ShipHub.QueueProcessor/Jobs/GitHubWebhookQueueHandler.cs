@@ -162,7 +162,7 @@
       var summary = await HandleIssues(context, payload);
 
       if (payload.Action == "deleted") {
-        summary.UnionWith(await context.DeleteIssueComments(new[] { payload.Comment.Id }));
+        summary.UnionWith(await context.DeleteIssueComment(payload.Comment.Id));
       } else {
         summary.UnionWith(await context.BulkUpdateAccounts(
         DateTimeOffset.UtcNow,

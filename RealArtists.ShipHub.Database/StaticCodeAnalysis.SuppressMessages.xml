@@ -31,4 +31,13 @@
   <SuppressedFile FilePath="Procedures\DeleteMilestone.sql">
     <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
   </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\DeleteCommitComment.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\DeleteIssueComment.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
+  <SuppressedFile FilePath="Procedures\DeletePullRequestComment.sql">
+    <SuppressedRule Category="Microsoft.Rules.Data" RuleId="SR0007" />
+  </SuppressedFile>
 </StaticCodeAnalysis>

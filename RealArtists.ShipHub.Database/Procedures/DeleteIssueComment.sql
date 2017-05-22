@@ -1,5 +1,5 @@
-﻿CREATE PROCEDURE [dbo].[DeleteComments]
-  @Comments ItemListTableType READONLY
+﻿CREATE PROCEDURE [dbo].[DeleteIssueComment]
+  @CommentId BIGINT
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -15,14 +15,9 @@ BEGIN
 
     DELETE FROM Reactions
     OUTPUT DELETED.Id INTO @DeletedReactions
-    FROM @Comments as c
-      INNER LOOP JOIN Reactions as r ON (r.CommentId = c.Item)
-    OPTION (FORCE ORDER)
+    WHERE CommentId = @CommentId
 
-    DELETE FROM Comments
-    FROM @Comments as dc
-      INNER LOOP JOIN Comments as c ON (c.Id = dc.Item)
-    OPTION (FORCE ORDER)
+    DELETE FROM Comments WHERE Id = @CommentId
 
     -- Deleted reactions
     UPDATE SyncLog SET
@@ -39,7 +34,7 @@ BEGIN
     OUTPUT INSERTED.OwnerType as ItemType, INSERTED.OwnerId as ItemId
     WHERE ItemType = 'comment'
       AND [Delete] = 0
-      AND ItemId IN (SELECT Item FROM @Comments)
+      AND ItemId = @CommentId
 
     COMMIT TRANSACTION
   END TRY

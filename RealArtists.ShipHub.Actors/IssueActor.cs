@@ -498,7 +498,7 @@
                   break;
                 case HttpStatusCode.NotFound:
                   // Deleted
-                  changes.UnionWith(await context.DeleteIssueComments(new[] { commentReactionsResponse.Key }));
+                  changes.UnionWith(await context.DeleteIssueComment(commentReactionsResponse.Key));
                   break;
                 default:
                   var reactions = resp.Result;
@@ -555,7 +555,7 @@
                   break;
                 case HttpStatusCode.NotFound:
                   // Deleted
-                  changes.UnionWith(await context.DeleteCommitComments(new[] { commitCommentReactionsResponse.Key }));
+                  changes.UnionWith(await context.DeleteCommitComment(commitCommentReactionsResponse.Key));
                   break;
                 default:
                   var reactions = resp.Result;
@@ -607,7 +607,7 @@
                 break;
               case HttpStatusCode.NotFound:
                 // Deleted
-                changes.UnionWith(await context.DeletePullRequestComments(new[] { prcReactionsResponse.Key }));
+                changes.UnionWith(await context.DeletePullRequestComment(prcReactionsResponse.Key));
                 break;
               default:
                 var reactions = resp.Result;
