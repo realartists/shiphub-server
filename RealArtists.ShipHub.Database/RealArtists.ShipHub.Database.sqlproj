@@ -166,6 +166,9 @@
     <Build Include="Procedures\BulkUpdateCommitComments.sql" />
     <Build Include="User Defined Types\CommitCommentTableType.sql" />
     <Build Include="Procedures\DeleteCommitComment.sql" />
+    <Build Include="Procedures\DeleteReview.sql" />
+    <Build Include="Procedures\DeleteReaction.sql" />
+    <Build Include="Procedures\DeleteReviewers.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

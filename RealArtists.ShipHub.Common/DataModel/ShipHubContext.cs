@@ -12,6 +12,7 @@
   using System.Threading.Tasks;
   using GitHub;
   using Legacy;
+  using Newtonsoft.Json;
   using Types;
 
   [DbConfigurationType(typeof(ShipHubContextConfiguration))]
@@ -861,6 +862,38 @@
       });
     }
 
+    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
+        x.MilestoneId = milestoneId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteLabel(long labelId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
+        x.LabelId = labelId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReaction(long reactionId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReaction]", x => {
+        x.ReactionId = reactionId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReview(long reviewId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReview]", x => {
+        x.ReviewId = reviewId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReviewers(string repositoryFullName, int pullRequestNumber, IEnumerable<string> reviewers) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReviewers]", x => {
+        x.RepositoryFullName = repositoryFullName;
+        x.PullRequestNumber = pullRequestNumber;
+        x.ReviewersJson = reviewers.SerializeObject(Formatting.None);
+      });
+    }
+
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
     public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
@@ -921,18 +954,6 @@
           dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
           return await sp.ExecuteNonQueryAsync();
         }
-      });
-    }
-
-    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
-      return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
-        x.MilestoneId = milestoneId;
-      });
-    }
-
-    public Task<ChangeSummary> DeleteLabel(long labelId) {
-      return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
-        x.LabelId = labelId;
       });
     }
 
