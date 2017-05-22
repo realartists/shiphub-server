@@ -258,18 +258,23 @@ BEGIN
     -- Issues
     SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,
-           e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions,
-           -- PRs
-           pr.Id as PullRequestId, pr.CreatedAt as PullRequestCreatedAt,
-           pr.UpdatedAt as PullRequestUpdatedAt, pr.MergeCommitSha, pr.MergedAt,
-           pr.BaseJson, pr.HeadJson, pr.Additions, pr.ChangedFiles, pr. Commits,
-           pr.Deletions, pr.MaintainerCanModify, pr.Mergeable, pr.MergeableState,
-           pr.MergedById, pr.Rebaseable
+           e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
     FROM @Logs as l
       INNER JOIN Issues as e ON (l.ItemId = e.Id)
       LEFT OUTER JOIN PullRequests as pr ON (pr.IssueId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
+
+    -- Pull Requests
+    SELECT e.Id, e.IssueId, e.CreatedAt, e.UpdatedAt, e.MergeCommitSha, e.MergedAt,
+           e.BaseJson, e.HeadJson, e.Additions, e.ChangedFiles, e. Commits,
+           e.Deletions, e.MaintainerCanModify, e.Mergeable, e.MergeableState,
+           e.MergedById, e.Rebaseable
+    FROM @Logs as l
+      INNER JOIN PullRequests as e ON (e.IssueId = l.ItemId)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'issue'
+
     -- End Issues ---------------------------------------------
 
     -- Begin Repositories ---------------------------------------------

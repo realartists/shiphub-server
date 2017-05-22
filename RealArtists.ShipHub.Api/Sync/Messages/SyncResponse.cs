@@ -48,6 +48,9 @@
     [EnumMember(Value = "project")]
     Project,
 
+    [EnumMember(Value = "pr")]
+    PullRequest,
+
     [EnumMember(Value = "prcomment")]
     PullRequestComment,
 
@@ -94,6 +97,7 @@
           case SyncEntityType.Label:
           case SyncEntityType.Milestone:
           case SyncEntityType.Project:
+          case SyncEntityType.PullRequest:
           case SyncEntityType.PullRequestComment:
           case SyncEntityType.Reaction:
           case SyncEntityType.Repository:
