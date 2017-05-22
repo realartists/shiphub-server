@@ -330,9 +330,10 @@
 
             var passThruContent = JsonConvert.DeserializeObject<BuyPassThruContent>(data["pass_thru_content"]);
             if (expectNeedsReactivation) {
-              Assert.True(passThruContent.NeedsReactivation, "should have set NeedsReactivation");
+              CollectionAssert.Contains(data.Keys, "reactivate", "should set 'reactivate'");
+              Assert.AreEqual(data["reactivate"], "true");
             } else {
-              Assert.False(passThruContent.NeedsReactivation, "should not have set NeedsReactivation");
+              CollectionAssert.DoesNotContain(data.Keys, "reactivate");
             }
 
             return new {
@@ -495,7 +496,6 @@
               ActorId = user.Id,
               ActorLogin = user.Login,
               AnalyticsId = "someAnalyticsId",
-              NeedsReactivation = false,
             });
             Assert.AreEqual(expectedPassThruContent, data["pass_thru_content"]);
 
@@ -633,58 +633,6 @@
       }
     }
 
-    [Test]
-    public async Task BuyFinishEndpointCanReactivateSubscription() {
-      using (var context = new ShipHubContext()) {
-        var user = TestUtil.MakeTestUser(context, 3001, "aroon");
-        var org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
-        await context.SaveChangesAsync();
-
-        var doesReactivate = false;
-
-        var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
-          if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
-            return new {
-              hosted_page = new {
-                state = "succeeded",
-                url = "https://realartists-test.chargebee.com/pages/v2/someHostedPageId/checkout",
-                content = new {
-                  subscription = new {
-                    id = "someSubId",
-                    customer_id = $"user-{user.Id}",
-                    plan_id = "someplan",
-                    plan_unit_price = 900,
-                    resource_version = 999,
-                  }
-                },
-                pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
-                  NeedsReactivation = true,
-                }),
-              },
-            };
-          } else if (method.Equals("POST") && path.Equals($"/api/v2/subscriptions/someSubId/reactivate")) {
-            doesReactivate = true;
-
-            return new {
-              subscription = new {
-                id = "someSubId",
-              },
-            };
-          } else {
-            Assert.Fail($"Unexpected {method} to {path}");
-            return null;
-          }
-        });
-
-        var queueClientMock = new Mock<IShipHubQueueClient>();
-
-        var controller = new BillingController(Configuration, null, api, queueClientMock.Object, null);
-        var response = await controller.BuyFinish("someHostedPageId", "succeeded");
-        Assert.IsInstanceOf<RedirectResult>(response);
-        Assert.IsTrue(doesReactivate);
-      }
-    }
-
     private async Task<IChangeSummary> BuyFinishEndpointUpdatesSubscriptionStateHelper(ShipHubContext context, string customerId) {
       var api = ChargeBeeTestUtil.ShimChargeBeeApi((string method, string path, Dictionary<string, string> data) => {
         if (method.Equals("GET") && path == "/api/v2/hosted_pages/someHostedPageId") {
@@ -706,7 +654,6 @@
                 },
               },
               pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
-                NeedsReactivation = false,
               }),
             },
           };
@@ -795,7 +742,6 @@
                 },
                 pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
                   AnalyticsId = "someAnalyticsId",
-                  NeedsReactivation = false,
                   ActorId = user.Id,
                   ActorLogin = user.Login,
                 }),
@@ -869,7 +815,6 @@
                 },
                 pass_thru_content = JsonConvert.SerializeObject(new BuyPassThruContent() {
                   AnalyticsId = "someAnalyticsId",
-                  NeedsReactivation = false,
                   ActorId = user.Id,
                   ActorLogin = user.Login,
                 }),
