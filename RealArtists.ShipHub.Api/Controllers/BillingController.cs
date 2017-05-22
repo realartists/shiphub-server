@@ -47,7 +47,6 @@
     public long ActorId { get; set; }
     public string ActorLogin { get; set; }
     public string AnalyticsId { get; set; }
-    public bool NeedsReactivation { get; set; }
   }
 
   public class ThankYouPageHashParameters {
@@ -166,10 +165,6 @@
 
       var passThruContent = JsonConvert.DeserializeObject<BuyPassThruContent>(hostedPage.PassThruContent);
 
-      if (passThruContent.NeedsReactivation) {
-        await _chargeBee.Subscription.Reactivate(hostedPage.Content.Subscription.Id).Request();
-      }
-
       ChargeBeeUtilities.ParseCustomerId(hostedPage.Content.Subscription.CustomerId, out var accountType, out var accountId);
 
       ChangeSummary changes;
@@ -236,7 +231,6 @@
 
       var subMetaData = (sub.MetaData ?? new JObject()).ToObject<ChargeBeePersonalSubscriptionMetadata>(GitHubSerialization.JsonSerializer);
 
-      var needsReactivation = false;
       var pageRequest = _chargeBee.HostedPage.CheckoutExisting()
         .SubscriptionId(sub.Id)
         .SubscriptionPlanId("personal")
@@ -276,13 +270,7 @@
       } else if (sub.Status == cbm.Subscription.StatusEnum.Cancelled) {
         // This case would happen if the customer was a subscriber in the past, cancelled,
         // and is now returning to signup again.
-        //
-        // ChargeBee's CheckoutExisting flow will not re-activate a cancelled subscription
-        // on its own, so we'll have to do that ourselves in the return handler.  It's a
-        // bummer because it means the customer's card won't get run as part of checkout.
-        // If they provide invalid CC info, they won't know it until after they've completed
-        // the checkout page; the failure info will have to come in an email.
-        needsReactivation = true;
+        pageRequest.AddParam("reactivate", true);
 
         if (isMemberOfPaidOrg) {
           couponToAdd = "member_of_paid_org";
@@ -308,7 +296,6 @@
           ActorId = actorAccount.Id,
           ActorLogin = actorAccount.Login,
           AnalyticsId = analyticsId,
-          NeedsReactivation = needsReactivation,
         }));
 
       var result = (await pageRequest.Request()).HostedPage;
@@ -371,7 +358,6 @@
             ActorId = actorAccount.Id,
             ActorLogin = actorAccount.Login,
             AnalyticsId = analyticsId,
-            NeedsReactivation = true,
           }))
           .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
           .Request()).HostedPage;
@@ -389,7 +375,6 @@
          ActorId = actorAccount.Id,
          ActorLogin = actorAccount.Login,
          AnalyticsId = analyticsId,
-         NeedsReactivation = false,
        }))
        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
 
