@@ -12,6 +12,7 @@
   using System.Threading.Tasks;
   using GitHub;
   using Legacy;
+  using Newtonsoft.Json;
   using Types;
 
   [DbConfigurationType(typeof(ShipHubContextConfiguration))]
@@ -843,21 +844,53 @@
       });
     }
 
-    public Task<ChangeSummary> DeleteIssueComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeleteComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeleteIssueComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteIssueComment]", x => {
+        x.CommentId = commentId;
       });
     }
 
-    public Task<ChangeSummary> DeleteCommitComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeleteCommitComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeleteCommitComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteCommitComment]", x => {
+        x.CommentId = commentId;
       });
     }
 
-    public Task<ChangeSummary> DeletePullRequestComments(IEnumerable<long> commentIds) {
-      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComments]", x => {
-        x.Comments = CreateItemListTable("Comments", commentIds);
+    public Task<ChangeSummary> DeletePullRequestComment(long commentId) {
+      return ExecuteAndReadChanges("[dbo].[DeletePullRequestComment]", x => {
+        x.CommentId = commentId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
+        x.MilestoneId = milestoneId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteLabel(long labelId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
+        x.LabelId = labelId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReaction(long reactionId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReaction]", x => {
+        x.ReactionId = reactionId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReview(long reviewId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReview]", x => {
+        x.ReviewId = reviewId;
+      });
+    }
+
+    public Task<ChangeSummary> DeleteReviewers(string repositoryFullName, int pullRequestNumber, IEnumerable<string> reviewers) {
+      return ExecuteAndReadChanges("[dbo].[DeleteReviewers]", x => {
+        x.RepositoryFullName = repositoryFullName;
+        x.PullRequestNumber = pullRequestNumber;
+        x.ReviewersJson = reviewers.SerializeObject(Formatting.None);
       });
     }
 
@@ -921,18 +954,6 @@
           dsp.Date = new DateTimeOffset(date.Year, date.Month, date.Day, 0, 0, 0, TimeSpan.Zero);
           return await sp.ExecuteNonQueryAsync();
         }
-      });
-    }
-
-    public Task<ChangeSummary> DeleteMilestone(long milestoneId) {
-      return ExecuteAndReadChanges("[dbo].[DeleteMilestone]", x => {
-        x.MilestoneId = milestoneId;
-      });
-    }
-
-    public Task<ChangeSummary> DeleteLabel(long labelId) {
-      return ExecuteAndReadChanges("[dbo].[DeleteLabel]", x => {
-        x.LabelId = labelId;
       });
     }
 

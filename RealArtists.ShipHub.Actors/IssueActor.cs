@@ -43,7 +43,16 @@
     private GitHubMetadata _prStatusMetadata;
 
     // Event sync
-    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "commit-commented", "line-commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] {
+      "commented",
+      "commit-commented",
+      "line-commented",
+      "mentioned",
+      "review_dismissed",
+      "reviewed",
+      "subscribed",
+      "unsubscribed"
+    }, StringComparer.OrdinalIgnoreCase);
 
     public IssueActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -375,9 +384,6 @@
               case "committed":
                 item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
                 break;
-              case "reviewed":
-                item.CreatedAt = item.SubmittedAt.Value;
-                break;
               default:
                 // Leave most things alone.
                 break;
@@ -498,7 +504,7 @@
                   break;
                 case HttpStatusCode.NotFound:
                   // Deleted
-                  changes.UnionWith(await context.DeleteIssueComments(new[] { commentReactionsResponse.Key }));
+                  changes.UnionWith(await context.DeleteIssueComment(commentReactionsResponse.Key));
                   break;
                 default:
                   var reactions = resp.Result;
@@ -555,7 +561,7 @@
                   break;
                 case HttpStatusCode.NotFound:
                   // Deleted
-                  changes.UnionWith(await context.DeleteCommitComments(new[] { commitCommentReactionsResponse.Key }));
+                  changes.UnionWith(await context.DeleteCommitComment(commitCommentReactionsResponse.Key));
                   break;
                 default:
                   var reactions = resp.Result;
@@ -607,7 +613,7 @@
                 break;
               case HttpStatusCode.NotFound:
                 // Deleted
-                changes.UnionWith(await context.DeletePullRequestComments(new[] { prcReactionsResponse.Key }));
+                changes.UnionWith(await context.DeletePullRequestComment(prcReactionsResponse.Key));
                 break;
               default:
                 var reactions = resp.Result;

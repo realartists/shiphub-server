@@ -15,6 +15,7 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Filters;
+  using Newtonsoft.Json.Linq;
   using Orleans;
   using QueueClient;
   using dm = Common.DataModel;
@@ -34,7 +35,7 @@
       Timeout = _ProxyTimeout
     };
 
-    private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Delete, HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
+    private static readonly HashSet<HttpMethod> _BareMethods = new HashSet<HttpMethod>() { HttpMethod.Get, HttpMethod.Head, HttpMethod.Options };
 
     private IMapper _mapper;
     private IShipHubQueueClient _queueClient;
@@ -77,6 +78,10 @@
       }
     }
 
+    // ////////////////////////////////////////////////////////////
+    // Default Handler
+    // ////////////////////////////////////////////////////////////
+
     [HttpDelete]
     [HttpGet]
     [HttpHead]
@@ -88,6 +93,138 @@
     public Task<HttpResponseMessage> ProxyBlind(HttpRequestMessage request, CancellationToken cancellationToken, string path) {
       return ProxyRequest(request, cancellationToken, path);
     }
+
+    // ////////////////////////////////////////////////////////////
+    // Deletions (comments, reviews, reactions, etc)
+    // ////////////////////////////////////////////////////////////
+
+    [HttpDelete]
+    [Route("repos/{owner}/{repo}/issues/comments/{commentId:long}")]
+    public async Task<HttpResponseMessage> DeleteComment(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo, long commentId) {
+      var response = await ProxyRequest(request, cancellationToken, $"repos/{owner}/{repo}/issues/comments/{commentId}");
+
+      if (response.StatusCode == HttpStatusCode.NoContent) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          using (var context = new dm.ShipHubContext()) {
+            var changes = await context.DeleteIssueComment(commentId);
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
+            }
+          }
+        } catch (Exception e) {
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
+      }
+
+      return response;
+    }
+
+    [HttpDelete]
+    [Route("reactions/{reactionId:long}")]
+    public async Task<HttpResponseMessage> DeleteReaction(HttpRequestMessage request, CancellationToken cancellationToken, long reactionId) {
+      var response = await ProxyRequest(request, cancellationToken, $"reactions/{reactionId}");
+
+      if (response.StatusCode == HttpStatusCode.NoContent) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          using (var context = new dm.ShipHubContext()) {
+            var changes = await context.DeleteReaction(reactionId);
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
+            }
+          }
+        } catch (Exception e) {
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
+      }
+
+      return response;
+    }
+
+    [HttpDelete]
+    [Route("repos/{owner}/{repo}/pulls/{issueNumber:int}/reviews/{reviewId:long}")]
+    public async Task<HttpResponseMessage> DeleteReview(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo, int issueNumber, long reviewId) {
+      var response = await ProxyRequest(request, cancellationToken, $"repos/{owner}/{repo}/pulls/{issueNumber}/reviews/{reviewId}");
+
+      // WTF DELETE Review returns 200 OK
+      // https://developer.github.com/v3/pulls/reviews/#delete-a-pending-review
+      if (response.IsSuccessStatusCode) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          using (var context = new dm.ShipHubContext()) {
+            var changes = await context.DeleteReview(reviewId);
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
+            }
+          }
+        } catch (Exception e) {
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
+      }
+
+      return response;
+    }
+
+    [HttpDelete]
+    [Route("repos/{owner}/{repo}/pulls/comments/{commentId:long}")]
+    public async Task<HttpResponseMessage> DeleteReviewComment(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo, long commentId) {
+      var response = await ProxyRequest(request, cancellationToken, $"repos/{owner}/{repo}/pulls/comments/{commentId}");
+
+      if (response.StatusCode == HttpStatusCode.NoContent) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          using (var context = new dm.ShipHubContext()) {
+            var changes = await context.DeletePullRequestComment(commentId);
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
+            }
+          }
+        } catch (Exception e) {
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
+      }
+
+      return response;
+    }
+
+    [HttpDelete]
+    [Route("repos/{owner}/{repo}/pulls/{issueNumber:int}/requested_reviewers")]
+    public async Task<HttpResponseMessage> DeleteRequestedReviewer(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo, int issueNumber) {
+      var response = await ProxyRequest(request, cancellationToken, $"repos/{owner}/{repo}/pulls/{issueNumber}/requested_reviewers");
+
+      if (response.StatusCode == HttpStatusCode.OK) {
+        var user = RequestContext.Principal as ShipHubPrincipal;
+        try {
+          await response.Content.LoadIntoBufferAsync();
+          var data = await response.Content.ReadAsAsync<JToken>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
+          var removed = data.Value<IEnumerable<string>>("reviewers");
+
+          // TODO: This response actually contains the PR
+          // Update our copy as appropriate
+
+          using (var context = new dm.ShipHubContext()) {
+            var changes = await context.DeleteReviewers($"{owner}/{repo}", issueNumber, removed);
+
+            if (!changes.IsEmpty) {
+              await _queueClient.NotifyChanges(changes);
+            }
+          }
+        } catch (Exception e) {
+          e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
+        }
+      }
+
+      return response;
+    }
+
+    // ////////////////////////////////////////////////////////////
+    // Issues
+    // ////////////////////////////////////////////////////////////
 
     [HttpPost]
     [Route("repos/{owner}/{repo}/issues")]
