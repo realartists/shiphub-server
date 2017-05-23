@@ -43,7 +43,16 @@
     private GitHubMetadata _prStatusMetadata;
 
     // Event sync
-    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] { "commented", "commit-commented", "line-commented", "subscribed", "unsubscribed" }, StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] {
+      "commented",
+      "commit-commented",
+      "line-commented",
+      "mentioned",
+      "review_dismissed",
+      "reviewed",
+      "subscribed",
+      "unsubscribed"
+    }, StringComparer.OrdinalIgnoreCase);
 
     public IssueActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
@@ -374,9 +383,6 @@
                 break;
               case "committed":
                 item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
-                break;
-              case "reviewed":
-                item.CreatedAt = item.SubmittedAt.Value;
                 break;
               default:
                 // Leave most things alone.
