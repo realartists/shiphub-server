@@ -587,7 +587,7 @@
           pullRequests);
 
         if (reviewers != null) {
-          x.Assignees = CreateIssueMappingTable("Reviewers", reviewers);
+          x.Reviewers = CreateIssueMappingTable("Reviewers", reviewers);
         }
       });
     }
