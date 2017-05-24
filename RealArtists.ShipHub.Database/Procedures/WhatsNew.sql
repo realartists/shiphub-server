@@ -261,7 +261,6 @@ BEGIN
            e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
     FROM @Logs as l
       INNER JOIN Issues as e ON (l.ItemId = e.Id)
-      LEFT OUTER JOIN PullRequests as pr ON (pr.IssueId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
 

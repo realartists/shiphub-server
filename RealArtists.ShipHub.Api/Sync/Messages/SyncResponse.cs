@@ -48,7 +48,7 @@
     [EnumMember(Value = "project")]
     Project,
 
-    [EnumMember(Value = "pr")]
+    [EnumMember(Value = "pullrequest")]
     PullRequest,
 
     [EnumMember(Value = "prcomment")]
