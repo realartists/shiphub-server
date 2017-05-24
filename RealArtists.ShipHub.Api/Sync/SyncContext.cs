@@ -34,10 +34,10 @@
       RunUpgradeCheck();
     }
 
-    private static readonly Version MinimumPullRequestClientVersion = new Version(int.MaxValue, int.MaxValue, int.MaxValue, int.MaxValue);
+    private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
     private const long MinimumPullRequestVersion = 1;
     private void RunUpgradeCheck() {
-      if (_connection.ClientBuild > MinimumPullRequestClientVersion
+      if (_connection.ClientBuild >= MinimumPullRequestClientVersion
         && _versions.PullRequestVersion < MinimumPullRequestVersion) {
         foreach (var org in _versions.OrgVersions.Keys) {
           _versions.OrgVersions[org] = 0;
