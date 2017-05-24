@@ -39,13 +39,11 @@
     private void RunUpgradeCheck() {
       if (_connection.ClientBuild >= MinimumPullRequestClientVersion
         && _versions.PullRequestVersion < MinimumPullRequestVersion) {
-        foreach (var org in _versions.OrgVersions.Keys) {
-          _versions.OrgVersions[org] = 0;
-        }
-        foreach (var repo in _versions.RepoVersions.Keys) {
-          _versions.RepoVersions[repo] = 0;
-        }
-        _versions.PullRequestVersion = MinimumPullRequestVersion;
+        _versions = new SyncVersions(
+          _versions.RepoVersions.ToDictionary(x => x.Key, x => 0L),
+          _versions.OrgVersions.ToDictionary(x => x.Key, x => 0L),
+          MinimumPullRequestVersion
+        );
       }
     }
 
