@@ -20,7 +20,7 @@
               return Account.UserType;
             case g.GitHubAccountType.Unspecified:
             default:
-              Log.Error("Mapping untyped account: " + Environment.StackTrace);
+              Log.Error($"Mapping untyped account: {x.Type}\n" + Environment.StackTrace);
               Debug.Assert(false, "Un-typed account");
               return Account.UserType;
           }
