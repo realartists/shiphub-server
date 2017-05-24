@@ -185,6 +185,7 @@
 
     private async Task SyncTask(IGitHubPoolable github, IGitHubOrganizationAdmin admin, ChangeSummary changes) {
       var tasks = new List<Task>();
+      var batch = new UpdateBatch();
 
       using (var context = _contextFactory.CreateInstance()) {
         // Org itself
@@ -193,13 +194,15 @@
 
           if (org.IsOk) {
             this.Info("Updating Organization");
-            changes.UnionWith(
-              await context.UpdateAccount(org.Date, _mapper.Map<AccountTableType>(org.Result))
-            );
+            batch.AddAccount(org.Result, org.Date);
           }
 
           // Don't update until saved.
-          _metadata = GitHubMetadata.FromResponse(org);
+          batch.Checkpoint((success) => {
+            if (success) {
+              _metadata = GitHubMetadata.FromResponse(org);
+            }
+          });
         }
 
         if (_adminMetadata.IsExpired()) {

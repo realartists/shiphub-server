@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Data;
-  using System.Data.Common;
   using System.Data.Entity;
   using System.Data.SqlClient;
   using System.Diagnostics;
@@ -29,11 +28,6 @@
 
     public ShipHubContext(string nameOrConnectionString)
       : base(nameOrConnectionString) {
-      ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
-    }
-
-    public ShipHubContext(DbConnection existingConnection, bool contextOwnsConnection)
-      : base(existingConnection, contextOwnsConnection) {
       ConnectionFactory = new SqlConnectionFactory(Database.Connection.ConnectionString);
     }
 
@@ -327,10 +321,6 @@
           }
         }
       });
-    }
-
-    public Task<ChangeSummary> UpdateAccount(DateTimeOffset date, AccountTableType account) {
-      return BulkUpdateAccounts(date, new[] { account });
     }
 
     public Task<ChangeSummary> BulkUpdateAccounts(DateTimeOffset date, IEnumerable<AccountTableType> accounts) {

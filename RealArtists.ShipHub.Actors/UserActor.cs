@@ -138,19 +138,23 @@
       // Give them high priority.
 
       var tasks = new List<Task>();
+      var batch = new UpdateBatch();
+
       using (var context = _contextFactory.CreateInstance()) {
         // User
         if (_metadata.IsExpired()) {
           var user = await _github.User(_metadata, RequestPriority.Interactive);
 
           if (user.IsOk) {
-            changes.UnionWith(
-              await context.UpdateAccount(user.Date, _mapper.Map<AccountTableType>(user.Result))
-            );
+            batch.AddAccount(user.Result, user.Date);
           }
 
           // Don't update until saved.
-          _metadata = GitHubMetadata.FromResponse(user);
+          batch.Checkpoint((success) => {
+            if (success) {
+              _metadata = GitHubMetadata.FromResponse(user);
+            }
+          });
         }
 
         if (_syncBillingState) {
