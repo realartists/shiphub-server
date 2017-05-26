@@ -905,6 +905,14 @@
       return sp;
     }
 
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
+    public DynamicStoredProcedure SyncSpiderProgress(long userId) {
+      var sp = new DynamicStoredProcedure("[dbo].[SyncSpiderProgress]", ConnectionFactory);
+      dynamic dsp = sp;
+      dsp.UserId = userId;
+      return sp;
+    }
+
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;

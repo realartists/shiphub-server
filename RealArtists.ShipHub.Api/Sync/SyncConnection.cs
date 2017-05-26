@@ -110,15 +110,13 @@
             return;
           }
 
-          // first respond with purgeIdentifier
-          await SendJsonAsync(new HelloResponse() { PurgeIdentifier = Constants.PurgeIdentifier });
-
           // now start sync
           _syncContext = new SyncContext(_user, this, new SyncVersions(
             hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
             hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version),
             hello.Versions?.PullRequestVersion)
           );
+          await _syncContext.SendHelloResponse(Constants.PurgeIdentifier);
 
           var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);
           await userActor.OnHello();
