@@ -55,7 +55,7 @@
         using (var context = new ShipHubContext()) {
           var staleHooks = context.Hooks
            .Where(x =>
-             (x.LastSeen <= staleDateTimeOffset) &&
+             (x.LastSeen == null || x.LastSeen <= staleDateTimeOffset) &&
              (x.LastPing == null || x.LastPing <= pingTime) &&
              (x.GitHubId != null))
            .Take(batchSize)
