@@ -169,6 +169,7 @@
     <Build Include="Procedures\DeleteReview.sql" />
     <Build Include="Procedures\DeleteReaction.sql" />
     <Build Include="Procedures\DeleteReviewers.sql" />
+    <Build Include="Procedures\SyncSpiderProgress.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

@@ -112,11 +112,17 @@
     }
   }
 
+  public class SyncSpiderProgress {
+    public string Summary { get; set; }
+    public double Progress { get; set; } // < 0 = indeterminate, otherwise in the range 0..1
+  }
+
   public class SyncResponse : SyncMessageBase {
     public override string MessageType { get => "sync"; set { } }
 
     public IEnumerable<SyncLogEntry> Logs { get; set; }
     public VersionDetails Versions { get; set; }
     public long Remaining { get; set; }
+    public SyncSpiderProgress SpiderProgress { get; set; }
   }
 }

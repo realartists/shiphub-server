@@ -7,6 +7,7 @@
     public Guid PurgeIdentifier { get; set; }
     public UpgradeDetails Upgrade { get; set; } = new UpgradeDetails() { Required = false };
     public long Version { get; } = Constants.ServerVersion;
+    public SyncSpiderProgress SpiderProgress { get; set; }
   }
 
   public class UpgradeDetails {

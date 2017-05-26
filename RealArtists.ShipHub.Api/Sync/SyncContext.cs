@@ -13,6 +13,7 @@
   using Messages;
   using Messages.Entries;
   using Newtonsoft.Json.Linq;
+  using RealArtists.ShipHub.Legacy;
 
   public class SyncContext {
     private ShipHubPrincipal _user;
@@ -44,6 +45,19 @@
           _versions.RepoVersions.ToDictionary(x => x.Key, x => 0L),
           _versions.OrgVersions.ToDictionary(x => x.Key, x => 0L),
           MinimumPullRequestVersion
+        );
+      }
+    }
+
+    public async Task SendHelloResponse(Guid purgeIdentifier) {
+      using (var context = new ShipHubContext()) {
+        var spiderProgress = await SpiderProgress(context);
+
+        await _connection.SendJsonAsync(
+          new HelloResponse() {
+            PurgeIdentifier = purgeIdentifier,
+            SpiderProgress = spiderProgress
+          }
         );
       }
     }
@@ -133,6 +147,63 @@
       }
     }
 
+    private SyncSpiderProgress ReadSpiderProgress(DynamicDataReader reader) {
+      dynamic ddr = reader;
+
+      SyncSpiderProgress spiderProgress = null;
+
+      if (!reader.Read()) {
+        return null;
+      }
+      var hasRepoList = ddr.HasRepoMetadata;
+
+      if (!reader.NextResult()) {
+        return null;
+      }
+
+      var repoSpiderProgress = new List<(bool SyncStarted, int MaxIssueNumber, int IssueCount)>();
+      while (reader.Read()) {
+        bool hasIssueMetadata = ddr.HasIssueMetadata;
+        int maxNumber = ddr.MaxNumber ?? 0;
+        int issueCount = ddr.IssueCount ?? 0;
+
+        repoSpiderProgress.Add((hasIssueMetadata || maxNumber != 0, maxNumber, issueCount));
+      }
+
+      var hasReposThatHaveNeverFetchedIssues = repoSpiderProgress.Exists(t => !t.SyncStarted);
+
+      if (!hasRepoList || hasReposThatHaveNeverFetchedIssues) {
+        spiderProgress = new SyncSpiderProgress() {
+          Summary = "Fetching Repo List",
+          Progress = -1.0
+        };
+      } else {
+        var (expected, loaded) = repoSpiderProgress.Aggregate((expected: 0, loaded: 0), (accum, t) => {
+          return (expected: t.MaxIssueNumber + accum.expected, loaded: t.IssueCount + accum.loaded);
+        });
+        if (loaded >= expected) {
+          spiderProgress = new SyncSpiderProgress() {
+            Summary = "Issues Fully Fetched",
+            Progress = 1.0
+          };
+        } else {
+          spiderProgress = new SyncSpiderProgress() {
+            Summary = "Fetching Issues",
+            Progress = loaded / (double)expected
+          };
+        }
+      }
+
+      return spiderProgress;
+    }
+
+    private async Task<SyncSpiderProgress> SpiderProgress(ShipHubContext context) {
+      var dsp = context.SyncSpiderProgress(_user.UserId);
+      using (var reader = await dsp.ExecuteReaderAsync()) {
+        return ReadSpiderProgress(reader);
+      }
+    }
+
     public async Task SendSyncResponse() {
       var pageSize = 1000;
       var tasks = new List<Task>();
@@ -153,6 +224,8 @@
 
         var entries = new List<SyncLogEntry>();
         var sentLogs = 0;
+        SyncSpiderProgress spiderProgress = null;
+
         using (var reader = await dsp.ExecuteReaderAsync()) {
           dynamic ddr = reader;
 
@@ -190,6 +263,13 @@
               Until = limitUntil,
             }));
           }
+
+          /* ************************************************************************************************************
+           * Spider Progress
+           * ************************************************************************************************************/
+
+          reader.NextResult();
+          spiderProgress = ReadSpiderProgress(reader);
 
           /* ************************************************************************************************************
            * Deleted orgs and repos (permission removed or deleted)
@@ -726,6 +806,7 @@
               Logs = entries,
               Remaining = totalLogs - sentLogs,
               Versions = VersionDetails,
+              SpiderProgress = spiderProgress
             }));
           }
         }
