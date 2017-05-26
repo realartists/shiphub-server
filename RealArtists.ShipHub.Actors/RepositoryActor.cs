@@ -702,7 +702,7 @@
                 mostRecent = batchMostRecent;
               }
 
-              if (batchMostRecent < _pullRequestUpdatedAt) {
+              if (_pullRequestUpdatedAt != null && batchMostRecent < _pullRequestUpdatedAt.Value) {
                 // The most recent update in this batch is older than the data we already have - Bail.
                 break;
               }
@@ -881,7 +881,7 @@
       context.Database.Connection.Close();
 
       // If our last operation on this repo hook resulted in error, delay.
-      if (hook?.LastError > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
+      if (hook?.LastError != null && hook?.LastError.Value > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
         return changes; // Wait to try later.
       }
 

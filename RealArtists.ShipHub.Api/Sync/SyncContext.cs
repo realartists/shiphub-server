@@ -37,6 +37,7 @@
     private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
     private const long MinimumPullRequestVersion = 1;
     private void RunUpgradeCheck() {
+      // _connection.ClientBuild cannot be null, hello will force upgrade
       if (_connection.ClientBuild >= MinimumPullRequestClientVersion
         && _versions.PullRequestVersion < MinimumPullRequestVersion) {
         _versions = new SyncVersions(
@@ -91,7 +92,7 @@
           if (personalSub.TrialEndDate > DateTimeOffset.UtcNow) {
             mode = SubscriptionMode.Trial;
             trialEndDate = personalSub.TrialEndDate;
-          } else {
+          } else { // personalSub.TrialEndDate is null or in the past
             mode = SubscriptionMode.Free;
           }
         } else {
