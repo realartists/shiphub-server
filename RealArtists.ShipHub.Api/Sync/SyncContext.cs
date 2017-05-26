@@ -160,16 +160,16 @@
         return null;
       }
 
-      var repoSpiderProgress = new List<Tuple<bool, int, int>>();
+      var repoSpiderProgress = new List<(bool SyncStarted, int MaxIssueNumber, int IssueCount)>();
       while (reader.Read()) {
         bool hasIssueMetadata = ddr.HasIssueMetadata;
         int maxNumber = ddr.MaxNumber ?? 0;
         int issueCount = ddr.IssueCount ?? 0;
 
-        repoSpiderProgress.Add(new Tuple<bool, int, int>(hasIssueMetadata || maxNumber != 0, maxNumber, issueCount));
+        repoSpiderProgress.Add((hasIssueMetadata || maxNumber != 0, maxNumber, issueCount));
       }
 
-      var hasReposThatHaveNeverFetchedIssues = repoSpiderProgress.Exists(t => !t.Item1);
+      var hasReposThatHaveNeverFetchedIssues = repoSpiderProgress.Exists(t => !t.SyncStarted);
 
       if (!hasRepoList || hasReposThatHaveNeverFetchedIssues) {
         spiderProgress = new SyncSpiderProgress() {
@@ -178,7 +178,7 @@
         };
       } else {
         var (expected, loaded) = repoSpiderProgress.Aggregate((expected: 0, loaded: 0), (accum, t) => {
-          return (expected: t.Item2 + accum.expected, loaded: t.Item3 + accum.loaded);
+          return (expected: t.MaxIssueNumber + accum.expected, loaded: t.IssueCount + accum.loaded);
         });
         if (loaded >= expected) {
           spiderProgress = new SyncSpiderProgress() {
