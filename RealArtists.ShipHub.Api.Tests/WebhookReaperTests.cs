@@ -207,7 +207,11 @@
 
         context.Entry(env.org1Hook).Reload();
         Assert.Null(env.org1Hook.PingCount);
-        Assert.AreEqual(0, pings.Keys.Count);
+
+        // Assert that neither org was pinged
+        // Ignore repo hooks
+        Assert.False(pings.ContainsKey(env.org1Hook.Id));
+        Assert.False(pings.ContainsKey(env.org2Hook.Id));
       }
     }
 

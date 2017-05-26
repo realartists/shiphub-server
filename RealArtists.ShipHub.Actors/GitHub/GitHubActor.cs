@@ -598,7 +598,7 @@
       }
     }
 
-    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint? maxPages = null, uint? skipPages = null) {
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint maxPages = uint.MaxValue, uint skipPages = 0) {
       if (request.Method != HttpMethod.Get) {
         throw new InvalidOperationException("Only GETs can be paginated.");
       }
@@ -618,7 +618,6 @@
       if (response.IsOk) {
         // If skipping pages, calculate here.
         switch (skipPages) {
-          case null:
           case 0:
             break;
           case 1 when response.Pagination?.Next != null:
@@ -628,23 +627,21 @@
           case 1: // response.Pagination == null
             response.Result = Array.Empty<T>();
             break;
-          case uint skip: // skipPages > 1
+          default: // skipPages > 1
             if (response.Pagination?.CanInterpolate != true) {
               throw new InvalidOperationException($"Skipping pages is not supported for [{response.Request.Uri}]: {response.Pagination?.SerializeObject()}");
             }
-            nextUri = response.Pagination.Interpolate().Skip((int)(skip - 1)).FirstOrDefault();
+            nextUri = response.Pagination.Interpolate().Skip((int)(skipPages - 1)).FirstOrDefault();
             if (nextUri == null) {
               // We skipped more pages than existed.
               response.Pagination = null;
               response.Result = Array.Empty<T>();
             }
             break;
-          default:
-            break;
         }
 
         // Now, if there's more to do, enumerate the results
-        if ((maxPages == null || maxPages > 1) && response.Pagination?.Next != null) {
+        if (maxPages > 1 && response.Pagination?.Next != null) {
           // By default, upgrade background => subrequest
           var subRequestPriority = RequestPriority.SubRequest;
           // Ensure interactive => interactive
@@ -668,15 +665,15 @@
       return response.Distinct(keySelector);
     }
 
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint? maxPages) {
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {
       var partial = false;
       var results = new List<TItem>(firstPage.Result);
       uint resultPages = 1;
-      var pages = firstPage.Pagination.Interpolate();
+      var pages = firstPage.Pagination.Interpolate().ToArray();
 
-      if (maxPages < pages.Count()) {
+      if (maxPages < pages.Length) {
         partial = true;
-        pages = pages.Take((int)maxPages - 1);
+        pages = pages.Take((int)maxPages - 1).ToArray();
       }
 
       var pageRequestors = pages
@@ -724,7 +721,7 @@
         if (response.IsOk) {
           ++resultPages;
           results.AddRange(response.Result);
-        } else if (maxPages != null) {
+        } else if (maxPages < uint.MaxValue) {
           // Return results up to this point.
           partial = true;
           break;
@@ -758,7 +755,7 @@
       return result;
     }
 
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint? maxPages) {
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {
       var partial = false;
       var results = new List<TItem>(firstPage.Result);
 
@@ -772,7 +769,7 @@
 
         if (current.IsOk) {
           results.AddRange(current.Result);
-        } else if (maxPages != null) {
+        } else if (maxPages < uint.MaxValue) {
           // Return results up to this point.
           partial = true;
           break;

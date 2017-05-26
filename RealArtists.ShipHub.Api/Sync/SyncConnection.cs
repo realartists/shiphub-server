@@ -101,7 +101,7 @@
 
           // Validate version
           ClientBuild = hello.BuildVersion;
-          if (hello.BuildVersion < _MinimumClientBuild) {
+          if (ClientBuild == null || ClientBuild < _MinimumClientBuild) {
             await SendJsonAsync(new HelloResponse() {
               Upgrade = new UpgradeDetails() {
                 Required = true
