@@ -20,6 +20,18 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
+    -- Renaming accounts is a seemingly popular thing.
+    -- When a new record is found with a conflicting name, rename the old one.
+    -- The old one will eventually be updated, or we can force an update.
+    -- Don't sync these temporary renames for the time being.
+    UPDATE Accounts
+      -- This could technically truncate a really long username, but whatever.
+      SET [Login] = CAST(N'☠' + a.[Login] as NVARCHAR(255))
+    FROM @Accounts as anew
+      INNER LOOP JOIN Accounts as a ON (a.[Login] = anew.[Login])
+    WHERE a.Id != anew.Id AND a.[Date] < @Date
+    OPTION (FORCE ORDER)
+
     MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, [Type], [Login]

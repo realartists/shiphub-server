@@ -777,5 +777,35 @@
         Assert.AreEqual(new long[] { 2201 }, updatedRepo2.Labels.Select(x => x.Id).ToArray());
       };
     }
+
+    [Test]
+    public async Task UsersCanBeRenamed() {
+      using (var context = new ShipHubContext()) {
+        var user1 = TestUtil.MakeTestUser(context, 3001, "user1");
+        var user2 = TestUtil.MakeTestUser(context, 3002, "user2");
+        await context.SaveChangesAsync();
+
+        // Rename user2 -> user1
+        var changes = await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] {
+          new AccountTableType() {
+            Id = user2.Id,
+            Login = user1.Login,
+            Type = "user",
+          },
+        });
+
+        // now we need a new context to defeat caching.
+        using (var newContext = new ShipHubContext()) {
+          // Now user1 should be "☠" + user1.Login
+          var users = await newContext.Users
+            .Where(x => new[] { user1.Id, user2.Id }.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id);
+          Assert.IsTrue(users[user1.Id].Login.Equals("☠" + user1.Login, StringComparison.Ordinal));
+
+          // And user2 should ne user1.Login
+          Assert.IsTrue(users[user2.Id].Login.Equals(user1.Login, StringComparison.Ordinal));
+        }
+      }
+    }
   }
 }
