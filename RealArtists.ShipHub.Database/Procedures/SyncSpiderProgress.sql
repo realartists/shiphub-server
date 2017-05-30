@@ -11,7 +11,7 @@ BEGIN
 
   -- How many issues have we fetched so far per repo?
   SELECT R.Id AS RepositoryId, 
-         R.ImportedIssues As ImportedIssues,
+         R.IssuesFullyImported As IssuesFullyImported,
          CONVERT(BIT, (CASE WHEN R.IssueMetadataJson IS NULL THEN 0 ELSE 1 END)) AS HasIssueMetadata,
          (SELECT MAX(Number) FROM Issues WHERE RepositoryId = R.Id) AS MaxNumber,
          (SELECT COUNT(1) FROM Issues WHERE RepositoryId = R.Id) AS IssueCount

@@ -124,7 +124,7 @@
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
         _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
-        _issuesFullyImported = repo.ImportedIssues;
+        _issuesFullyImported = repo.IssuesFullyImported;
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
         _projectMetadata = repo.ProjectMetadata;

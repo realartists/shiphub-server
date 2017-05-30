@@ -164,7 +164,7 @@
       var repoSpiderProgress = new List<(bool SyncStarted, int MaxIssueNumber, int IssueCount)>();
       while (reader.Read()) {
         bool hasIssueMetadata = ddr.HasIssueMetadata;
-        bool issuesFullyImported = ddr.ImportedIssues;
+        bool issuesFullyImported = ddr.IssuesFullyImported;
         int maxNumber = ddr.MaxNumber ?? 0;
         int issueCount = ddr.IssueCount ?? 0;
 

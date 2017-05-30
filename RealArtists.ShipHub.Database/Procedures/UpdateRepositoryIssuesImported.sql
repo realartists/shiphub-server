@@ -11,9 +11,9 @@ BEGIN
   );
 
   UPDATE Repositories
-     SET ImportedIssues = 1
+     SET IssuesFullyImported = 1
   OUTPUT INSERTED.Id INTO @Changes
-   WHERE Id = @RepositoryId AND ImportedIssues = 0;
+   WHERE Id = @RepositoryId AND IssuesFullyImported = 0;
 
   -- Update sync log. We have to do this as nothing else may have changed besides
   -- our realization that we're finished, so we have to update the client.
