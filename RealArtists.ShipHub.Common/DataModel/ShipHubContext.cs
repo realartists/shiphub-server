@@ -260,6 +260,12 @@
         new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
     }
 
+    public Task<ChangeSummary> MarkRepositoryIssuesAsFullyImported(long repoId) {
+      return ExecuteAndReadChanges("[dbo].[UpdateRepositoryIssuesImported]", x => {
+        x.RepositoryId = repoId;
+      });
+    }
+
     private Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {
       return RetryOnDeadlock(async () => {
         using (var conn = ConnectionFactory.Get())

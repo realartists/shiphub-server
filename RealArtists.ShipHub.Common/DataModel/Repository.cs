@@ -28,6 +28,8 @@
 
     public bool HasProjects { get; set; }
 
+    public bool IssuesFullyImported { get; set; }
+
     public string IssueTemplate { get; set; }
 
     public long Size { get; set; }

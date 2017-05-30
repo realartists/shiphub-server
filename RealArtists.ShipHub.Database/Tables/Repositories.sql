@@ -8,6 +8,7 @@
   [Size]                              BIGINT         NOT NULL DEFAULT 0,
   [Disabled]                          BIT            NOT NULL DEFAULT 0,
   [HasProjects]                       BIT            NOT NULL DEFAULT 1,
+  [IssuesFullyImported]               BIT            NOT NULL DEFAULT 0,
   [IssueTemplate]                     NVARCHAR(MAX)  NULL,
   [MetadataJson]                      NVARCHAR(MAX)  NULL,
   [AssignableMetadataJson]            NVARCHAR(MAX)  NULL,

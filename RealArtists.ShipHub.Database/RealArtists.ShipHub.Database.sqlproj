@@ -170,6 +170,7 @@
     <Build Include="Procedures\DeleteReaction.sql" />
     <Build Include="Procedures\DeleteReviewers.sql" />
     <Build Include="Procedures\SyncSpiderProgress.sql" />
+    <Build Include="Procedures\UpdateRepositoryIssuesImported.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
