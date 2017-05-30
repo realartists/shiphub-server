@@ -164,8 +164,15 @@
       var repoSpiderProgress = new List<(bool SyncStarted, int MaxIssueNumber, int IssueCount)>();
       while (reader.Read()) {
         bool hasIssueMetadata = ddr.HasIssueMetadata;
+        bool issuesFullyImported = ddr.ImportedIssues;
         int maxNumber = ddr.MaxNumber ?? 0;
         int issueCount = ddr.IssueCount ?? 0;
+
+        if (issuesFullyImported) {
+          // realartists/shiphub-server#460 Handle spider progress for repos with gaps in issue numbering
+          // workaround gaps in issues numbers that can occur in some rare scenarios
+          maxNumber = issueCount;
+        }
 
         repoSpiderProgress.Add((hasIssueMetadata || maxNumber != 0, maxNumber, issueCount));
       }

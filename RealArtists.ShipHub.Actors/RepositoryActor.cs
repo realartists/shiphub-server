@@ -89,6 +89,7 @@
     private bool _needsIssueTemplateSync;
     private bool _pollIssueTemplate;
     private int _syncCount;
+    private bool _issuesFullyImported;
 
     public RepositoryActor(
       IMapper mapper,
@@ -123,6 +124,7 @@
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
         _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
+        _issuesFullyImported = repo.ImportedIssues;
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
         _projectMetadata = repo.ProjectMetadata;
@@ -628,6 +630,13 @@
             // Ensure we don't miss any when we hit the page limit.
             _issueSince = issues.Max(x => x.UpdatedAt).AddSeconds(-1);
             await context.UpdateRepositoryIssueSince(_repoId, _issueSince);
+          }
+
+          if (issueResponse.CacheData != null && !_issuesFullyImported) {
+            // CacheData will only be set if we've received all of the issues
+            this.Info($"{_fullName} Issues are now fully imported");
+            _issuesFullyImported = true;
+            changes.UnionWith(await context.MarkRepositoryIssuesAsFullyImported(_repoId));
           }
         }
 
