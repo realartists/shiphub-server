@@ -631,13 +631,14 @@
             _issueSince = issues.Max(x => x.UpdatedAt).AddSeconds(-1);
             await context.UpdateRepositoryIssueSince(_repoId, _issueSince);
           }
+        }
 
-          if (issueResponse.CacheData != null && !_issuesFullyImported) {
-            // CacheData will only be set if we've received all of the issues
-            this.Info($"{_fullName} Issues are now fully imported");
-            _issuesFullyImported = true;
-            changes.UnionWith(await context.MarkRepositoryIssuesAsFullyImported(_repoId));
-          }
+        if (((issueResponse.IsOk && issueResponse.CacheData != null) || (issueResponse.Status == HttpStatusCode.NotModified))
+            && !_issuesFullyImported) {
+          // CacheData will only be set if we've received all of the issues
+          this.Info($"{_fullName} Issues are now fully imported");
+          _issuesFullyImported = true;
+          changes.UnionWith(await context.MarkRepositoryIssuesAsFullyImported(_repoId));
         }
 
         _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
