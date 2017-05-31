@@ -261,7 +261,7 @@
     }
 
     public Task<ChangeSummary> MarkRepositoryIssuesAsFullyImported(long repoId) {
-      return ExecuteAndReadChanges("[dbo].[UpdateRepositoryIssuesImported]", x => {
+      return ExecuteAndReadChanges("[dbo].[MarkRepositoryIssuesAsFullyImported]", x => {
         x.RepositoryId = repoId;
       });
     }

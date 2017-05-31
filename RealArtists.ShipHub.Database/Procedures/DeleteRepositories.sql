@@ -9,47 +9,39 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    -- Pull Request Comments
-    DELETE FROM PullRequestComments
-    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
-
-    -- Pull Request Reviews
-    DELETE FROM Reviews
-    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
-
-    --Projects
+    -- Projects
     DELETE FROM Projects
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --Hooks
+    -- Hooks
     DELETE FROM Hooks
     WHERE EXISTS (SELECT * FROM @Repositories
     WHERE RepositoryId IS NOT NULL AND Item = RepositoryId)
 
-    --RepositoryAccounts
+    -- RepositoryAccounts
     DELETE FROM RepositoryAccounts
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --SyncLog
+    -- SyncLog
     DELETE FROM SyncLog
     WHERE OwnerType = 'repo'
       AND EXISTS (SELECT * FROM @Repositories WHERE Item = OwnerId)
 
-    --AccountRepositories
+    -- AccountRepositories
     DELETE FROM AccountRepositories
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --IssueEventAccess
+    -- IssueEventAccess
     DELETE FROM IssueEventAccess
     FROM IssueEventAccess as iea
       INNER JOIN IssueEvents as ie ON (ie.Id = iea.IssueEventId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = ie.RepositoryId)
 
-    --IssueEvents
+    -- IssueEvents
     DELETE FROM IssueEvents
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
   
-    --IssueAssignees
+    -- IssueAssignees
     DELETE FROM IssueAssignees
     FROM IssueAssignees as ia
       INNER JOIN Issues as i ON (i.Id = ia.IssueId)
@@ -61,13 +53,13 @@ BEGIN
       INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
 
-    --IssueLabels
+    -- IssueLabels
     DELETE FROM IssueLabels
     FROM IssueLabels as il
       INNER JOIN Issues as i ON (i.Id = il.IssueId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
 
-    --Reactions
+    -- Reactions
     DELETE FROM Reactions
     FROM Reactions as r
       INNER JOIN Issues as i ON (i.Id = r.IssueId)
@@ -78,27 +70,53 @@ BEGIN
       INNER JOIN Comments as c ON (c.Id = r.CommentId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = c.RepositoryId)
 
-    --Comments
+    DELETE FROM Reactions
+    FROM Reactions as r
+      INNER JOIN CommitComments as cc ON (cc.Id = r.CommitCommentId)
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = cc.RepositoryId)
+
+    DELETE FROM Reactions
+    FROM Reactions as r
+      INNER JOIN PullRequestComments as prc ON (prc.Id = r.PullRequestCommentId)
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = prc.RepositoryId)
+
+    -- Commit Statuses
+    DELETE FROM CommitStatuses
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
+    -- Comments
     DELETE FROM Comments
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
+    -- Commit Comments
+    DELETE FROM CommitComments
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
+    -- Pull Request Comments
+    DELETE FROM PullRequestComments
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
+    -- Pull Request Reviews
+    DELETE FROM Reviews
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
     -- Pull Requests
     DELETE FROM PullRequests
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --Issues
+    -- Issues
     DELETE FROM Issues
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --Milestones
+    -- Milestones
     DELETE FROM Milestones
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --Labels
+    -- Labels
     DELETE FROM Labels
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
-    --Repositories
+    -- Repositories
     DELETE FROM Repositories
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = Id)
 
