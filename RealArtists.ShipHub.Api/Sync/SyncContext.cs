@@ -318,6 +318,7 @@
               Logs = entries,
               Remaining = 0,
               Versions = VersionDetails,
+              SpiderProgress = spiderProgress
             }));
             entries = new List<SyncLogEntry>();
           }
@@ -364,6 +365,7 @@
               Logs = entries,
               Remaining = 0, // Orgs are sent as a single batch
               Versions = VersionDetails,
+              SpiderProgress = spiderProgress
             }));
             entries = new List<SyncLogEntry>();
           }

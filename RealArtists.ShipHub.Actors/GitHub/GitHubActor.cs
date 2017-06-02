@@ -225,6 +225,19 @@
       return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
 
+    public Task<GitHubResponse<IEnumerable<Issue>>> NewestIssues(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions, priority) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", "created");
+      request.AddParameter("direction", "desc");
+      request.AddParameter("per_page", 100);
+
+      return EnqueueRequest<IEnumerable<Issue>>(request);
+    }
+
     public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/reactions", cacheOptions, priority) {
         // Reactions are in beta
@@ -762,7 +775,13 @@
       // Walks pages in order, one at a time.
       var current = firstPage;
       uint page = 1;
-      while (current.Pagination?.Next != null && page < maxPages) {
+
+      while (current.Pagination?.Next != null) {
+        if (page >= maxPages) {
+          partial = true;
+          break;
+        }
+
         var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
         nextReq.Priority = priority;
         current = await EnqueueRequest<IEnumerable<TItem>>(nextReq);

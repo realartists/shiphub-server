@@ -602,7 +602,22 @@
       if (_issueMetadata.IsExpired()) {
         var issueResponse = await github.Issues(_fullName, _issueSince, IssueChunkSize, _issueMetadata);
         if (issueResponse.IsOk) {
-          var issues = issueResponse.Result;
+          var nibbledIssues = issueResponse.Result;
+          var issues = nibbledIssues;
+
+          if (_issueSince == EpochUtility.EpochOffset && issueResponse.CacheData == null) {
+            this.Info($"{_fullName} will load newest issues to tide itself over");
+            // in this scenario we're just starting nibbling, but we couldn't get it all in
+            // one go. do a single additional request to get the very newest issues by
+            // creation date. this is done both so we have recent data to show initially,
+            // and to help estimate spider progress.
+            var newestIssuesResponse = await github.NewestIssues(_fullName);
+            if (newestIssuesResponse.IsOk) {
+              issues = newestIssuesResponse.Result.Concat(nibbledIssues).Distinct(x => x.Id);
+            } else {
+              this.Error($"{_fullName} failed to load newest issues: {newestIssuesResponse.Status}");
+            }
+          }
 
           var accounts = issues
             .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
@@ -628,7 +643,7 @@
 
           if (issues.Any()) {
             // Ensure we don't miss any when we hit the page limit.
-            _issueSince = issues.Max(x => x.UpdatedAt).AddSeconds(-1);
+            _issueSince = nibbledIssues.Max(x => x.UpdatedAt).AddSeconds(-1);
             await context.UpdateRepositoryIssueSince(_repoId, _issueSince);
           }
         }
