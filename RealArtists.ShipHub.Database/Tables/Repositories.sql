@@ -10,6 +10,7 @@
   [HasProjects]                       BIT            NOT NULL DEFAULT 1,
   [IssuesFullyImported]               BIT            NOT NULL DEFAULT 0,
   [IssueTemplate]                     NVARCHAR(MAX)  NULL,
+  [PullRequestTemplate]               NVARCHAR(MAX)  NULL,
   [MetadataJson]                      NVARCHAR(MAX)  NULL,
   [AssignableMetadataJson]            NVARCHAR(MAX)  NULL,
   [CommentMetadataJson]               NVARCHAR(MAX)  NULL,
@@ -24,7 +25,8 @@
   [PullRequestSkip]                   INT            NULL,
   [ContentsRootMetadataJson]          NVARCHAR(MAX)  NULL,
   [ContentsDotGitHubMetadataJson]     NVARCHAR(MAX)  NULL,
-  [ContentsIssueTemplateMetadataJson] NVARCHAR(MAX)  NULL
+  [ContentsIssueTemplateMetadataJson] NVARCHAR(MAX)  NULL,
+  [ContentsPullRequestTemplateMetadataJson] NVARCHAR(MAX)  NULL
   CONSTRAINT [PK_Repositories] PRIMARY KEY CLUSTERED ([Id] ASC),
   CONSTRAINT [FK_Repositories_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
 )

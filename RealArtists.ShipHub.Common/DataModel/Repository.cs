@@ -31,6 +31,7 @@
     public bool IssuesFullyImported { get; set; }
 
     public string IssueTemplate { get; set; }
+    public string PullRequestTemplate { get; set; }
 
     public long Size { get; set; }
 
@@ -137,6 +138,14 @@
 
     [NotMapped]
     public GitHubMetadata ContentsIssueTemplateMetadata { get; set; }
+
+    public string ContentsPullRequestTemplateMetadataJson {
+      get => ContentsPullRequestTemplateMetadata.SerializeObject();
+      set => ContentsPullRequestTemplateMetadata = value.DeserializeObject<GitHubMetadata>();
+    }
+
+    [NotMapped]
+    public GitHubMetadata ContentsPullRequestTemplateMetadata { get; set; }
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<IssueComment> Comments { get; set; } = new HashSet<IssueComment>();

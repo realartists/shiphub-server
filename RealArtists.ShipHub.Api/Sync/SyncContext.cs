@@ -711,6 +711,7 @@
                   Private = ddr.Private,
                   ShipNeedsWebhookHelp = !(ddr.HasHook || ddr.Admin),
                   IssueTemplate = ddr.IssueTemplate,
+                  PullRequestTemplate = ddr.PullRequestTemplate,
                   Disabled = ddr.Disabled,
                 },
               });

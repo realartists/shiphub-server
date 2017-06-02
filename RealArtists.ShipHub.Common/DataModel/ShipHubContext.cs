@@ -949,10 +949,11 @@
       });
     }
 
-    public Task<ChangeSummary> SetRepositoryIssueTemplate(long repositoryId, string issueTemplate) {
+    public Task<ChangeSummary> SetRepositoryIssueTemplate(long repositoryId, string issueTemplate, string pullRequestTemplate) {
       return ExecuteAndReadChanges("[dbo].[SetRepositoryIssueTemplate]", x => {
         x.RepositoryId = repositoryId;
         x.IssueTemplate = issueTemplate;
+        x.PullRequestTemplate = pullRequestTemplate;
       });
     }
 
@@ -991,6 +992,7 @@
       GitHubMetadata contentsRootMetadata,
       GitHubMetadata contentsDotGitHubMetadata,
       GitHubMetadata contentsIssueTemplateMetadata,
+      GitHubMetadata contentsPullRequestTemplateMetadata,
       GitHubMetadata pullRequestMetadata,
       DateTimeOffset? pullRequestUpdatedAt,
       uint pullRequestSkip) {
@@ -1009,6 +1011,7 @@
           dsp.ContentsRootMetadataJson = contentsRootMetadata.SerializeObject();
           dsp.ContentsDotGitHubMetadataJson = contentsDotGitHubMetadata.SerializeObject();
           dsp.ContentsIssueTemplateMetadataJson = contentsIssueTemplateMetadata.SerializeObject();
+          dsp.ContentsPullRequestTemplateMetadataJson = contentsPullRequestTemplateMetadata.SerializeObject();
           dsp.PullRequestMetadataJson = pullRequestMetadata.SerializeObject();
           dsp.PullRequestUpdatedAt = pullRequestUpdatedAt;
           dsp.PullRequestSkip = (int)pullRequestSkip;
