@@ -175,6 +175,13 @@
       );
     }
 
+    public Task<GitHubResponse<IEnumerable<Issue>>> NewestIssues(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.NewestIssues(repoFullName, cache, priority),
+        cacheOptions
+      );
+    }
+
     public Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Labels(repoFullName, cache, priority),
