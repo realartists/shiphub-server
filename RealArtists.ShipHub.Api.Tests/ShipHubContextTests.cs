@@ -701,7 +701,7 @@
         var repo = TestUtil.MakeTestRepo(context, user.Id, 2001, "repo_a");
         await context.SaveChangesAsync();
 
-        await context.SetRepositoryIssueTemplate(repo.Id, null);
+        await context.SetRepositoryIssueTemplate(repo.Id, null, null);
         await context.SaveChangesAsync();
 
         var updatedRepo1 = context.Repositories.Single(x => x.Id == repo.Id);

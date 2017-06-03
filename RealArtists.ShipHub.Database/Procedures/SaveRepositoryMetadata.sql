@@ -11,6 +11,7 @@
   @ContentsRootMetadataJson NVARCHAR(MAX) = NULL,
   @ContentsDotGitHubMetadataJson NVARCHAR(MAX) = NULL,
   @ContentsIssueTemplateMetadataJson NVARCHAR(MAX) = NULL,
+  @ContentsPullRequestTemplateMetadataJson NVARCHAR(MAX) = NULL,
   @PullRequestMetadataJson NVARCHAR(MAX) = NULL,
   @PullRequestUpdatedAt DATETIMEOFFSET = NULL,
   @PullRequestSkip INT = NULL
@@ -32,6 +33,7 @@ BEGIN
     ContentsRootMetadataJson = @ContentsRootMetadataJson,
     ContentsDotGitHubMetadataJson = @ContentsDotGitHubMetadataJson,
     ContentsIssueTemplateMetadataJson = @ContentsIssueTemplateMetadataJson,
+    ContentsPullRequestTemplateMetadataJson = @ContentsPullRequestTemplateMetadataJson,
     PullRequestMetadataJson = @PullRequestMetadataJson,
     PullRequestUpdatedAt = @PullRequestUpdatedAt,
     PullRequestSkip = @PullRequestSkip

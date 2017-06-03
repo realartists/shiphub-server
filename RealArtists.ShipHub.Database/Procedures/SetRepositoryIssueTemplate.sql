@@ -1,6 +1,7 @@
 ﻿CREATE PROCEDURE [dbo].[SetRepositoryIssueTemplate]
 	@RepositoryId BIGINT,
-	@IssueTemplate NVARCHAR(MAX) NULL
+	@IssueTemplate NVARCHAR(MAX) NULL,
+    @PullRequestTemplate NVARCHAR(MAX) NULL
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -12,8 +13,9 @@ BEGIN
 
     -- Update the Repository with the new IssueTemplate
     UPDATE Repositories SET 
-      IssueTemplate = @IssueTemplate
-    WHERE Id = @RepositoryId AND ISNULL(IssueTemplate, '') != ISNULL(@IssueTemplate, '')
+      IssueTemplate = @IssueTemplate,
+      PullRequestTemplate = @PullRequestTemplate
+    WHERE Id = @RepositoryId AND (ISNULL(IssueTemplate, '') != ISNULL(@IssueTemplate, '') OR ISNULL(PullRequestTemplate, '') != ISNULL(@PullRequestTemplate, ''))
 
     DECLARE @Changes INT = @@ROWCOUNT
 

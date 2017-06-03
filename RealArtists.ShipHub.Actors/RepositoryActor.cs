@@ -49,6 +49,16 @@
       RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
       TimeSpan.FromMilliseconds(200));
 
+    public static Regex ExactMatchPullRequestTemplateRegex { get; } = new Regex(
+      @"^pull_request_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
+
+    public static Regex EndsWithPullRequestTemplateRegex { get; } = new Regex(
+      @"pull_request_template(?:\.\w+)?$",
+      RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
+      TimeSpan.FromMilliseconds(200));
+
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
     private IFactory<ShipHubContext> _contextFactory;
@@ -57,7 +67,8 @@
     private long _repoId;
     private string _fullName;
     private long _repoSize;
-    private string _issueTemplateHash;
+    private string _issueTemplateContent;
+    private string _pullRequestTemplateContent;
     private bool _disabled;
     private string _apiHostName;
     private bool _hasProjects;
@@ -72,6 +83,7 @@
     private GitHubMetadata _contentsRootMetadata;
     private GitHubMetadata _contentsDotGithubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
+    private GitHubMetadata _contentsPullRequestTemplateMetadata;
     private GitHubMetadata _pullRequestMetadata;
 
     // Chunk tracking
@@ -117,7 +129,8 @@
 
         Initialize(repo.Id, repo.FullName);
         _repoSize = repo.Size;
-        _issueTemplateHash = HashIssueTemplate(repo.IssueTemplate);
+        _issueTemplateContent = repo.IssueTemplate;
+        _pullRequestTemplateContent = repo.PullRequestTemplate;
         _metadata = repo.Metadata;
         _disabled = repo.Disabled;
         _hasProjects = repo.HasProjects;
@@ -134,6 +147,7 @@
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
+        _contentsPullRequestTemplateMetadata = repo.ContentsPullRequestTemplateMetadata;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
@@ -175,6 +189,7 @@
           _contentsRootMetadata,
           _contentsDotGithubMetadata,
           _contentsIssueTemplateMetadata,
+          _contentsPullRequestTemplateMetadata,
           _pullRequestMetadata,
           _pullRequestUpdatedAt,
           _pullRequestSkip);
@@ -380,10 +395,16 @@
       }
     }
 
-    private static bool IsTemplateFile(Common.GitHub.Models.ContentsFile file) {
+    private static bool IsIssueTemplateFile(Common.GitHub.Models.ContentsFile file) {
       return file.Type == Common.GitHub.Models.ContentsFileType.File
             && file.Name != null
             && ExactMatchIssueTemplateRegex.IsMatch(file.Name);
+    }
+
+    private static bool IsPullRequestTemplateFile(Common.GitHub.Models.ContentsFile file) {
+      return file.Type == Common.GitHub.Models.ContentsFileType.File
+            && file.Name != null
+            && ExactMatchPullRequestTemplateRegex.IsMatch(file.Name);
     }
 
     private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
@@ -399,7 +420,7 @@
         // and the contents API will return 404s. Because 404s are not cacheable,
         // we want to be able to short circuit here and anticipate that and
         // just set an empty ISSUE_TEMPLATE in this case.
-        var ret = await UpdateIssueTemplateWithResult(context, null);
+        var ret = await UpdateIssueTemplates(context, null, null);
         _needsIssueTemplateSync = false;
         return ret;
       }
@@ -407,6 +428,7 @@
       var prevRootMetadata = _contentsRootMetadata;
       var prevDotGitHubMetadata = _contentsDotGithubMetadata;
       var prevIssueTemplateMetadata = _contentsIssueTemplateMetadata;
+      var prevPullRequestTemplateMetadata = _contentsPullRequestTemplateMetadata;
       try {
         var ret = await _UpdateIssueTemplate(context, github);
         _needsIssueTemplateSync = false;
@@ -416,23 +438,27 @@
         _contentsRootMetadata = prevRootMetadata;
         _contentsDotGithubMetadata = prevDotGitHubMetadata;
         _contentsIssueTemplateMetadata = prevIssueTemplateMetadata;
+        _contentsPullRequestTemplateMetadata = prevPullRequestTemplateMetadata;
         this.Exception(ex);
         throw;
       }
     }
 
     private async Task<ChangeSummary> _UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
-      if (_contentsIssueTemplateMetadata == null) {
-        // then we don't have any known IssueTemplate, we have to search for it
+      if (_contentsIssueTemplateMetadata == null || _contentsPullRequestTemplateMetadata == null) {
+        // then we don't have either issue template or pull request template, and we have to search for them
+        // even if we have just one, we still have to search, since the second could appear at any time.
         var rootListing = await github.ListDirectoryContents(_fullName, "/", _contentsRootMetadata);
         _contentsRootMetadata = rootListing.Succeeded ? GitHubMetadata.FromResponse(rootListing) : null;
 
         if (rootListing.IsOk) {
           // search the root listing for any matching ISSUE_TEMPLATE files
-          var rootTemplateFile = rootListing.Result.FirstOrDefault(IsTemplateFile);
-          GitHubResponse<byte[]> templateContent = null;
+          var rootIssueTemplateFile = rootListing.Result.FirstOrDefault(IsIssueTemplateFile);
+          var rootPullRequestTemplateFile = rootListing.Result.FirstOrDefault(IsPullRequestTemplateFile);
+          GitHubResponse<byte[]> issueTemplateContent = null;
+          GitHubResponse<byte[]> pullRequestTemplateContent = null;
 
-          if (rootTemplateFile == null) {
+          if (rootIssueTemplateFile == null && rootPullRequestTemplateFile == null) {
             var hasDotGitHub = rootListing.Result.Any((file) => {
               return file.Type == Common.GitHub.Models.ContentsFileType.Dir
                 && file.Name != null
@@ -447,68 +473,99 @@
               _contentsDotGithubMetadata = dotGitHubListing.Succeeded ? GitHubMetadata.FromResponse(dotGitHubListing) : null;
 
               if (dotGitHubListing.IsOk) {
-                var dotGitHubTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsTemplateFile);
-                if (dotGitHubTemplateFile != null) {
-                  templateContent = await github.FileContents(_fullName, dotGitHubTemplateFile.Path);
+                var dotGitHubIssueTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsIssueTemplateFile);
+                var dotGitHubPullRequestTemplateFile = dotGitHubListing.Result.FirstOrDefault(IsPullRequestTemplateFile);
+                if (dotGitHubIssueTemplateFile != null) {
+                  issueTemplateContent = await github.FileContents(_fullName, dotGitHubIssueTemplateFile.Path);
+                }
+                if (dotGitHubPullRequestTemplateFile != null) {
+                  pullRequestTemplateContent = await github.FileContents(_fullName, dotGitHubPullRequestTemplateFile.Path);
                 }
               }
             }
-          } else /* rootTemplateFile != null */ {
-            templateContent = await github.FileContents(_fullName, rootTemplateFile.Path);
+          } else /* either or both root*TemplateFile != null */ {
+            if (rootIssueTemplateFile != null) {
+              issueTemplateContent = await github.FileContents(_fullName, rootIssueTemplateFile.Path);
+            }
+            if (rootPullRequestTemplateFile != null) {
+              pullRequestTemplateContent = await github.FileContents(_fullName, rootPullRequestTemplateFile.Path);
+            }
           }
 
-          _contentsIssueTemplateMetadata = templateContent?.Succeeded == true ? GitHubMetadata.FromResponse(templateContent) : null;
-          if (templateContent != null && templateContent.IsOk) {
-            return await UpdateIssueTemplateWithResult(context, templateContent.Result);
+          _contentsIssueTemplateMetadata = issueTemplateContent?.Succeeded == true ? GitHubMetadata.FromResponse(issueTemplateContent) : null;
+          _contentsPullRequestTemplateMetadata = pullRequestTemplateContent?.Succeeded == true ? GitHubMetadata.FromResponse(pullRequestTemplateContent) : null;
+          if ((issueTemplateContent != null && issueTemplateContent.IsOk) || (pullRequestTemplateContent != null && pullRequestTemplateContent.IsOk)) {
+            return await UpdateIssueTemplates(context, 
+              DecodeIssueTemplate(issueTemplateContent?.Result), 
+              DecodeIssueTemplate(pullRequestTemplateContent?.Result));
           }
         }
-        return new ChangeSummary(); // couldn't find any ISSUE_TEMPLATE anywhere
+        return new ChangeSummary(); // couldn't find any ISSUE_TEMPLATE/PULL_REQUEST_TEMPLATE anywhere
       } else {
-        // we have some cached data on an existing ISSUE_TEMPLATE.
-        // try to short-circuit by just looking it up.
+        // we have some cached data on an existing ISSUE_TEMPLATE and PULL_REQUEST_TEMPLATE.
+        // try to short-circuit by just looking them up.
         // If we get a 404, then we start over from the top
-        var filePath = _contentsIssueTemplateMetadata.Path.Substring($"repos/{_fullName}/contents".Length);
-        var templateContent = await github.FileContents(_fullName, filePath);
-        _contentsIssueTemplateMetadata = templateContent.Succeeded ? GitHubMetadata.FromResponse(templateContent) : null;
+        var prefix = $"repos/{_fullName}/contents";
 
-        if (templateContent.Status == HttpStatusCode.NotFound) {
-          // it's been deleted or moved. clear it optimistically, but then start a new search from the top.
+        var paths = new[] { _contentsIssueTemplateMetadata, _contentsPullRequestTemplateMetadata }
+          .Select(x => x.Path.Substring(prefix.Length));
+
+        var contents = await Task.WhenAll(paths.Select(x => github.FileContents(_fullName, x)));
+
+        _contentsIssueTemplateMetadata = contents[0].Succeeded ? GitHubMetadata.FromResponse(contents[0]) : null;
+        _contentsPullRequestTemplateMetadata = contents[1].Succeeded ? GitHubMetadata.FromResponse(contents[1]) : null;
+
+        string issueTemplateContent, pullRequestTemplateContent;
+
+        switch (contents[0].Status) {
+          case HttpStatusCode.OK:
+            issueTemplateContent = DecodeIssueTemplate(contents[0].Result);
+            break;
+          case HttpStatusCode.NotModified:
+            issueTemplateContent = _issueTemplateContent;
+            break;
+          default:
+            issueTemplateContent = null;
+            break;
+        }
+
+        switch (contents[1].Status) {
+          case HttpStatusCode.OK:
+            pullRequestTemplateContent = DecodeIssueTemplate(contents[1].Result);
+            break;
+          case HttpStatusCode.NotModified:
+            pullRequestTemplateContent = _pullRequestTemplateContent;
+            break;
+          default:
+            pullRequestTemplateContent = null;
+            break;
+        }
+
+        if (contents.Any(x => x.Status == HttpStatusCode.NotFound)) {
+          // one or both have been deleted or moved. update them optimistically, but then start a new search from the top
           var changes = new ChangeSummary();
-          changes.UnionWith(await UpdateIssueTemplateWithResult(context, null));
-          changes.UnionWith(await _UpdateIssueTemplate(context, github));
+          changes.UnionWith(await UpdateIssueTemplates(context, issueTemplateContent, pullRequestTemplateContent));
           return changes;
-        } else if (templateContent.IsOk) {
-          return await UpdateIssueTemplateWithResult(context, templateContent.Result);
+        } else if (contents.Any(x => x.Status == HttpStatusCode.OK)) {
+          return await UpdateIssueTemplates(context, issueTemplateContent, pullRequestTemplateContent);
         } else {
           return new ChangeSummary(); // nothing changed as far as we can tell
         }
       }
     }
 
-    private static string HashIssueTemplate(string issueTemplate) {
-      if (string.IsNullOrEmpty(issueTemplate)) {
-        return "";
+    private static string DecodeIssueTemplate(byte[] data) {
+      if (data != null) {
+        return Encoding.UTF8.GetString(data);
       }
-
-      string hashString;
-      using (var hashFunction = new MurmurHash3()) {
-        var hash = hashFunction.ComputeHash(Encoding.UTF8.GetBytes(issueTemplate));
-        hashString = new Guid(hash).ToString();
-      }
-
-      return hashString;
+      return null;
     }
 
-    private async Task<ChangeSummary> UpdateIssueTemplateWithResult(ShipHubContext context, byte[] templateData) {
-      string templateStr = null;
-      if (templateData != null) {
-        templateStr = Encoding.UTF8.GetString(templateData);
-      }
-
-      var newHash = HashIssueTemplate(templateStr);
-      if (_issueTemplateHash != newHash) {
-        var ret = await context.SetRepositoryIssueTemplate(_repoId, templateStr);
-        _issueTemplateHash = newHash;
+    private async Task<ChangeSummary> UpdateIssueTemplates(ShipHubContext context, string issueTemplate, string pullRequestTemplate) {
+      if (_issueTemplateContent != issueTemplate || _pullRequestTemplateContent != pullRequestTemplate) {
+        var ret = await context.SetRepositoryIssueTemplate(_repoId, issueTemplate, pullRequestTemplate);
+        _issueTemplateContent = issueTemplate;
+        _pullRequestTemplateContent = pullRequestTemplate;
         return ret;
       } else {
         return new ChangeSummary();

@@ -291,7 +291,7 @@ BEGIN
       AND l.ItemType = 'repository'
 
     -- Repositories
-    SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName, e.IssueTemplate, ar.[Admin],
+    SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName, e.IssueTemplate, e.PullRequestTemplate, ar.[Admin],
       e.[Disabled], CAST (CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasHook
     FROM @Logs as l
       INNER JOIN Repositories as e ON (l.ItemId = e.Id)

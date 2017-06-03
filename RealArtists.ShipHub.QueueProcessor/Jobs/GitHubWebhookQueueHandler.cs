@@ -271,22 +271,22 @@
         return Task.CompletedTask; // if not a push to default branch then we don't care
       }
 
-      bool hasIssueTemplate;
+      bool hasIssueOrPRTemplate;
       if (payload.Size > payload.Commits.Count()) {
-        hasIssueTemplate = true; // if we can't enumerate all the commits, assume ISSUE_TEMPLATE was changed.
+        hasIssueOrPRTemplate = true; // if we can't enumerate all the commits, assume ISSUE_TEMPLATE was changed.
       } else {
         // the payload includes all of the commits. take a look and see if we can find the ISSUE_TEMPLATE.md in any of the edited files
-        hasIssueTemplate = payload.Commits
+        hasIssueOrPRTemplate = payload.Commits
           .Aggregate(new HashSet<string>(), (accum, commit) => {
             accum.UnionWith(commit.Added);
             accum.UnionWith(commit.Modified);
             accum.UnionWith(commit.Removed);
             return accum;
           })
-          .Any(f => RepositoryActor.EndsWithIssueTemplateRegex.IsMatch(f));
+          .Any(f => RepositoryActor.EndsWithIssueTemplateRegex.IsMatch(f) || RepositoryActor.EndsWithPullRequestTemplateRegex.IsMatch(f));
       }
 
-      if (hasIssueTemplate) {
+      if (hasIssueOrPRTemplate) {
         var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
         return repoActor.SyncIssueTemplate();
       } else {
