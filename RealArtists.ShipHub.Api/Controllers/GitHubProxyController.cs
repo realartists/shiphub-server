@@ -11,7 +11,6 @@
   using ActorInterfaces;
   using AutoMapper;
   using Common;
-  using Common.DataModel.Types;
   using Common.GitHub;
   using Common.GitHub.Models;
   using Filters;
@@ -108,10 +107,7 @@
         try {
           using (var context = new dm.ShipHubContext()) {
             var changes = await context.DeleteIssueComment(commentId);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
-            }
+            await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
           e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
@@ -131,10 +127,7 @@
         try {
           using (var context = new dm.ShipHubContext()) {
             var changes = await context.DeleteReaction(reactionId);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
-            }
+            await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
           e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
@@ -156,10 +149,7 @@
         try {
           using (var context = new dm.ShipHubContext()) {
             var changes = await context.DeleteReview(reviewId);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
-            }
+            await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
           e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
@@ -179,10 +169,7 @@
         try {
           using (var context = new dm.ShipHubContext()) {
             var changes = await context.DeletePullRequestComment(commentId);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
-            }
+            await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
           e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
@@ -209,10 +196,7 @@
 
           using (var context = new dm.ShipHubContext()) {
             var changes = await context.DeleteReviewers($"{owner}/{repo}", issueNumber, removed);
-
-            if (!changes.IsEmpty) {
-              await _queueClient.NotifyChanges(changes);
-            }
+            await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
           e.Report($"request: {request.RequestUri} response: {response} user: {user.DebugIdentifier}", user.DebugIdentifier);
@@ -238,51 +222,22 @@
           await response.Content.LoadIntoBufferAsync();
           var issue = await response.Content.ReadAsAsync<Issue>(GitHubSerialization.MediaTypeFormatters, cancellationToken);
 
-          // TODO: Unify this code with other issue update places to reduce bugs.
-
-          var accounts = new[] { issue.User, issue.ClosedBy }
-            .Concat(issue.Assignees)
-            .Where(x => x != null)
-            .Distinct(x => x.Id);
-
-          ChangeSummary changes = null;
-          var repoName = $"{owner}/{repo}";
           using (var context = new dm.ShipHubContext()) {
+            var updater = new DataUpdater(context, _mapper);
+            var repoName = $"{owner}/{repo}";
             var repoId = await context.Repositories
+              .AsNoTracking()
               .Where(x => x.FullName == repoName)
               .Select(x => x.Id)
               .SingleAsync();
 
-            changes = await context.BulkUpdateAccounts(response.Headers.Date.Value, _mapper.Map<IEnumerable<AccountTableType>>(accounts));
-
-            if (issue.Milestone != null) {
-              changes.UnionWith(
-                await context.BulkUpdateMilestones(repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(new[] { issue.Milestone }))
-              );
-            }
-
-            if (issue.Labels?.Count() > 0) {
-              changes.UnionWith(await context.BulkUpdateLabels(
-                repoId,
-                issue.Labels?.Select(x => new LabelTableType() { Id = x.Id, Name = x.Name, Color = x.Color })));
-            }
-
-            changes.UnionWith(
-              await context.BulkUpdateIssues(
-              repoId,
-              _mapper.Map<IEnumerable<IssueTableType>>(new[] { issue }),
-              issue.Labels?.Select(y => new IssueMappingTableType() { IssueId = issue.Id, IssueNumber = issue.Number, MappedId = y.Id }),
-              issue.Assignees?.Select(y => new IssueMappingTableType() { IssueId = issue.Id, IssueNumber = issue.Number, MappedId = y.Id }))
-            );
+            await updater.UpdateIssues(repoId, response.Headers.Date ?? DateTimeOffset.UtcNow, new[] { issue });
+            await updater.Changes.Submit(_queueClient);
           }
 
           // Trigger issue event and comment sync.
           var issueGrain = _grainFactory.GetGrain<IIssueActor>(issue.Number, $"{owner}/{repo}", grainClassNamePrefix: null);
           issueGrain.SyncInteractive(user.UserId).LogFailure(user.DebugIdentifier);
-
-          if (!changes.IsEmpty) {
-            await _queueClient.NotifyChanges(changes);
-          }
         } catch (Exception e) {
           // swallow db exceptions, since if we're here github has created the issue.
           // we'll probably get it fixed in our db sooner or later, but for now we need to give the client its data.

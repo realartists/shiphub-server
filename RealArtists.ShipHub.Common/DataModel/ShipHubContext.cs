@@ -346,9 +346,9 @@
           "Accounts",
           "[dbo].[AccountTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("Type", typeof(string)),
-            Tuple.Create("Login", typeof(string)),
+            ("Id", typeof(long)),
+            ("Type", typeof(string)),
+            ("Login", typeof(string)),
           },
           y => new object[] {
             y.Id,
@@ -366,15 +366,15 @@
           "Comments",
           "[dbo].[CommitCommentTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
-            Tuple.Create("CommitId", typeof(string)),
-            Tuple.Create("Path", typeof(string)),
-            Tuple.Create("Line", typeof(long)),
-            Tuple.Create("Position", typeof(long)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            ("Id", typeof(long)),
+            ("UserId", typeof(long)),
+            ("CommitId", typeof(string)),
+            ("Path", typeof(string)),
+            ("Line", typeof(long)),
+            ("Position", typeof(long)),
+            ("Body", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
           },
           y => new object[] {
             y.Id,
@@ -399,14 +399,14 @@
           "Statuses",
           "[dbo].[CommitStatusTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("CreatorId", typeof(long)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("TargetUrl", typeof(string)),
-            Tuple.Create("Description", typeof(string)),
-            Tuple.Create("Context", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            ("Id", typeof(long)),
+            ("CreatorId", typeof(long)),
+            ("State", typeof(string)),
+            ("TargetUrl", typeof(string)),
+            ("Description", typeof(string)),
+            ("Context", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
           },
           y => new object[] {
             y.Id,
@@ -460,15 +460,15 @@
           "IssueEvents",
           "[dbo].[IssueEventTableType]",
           new[] {
-            Tuple.Create("UniqueKey", typeof(string)),
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("IssueId", typeof(long)),
-            Tuple.Create("ActorId", typeof(long)),
-            Tuple.Create("Event", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("Hash", typeof(Guid)),
-            Tuple.Create("Restricted", typeof(bool)),
-            Tuple.Create("ExtensionData", typeof(string)),
+            ("UniqueKey", typeof(string)),
+            ("Id", typeof(long)),
+            ("IssueId", typeof(long)),
+            ("ActorId", typeof(long)),
+            ("Event", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("Hash", typeof(Guid)),
+            ("Restricted", typeof(bool)),
+            ("ExtensionData", typeof(string)),
           },
           y => new object[] {
             y.UniqueKey,
@@ -496,20 +496,20 @@
           "Issues",
           "[dbo].[IssueTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
-            Tuple.Create("Number", typeof(int)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("Title", typeof(string)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("MilestoneId", typeof(long)),
-            Tuple.Create("Locked", typeof(bool)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedById", typeof(long)),
-            Tuple.Create("PullRequest", typeof(bool)),
-            Tuple.Create("Reactions", typeof(string)),
+            ("Id", typeof(long)),
+            ("UserId", typeof(long)),
+            ("Number", typeof(int)),
+            ("State", typeof(string)),
+            ("Title", typeof(string)),
+            ("Body", typeof(string)),
+            ("MilestoneId", typeof(long)),
+            ("Locked", typeof(bool)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
+            ("ClosedAt", typeof(DateTimeOffset)),
+            ("ClosedById", typeof(long)),
+            ("PullRequest", typeof(bool)),
+            ("Reactions", typeof(string)),
           },
           y => new object[] {
             y.Id,
@@ -549,25 +549,25 @@
           "PullRequests",
           "[dbo].[PullRequestTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("Number", typeof(int)),
-            Tuple.Create("IssueId", typeof(long)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("MergeCommitSha", typeof(string)),
-            Tuple.Create("MergedAt", typeof(DateTimeOffset)),
-            Tuple.Create("BaseJson", typeof(string)),
-            Tuple.Create("HeadJson", typeof(string)),
-            Tuple.Create("Additions", typeof(int)),
-            Tuple.Create("ChangedFiles", typeof(int)),
-            Tuple.Create("Commits", typeof(int)),
-            Tuple.Create("Deletions", typeof(int)),
-            Tuple.Create("MaintainerCanModify", typeof(bool)),
-            Tuple.Create("Mergeable", typeof(string)),
-            Tuple.Create("MergeableState", typeof(string)),
-            Tuple.Create("MergedById", typeof(long)),
-            Tuple.Create("Rebaseable", typeof(bool)),
-            Tuple.Create("Hash", typeof(Guid)),
+            ("Id", typeof(long)),
+            ("Number", typeof(int)),
+            ("IssueId", typeof(long)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
+            ("MergeCommitSha", typeof(string)),
+            ("MergedAt", typeof(DateTimeOffset)),
+            ("BaseJson", typeof(string)),
+            ("HeadJson", typeof(string)),
+            ("Additions", typeof(int)),
+            ("ChangedFiles", typeof(int)),
+            ("Commits", typeof(int)),
+            ("Deletions", typeof(int)),
+            ("MaintainerCanModify", typeof(bool)),
+            ("Mergeable", typeof(string)),
+            ("MergeableState", typeof(string)),
+            ("MergedById", typeof(long)),
+            ("Rebaseable", typeof(bool)),
+            ("Hash", typeof(Guid)),
           },
           y => new object[] {
             y.Id,
@@ -615,18 +615,18 @@
           "Comments",
           "[dbo].[PullRequestCommentTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
-            Tuple.Create("PullRequestReviewId", typeof(long)),
-            Tuple.Create("DiffHunk", typeof(string)),
-            Tuple.Create("Path", typeof(string)),
-            Tuple.Create("Position", typeof(long)),
-            Tuple.Create("OriginalPosition", typeof(long)),
-            Tuple.Create("CommitId", typeof(string)),
-            Tuple.Create("OriginalCommitId", typeof(string)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+            ("Id", typeof(long)),
+            ("UserId", typeof(long)),
+            ("PullRequestReviewId", typeof(long)),
+            ("DiffHunk", typeof(string)),
+            ("Path", typeof(string)),
+            ("Position", typeof(long)),
+            ("OriginalPosition", typeof(long)),
+            ("CommitId", typeof(string)),
+            ("OriginalCommitId", typeof(string)),
+            ("Body", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
           },
           y => new object[] {
             y.Id,
@@ -654,15 +654,15 @@
           "Milestones",
           "[dbo].[MilestoneTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("Number", typeof(int)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("Title", typeof(string)),
-            Tuple.Create("Description", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("ClosedAt", typeof(DateTimeOffset)), // Nullable types handled by DataTable
-            Tuple.Create("DueOn", typeof(DateTimeOffset)), // Nullable types handled by DataTable
+            ("Id", typeof(long)),
+            ("Number", typeof(int)),
+            ("State", typeof(string)),
+            ("Title", typeof(string)),
+            ("Description", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
+            ("ClosedAt", typeof(DateTimeOffset)), // Nullable types handled by DataTable
+            ("DueOn", typeof(DateTimeOffset)), // Nullable types handled by DataTable
           },
           y => new object[] {
             y.Id,
@@ -690,13 +690,13 @@
           "Projects",
           "[dbo].[ProjectTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("Name", typeof(string)),
-            Tuple.Create("Number", typeof(long)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
-            Tuple.Create("CreatorId", typeof(long)),
+            ("Id", typeof(long)),
+            ("Name", typeof(string)),
+            ("Number", typeof(long)),
+            ("Body", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
+            ("UpdatedAt", typeof(DateTimeOffset)),
+            ("CreatorId", typeof(long)),
           },
           y => new object[] {
             y.Id,
@@ -715,23 +715,31 @@
       return BulkUpdateProjects(projects, repositoryId: repositoryId);
     }
 
-    public Task<ChangeSummary> BulkUpdateReviews(long repositoryId, long issueId, DateTimeOffset date, long userId, IEnumerable<ReviewTableType> reviews) {
+    public Task<ChangeSummary> BulkUpdateReviews(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<ReviewTableType> reviews, long? userId = null, bool complete = false) {
+      if (userId == null) {
+        // Disallow pending reviews
+        if (reviews.Any(x => x.State.Equals("pending", StringComparison.OrdinalIgnoreCase))) {
+          throw new InvalidOperationException($"Pending reviews require {nameof(userId)} be provided.");
+        }
+      }
+
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReviews]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.Date = date;
         x.UserId = userId;
+        x.Complete = complete;
         x.Reviews = CreateTableParameter(
           "Reviews",
           "[dbo].[ReviewTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
-            Tuple.Create("Body", typeof(string)),
-            Tuple.Create("CommitId", typeof(string)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("SubmittedAt", typeof(DateTimeOffset)),
-            Tuple.Create("Hash", typeof(Guid)),
+            ("Id", typeof(long)),
+            ("UserId", typeof(long)),
+            ("Body", typeof(string)),
+            ("CommitId", typeof(string)),
+            ("State", typeof(string)),
+            ("SubmittedAt", typeof(DateTimeOffset)),
+            ("Hash", typeof(Guid)),
           },
           y => new object[] {
             y.Id,
@@ -758,9 +766,9 @@
           "Labels",
           "[dbo].[LabelTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("Color", typeof(string)),
-            Tuple.Create("Name", typeof(string)),
+            ("Id", typeof(long)),
+            ("Color", typeof(string)),
+            ("Name", typeof(string)),
           },
           y => new object[] {
             y.Id,
@@ -805,10 +813,10 @@
           "Reactions",
           "[dbo].[ReactionTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("UserId", typeof(long)),
-            Tuple.Create("Content", typeof(string)),
-            Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
+            ("Id", typeof(long)),
+            ("UserId", typeof(long)),
+            ("Content", typeof(string)),
+            ("CreatedAt", typeof(DateTimeOffset)),
           },
           y => new object[] {
             y.Id,
@@ -827,14 +835,14 @@
           "Repositories",
           "[dbo].[RepositoryTableType]",
           new[] {
-            Tuple.Create("Id", typeof(long)),
-            Tuple.Create("AccountId", typeof(long)),
-            Tuple.Create("Private", typeof(bool)),
-            Tuple.Create("Name", typeof(string)),
-            Tuple.Create("FullName", typeof(string)),
-            Tuple.Create("Size", typeof(long)),
-            Tuple.Create("HasProjects", typeof(bool)),
-            Tuple.Create("Disabled", typeof(bool)),
+            ("Id", typeof(long)),
+            ("AccountId", typeof(long)),
+            ("Private", typeof(bool)),
+            ("Name", typeof(string)),
+            ("FullName", typeof(string)),
+            ("Size", typeof(long)),
+            ("HasProjects", typeof(bool)),
+            ("Disabled", typeof(bool)),
           },
           y => new object[] {
             y.Id,
@@ -886,6 +894,12 @@
       });
     }
 
+    public Task<ChangeSummary> DeleteRepositories(IEnumerable<long> repositories) {
+      return ExecuteAndReadChanges("[dbo].[DeleteRepositories]", x => {
+        x.Repositories = CreateItemListTable("Repositories", repositories);
+      });
+    }
+
     public Task<ChangeSummary> DeleteReview(long reviewId) {
       return ExecuteAndReadChanges("[dbo].[DeleteReview]", x => {
         x.ReviewId = reviewId;
@@ -919,12 +933,12 @@
       return sp;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<Tuple<long, bool>> repoIdAndAdminPairs) {
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<(long RepositoryId, bool IsAdmin)> permissions) {
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
         x.RepositoryIds = CreateMappingTable(
           "RepositoryIds",
-          repoIdAndAdminPairs.Select(y => new MappingTableType() { Item1 = y.Item1, Item2 = y.Item2 ? 1 : 0 }));
+          permissions.Select(y => new MappingTableType() { Item1 = y.RepositoryId, Item2 = y.IsAdmin ? 1 : 0 }));
       });
     }
 
@@ -1032,11 +1046,11 @@
             "Hooks",
             "[dbo].[HookTableType]",
             new[] {
-              Tuple.Create("Id", typeof(long)),
-              Tuple.Create("GitHubId", typeof(long)),
-              Tuple.Create("Secret", typeof(Guid)),
-              Tuple.Create("Events", typeof(string)),
-              Tuple.Create("LastError", typeof(DateTimeOffset)),
+              ("Id", typeof(long)),
+              ("GitHubId", typeof(long)),
+              ("Secret", typeof(Guid)),
+              ("Events", typeof(string)),
+              ("LastError", typeof(DateTimeOffset)),
             },
             y => new object[] {
               y.Id,
@@ -1095,10 +1109,10 @@
           "Subscriptions",
           "[dbo].[SubscriptionTableType]",
           new[] {
-            Tuple.Create("AccountId", typeof(long)),
-            Tuple.Create("State", typeof(string)),
-            Tuple.Create("TrialEndDate", typeof(DateTimeOffset)),
-            Tuple.Create("Version", typeof(long)),
+            ("AccountId", typeof(long)),
+            ("State", typeof(string)),
+            ("TrialEndDate", typeof(DateTimeOffset)),
+            ("Version", typeof(long)),
           },
           y => new object[] {
             y.AccountId,
@@ -1142,7 +1156,7 @@
       return CreateTableParameter(
         parameterName,
         "[dbo].[ItemListTableType]",
-        new[] { Tuple.Create("Item", typeof(T)) },
+        new[] { ("Item", typeof(T)) },
         x => new object[] { x },
         values);
     }
@@ -1152,13 +1166,13 @@
         parameterName,
         "[dbo].[CommentTableType]",
         new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("IssueId", typeof(long)),
-          Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("UserId", typeof(long)),
-          Tuple.Create("Body", typeof(string)),
-          Tuple.Create("CreatedAt", typeof(DateTimeOffset)),
-          Tuple.Create("UpdatedAt", typeof(DateTimeOffset)),
+          ("Id", typeof(long)),
+          ("IssueId", typeof(long)),
+          ("IssueNumber", typeof(int)),
+          ("UserId", typeof(long)),
+          ("Body", typeof(string)),
+          ("CreatedAt", typeof(DateTimeOffset)),
+          ("UpdatedAt", typeof(DateTimeOffset)),
         },
         x => new object[] {
           x.Id,
@@ -1177,9 +1191,9 @@
         parameterName,
         "[dbo].[LabelTableType]",
         new[] {
-          Tuple.Create("Id", typeof(long)),
-          Tuple.Create("Color", typeof(string)),
-          Tuple.Create("Name", typeof(string)),
+          ("Id", typeof(long)),
+          ("Color", typeof(string)),
+          ("Name", typeof(string)),
         },
         x => new object[] {
           x.Id,
@@ -1194,9 +1208,9 @@
         parameterName,
         "[dbo].[IssueMappingTableType]",
         new[] {
-          Tuple.Create("IssueNumber", typeof(int)),
-          Tuple.Create("IssueId", typeof(long)),
-          Tuple.Create("MappedId", typeof(long)),
+          ("IssueNumber", typeof(int)),
+          ("IssueId", typeof(long)),
+          ("MappedId", typeof(long)),
         },
         x => new object[] {
           x.IssueNumber,
@@ -1211,8 +1225,8 @@
         parameterName,
         "[dbo].[MappingTableType]",
         new[] {
-          Tuple.Create("Item1", typeof(long)),
-          Tuple.Create("Item2", typeof(long)),
+          ("Item1", typeof(long)),
+          ("Item2", typeof(long)),
         },
         x => new object[] {
           x.Item1,
@@ -1226,8 +1240,8 @@
         parameterName,
         "[dbo].[VersionTableType]",
         new[] {
-          Tuple.Create("ItemId", typeof(long)),
-          Tuple.Create("RowVersion", typeof(long)),
+          ("ItemId", typeof(long)),
+          ("RowVersion", typeof(long)),
         },
         x => new object[] {
           x.ItemId,
@@ -1236,7 +1250,7 @@
         versions);
     }
 
-    private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<Tuple<string, Type>> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {
+    private static SqlParameter CreateTableParameter<T>(string parameterName, string typeName, IEnumerable<(string ColumnName, Type DataType)> columns, Func<T, object[]> rowValues, IEnumerable<T> rows) {
       if (!typeName.Contains("[")) {
         typeName = $"[dbo].[{typeName}]";
       }
@@ -1247,7 +1261,7 @@
         if (rows != null) {
           table = new DataTable();
 
-          table.Columns.AddRange(columns.Select(x => new DataColumn(x.Item1, x.Item2)).ToArray());
+          table.Columns.AddRange(columns.Select(x => new DataColumn(x.ColumnName, x.DataType)).ToArray());
 
           foreach (var row in rows) {
             table.Rows.Add(rowValues(row));

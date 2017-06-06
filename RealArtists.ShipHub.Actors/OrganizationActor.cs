@@ -37,9 +37,6 @@
     private GitHubMetadata _adminMetadata;
     private GitHubMetadata _projectMetadata;
 
-    // Data
-    private HashSet<long> _admins = new HashSet<long>();
-
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
@@ -71,11 +68,6 @@
         }
 
         Initialize(org.Id, org.Login);
-
-        _admins = org.OrganizationAccounts
-          .Where(x => x.Admin)
-          .Select(x => x.UserId)
-          .ToHashSet();
 
         // MUST MATCH SAVE
         _metadata = org.Metadata;
@@ -112,7 +104,7 @@
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IEnumerable<Tuple<long, bool>>> GetUsersWithAccess() {
+    private async Task<IEnumerable<(long UserId, bool IsAdmin)>> GetUsersWithAccess() {
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
         var users = await context.OrganizationAccounts
@@ -124,7 +116,7 @@
           .ToArrayAsync();
 
         return users
-          .Select(x => Tuple.Create(x.UserId, x.Admin))
+          .Select(x => (UserId: x.UserId, IsAdmin: x.Admin))
           .ToArray();
       }
     }
@@ -158,99 +150,67 @@
         return;
       }
 
-      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
       IGitHubOrganizationAdmin admin = null;
-      var firstAdmin = users.FirstOrDefault(x => x.Item2);
-      if (firstAdmin != null) {
-        admin = _grainFactory.GetGrain<IGitHubActor>(firstAdmin.Item1);
+      if (users.Any(x => x.IsAdmin)) {
+        admin = _grainFactory.GetGrain<IGitHubActor>(users.First(x => x.IsAdmin).UserId);
       }
 
-      var changes = new ChangeSummary();
-      try {
-        await SyncTask(github, admin, changes);
-      } catch (GitHubPoolEmptyException) {
-        // Nothing to do.
-        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
-      }
+      using (var context = _contextFactory.CreateInstance()) {
+        var updater = new DataUpdater(context, _mapper);
+        try {
+          await UpdateDetails(updater, github);
+          await UpdateAdmins(updater, github);
+          await UpdateProjects(updater, github);
 
-      // Send Changes.
-      if (!changes.IsEmpty) {
-        await _queueClient.NotifyChanges(changes);
+          // Webhooks
+          if (admin != null) {
+            updater.UnionWithExternalChanges(await AddOrUpdateOrganizationWebhooks(context, admin));
+          }
+        } catch (GitHubPoolEmptyException) {
+          // Nothing to do.
+          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+        }
+
+        // Send Changes.
+        await updater.Changes.Submit(_queueClient);
       }
 
       // Save
       await Save();
     }
 
-    private async Task SyncTask(IGitHubPoolable github, IGitHubOrganizationAdmin admin, ChangeSummary changes) {
-      var tasks = new List<Task>();
-
-      using (var context = _contextFactory.CreateInstance()) {
-        // Org itself
-        if (_metadata.IsExpired()) {
-          var org = await github.Organization(_login, _metadata);
-
-          if (org.IsOk) {
-            this.Info("Updating Organization");
-            changes.UnionWith(
-              await context.UpdateAccount(org.Date, _mapper.Map<AccountTableType>(org.Result))
-            );
-          }
-
-          // Don't update until saved.
-          _metadata = GitHubMetadata.FromResponse(org);
+    private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
+      if (_metadata.IsExpired()) {
+        var org = await github.Organization(_login, _metadata);
+        if (org.IsOk) {
+          await updater.UpdateAccounts(org.Date, new[] { org.Result });
         }
-
-        if (_adminMetadata.IsExpired()) {
-          var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
-          if (admins.IsOk) {
-            _admins = admins.Result.Select(x => x.Id).ToHashSet();
-            changes.UnionWith(await context.BulkUpdateAccounts(admins.Date, _mapper.Map<IEnumerable<AccountTableType>>(admins.Result)));
-            changes.UnionWith(await context.SetOrganizationAdmins(_orgId, _admins));
-
-            this.Info($"Changed. Admins: [{string.Join(",", _admins.OrderBy(x => x))}]");
-          } else if (!admins.Succeeded) {
-            throw new Exception($"Unexpected response: [{admins.Request.Uri}] {admins.Status}");
-          }
-
-          _adminMetadata = GitHubMetadata.FromResponse(admins);
-        }
-
-        // Projects
-        changes.UnionWith(await UpdateProjects(context, github));
-
-        // Webhooks
-        if (admin != null) {
-          changes.UnionWith(await AddOrUpdateOrganizationWebhooks(context, admin));
-        }
+        _metadata = GitHubMetadata.FromResponse(org);
       }
-
-      // Await all outstanding operations.
-      await Task.WhenAll(tasks);
     }
 
-    private async Task<IChangeSummary> UpdateProjects(ShipHubContext context, IGitHubPoolable github) {
-      var changes = new ChangeSummary();
+    private async Task UpdateAdmins(DataUpdater updater, IGitHubPoolable github) {
+      if (_adminMetadata.IsExpired()) {
+        var admins = await github.OrganizationMembers(_login, role: "admin", cacheOptions: _adminMetadata);
+        if (admins.IsOk) {
+          await updater.SetOrganizationAdmins(_orgId, admins.Date, admins.Result);
+        } else if (!admins.Succeeded) {
+          throw new Exception($"Unexpected response: [{admins.Request.Uri}] {admins.Status}");
+        }
+        _adminMetadata = GitHubMetadata.FromResponse(admins);
+      }
+    }
 
+    private async Task UpdateProjects(DataUpdater updater, IGitHubPoolable github) {
       if (_projectMetadata.IsExpired()) {
         var projects = await github.OrganizationProjects(_login, _projectMetadata);
         if (projects.IsOk) {
-          var creators = projects.Result.Select(p => new AccountTableType() {
-            Type = Account.UserType,
-            Login = p.Creator.Login,
-            Id = p.Creator.Id
-          }).Distinct(t => t.Id);
-          if (creators.Any()) {
-            changes.UnionWith(await context.BulkUpdateAccounts(projects.Date, creators));
-          }
-          changes.UnionWith(await context.BulkUpdateOrganizationProjects(_orgId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result)));
+          await updater.UpdateOrganizationProjects(_orgId, projects.Date, projects.Result);
         }
-
         _projectMetadata = GitHubMetadata.FromResponse(projects);
       }
-
-      return changes;
     }
 
     public async Task<IChangeSummary> AddOrUpdateOrganizationWebhooks(ShipHubContext context, IGitHubOrganizationAdmin admin) {

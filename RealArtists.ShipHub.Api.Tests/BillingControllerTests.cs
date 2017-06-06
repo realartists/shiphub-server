@@ -45,8 +45,8 @@
         var org3Repo = TestUtil.MakeTestRepo(context, org3.Id, 2003, "org3repo");
 
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(org1Repo.Id, false),
-          Tuple.Create(org2Repo.Id, false),
+          (org1Repo.Id, false),
+          (org2Repo.Id, false),
         });
 
         await context.SetUserOrganizations(user.Id, new[] { org1.Id, org2.Id, org3.Id });

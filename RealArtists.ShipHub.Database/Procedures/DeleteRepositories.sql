@@ -126,4 +126,7 @@ BEGIN
     IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
     THROW;
   END CATCH
+
+  -- Changes
+  SELECT 'repo' as ItemType, Item as ItemId FROM @Repositories
 END

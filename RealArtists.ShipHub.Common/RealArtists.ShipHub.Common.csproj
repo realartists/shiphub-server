@@ -56,6 +56,7 @@
     <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
     <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
+    <Compile Include="DataUpdater.cs" />
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />

@@ -25,17 +25,17 @@
         await context.SaveChangesAsync();
 
         await context.SetAccountLinkedRepositories(user1.Id, new[] {
-          Tuple.Create(repo1.Id, false),
-          Tuple.Create(repo2.Id, true),
+          (repo1.Id, false),
+          (repo2.Id, true),
         });
 
         await context.SetAccountLinkedRepositories(user2.Id, new[] {
-          Tuple.Create(repo3.Id, false),
+          (repo3.Id, false),
         });
 
         await context.SetAccountLinkedRepositories(user3.Id, new[] {
-          Tuple.Create(repo3.Id, false),
-          Tuple.Create(repo4.Id, false),
+          (repo3.Id, false),
+          (repo4.Id, false),
         });
 
         await context.SetUserOrganizations(user1.Id, new[] { org1.Id, org2.Id });
@@ -126,8 +126,8 @@
         await context.SaveChangesAsync();
 
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(repo1.Id, false),
-          Tuple.Create(repo2.Id, true),
+          (repo1.Id, false),
+          (repo2.Id, true),
         });
 
         var assocs = context.AccountRepositories
@@ -152,13 +152,13 @@
 
         // Set a couple of associations...
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(repo1.Id, false),
-          Tuple.Create(repo2.Id, true),
+          (repo1.Id, false),
+          (repo2.Id, true),
         });
 
         // Then set again and omit repo1 to delete it.
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(repo2.Id, true),
+          (repo2.Id, true),
         });
 
         var assocs = context.AccountRepositories
@@ -185,8 +185,8 @@
 
         // Set a couple of associations...
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(repo1.Id, false),
-          Tuple.Create(repo2.Id, true),
+          (repo1.Id, false),
+          (repo2.Id, true),
         });
 
         var assocs = context.AccountRepositories
@@ -201,8 +201,8 @@
       using (var context = new ShipHubContext()) {
         // Then change the Admin bit on each.
         await context.SetAccountLinkedRepositories(user.Id, new[] {
-          Tuple.Create(repo1.Id, true),
-          Tuple.Create(repo2.Id, false),
+          (repo1.Id, true),
+          (repo2.Id, false),
         });
 
         var assocs = context.AccountRepositories
