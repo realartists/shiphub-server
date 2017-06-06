@@ -677,7 +677,7 @@
                 MergedBy = ddr.MergedById,
                 Rebaseable = ddr.Rebaseable,
 
-                RequestedReviewers = prReviewers.Val((long)ddr.Id, () => new List<long>()),
+                RequestedReviewers = prReviewers.Val((long)ddr.IssueId, () => new List<long>()),
               };
 
               entries.Add(new SyncLogEntry() {
