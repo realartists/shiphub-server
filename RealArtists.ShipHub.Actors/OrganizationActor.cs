@@ -100,6 +100,22 @@
       }
     }
 
+    public async Task ForceSyncAllMemberRepositories() {
+      IEnumerable<long> memberIds;
+      using (var context = _contextFactory.CreateInstance()) {
+        memberIds = await context.OrganizationAccounts
+          .Where(x => x.OrganizationId == _orgId)
+          .Where(x => x.User.Tokens.Any())
+          .Select(x => x.User.Id)
+          .ToArrayAsync();
+      }
+
+      // Best Effort
+      foreach (var userId in memberIds) {
+        _grainFactory.GetGrain<IUserActor>(userId).ForceSyncRepositories().LogFailure();
+      }
+    }
+
     // ////////////////////////////////////////////////////////////
     // Utility Functions
     // ////////////////////////////////////////////////////////////

@@ -48,6 +48,7 @@
     <Compile Include="GitHub\GitHubActor.cs" />
     <Compile Include="RepositoryActor.cs" />
     <Compile Include="UserActor.cs" />
+    <Compile Include="WebhookEventActor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

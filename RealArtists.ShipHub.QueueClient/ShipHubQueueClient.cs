@@ -10,7 +10,16 @@
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
-    Task QueueWebhookEvent(GitHubWebhookEventMessage message);
+  }
+
+  public static class ShipHubQueueClientExtensions {
+    public static Task Submit(this IChangeSummary summary, IShipHubQueueClient client) {
+      if (summary == null || summary.IsEmpty) {
+        return Task.CompletedTask;
+      }
+
+      return client.NotifyChanges(summary);
+    }
   }
 
   public class ShipHubQueueClient : IShipHubQueueClient {
@@ -20,20 +29,21 @@
       _factory = serviceBusFactory;
     }
 
-    public Task BillingGetOrCreatePersonalSubscription(long userId)
-      => SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
+    public Task BillingGetOrCreatePersonalSubscription(long userId) {
+      return SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
+    }
 
-    public Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId)
-      => SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new SyncOrgSubscriptionStateMessage(orgIds, forUserId));
+    public Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId) {
+      return SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new SyncOrgSubscriptionStateMessage(orgIds, forUserId));
+    }
 
-    public Task BillingUpdateComplimentarySubscription(long userId)
-      => SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
+    public Task BillingUpdateComplimentarySubscription(long userId) {
+      return SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
+    }
 
-    public Task NotifyChanges(IChangeSummary changeSummary)
-      => SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
-
-    public Task QueueWebhookEvent(GitHubWebhookEventMessage message)
-      => SendIt(ShipHubQueueNames.WebhooksEvent, message);
+    public Task NotifyChanges(IChangeSummary changeSummary) {
+      return SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
+    }
 
     private async Task SendIt<T>(string queueName, T message) {
       Log.Debug(() => $"{queueName} - {message}");

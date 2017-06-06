@@ -16,5 +16,11 @@
     /// Trigger a refresh of the ISSUE_TEMPLATE for the repo.
     /// </summary>
     Task SyncIssueTemplate();
+
+    /// <summary>
+    /// This should re-sync all repo contributors and their permisions.
+    /// Currently used when a repo is removed.
+    /// </summary>
+    Task ForceSyncAllLinkedAccountRepositories();
   }
 }

@@ -2,11 +2,16 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
-  using System.Net;
+  using System.Net.Http;
+  using System.Runtime.Remoting.Metadata.W3cXsd2001;
   using System.Security.Cryptography;
   using System.Text;
-  using System.Threading;
   using System.Threading.Tasks;
+  using System.Web.Http;
+  using System.Web.Http.Controllers;
+  using System.Web.Http.Hosting;
+  using System.Web.Http.Results;
+  using System.Web.Http.Routing;
   using ActorInterfaces;
   using AutoMapper;
   using Common;
@@ -14,20 +19,18 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Controllers;
-  using Microsoft.Azure.WebJobs;
   using Moq;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
   using NUnit.Framework;
   using Orleans;
-  using QueueClient;
-  using QueueClient.Messages;
-  using QueueProcessor.Jobs;
-  using QueueProcessor.Tracing;
+  using RealArtists.ShipHub.Actors;
+  using RealArtists.ShipHub.Common.GitHub.Models.WebhookPayloads;
+  using RealArtists.ShipHub.QueueClient;
 
   [TestFixture]
   [AutoRollback]
-  public class GitHubWebhookQueueHandlerTests {
+  public class GitHubWebhookTests {
     private static IMapper AutoMapper { get; } = CreateMapper();
 
     private static IMapper CreateMapper() {
@@ -35,6 +38,7 @@
         cfg.AddProfile<Common.DataModel.GitHubToDataModelProfile>();
         cfg.AddProfile<Sync.Messages.DataModelToApiModelProfile>();
 
+        cfg.CreateMap<Common.DataModel.Label, LabelTableType>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Milestone, Milestone>(MemberList.Destination);
         cfg.CreateMap<Common.DataModel.Issue, Issue>(MemberList.Destination)
           .ForMember(dest => dest.Reactions, o => o.ResolveUsing(src => src.Reactions?.DeserializeObject<ReactionSummary>()))
@@ -55,17 +59,6 @@
 
       var mapper = config.CreateMapper();
       return mapper;
-    }
-
-    private static JObject IssueChange(string action, Issue issue, long repositoryId) {
-      var obj = new {
-        action = action,
-        issue = issue,
-        repository = new {
-          id = repositoryId,
-        },
-      };
-      return JObject.FromObject(obj, GitHubSerialization.JsonSerializer);
     }
 
     private static Common.DataModel.Organization MakeTestOrg(Common.DataModel.ShipHubContext context) {
@@ -108,54 +101,107 @@
       });
     }
 
-    private GitHubWebhookEventMessage CreateMessage(Common.DataModel.Hook hook, string eventName, JObject payload) {
-      return CreateMessage(
-        (hook.RepositoryId != null) ? "repo" : "org",
-        (hook.RepositoryId != null) ? hook.RepositoryId.Value : hook.OrganizationId.Value,
-        eventName,
-        hook.Secret.ToString(),
-        payload);
+    private static string SignatureForPayload(string key, string payload) {
+      var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(key));
+      var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
+      return $"sha1={new SoapHexBinary(hash)}";
     }
 
-    private GitHubWebhookEventMessage CreateMessage(string entityType, long entityId, string eventName, string secret, JObject payload) {
-      var json = JsonConvert.SerializeObject(
+    private static void ConfigureController(ApiController controller, string eventName, string body, string signature) {
+      var config = new HttpConfiguration();
+      var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook");
+      request.Headers.Add("User-Agent", GitHubWebhookController.GitHubUserAgent);
+      request.Headers.Add(GitHubWebhookController.EventHeaderName, eventName);
+      request.Headers.Add(GitHubWebhookController.SignatureHeaderName, signature);
+      request.Headers.Add(GitHubWebhookController.DeliveryIdHeaderName, Guid.NewGuid().ToString());
+      request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body));
+      var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Webhook", "webhook"));
+
+      controller.ControllerContext = new HttpControllerContext(config, routeData, request);
+      controller.Request = request;
+      controller.Request.Properties[HttpPropertyKeys.HttpConfigurationKey] = config;
+    }
+
+    private static Task<IHttpActionResult> HandleWebhook(Common.DataModel.Hook hook, string eventName, object body) {
+      var payload = JsonConvert.SerializeObject(body, GitHubSerialization.JsonSerializerSettings);
+      return HandleWebhook(
+        hook.RepositoryId == null ? "org" : "repo",
+        hook.OrganizationId ?? hook.RepositoryId.Value,
+        eventName,
         payload,
-        GitHubSerialization.JsonSerializerSettings);
+        SignatureForPayload(hook.Secret.ToString(), payload));
+    }
 
-      var hmac = new HMACSHA1(Encoding.UTF8.GetBytes(secret));
-      var signature = hmac.ComputeHash(Encoding.UTF8.GetBytes(json));
+    private static async Task<IHttpActionResult> HandleWebhook(string type, long id, string eventName, string body, string signature) {
+      var mockActor = new Mock<IWebhookEventActor>();
+      var mockGrainFactory = new Mock<IGrainFactory>();
+      mockGrainFactory.Setup(x => x.GetGrain<IWebhookEventActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long primaryKey, string prefix) => mockActor.Object);
 
-      return new GitHubWebhookEventMessage() {
-        EntityType = entityType,
-        EntityId = entityId,
-        EventName = eventName,
-        DeliveryId = Guid.NewGuid(),
-        Payload = json,
-        Signature = signature,
+      var controller = new GitHubWebhookController(mockGrainFactory.Object);
+      ConfigureController(controller, eventName, body, signature);
+      return await controller.ReceiveHook(type, id);
+    }
+
+    private static object RepositoryFromRepository(Common.DataModel.Repository repo) {
+      return new {
+        id = repo.Id,
+        owner = new Account() {
+          Id = repo.Account.Id,
+          Login = repo.Account.Login,
+          Type = repo.Account is Common.DataModel.User ? GitHubAccountType.User : GitHubAccountType.Organization,
+        },
+        name = repo.Name,
+        full_name = repo.FullName,
+        @private = repo.Private,
+        size = repo.Size,
+        has_projects = repo.HasProjects
       };
     }
 
-    private async Task<ChangeMessage> ProcessEvent(GitHubWebhookEventMessage message, IGrainFactory grainFactory = null) {
-      var changeMessages = new List<ChangeMessage>();
-      var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-      collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
-        .Returns((ChangeMessage msg, CancellationToken token) => {
-          changeMessages.Add(msg);
+    private static T CreatePayload<T>(string action, Common.DataModel.Repository repo, object content = null) {
+      var obj = new {
+        action = action,
+        repository = RepositoryFromRepository(repo),
+        // organization = ,
+        // sender = ,
+      };
+
+      var jobj = JObject.FromObject(obj, GitHubSerialization.JsonSerializer);
+      if (content != null) {
+        var jContent = JObject.FromObject(content, GitHubSerialization.JsonSerializer);
+        foreach (var prop in jContent) {
+          jobj.Add(prop.Key, prop.Value);
+        }
+      }
+      return jobj.ToObject<T>(GitHubSerialization.JsonSerializer);
+    }
+
+    private async Task<IChangeSummary> WithMockWebhookEventActor(Func<IWebhookEventActor, Task> action, IGrainFactory grainFactory = null) {
+      var changeList = new List<IChangeSummary>();
+      var queueMock = new Mock<IShipHubQueueClient>();
+      queueMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        .Returns((IChangeSummary changes) => {
+          changeList.Add(changes);
           return Task.CompletedTask;
         });
 
-      var executionContext = new Microsoft.Azure.WebJobs.ExecutionContext() { InvocationId = Guid.NewGuid() };
-      var handler = new GitHubWebhookQueueHandler(grainFactory, AutoMapper, new DetailedExceptionLogger());
-      await handler.ProcessEvent(message, collectorMock.Object, Console.Out, executionContext);
+      var contextFactory = new GenericFactory<Common.DataModel.ShipHubContext>(() => new Common.DataModel.ShipHubContext());
+      var actor = new WebhookEventActor(AutoMapper, grainFactory, contextFactory, queueMock.Object);
+      await action(actor);
 
-      if (changeMessages.Count == 0) {
+      if (changeList.Count == 0) {
         return null;
-      } else if (changeMessages.Count == 1) {
-        return changeMessages.Single();
+      } else if (changeList.Count == 1) {
+        return changeList.Single();
       } else {
         throw new Exception("Should only send a single change message");
       }
     }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /// GitHubWebhookController Tests
+    ////////////////////////////////////////////////////////////////////////////////////////////////
 
     [Test]
     public async Task TestPingSucceedsIfSignatureMatchesRepoHook() {
@@ -173,7 +219,9 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        await ProcessEvent(CreateMessage(hook, "ping", obj));
+        var result = await HandleWebhook(hook, "ping", obj) as StatusCodeResult;
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.StatusCode == System.Net.HttpStatusCode.Accepted);
       }
     }
 
@@ -200,7 +248,9 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
-        await ProcessEvent(CreateMessage(hook, "ping", obj));
+        var result = await HandleWebhook(hook, "ping", obj) as StatusCodeResult;
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.StatusCode == System.Net.HttpStatusCode.Accepted);
       }
     }
 
@@ -225,42 +275,21 @@
           },
         }, GitHubSerialization.JsonSerializer);
 
+        var failed = false;
+        var payload = JsonConvert.SerializeObject(obj, GitHubSerialization.JsonSerializerSettings);
         try {
-          await ProcessEvent(CreateMessage("repo", repo.Id, "ping", "someIncorrectSignature", obj));
+          await HandleWebhook(
+            "repo",
+            hook.RepositoryId.Value,
+            "ping",
+            payload,
+            SignatureForPayload(Guid.NewGuid().ToString(), payload));
+
           Assert.Fail("should have thrown exception due to invalid signature");
-        } catch (Exception) {
+        } catch (HttpResponseException) {
+          failed = true;
         }
-      }
-    }
-
-    [Test]
-    public async Task TestWebhookCallUpdatesLastSeenAndPingCount() {
-      using (var context = new Common.DataModel.ShipHubContext()) {
-        var user = TestUtil.MakeTestUser(context);
-        var repo = TestUtil.MakeTestRepo(context, user.Id);
-        var hook = MakeTestRepoHook(context, user.Id, repo.Id);
-
-        hook.LastSeen = DateTimeOffset.Parse("1/1/2000");
-        hook.LastPing = DateTimeOffset.Parse("1/1/2000");
-        hook.PingCount = 2;
-
-        await context.SaveChangesAsync();
-
-        var obj = new JObject(
-        new JProperty("zen", "It's not fully shipped until it's fast."),
-        new JProperty("hook_id", 1234),
-        new JProperty("hook", null),
-        new JProperty("sender", null),
-        new JProperty("repository", new JObject(
-          new JProperty("id", repo.Id)
-          )));
-
-        await ProcessEvent(CreateMessage(hook, "ping", obj));
-
-        context.Entry(hook).Reload();
-        Assert.Greater(hook.LastSeen, DateTimeOffset.Parse("1/1/2000"));
-        Assert.IsNull(hook.PingCount);
-        Assert.IsNull(hook.LastPing);
+        Assert.IsTrue(failed);
       }
     }
 
@@ -272,16 +301,17 @@
 
         await context.SaveChangesAsync();
 
-        var obj = JObject.FromObject(new {
-          hook_id = 1234,
-          repository = new {
-            id = repo.Id,
-          },
-        }, GitHubSerialization.JsonSerializer);
-
-        await ProcessEvent(CreateMessage("repo", repo.Id, "ping", "someSignature", obj));
+        var body = "somebody";
+        var signature = SignatureForPayload("unicorns", "rainbows");
+        var result = await HandleWebhook("repo", repo.Id, "ping", body, signature);
+        Assert.IsNotNull(result);
+        Assert.IsInstanceOf<NotFoundResult>(result);
       }
     }
+
+    /// ///////////////////////////////////////////////////////////////////////////////
+    /// WebhookEventActor Tests
+    /// ///////////////////////////////////////////////////////////////////////////////
 
     [Test]
     public async Task TestIssueMilestoned() {
@@ -330,7 +360,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("milestoned", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("milestoned", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -387,7 +420,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("demilestoned", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("demilestoned", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -428,7 +464,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -476,7 +515,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("closed", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("closed", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -522,7 +564,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("reopened", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("reopened", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -576,7 +621,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("edited", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("edited", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -627,7 +675,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("assigned", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("assigned", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -673,7 +724,10 @@
         Assignees = new Account[0],
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unassigned", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("unassigned", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { testRepo.Id }, changeSummary.Repositories.ToArray());
@@ -726,7 +780,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("labeled", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("labeled", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -791,7 +848,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("edited", issue, testRepo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("edited", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.NotNull(changeSummary, "should have generated change notification");
       Assert.AreEqual(0, changeSummary.Organizations.Count());
@@ -805,7 +865,10 @@
 
       // Then remove the Red label.
       issue.Labels = issue.Labels.Where(x => !x.Name.Equals("Red"));
-      changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unlabeled", issue, testRepo.Id)));
+      changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("unlabeled", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       // Adding or removing a label changes the issue
       Assert.NotNull(changeSummary, "should have generated change notification");
@@ -822,7 +885,10 @@
 
       // Then remove the last label.
       issue.Labels = new Label[] { };
-      changeSummary = await ProcessEvent(CreateMessage(testHook, "issues", IssueChange("unlabeled", issue, testRepo.Id)));
+      changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("unlabeled", testRepo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       // Adding or removing a label changes the issue
       Assert.NotNull(changeSummary, "should have generated change notification");
@@ -881,7 +947,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -939,7 +1008,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -981,7 +1053,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1025,7 +1100,10 @@
         },
       };
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issue, repo.Id)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1036,7 +1114,7 @@
     }
 
     [Test]
-    public async Task TestRepoCreatedTriggersSyncAccountRepositories() {
+    public async Task TestRepoCreatedTriggersSyncOrgMemberRepos() {
       Common.DataModel.User user1;
       Common.DataModel.User user2;
       Common.DataModel.Hook hook;
@@ -1058,48 +1136,44 @@
         await context.SaveChangesAsync();
       }
 
-      var obj = JObject.FromObject(new {
-        action = "created",
-        repository = new Repository() {
-          Id = 555,
-          Owner = new Account() {
-            Id = org.Id,
-            Login = "loopt",
-            Type = GitHubAccountType.Organization,
-          },
-          Name = "mix",
-          FullName = "loopt/mix",
-          Private = true,
-          HasIssues = true,
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
+      var repo = new Common.DataModel.Repository() {
+        Id = 555,
+        Account = new Common.DataModel.Organization() {
+          Id = org.Id,
+          Login = "loopt",
         },
-      }, GitHubSerialization.JsonSerializer);
+        Name = "mix",
+        FullName = "loopt/mix",
+        Private = true,
+      };
 
-      var forceRepoSyncCalls = new List<long>();
+      var forceSyncAllMemberRepositoriesCalls = new List<long>();
       var mockGrainFactory = new Mock<IGrainFactory>();
       mockGrainFactory
-        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
-        .Returns((long userId, string _) => {
-          var userMock = new Mock<IUserActor>();
-          userMock
-            .Setup(x => x.ForceSyncRepositories())
+        .Setup(x => x.GetGrain<IOrganizationActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long orgId, string _) => {
+          var orgMock = new Mock<IOrganizationActor>();
+          orgMock
+            .Setup(x => x.ForceSyncAllMemberRepositories())
             .Returns(Task.CompletedTask)
-            .Callback(() => forceRepoSyncCalls.Add(userId));
-          return userMock.Object;
+            .Callback(() => forceSyncAllMemberRepositoriesCalls.Add(orgId));
+          return orgMock.Object;
         });
 
-      await ProcessEvent(CreateMessage(hook, "repository", obj), mockGrainFactory.Object);
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<RepositoryPayload>("created", repo);
+        return wha.Repository(DateTimeOffset.UtcNow, payload);
+      }, mockGrainFactory.Object);
 
       Assert.AreEqual(
         new List<long> {
-          user1.Id,
-          user2.Id,
+          org.Id,
         },
-        forceRepoSyncCalls);
+        forceSyncAllMemberRepositoriesCalls);
     }
 
     [Test]
-    public async Task TestOrgRepoDeletionTriggersSyncAccountRepositories() {
+    public async Task TestOrgRepoDeletionTriggersSyncOrgMemberReposAndOrgContributorRepos() {
       Common.DataModel.User user1;
       Common.DataModel.User user2;
       Common.DataModel.Hook orgHook;
@@ -1136,34 +1210,30 @@
         await context.SaveChangesAsync();
       }
 
-      var obj = JObject.FromObject(new {
-        action = "deleted",
-        repository = new Repository() {
-          Id = 555,
-          Owner = new Account() {
-            Id = org.Id,
-            Login = org.Login,
-            Type = GitHubAccountType.Organization,
-          },
-          Name = repo.Name,
-          FullName = repo.FullName,
-          Private = true,
-          HasIssues = true,
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
-        },
-      }, GitHubSerialization.JsonSerializer);
-
-      var forceRepoSyncCalls = new List<long>();
       var mockGrainFactory = new Mock<IGrainFactory>();
+
+      var forceSyncAllLinkedAccountRepositoriesCalls = new List<long>();
       mockGrainFactory
-        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
-        .Returns((long userId, string _) => {
-          var userMock = new Mock<IUserActor>();
+        .Setup(x => x.GetGrain<IRepositoryActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long repoId, string _) => {
+          var userMock = new Mock<IRepositoryActor>();
           userMock
-            .Setup(x => x.ForceSyncRepositories())
+            .Setup(x => x.ForceSyncAllLinkedAccountRepositories())
             .Returns(Task.CompletedTask)
-            .Callback(() => forceRepoSyncCalls.Add(userId));
+            .Callback(() => forceSyncAllLinkedAccountRepositoriesCalls.Add(repoId));
           return userMock.Object;
+        });
+
+      var forceSyncAllMemberRepositoriesCalls = new List<long>();
+      mockGrainFactory
+        .Setup(x => x.GetGrain<IOrganizationActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long orgId, string _) => {
+          var orgMock = new Mock<IOrganizationActor>();
+          orgMock
+            .Setup(x => x.ForceSyncAllMemberRepositories())
+            .Returns(Task.CompletedTask)
+            .Callback(() => forceSyncAllMemberRepositoriesCalls.Add(orgId));
+          return orgMock.Object;
         });
 
       // We register for the "repository" event on both the org and repo levels.
@@ -1175,17 +1245,17 @@
       };
 
       foreach (var hook in tests) {
-        await ProcessEvent(CreateMessage(hook, "repository", obj), mockGrainFactory.Object);
+        await WithMockWebhookEventActor(wha => {
+          var payload = CreatePayload<RepositoryPayload>("deleted", repo);
+          return wha.Repository(DateTimeOffset.UtcNow, payload);
+        }, mockGrainFactory.Object);
       }
 
-      Assert.AreEqual(2, forceRepoSyncCalls.Count,
-        "should have only 1 call for each user in the org");
-      Assert.AreEqual(
-        new List<long> {
-          user1.Id,
-          user2.Id,
-        },
-        forceRepoSyncCalls);
+      Assert.AreEqual(2, forceSyncAllMemberRepositoriesCalls.Count, "we call it twice in case one or the other hook is missing.");
+      Assert.AreEqual(new[] { org.Id, org.Id }, forceSyncAllMemberRepositoriesCalls);
+
+      Assert.AreEqual(2, forceSyncAllLinkedAccountRepositoriesCalls.Count);
+      Assert.AreEqual(new[] { repo.Id, repo.Id }, forceSyncAllLinkedAccountRepositoriesCalls);
     }
 
     [Test]
@@ -1201,71 +1271,38 @@
         await context.SaveChangesAsync();
       }
 
-      var obj = JObject.FromObject(new {
-        action = "deleted",
-        repository = new Repository() {
-          Id = 555,
-          Owner = new Account() {
-            Id = user.Id,
-            Login = user.Login,
-            Type = GitHubAccountType.User,
-          },
-          Name = repo.Name,
-          FullName = repo.FullName,
-          Private = true,
-          HasIssues = true,
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
-        },
-      }, GitHubSerialization.JsonSerializer);
-
-      var forceRepoSyncCalls = new List<long>();
       var mockGrainFactory = new Mock<IGrainFactory>();
+      var forceSyncAllLinkedAccountRepositoriesCalls = new List<long>();
       mockGrainFactory
-        .Setup(x => x.GetGrain<IUserActor>(It.IsAny<long>(), It.IsAny<string>()))
-        .Returns((long userId, string _) => {
-          var userMock = new Mock<IUserActor>();
+        .Setup(x => x.GetGrain<IRepositoryActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long repoId, string _) => {
+          var userMock = new Mock<IRepositoryActor>();
           userMock
-            .Setup(x => x.ForceSyncRepositories())
+            .Setup(x => x.ForceSyncAllLinkedAccountRepositories())
             .Returns(Task.CompletedTask)
-            .Callback(() => forceRepoSyncCalls.Add(userId));
+            .Callback(() => forceSyncAllLinkedAccountRepositoriesCalls.Add(repoId));
           return userMock.Object;
         });
 
-      await ProcessEvent(CreateMessage(repoHook, "repository", obj), mockGrainFactory.Object);
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<RepositoryPayload>("deleted", repo);
+        return wha.Repository(DateTimeOffset.UtcNow, payload);
+      }, mockGrainFactory.Object);
 
-      Assert.AreEqual(
-        new List<long> {
-          user.Id,
-        },
-        forceRepoSyncCalls,
-        "should only trigger sync for repo owner");
+      Assert.AreEqual(new List<long> { repo.Id, }, forceSyncAllLinkedAccountRepositoriesCalls);
     }
 
-    private static JObject IssueCommentPayload(
+    private static IssueCommentPayload CreateIssueCommentPayload(
       string action,
       Issue issue,
       Common.DataModel.Account user,
       Common.DataModel.Repository repo,
       IssueComment comment
       ) {
-      return JObject.FromObject(new {
-        action = action,
+      return CreatePayload<IssueCommentPayload>(action, repo, new {
         issue = issue,
         comment = comment,
-        repository = new Repository() {
-          Id = repo.Id,
-          Owner = new Account() {
-            Id = user.Id,
-            Login = user.Login,
-            Type = GitHubAccountType.Organization,
-          },
-          Name = repo.Name,
-          FullName = repo.FullName,
-          Private = true,
-          HasIssues = true,
-          UpdatedAt = DateTimeOffset.Parse("1/1/2016"),
-        },
-      }, GitHubSerialization.JsonSerializer);
+      });
     }
 
     [Test]
@@ -1283,7 +1320,7 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload(
+        var payload = CreateIssueCommentPayload(
           "created",
           AutoMapper.Map<Issue>(issue),
           user,
@@ -1300,7 +1337,10 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
+
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.IssueComment(DateTimeOffset.UtcNow, payload);
+        });
 
         var comment = context.IssueComments.SingleOrDefault(x => x.IssueId == issue.Id);
         Assert.NotNull(comment, "should have created comment");
@@ -1334,7 +1374,7 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload("created",
+        var payload = CreateIssueCommentPayload("created",
           AutoMapper.Map<Issue>(issue),
           user,
           repo,
@@ -1350,7 +1390,10 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
+
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.IssueComment(DateTimeOffset.UtcNow, payload);
+        });
 
         context.Entry(comment).Reload();
 
@@ -1376,7 +1419,7 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload(
+        var payload = CreateIssueCommentPayload(
           "created",
           AutoMapper.Map<Issue>(issue),
           user,
@@ -1393,7 +1436,10 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
+
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.IssueComment(DateTimeOffset.UtcNow, payload);
+        });
 
         var comment = context.IssueComments.SingleOrDefault(x => x.Id == 9001);
         Assert.NotNull(comment, "should have created comment");
@@ -1442,7 +1488,7 @@
           },
         });
 
-        var obj = IssueCommentPayload(
+        var payload = CreateIssueCommentPayload(
           "deleted",
           AutoMapper.Map<Issue>(issue),
           user,
@@ -1459,7 +1505,10 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/{issue.Number}",
           });
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
+
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.IssueComment(DateTimeOffset.UtcNow, payload);
+        });
 
         Assert.AreEqual(
           new long[] { 9002 },
@@ -1485,7 +1534,7 @@
 
         await context.SaveChangesAsync();
 
-        var obj = IssueCommentPayload(
+        var payload = CreateIssueCommentPayload(
           "created",
           new Issue() {
             Id = 1001,
@@ -1516,7 +1565,10 @@
             },
             IssueUrl = $"https://api.github.com/repos/{repo.FullName}/issues/1234",
           });
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "issue_comment", obj));
+
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.IssueComment(DateTimeOffset.UtcNow, payload);
+        });
 
         var issue = context.Issues.SingleOrDefault(x => x.Number == 1234);
         Assert.NotNull(issue, "should have created issue referenced by comment.");
@@ -1538,8 +1590,7 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "created",
+      var payload = CreatePayload<MilestonePayload>("created", repo, new {
         milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1556,12 +1607,12 @@
             Type = GitHubAccountType.User,
           },
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
+
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
 
@@ -1612,8 +1663,7 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "deleted",
+      var payload = CreatePayload<MilestonePayload>("deleted", repo, new {
         milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1628,12 +1678,11 @@
             Type = GitHubAccountType.User,
           },
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1643,7 +1692,10 @@
         Assert.Null(deletedMilestone);
       }
 
-      changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
+
       Assert.Null(changeSummary,
         "if we try to delete an already deleted milestone, should see no change");
     }
@@ -1672,8 +1724,7 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "edited",
+      var payload = CreatePayload<MilestonePayload>("edited", repo, new {
         milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1688,12 +1739,11 @@
             Type = GitHubAccountType.User,
           },
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1728,8 +1778,7 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "edited",
+      var payload = CreatePayload<MilestonePayload>("edited", repo, new {
         milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1744,12 +1793,11 @@
             Type = GitHubAccountType.User,
           },
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1784,8 +1832,7 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "opened",
+      var payload = CreatePayload<MilestonePayload>("opened", repo, new {
         milestone = new Milestone() {
           Id = 5001,
           Number = 1234,
@@ -1800,12 +1847,11 @@
             Type = GitHubAccountType.User,
           },
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "milestone", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Milestone(DateTimeOffset.UtcNow, payload);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { 2001 }, changeSummary.Repositories.ToArray());
@@ -1831,18 +1877,16 @@
           },
         });
 
-        var payload = new {
-          action = "created",
+        var payload = CreatePayload<LabelPayload>("created", repo, new {
           label = new Label() {
             Color = "ff0000",
             Name = "red",
           },
-          repository = new {
-            id = repo.Id,
-          },
-        };
+        });
 
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.Label(DateTimeOffset.UtcNow, payload);
+        });
 
         Assert.AreEqual(0, changeSummary.Organizations.Count());
         Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
@@ -1872,19 +1916,17 @@
           },
         });
 
-        var payload = new {
-          action = "created",
+        var payload = CreatePayload<LabelPayload>("created", repo, new {
           label = new Label() {
             Id = 1001,
             Color = "0000ff",
             Name = "blue",
           },
-          repository = new {
-            id = repo.Id,
-          },
-        };
+        });
 
-        var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+        var changeSummary = await WithMockWebhookEventActor(wha => {
+          return wha.Label(DateTimeOffset.UtcNow, payload);
+        });
 
         Assert.Null(changeSummary);
 
@@ -1939,7 +1981,10 @@
       // Make an issue with label purple.  We're not going to send
       // any changes related to this issue - we just want to make sure
       // it doesn't get disturbed by changes to other issues.
-      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issueToNotDisturb, repo.Id)));
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issueToNotDisturb });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       var blueLabel = new Label() {
         Id = 2002,
@@ -1970,16 +2015,16 @@
         },
       };
 
-      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = githubIssue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
-      var payload = new {
-        action = "deleted",
-        label = blueLabel,
-        repository = new {
-          id = repo.Id,
-        },
-      };
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var labelDelete = CreatePayload<LabelPayload>("deleted", repo, new { label = blueLabel });
+
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Label(DateTimeOffset.UtcNow, labelDelete);
+      });
 
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
@@ -2020,19 +2065,18 @@
         await context.SaveChangesAsync();
       }
 
-      var payload = new {
-        action = "deleted",
+      var payload = CreatePayload<LabelPayload>("deleted", repo, new {
         label = new Label() {
           Id = 1001,
           Color = "0000ff",
           Name = "blue",
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Label(DateTimeOffset.UtcNow, payload);
+      });
+
       Assert.Null(changeSummary);
 
       using (var context = new Common.DataModel.ShipHubContext()) {
@@ -2080,7 +2124,10 @@
 
       // Create an issue only to make sure its labels don't get disturbed
       // by our other edits.
-      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", issueNotToDisturb, repo.Id)));
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = issueNotToDisturb });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       var redLabel = new Label() {
         Id = 2001,
@@ -2109,22 +2156,25 @@
           Type = GitHubAccountType.User,
         },
       };
-      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
+
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = githubIssue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
       // Change "blue" label to a "green"
-      var payload = new {
-        action = "edited",
+      var labelPayload = CreatePayload<LabelPayload>("edited", repo, new {
         label = new Label() {
           Id = blueLabel.Id,
           Color = "00ff00",
           Name = "green",
         },
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        return wha.Label(DateTimeOffset.UtcNow, labelPayload);
+      });
+
       Assert.AreEqual(0, changeSummary.Organizations.Count());
       Assert.AreEqual(new long[] { repo.Id }, changeSummary.Repositories.ToArray());
 
@@ -2195,17 +2245,17 @@
           Type = GitHubAccountType.User,
         },
       };
-      await ProcessEvent(CreateMessage(hook, "issues", IssueChange("opened", githubIssue, repo.Id)));
 
-      var payload = new {
-        action = "edited",
-        label = greenLabel,
-        repository = new {
-          id = repo.Id,
-        },
-      };
+      await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<IssuesPayload>("opened", repo, new { issue = githubIssue });
+        return wha.Issues(DateTimeOffset.UtcNow, payload);
+      });
 
-      var changeSummary = await ProcessEvent(CreateMessage(hook, "label", JObject.FromObject(payload, GitHubSerialization.JsonSerializer)));
+      var changeSummary = await WithMockWebhookEventActor(wha => {
+        var payload = CreatePayload<LabelPayload>("edited", repo, new { label = greenLabel });
+        return wha.Label(DateTimeOffset.UtcNow, payload);
+      });
+
       Assert.Null(changeSummary);
 
       using (var context = new Common.DataModel.ShipHubContext()) {

@@ -56,7 +56,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Jobs\GitHubWebhookQueueHandler.cs" />
     <Compile Include="Jobs\LoggingHandlerBase.cs" />
     <Compile Include="Jobs\WebhookReaperTimer.cs" />
     <Compile Include="Tracing\DetailedExceptionLogger.cs" />

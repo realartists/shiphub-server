@@ -31,11 +31,17 @@
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
-      "issues"
+      "commit_comment"
       , "issue_comment"
+      , "issues"
       , "label"
       , "milestone"
+      , "pull_request_review_comment"
+      , "pull_request_review"
+      , "pull_request"
       , "push"
+      , "repository"
+      , "status"
     );
 
     public static Regex ExactMatchIssueTemplateRegex { get; } = new Regex(
@@ -192,6 +198,22 @@
           _pullRequestMetadata,
           _pullRequestUpdatedAt,
           _pullRequestSkip);
+      }
+    }
+
+    public async Task ForceSyncAllLinkedAccountRepositories() {
+      IEnumerable<long> linkedAccountIds;
+      using (var context = _contextFactory.CreateInstance()) {
+        linkedAccountIds = await context.AccountRepositories
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Tokens.Any())
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+      }
+
+      // Best Effort
+      foreach (var userId in linkedAccountIds) {
+        _grainFactory.GetGrain<IUserActor>(userId).ForceSyncRepositories().LogFailure();
       }
     }
 
