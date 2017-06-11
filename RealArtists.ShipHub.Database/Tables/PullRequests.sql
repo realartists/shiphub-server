@@ -27,6 +27,7 @@
   [MetadataJson]        NVARCHAR(MAX)    NULL,
   [CommentMetadataJson] NVARCHAR(MAX)    NULL,
   [StatusMetadataJson]  NVARCHAR(MAX)    NULL,
+  [MergeStatusMetadataJson] NVARCHAR(MAX)    NULL,
   CONSTRAINT [PK_PullRequests] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_PullRequests_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues] ([Id]),
   CONSTRAINT [FK_PullRequests_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
