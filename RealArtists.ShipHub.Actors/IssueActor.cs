@@ -41,6 +41,7 @@
     private GitHubMetadata _prMetadata;
     private GitHubMetadata _prCommentMetadata;
     private GitHubMetadata _prStatusMetadata;
+    private GitHubMetadata _prMergeStatusMetadata;
 
     // Event sync
     private static readonly HashSet<string> _IgnoreTimelineEvents = new HashSet<string>(new[] {
@@ -91,6 +92,7 @@
           _prMetadata = pullRequest?.Metadata;
           _prCommentMetadata = pullRequest?.CommentMetadata;
           _prStatusMetadata = pullRequest?.StatusMetadata;
+          _prMergeStatusMetadata = pullRequest?.MergeStatusMetadata;
         }
       }
 
@@ -113,6 +115,7 @@
           await context.UpdateMetadata("PullRequests", "MetadataJson", _prId.Value, _prMetadata);
           await context.UpdateMetadata("PullRequests", "CommentMetadataJson", _prId.Value, _prCommentMetadata);
           await context.UpdateMetadata("PullRequests", "StatusMetadataJson", _prId.Value, _prStatusMetadata);
+          await context.UpdateMetadata("PullRequests", "MergeStatusMetadataJson", _prId.Value, _prMergeStatusMetadata);
         }
       }
     }
@@ -132,6 +135,15 @@
 
       // Save metadata and other updates
       await Save();
+    }
+
+    private async Task SaveCommitStatuses(string gitRef, GitHubResponse<IEnumerable<gm.CommitStatus>> statusesResponse, ShipHubContext context, ChangeSummary changes) {
+      if (statusesResponse.IsOk) {
+        var statuses = statusesResponse.Result;
+        var statusAccounts = statuses.Select(x => x.Creator).Distinct(x => x.Id);
+        changes.UnionWith(await context.BulkUpdateAccounts(statusesResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(statusAccounts)));
+        changes.UnionWith(await context.BulkUpdateCommitStatuses(_repoId, gitRef, _mapper.Map<IEnumerable<CommitStatusTableType>>(statuses)));
+      }
     }
 
     private async Task SyncIssueTimeline(IGitHubActor ghc, ChangeSummary changes, long forUserId) {
@@ -243,12 +255,7 @@
 
           // Commit Status
           var commitStatusesResponse = await ghc.CommitStatuses(_repoFullName, _prHeadRef, _prStatusMetadata, RequestPriority.Interactive);
-          if (commitStatusesResponse.IsOk) {
-            var statuses = commitStatusesResponse.Result;
-            var statusAccounts = statuses.Select(x => x.Creator).Distinct(x => x.Id);
-            changes.UnionWith(await context.BulkUpdateAccounts(commitStatusesResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(statusAccounts)));
-            changes.UnionWith(await context.BulkUpdateCommitStatuses(_repoId, _prHeadRef, _mapper.Map<IEnumerable<CommitStatusTableType>>(statuses)));
-          }
+          await SaveCommitStatuses(_prHeadRef, commitStatusesResponse, context, changes);
           _prStatusMetadata = GitHubMetadata.FromResponse(commitStatusesResponse);
         }
 
@@ -472,7 +479,24 @@
               _repoId,
               _mapper.Map<IEnumerable<CommitCommentTableType>>(commitComments)));
           }
-        }
+
+          // Merged event commit statuses
+          if (_isPullRequest) {
+            var mergedEvent = timeline
+              .Where(x => x.Event == "merged")
+              .OrderByDescending(x => x.CreatedAt)
+              .FirstOrDefault();
+
+            var mergeCommitId = mergedEvent?.CommitId;
+
+            if (mergeCommitId != null) {
+              var mergeCommitStatusesResponse = await ghc.CommitStatuses(_repoFullName, mergeCommitId, _prMergeStatusMetadata, RequestPriority.Interactive);
+              await SaveCommitStatuses(mergeCommitId, mergeCommitStatusesResponse, context, changes);
+              _prMergeStatusMetadata = GitHubMetadata.FromResponse(mergeCommitStatusesResponse);
+            }
+          }
+
+        } // end timeline
 
         // Comment Reactions
         var commentReactionMetadata = await context.IssueComments

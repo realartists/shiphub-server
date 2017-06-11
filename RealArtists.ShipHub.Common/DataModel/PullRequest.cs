@@ -71,5 +71,14 @@
       get => StatusMetadata.SerializeObject();
       set => StatusMetadata = value.DeserializeObject<GitHubMetadata>();
     }
+
+    // MergeStatusMetadata
+    [NotMapped]
+    public GitHubMetadata MergeStatusMetadata { get; set; }
+
+    public string MergeStatusMetadataJson {
+      get => MergeStatusMetadata.SerializeObject();
+      set => MergeStatusMetadata = value.DeserializeObject<GitHubMetadata>();
+    }
   }
 }
