@@ -138,7 +138,7 @@
           case "closed":
           case "opened":
           case "edited":
-            await updater.UpdateMilestones(payload.Repository.Id, new[] { payload.Milestone });
+            await updater.UpdateMilestones(payload.Repository.Id, eventDate, new[] { payload.Milestone });
             break;
           case "deleted":
             await updater.DeleteMilestone(payload.Milestone.Id);

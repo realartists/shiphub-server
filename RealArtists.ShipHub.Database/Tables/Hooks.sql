@@ -16,9 +16,8 @@
 )
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Hooks_LastSeen]
-  ON [dbo].[Hooks] ([LastSeen])
-  WHERE ([LastSeen] IS NOT NULL)
+CREATE NONCLUSTERED INDEX [IX_Hooks_LastSeen_LastPing]
+  ON [dbo].[Hooks] ([LastSeen], [LastPing])
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Hooks_RepositoryId]

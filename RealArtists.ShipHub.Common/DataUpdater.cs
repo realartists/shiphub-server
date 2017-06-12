@@ -149,7 +149,7 @@
         .Select(x => x.Milestone)
         .Where(x => x != null)
         .Distinct(x => x.Id);
-      await UpdateMilestones(repositoryId, milestones);
+      await UpdateMilestones(repositoryId, date, milestones);
 
       var labels = issues
         .SelectMany(x => x.Labels)
@@ -176,8 +176,14 @@
       _changes.UnionWith(await _context.BulkUpdateLabels(repositoryId, repoLabels, complete));
     }
 
-    public async Task UpdateMilestones(long repositoryId, IEnumerable<g.Milestone> milestones, bool complete = false) {
+    public async Task UpdateMilestones(long repositoryId, DateTimeOffset date, IEnumerable<g.Milestone> milestones, bool complete = false) {
       if (!milestones.Any() && !complete) { return; }
+
+      var accounts = milestones
+        .Select(x => x.Creator)
+        .Distinct(x => x.Id)
+        .ToArray();
+      await UpdateAccounts(date, accounts);
 
       var repoMilestones = _mapper.Map<IEnumerable<MilestoneTableType>>(milestones);
       _changes.UnionWith(await _context.BulkUpdateMilestones(repositoryId, repoMilestones, complete));
@@ -244,7 +250,7 @@
         .Distinct(x => x.Id)
         .ToArray();
       if (milestones.Any()) {
-        await UpdateMilestones(repositoryId, milestones);
+        await UpdateMilestones(repositoryId, date, milestones);
       }
 
       var prs = _mapper.Map<IEnumerable<PullRequestTableType>>(pullRequests);

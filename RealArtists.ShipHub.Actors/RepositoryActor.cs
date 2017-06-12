@@ -596,7 +596,7 @@
       if (_milestoneMetadata.IsExpired()) {
         var milestones = await github.Milestones(_fullName, _milestoneMetadata);
         if (milestones.IsOk) {
-          await updater.UpdateMilestones(_repoId, milestones.Result, complete: true);
+          await updater.UpdateMilestones(_repoId, milestones.Date, milestones.Result, complete: true);
         }
         _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
       }
