@@ -47,11 +47,11 @@
     <Reference Include="Microsoft.Azure.KeyVault.Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Azure.KeyVault.Core.2.0.4\lib\net45\Microsoft.Azure.KeyVault.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.CodeAnalysis, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.CodeAnalysis.Common.2.1.0\lib\netstandard1.3\Microsoft.CodeAnalysis.dll</HintPath>
+    <Reference Include="Microsoft.CodeAnalysis, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.CodeAnalysis.Common.2.2.0\lib\netstandard1.3\Microsoft.CodeAnalysis.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.CodeAnalysis.CSharp, Version=2.1.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.CodeAnalysis.CSharp.2.1.0\lib\netstandard1.3\Microsoft.CodeAnalysis.CSharp.dll</HintPath>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp, Version=2.2.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.CodeAnalysis.CSharp.2.2.0\lib\netstandard1.3\Microsoft.CodeAnalysis.CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Data.Edm, Version=5.8.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Data.Edm.5.8.2\lib\net40\Microsoft.Data.Edm.dll</HintPath>
@@ -80,47 +80,47 @@
     <Reference Include="Microsoft.WindowsAzure.ServiceRuntime, Version=2.7.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35">
       <Private>False</Private>
     </Reference>
-    <Reference Include="Microsoft.WindowsAzure.Storage, Version=8.1.1.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\WindowsAzure.Storage.8.1.1\lib\net45\Microsoft.WindowsAzure.Storage.dll</HintPath>
+    <Reference Include="Microsoft.WindowsAzure.Storage, Version=8.1.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\WindowsAzure.Storage.8.1.4\lib\net45\Microsoft.WindowsAzure.Storage.dll</HintPath>
     </Reference>
     <Reference Include="Mindscape.Raygun4Net, Version=5.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Mindscape.Raygun4Net.5.5.0\lib\net40\Mindscape.Raygun4Net.dll</HintPath>
+      <HintPath>..\packages\Mindscape.Raygun4Net.5.5.1\lib\net40\Mindscape.Raygun4Net.dll</HintPath>
     </Reference>
     <Reference Include="Mindscape.Raygun4Net4, Version=5.5.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Mindscape.Raygun4Net.5.5.0\lib\net40\Mindscape.Raygun4Net4.dll</HintPath>
+      <HintPath>..\packages\Mindscape.Raygun4Net.5.5.1\lib\net40\Mindscape.Raygun4Net4.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.10.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="Orleans, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.Core.1.4.1\lib\net451\Orleans.dll</HintPath>
+    <Reference Include="Orleans, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.Core.1.4.2\lib\net451\Orleans.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansAzureUtils, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansAzureUtils.1.4.1\lib\net451\OrleansAzureUtils.dll</HintPath>
+    <Reference Include="OrleansAzureUtils, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansAzureUtils.1.4.2\lib\net451\OrleansAzureUtils.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansCodeGenerator, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansCodeGenerator.1.4.1\lib\net451\OrleansCodeGenerator.dll</HintPath>
+    <Reference Include="OrleansCodeGenerator, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansCodeGenerator.1.4.2\lib\net451\OrleansCodeGenerator.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansCounterControl, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.CounterControl.1.4.1\lib\net451\OrleansCounterControl.exe</HintPath>
+    <Reference Include="OrleansCounterControl, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.CounterControl.1.4.2\lib\net451\OrleansCounterControl.exe</HintPath>
     </Reference>
-    <Reference Include="OrleansHost, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansHost.1.4.1\lib\net451\OrleansHost.exe</HintPath>
+    <Reference Include="OrleansHost, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansHost.1.4.2\lib\net451\OrleansHost.exe</HintPath>
     </Reference>
-    <Reference Include="OrleansProviders, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansProviders.1.4.1\lib\net451\OrleansProviders.dll</HintPath>
+    <Reference Include="OrleansProviders, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansProviders.1.4.2\lib\net451\OrleansProviders.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansRuntime, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansRuntime.1.4.1\lib\net451\OrleansRuntime.dll</HintPath>
+    <Reference Include="OrleansRuntime, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansRuntime.1.4.2\lib\net451\OrleansRuntime.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansTelemetryConsumers.AI, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansTelemetryConsumers.AI.1.4.1\lib\net451\OrleansTelemetryConsumers.AI.dll</HintPath>
+    <Reference Include="OrleansTelemetryConsumers.AI, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansTelemetryConsumers.AI.1.4.2\lib\net451\OrleansTelemetryConsumers.AI.dll</HintPath>
     </Reference>
-    <Reference Include="OrleansTelemetryConsumers.Counters, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.OrleansTelemetryConsumers.Counters.1.4.1\lib\net451\OrleansTelemetryConsumers.Counters.dll</HintPath>
+    <Reference Include="OrleansTelemetryConsumers.Counters, Version=1.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.OrleansTelemetryConsumers.Counters.1.4.2\lib\net451\OrleansTelemetryConsumers.Counters.dll</HintPath>
     </Reference>
-    <Reference Include="SimpleInjector, Version=4.0.6.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
-      <HintPath>..\packages\SimpleInjector.4.0.6\lib\net45\SimpleInjector.dll</HintPath>
+    <Reference Include="SimpleInjector, Version=4.0.8.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
+      <HintPath>..\packages\SimpleInjector.4.0.8\lib\net45\SimpleInjector.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -269,13 +269,13 @@
     -->
     <AutoUnifyAssemblyReferences>false</AutoUnifyAssemblyReferences>
   </PropertyGroup>
-  <Import Project="..\packages\Microsoft.Orleans.OrleansHost.1.4.1\build\Microsoft.Orleans.OrleansHost.targets" Condition="Exists('..\packages\Microsoft.Orleans.OrleansHost.1.4.1\build\Microsoft.Orleans.OrleansHost.targets')" />
+  <Import Project="..\packages\Microsoft.Orleans.OrleansHost.1.4.2\build\Microsoft.Orleans.OrleansHost.targets" Condition="Exists('..\packages\Microsoft.Orleans.OrleansHost.1.4.2\build\Microsoft.Orleans.OrleansHost.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.Orleans.OrleansHost.1.4.1\build\Microsoft.Orleans.OrleansHost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.OrleansHost.1.4.1\build\Microsoft.Orleans.OrleansHost.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Orleans.CounterControl.1.4.1\build\Microsoft.Orleans.CounterControl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.CounterControl.1.4.1\build\Microsoft.Orleans.CounterControl.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Orleans.OrleansHost.1.4.2\build\Microsoft.Orleans.OrleansHost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.OrleansHost.1.4.2\build\Microsoft.Orleans.OrleansHost.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Orleans.CounterControl.1.4.2\build\Microsoft.Orleans.CounterControl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.CounterControl.1.4.2\build\Microsoft.Orleans.CounterControl.targets'))" />
   </Target>
-  <Import Project="..\packages\Microsoft.Orleans.CounterControl.1.4.1\build\Microsoft.Orleans.CounterControl.targets" Condition="Exists('..\packages\Microsoft.Orleans.CounterControl.1.4.1\build\Microsoft.Orleans.CounterControl.targets')" />
+  <Import Project="..\packages\Microsoft.Orleans.CounterControl.1.4.2\build\Microsoft.Orleans.CounterControl.targets" Condition="Exists('..\packages\Microsoft.Orleans.CounterControl.1.4.2\build\Microsoft.Orleans.CounterControl.targets')" />
 </Project>
