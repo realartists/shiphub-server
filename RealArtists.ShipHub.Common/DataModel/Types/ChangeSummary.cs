@@ -56,6 +56,10 @@
       }
     }
 
+    public static ChangeSummary UnionAll(params IChangeSummary[] changes) {
+      return UnionAll((IEnumerable<IChangeSummary>)changes);
+    }
+
     public static ChangeSummary UnionAll(IEnumerable<IChangeSummary> changes) {
       return new ChangeSummary() {
         Organizations = changes.SelectMany(x => x.Organizations).ToHashSet(),

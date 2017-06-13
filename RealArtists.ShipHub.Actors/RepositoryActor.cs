@@ -15,7 +15,6 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
-  using Common.Hashing;
   using GitHub;
   using Orleans;
   using QueueClient;
@@ -32,11 +31,17 @@
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
-      "issues"
+      "commit_comment"
       , "issue_comment"
+      , "issues"
       , "label"
       , "milestone"
+      , "pull_request_review_comment"
+      , "pull_request_review"
+      , "pull_request"
       , "push"
+      , "repository"
+      , "status"
     );
 
     public static Regex ExactMatchIssueTemplateRegex { get; } = new Regex(
@@ -196,11 +201,27 @@
       }
     }
 
+    public async Task ForceSyncAllLinkedAccountRepositories() {
+      IEnumerable<long> linkedAccountIds;
+      using (var context = _contextFactory.CreateInstance()) {
+        linkedAccountIds = await context.AccountRepositories
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Tokens.Any())
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+      }
+
+      // Best Effort
+      foreach (var userId in linkedAccountIds) {
+        _grainFactory.GetGrain<IUserActor>(userId).ForceSyncRepositories().LogFailure();
+      }
+    }
+
     // ////////////////////////////////////////////////////////////
     // Utility Functions
     // ////////////////////////////////////////////////////////////
 
-    private async Task<IEnumerable<Tuple<long, bool>>> GetUsersWithAccess() {
+    private async Task<IEnumerable<(long UserId, bool IsAdmin)>> GetUsersWithAccess() {
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
         var users = await context.AccountRepositories
@@ -212,7 +233,7 @@
           .ToArrayAsync();
 
         return users
-          .Select(x => Tuple.Create(x.UserId, x.Admin))
+          .Select(x => (UserId: x.UserId, IsAdmin: x.Admin))
           .ToArray();
       }
     }
@@ -251,110 +272,96 @@
         return;
       }
 
-      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
       IGitHubRepositoryAdmin admin = null;
-      var firstAdmin = users.FirstOrDefault(x => x.Item2);
-      if (firstAdmin != null) {
-        admin = _grainFactory.GetGrain<IGitHubActor>(firstAdmin.Item1);
+      if (users.Any(x => x.IsAdmin)) {
+        admin = _grainFactory.GetGrain<IGitHubActor>(users.First(x => x.IsAdmin).UserId);
       }
 
-      var changes = new ChangeSummary();
-      try {
-        _syncCount++;
-        await SyncTask(github, admin, changes);
-      } catch (GitHubPoolEmptyException) {
-        // Nothing to do.
-        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
-      }
+      using (var context = _contextFactory.CreateInstance()) {
+        var updater = new DataUpdater(context, _mapper);
+        try {
+          _syncCount++;
 
-      // Send Changes.
-      if (changes.IsEmpty) {
-        _idle = true;
-      } else {
-        _idle = false;
-        await _queueClient.NotifyChanges(changes);
+          await UpdateDetails(updater, github);
+
+          // Private repos in orgs that have reverted to the free plan show in users'
+          // repo lists but are inaccessible (404). We mark such repos _disabled until
+          // we can access them.
+          if (_disabled) {
+            DeactivateOnIdle();
+          } else {
+            await UpdateIssueTemplate(updater, github);
+            await UpdateAssignees(updater, github);
+            await UpdateLabels(updater, github);
+            await UpdateMilestones(updater, github);
+
+            if (_hasProjects) {
+              await UpdateProjects(updater, github);
+            }
+
+            /* Nibblers
+             * 
+             * Things that nibble are tricky, as they have dependencies on one another.
+             * We have to sync all issues before events, comments, and PRs.
+             * This sucks but unless we drop referential integrity it's required.
+             */
+            await UpdateIssues(updater, github);
+
+            /* IFF there are no issue changes, it's *probably* ok to sync the rest, in
+             * priority order. It's still possible to race and discover (for example)
+             * a PR before its Issue. For now let this fail - it'll eventually complete.
+             */
+            if (!updater.IssuesChanged) {
+              await UpdatePullRequests(updater, github);
+              //await UpdateComments(updater, github);
+              //await UpdateEvents(updater, github);
+            }
+          }
+
+          // Probably best to keep last
+          if (admin != null) {
+            updater.UnionWithExternalChanges(await AddOrUpdateWebhooks(context, admin));
+          }
+        } catch (GitHubPoolEmptyException) {
+          // Nothing to do.
+          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+        }
+
+        // Send Changes.
+        await updater.Changes.Submit(_queueClient);
+        _idle = updater.Changes.IsEmpty;
       }
 
       // Save
       await Save();
     }
 
-    private async Task SyncTask(IGitHubPoolable github, IGitHubRepositoryAdmin admin, ChangeSummary changes) {
-      using (var context = _contextFactory.CreateInstance()) {
-        // Private repos in orgs that have reverted to the free plan show in users'
-        // repo lists but are inaccessible (404). We mark such repos _disabled until
-        // we can access them.
-        changes.UnionWith(await UpdateDetails(context, github));
-
-        if (_disabled) {
-          DeactivateOnIdle();
-        } else {
-          changes.UnionWith(await UpdateIssueTemplate(context, github));
-          changes.UnionWith(await UpdateAssignees(context, github));
-          changes.UnionWith(await UpdateLabels(context, github));
-          changes.UnionWith(await UpdateMilestones(context, github));
-
-          if (_hasProjects) {
-            changes.UnionWith(await UpdateProjects(context, github));
-          }
-
-          /* Nibblers
-           * 
-           * Things that nibble are tricky, as they have dependencies on one another.
-           * We have to sync all issues before events, comments, and PRs.
-           * This sucks but unless we drop referential integrity it's required.
-           */
-          var issueChanges = await UpdateIssues(context, github);
-          changes.UnionWith(issueChanges);
-
-          /* IFF there are no issue changes, it's *probably* ok to sync the rest, in
-           * priority order. It's still possible to race and discover (for example)
-           * a PR before its Issue. For now let this fail - it'll eventually complete.
-           */
-          if (issueChanges.IsEmpty) {
-            changes.UnionWith(await UpdatePullRequests(context, github));
-            //changes.UnionWith(await UpdateComments(context, github));
-            //changes.UnionWith(await UpdateEvents(context, github));
-          }
-
-          // Probably best to keep last
-          if (admin != null) {
-            changes.UnionWith(await AddOrUpdateWebhooks(context, admin));
-          }
-        }
-      }
-    }
-
-    private async Task<IChangeSummary> UpdateDetails(ShipHubContext context, IGitHubPoolable github) {
-      var changes = ChangeSummary.Empty;
-
+    private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
       if (_metadata.IsExpired()) {
         var repo = await github.Repository(_fullName, _metadata);
 
         if (repo.IsOk) {
-          var repoTableType = _mapper.Map<RepositoryTableType>(repo.Result);
-
           // If we can read it, it's not disabled.
           _disabled = false;
-          repoTableType.Disabled = false;
 
-          changes = await context.BulkUpdateRepositories(repo.Date, new[] { repoTableType });
+          await updater.UpdateRepositories(repo.Date, new[] { repo.Result }, enable: true);
+
+          // Update cached local state
           _fullName = repo.Result.FullName;
           _repoSize = repo.Result.Size;
           _hasProjects = repo.Result.HasProjects;
         } else if (repo.Status == HttpStatusCode.NotFound) {
           // private repo in unpaid org?
           _disabled = true;
-          // we're not even allowed to get the repo info, so i had to make a special method
-          changes = await context.DisableRepository(_repoId, _disabled);
+          // we're not even allowed to get the repo info, so I had to make a special method
+          await updater.DisableRepository(_repoId);
         }
 
         // Don't update until saved.
         _metadata = GitHubMetadata.FromResponse(repo);
       }
-
-      return changes;
     }
 
     public Task SyncIssueTemplate() {
@@ -384,14 +391,12 @@
         return;
       }
 
-      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.Item1));
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
-      ChangeSummary changes;
       using (var context = _contextFactory.CreateInstance()) {
-        changes = await UpdateIssueTemplate(context, github);
-      }
-      if (!changes.IsEmpty) {
-        await _queueClient.NotifyChanges(changes);
+        var updater = new DataUpdater(context, _mapper);
+        await UpdateIssueTemplate(updater, github);
+        await updater.Changes.Submit(_queueClient);
       }
     }
 
@@ -407,10 +412,10 @@
             && ExactMatchPullRequestTemplateRegex.IsMatch(file.Name);
     }
 
-    private async Task<ChangeSummary> UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
+    private async Task UpdateIssueTemplate(DataUpdater updater, IGitHubPoolable github) {
       if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount - 1 % PollIssueTemplateSkip == 0))) {
         this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
-        return new ChangeSummary();
+        return;
       }
       this.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
 
@@ -420,9 +425,9 @@
         // and the contents API will return 404s. Because 404s are not cacheable,
         // we want to be able to short circuit here and anticipate that and
         // just set an empty ISSUE_TEMPLATE in this case.
-        var ret = await UpdateIssueTemplates(context, null, null);
+        await UpdateIssueTemplates(updater, null, null);
         _needsIssueTemplateSync = false;
-        return ret;
+        return;
       }
 
       var prevRootMetadata = _contentsRootMetadata;
@@ -430,9 +435,8 @@
       var prevIssueTemplateMetadata = _contentsIssueTemplateMetadata;
       var prevPullRequestTemplateMetadata = _contentsPullRequestTemplateMetadata;
       try {
-        var ret = await _UpdateIssueTemplate(context, github);
+        await _UpdateIssueTemplate(updater, github);
         _needsIssueTemplateSync = false;
-        return ret;
       } catch (Exception ex) {
         // unwind anything we've discovered about the cache state if we couldn't finish the whole operation
         _contentsRootMetadata = prevRootMetadata;
@@ -444,7 +448,7 @@
       }
     }
 
-    private async Task<ChangeSummary> _UpdateIssueTemplate(ShipHubContext context, IGitHubPoolable github) {
+    private async Task _UpdateIssueTemplate(DataUpdater updater, IGitHubPoolable github) {
       if (_contentsIssueTemplateMetadata == null || _contentsPullRequestTemplateMetadata == null) {
         // then we don't have either issue template or pull request template, and we have to search for them
         // even if we have just one, we still have to search, since the second could appear at any time.
@@ -495,12 +499,13 @@
           _contentsIssueTemplateMetadata = issueTemplateContent?.Succeeded == true ? GitHubMetadata.FromResponse(issueTemplateContent) : null;
           _contentsPullRequestTemplateMetadata = pullRequestTemplateContent?.Succeeded == true ? GitHubMetadata.FromResponse(pullRequestTemplateContent) : null;
           if ((issueTemplateContent != null && issueTemplateContent.IsOk) || (pullRequestTemplateContent != null && pullRequestTemplateContent.IsOk)) {
-            return await UpdateIssueTemplates(context, 
-              DecodeIssueTemplate(issueTemplateContent?.Result), 
+            await UpdateIssueTemplates(updater,
+              DecodeIssueTemplate(issueTemplateContent?.Result),
               DecodeIssueTemplate(pullRequestTemplateContent?.Result));
+            return;
           }
         }
-        return new ChangeSummary(); // couldn't find any ISSUE_TEMPLATE/PULL_REQUEST_TEMPLATE anywhere
+        return; // couldn't find any ISSUE_TEMPLATE/PULL_REQUEST_TEMPLATE anywhere
       } else {
         // we have some cached data on an existing ISSUE_TEMPLATE and PULL_REQUEST_TEMPLATE.
         // try to short-circuit by just looking them up.
@@ -543,13 +548,11 @@
 
         if (contents.Any(x => x.Status == HttpStatusCode.NotFound)) {
           // one or both have been deleted or moved. update them optimistically, but then start a new search from the top
-          var changes = new ChangeSummary();
-          changes.UnionWith(await UpdateIssueTemplates(context, issueTemplateContent, pullRequestTemplateContent));
-          return changes;
+          await UpdateIssueTemplates(updater, issueTemplateContent, pullRequestTemplateContent);
         } else if (contents.Any(x => x.Status == HttpStatusCode.OK)) {
-          return await UpdateIssueTemplates(context, issueTemplateContent, pullRequestTemplateContent);
+          await UpdateIssueTemplates(updater, issueTemplateContent, pullRequestTemplateContent);
         } else {
-          return new ChangeSummary(); // nothing changed as far as we can tell
+          // nothing changed as far as we can tell
         }
       }
     }
@@ -561,101 +564,58 @@
       return null;
     }
 
-    private async Task<ChangeSummary> UpdateIssueTemplates(ShipHubContext context, string issueTemplate, string pullRequestTemplate) {
+    private async Task UpdateIssueTemplates(DataUpdater updater, string issueTemplate, string pullRequestTemplate) {
       if (_issueTemplateContent != issueTemplate || _pullRequestTemplateContent != pullRequestTemplate) {
-        var ret = await context.SetRepositoryIssueTemplate(_repoId, issueTemplate, pullRequestTemplate);
+        await updater.SetRepositoryIssueTemplate(_repoId, issueTemplate, pullRequestTemplate);
         _issueTemplateContent = issueTemplate;
         _pullRequestTemplateContent = pullRequestTemplate;
-        return ret;
-      } else {
-        return new ChangeSummary();
       }
     }
 
-    private async Task<IChangeSummary> UpdateAssignees(ShipHubContext context, IGitHubPoolable github) {
-      var changes = new ChangeSummary();
-
-      // Update Assignees
+    private async Task UpdateAssignees(DataUpdater updater, IGitHubPoolable github) {
       if (_assignableMetadata.IsExpired()) {
         var assignees = await github.Assignable(_fullName, _assignableMetadata);
         if (assignees.IsOk) {
-          changes.UnionWith(await context.BulkUpdateAccounts(assignees.Date, _mapper.Map<IEnumerable<AccountTableType>>(assignees.Result)));
-          changes.UnionWith(await context.SetRepositoryAssignableAccounts(_repoId, assignees.Result.Select(x => x.Id)));
+          await updater.SetRepositoryAssignees(_repoId, assignees.Date, assignees.Result);
         }
-
         _assignableMetadata = GitHubMetadata.FromResponse(assignees);
       }
-
-      return changes;
     }
 
-    private async Task<IChangeSummary> UpdateLabels(ShipHubContext context, IGitHubPoolable github) {
-      var changes = ChangeSummary.Empty;
-
+    private async Task UpdateLabels(DataUpdater updater, IGitHubPoolable github) {
       if (_labelMetadata.IsExpired()) {
         var labels = await github.Labels(_fullName, _labelMetadata);
         if (labels.IsOk) {
-          changes = await context.BulkUpdateLabels(
-            _repoId,
-            labels.Result.Select(x => new LabelTableType() {
-              Id = x.Id,
-              Color = x.Color,
-              Name = x.Name
-            }),
-            complete: true
-          );
+          await updater.UpdateLabels(_repoId, labels.Result, complete: true);
         }
-
         _labelMetadata = GitHubMetadata.FromResponse(labels);
       }
-
-      return changes;
     }
 
-    private async Task<IChangeSummary> UpdateMilestones(ShipHubContext context, IGitHubPoolable github) {
-      var changes = ChangeSummary.Empty;
-
+    private async Task UpdateMilestones(DataUpdater updater, IGitHubPoolable github) {
       if (_milestoneMetadata.IsExpired()) {
         var milestones = await github.Milestones(_fullName, _milestoneMetadata);
         if (milestones.IsOk) {
-          changes = await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones.Result), complete: true);
+          await updater.UpdateMilestones(_repoId, milestones.Date, milestones.Result, complete: true);
         }
-
         _milestoneMetadata = GitHubMetadata.FromResponse(milestones);
       }
-
-      return changes;
     }
 
-    private async Task<IChangeSummary> UpdateProjects(ShipHubContext context, IGitHubPoolable github) {
-      var changes = new ChangeSummary();
-
+    private async Task UpdateProjects(DataUpdater updater, IGitHubPoolable github) {
       if (_projectMetadata.IsExpired()) {
         var projects = await github.RepositoryProjects(_fullName, _projectMetadata);
         if (projects.IsOk) {
-          var creators = projects.Result.Select(p => new AccountTableType() {
-            Type = Account.UserType,
-            Login = p.Creator.Login,
-            Id = p.Creator.Id
-          }).Distinct(t => t.Id);
-          if (creators.Any()) {
-            changes.UnionWith(await context.BulkUpdateAccounts(projects.Date, creators));
-          }
-          await context.BulkUpdateRepositoryProjects(_repoId, _mapper.Map<IEnumerable<ProjectTableType>>(projects.Result));
+          await updater.UpdateRepositoryProjects(_repoId, projects.Date, projects.Result);
         } else if (projects.Status == HttpStatusCode.Gone || projects.Status == HttpStatusCode.NotFound) {
           // Not enough to rely on UpdateDetails alone.
           _hasProjects = false;
         }
-
         _projectMetadata = GitHubMetadata.FromResponse(projects);
       }
-
-      return changes;
     }
 
-    private async Task<IChangeSummary> UpdateIssues(ShipHubContext context, IGitHubPoolable github) {
-      var changes = new ChangeSummary();
-
+    private async Task UpdateIssues(DataUpdater updater, IGitHubPoolable github) {
       if (_issueMetadata.IsExpired()) {
         var issueResponse = await github.Issues(_fullName, _issueSince, IssueChunkSize, _issueMetadata);
         if (issueResponse.IsOk) {
@@ -675,51 +635,38 @@
               this.Error($"{_fullName} failed to load newest issues: {newestIssuesResponse.Status}");
             }
           }
+          await updater.UpdateIssues(_repoId, issueResponse.Date, issues);
 
-          var accounts = issues
-            .SelectMany(x => new[] { x.User, x.ClosedBy }.Concat(x.Assignees))
-            .Where(x => x != null)
-            .Distinct(x => x.Id);
-
-          // TODO: Store (hashes? modified date?) in this object and only apply changes.
-          var milestones = issues
-            .Select(x => x.Milestone)
-            .Where(x => x != null)
-            .Distinct(x => x.Id);
-
-          changes.UnionWith(await context.BulkUpdateAccounts(issueResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)));
-          changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
-          changes.UnionWith(await context.BulkUpdateLabels(
-            _repoId,
-            issues.SelectMany(x => x.Labels.Select(y => new LabelTableType() { Id = y.Id, Name = y.Name, Color = y.Color })).Distinct(x => x.Id)));
-          changes.UnionWith(await context.BulkUpdateIssues(
-            _repoId,
-            _mapper.Map<IEnumerable<IssueTableType>>(issues),
-            issues.SelectMany(x => x.Labels.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id })),
-            issues.SelectMany(x => x.Assignees.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id }))));
-
-          if (issues.Any()) {
+          if (updater.IssuesChanged) {
             // Ensure we don't miss any when we hit the page limit.
-            _issueSince = nibbledIssues.Max(x => x.UpdatedAt).AddSeconds(-1);
-            await context.UpdateRepositoryIssueSince(_repoId, _issueSince);
+            _issueSince = nibbledIssues.Max(x => x.UpdatedAt).AddSeconds(-5);
+            await updater.UpdateRepositoryIssueSince(_repoId, _issueSince);
           }
         }
 
+        /*
+         * Sync is "complete" if
+         * 1. We see a NotModified.
+         *   - This covers repos synced before completion tracking.
+         * 2. We see a full response (not max-page limited).
+         *   - This is indicated by HTTP OK + non-null cache metadata.
+         *   - Partial responses don't include cache metadata.
+         * Mark sync complete ASAP since we want to update clients as soon as possible.
+         */
         if (((issueResponse.IsOk && issueResponse.CacheData != null) || (issueResponse.Status == HttpStatusCode.NotModified))
             && !_issuesFullyImported) {
-          // CacheData will only be set if we've received all of the issues
           this.Info($"{_fullName} Issues are now fully imported");
+          await updater.MarkRepositoryIssuesAsFullyImported(_repoId);
           _issuesFullyImported = true;
-          changes.UnionWith(await context.MarkRepositoryIssuesAsFullyImported(_repoId));
         }
 
+        // This is safe, even when still nibbling because the since parameter will
+        // continue incrementing and invalidating the ETag.
         _issueMetadata = GitHubMetadata.FromResponse(issueResponse);
       }
-
-      return changes;
     }
 
-    private async Task<IChangeSummary> UpdatePullRequests(ShipHubContext context, IGitHubPoolable github) {
+    private async Task UpdatePullRequests(DataUpdater updater, IGitHubPoolable github) {
       /* Because GitHub is evil, we can't sync PRs like we do Issues.
        * 
        * Per https://developer.github.com/v3/pulls/#list-pull-requests there is no
@@ -731,7 +678,6 @@
        * Alternately, we can just grab some fixed number of pages and rely on
        * on-demand refresh and hooks to fill in anything we miss (rare).
        */
-      var changes = new ChangeSummary();
 
       if (_pullRequestUpdatedAt == null) {
         // Inital sync. Walk from bottom up.
@@ -739,7 +685,8 @@
         if (prCreated.IsOk) {
           var hasResults = prCreated.Result.Any();
           if (hasResults) {
-            await UpdatePRs(prCreated);
+            await updater.UpdatePullRequests(_repoId, prCreated.Date, prCreated.Result);
+
             // Yes, this can miss newly created issues on the last page.
             // The updated_at base sync that takes over will catch any omissions.
             _pullRequestSkip += prCreated.Pages;
@@ -771,7 +718,7 @@
 
           if (updated.IsOk) {
             if (updated.Result.Any()) {
-              await UpdatePRs(updated);
+              await updater.UpdatePullRequests(_repoId, updated.Date, updated.Result);
               skip += updated.Pages;
 
               var batchMostRecent = updated.Result
@@ -797,45 +744,6 @@
 
         _pullRequestMetadata = firstPageMetadata;
         _pullRequestUpdatedAt = mostRecent;
-      }
-
-      return changes;
-
-      // Shared update logic
-      async Task UpdatePRs(GitHubResponse<IEnumerable<Common.GitHub.Models.PullRequest>> response)
-      {
-        var prs = response.Result;
-
-        var accounts = prs
-          .SelectMany(x => new[] { x.User, x.ClosedBy, x.MergedBy }.Concat(x.Assignees))
-          .Where(x => x != null)
-          .Distinct(x => x.Id)
-          .ToArray();
-        changes.UnionWith(await context.BulkUpdateAccounts(response.Date, _mapper.Map<IEnumerable<AccountTableType>>(accounts)));
-
-        var repos = prs
-          .SelectMany(x => new[] { x.Head?.Repo, x.Base?.Repo })
-          .Where(x => x != null)
-          .Distinct(x => x.Id)
-          .ToArray();
-        if (repos.Any()) {
-          changes.UnionWith(await context.BulkUpdateRepositories(response.Date, _mapper.Map<IEnumerable<RepositoryTableType>>(repos)));
-        }
-
-        var milestones = prs
-          .Select(x => x.Milestone)
-          .Where(x => x != null)
-          .Distinct(x => x.Id)
-          .ToArray();
-        if (milestones.Any()) {
-          changes.UnionWith(await context.BulkUpdateMilestones(_repoId, _mapper.Map<IEnumerable<MilestoneTableType>>(milestones)));
-        }
-
-        changes.UnionWith(await context.BulkUpdatePullRequests(
-          _repoId,
-          _mapper.Map<IEnumerable<PullRequestTableType>>(prs),
-          prs.SelectMany(x => x.RequestedReviewers.Select(y => new IssueMappingTableType(y.Id, x.Number)))
-        ));
       }
     }
 

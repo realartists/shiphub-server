@@ -60,7 +60,7 @@
 
         await context.SetAccountLinkedRepositories(
           userAccount.Id,
-          new[] { Tuple.Create(repo.Id, isAdmin) });
+          new[] { (repo.Id, isAdmin) });
 
         if (hasHook) {
           context.Hooks.Add(new Hook() {
@@ -78,8 +78,7 @@
         mockConnection
           .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
           .Returns((object obj) => {
-            if (obj is SyncResponse) {
-              var response = (SyncResponse)obj;
+            if (obj is SyncResponse response) {
               logs.AddRange(response.Logs);
             }
             return Task.CompletedTask;
@@ -153,8 +152,7 @@
         mockConnection
           .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
           .Returns((object obj) => {
-            if (obj is SyncResponse) {
-              var response = (SyncResponse)obj;
+            if (obj is SyncResponse response) {
               logs.AddRange(response.Logs);
             }
             return Task.CompletedTask;
@@ -194,7 +192,7 @@
         };
         await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
         await context.SetAccountLinkedRepositories(userAccount.Id, new[] {
-          Tuple.Create(repo.Id, true),
+          (repo.Id, true),
         });
 
         var issue = new IssueTableType() {
@@ -218,8 +216,7 @@
         mockConnection
           .Setup(x => x.SendJsonAsync(It.IsAny<object>()))
           .Returns((object obj) => {
-            if (obj is SyncResponse) {
-              var response = (SyncResponse)obj;
+            if (obj is SyncResponse response) {
               logs.AddRange(response.Logs);
             }
             return Task.CompletedTask;

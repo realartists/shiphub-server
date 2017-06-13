@@ -18,13 +18,13 @@
   [AutoRollback]
   public class WebhookReaperTests {
     private static Mock<WebhookReaperTimer> MockReaper(
-      Dictionary<long, List<Tuple<string, string, long>>> pings) {
+      Dictionary<long, List<(string hookType, string resourceName, long hookId)>> pings) {
       var mock = new Mock<WebhookReaperTimer>(null, new DetailedExceptionLogger()) { CallBase = true };
       mock
         .Setup(x => x.CreateGitHubClient(It.IsAny<long>()))
         .Returns((long userId) => {
           if (!pings.ContainsKey(userId)) {
-            pings[userId] = new List<Tuple<string, string, long>>();
+            pings[userId] = new List<(string, string, long)>();
           }
 
           var mockClient = new Mock<IGitHubActor>();
@@ -32,7 +32,7 @@
           mockClient
             .Setup(x => x.PingRepositoryWebhook(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<RequestPriority>()))
             .Returns((string repoFullName, long hookId, RequestPriority priority) => {
-              pings[userId].Add(Tuple.Create("repo", repoFullName, hookId));
+              pings[userId].Add(("repo", repoFullName, hookId));
               return Task.FromResult(new GitHubResponse<bool>(null) {
                 Result = true,
               });
@@ -41,7 +41,7 @@
           mockClient
               .Setup(x => x.PingOrganizationWebhook(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<RequestPriority>()))
               .Returns((string name, long hookId, RequestPriority priority) => {
-                pings[userId].Add(Tuple.Create("org", name, hookId));
+                pings[userId].Add(("org", name, hookId));
                 return Task.FromResult(new GitHubResponse<bool>(null) {
                   Result = true,
                 });
@@ -105,12 +105,12 @@
 
       // Make both users admins of all repos + orgs.
       await context.SetAccountLinkedRepositories(env.user1.Id, new[] {
-        Tuple.Create(env.repo1.Id, true),
-        Tuple.Create(env.repo2.Id, true),
+        (env.repo1.Id, true),
+        (env.repo2.Id, true),
       });
       await context.SetAccountLinkedRepositories(env.user2.Id, new[] {
-        Tuple.Create(env.repo1.Id, true),
-        Tuple.Create(env.repo2.Id, true),
+        (env.repo1.Id, true),
+        (env.repo2.Id, true),
       });
       await context.SetUserOrganizations(env.user1.Id, new[] { env.org1.Id, env.org2.Id });
       await context.SetUserOrganizations(env.user2.Id, new[] { env.org1.Id, env.org2.Id });
@@ -144,7 +144,7 @@
 
         await context.SaveChangesAsync();
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
@@ -157,8 +157,8 @@
         Assert.AreEqual(new[] { env.user1.Id }, pings.Keys.ToArray());
         Assert.AreEqual(
           new[] {
-            Tuple.Create("repo", "myorg1/unicorns", (long)env.repo1Hook.GitHubId),
-            Tuple.Create("org", "myorg2", (long)env.org2Hook.GitHubId),
+            ("repo", "myorg1/unicorns", (long)env.repo1Hook.GitHubId),
+            ("org", "myorg2", (long)env.org2Hook.GitHubId),
           },
           pings[env.user1.Id].ToArray());
 
@@ -199,7 +199,7 @@
         await context.SetOrganizationAdmins(env.org1.Id, Array.Empty<long>());
         await context.SetOrganizationAdmins(env.org2.Id, Array.Empty<long>());
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
@@ -240,7 +240,7 @@
           env.user2.Id,
         });
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
@@ -264,15 +264,15 @@
         await context.SaveChangesAsync();
 
         await context.SetAccountLinkedRepositories(env.user1.Id, new[] {
-          Tuple.Create(env.repo1.Id, false),
-          Tuple.Create(env.repo2.Id, false),
+          (env.repo1.Id, false),
+          (env.repo2.Id, false),
         });
         await context.SetAccountLinkedRepositories(env.user2.Id, new[] {
-          Tuple.Create(env.repo1.Id, false),
-          Tuple.Create(env.repo2.Id, false),
+          (env.repo1.Id, false),
+          (env.repo2.Id, false),
         });
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 
@@ -304,7 +304,7 @@
 
         await context.SaveChangesAsync();
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
 
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
@@ -343,15 +343,15 @@
 
         // Both are admins.
         await context.SetAccountLinkedRepositories(env.user1.Id, new[] {
-          Tuple.Create(env.repo1.Id, true),
-          Tuple.Create(env.repo2.Id, true),
+          (env.repo1.Id, true),
+          (env.repo2.Id, true),
         });
         await context.SetAccountLinkedRepositories(env.user2.Id, new[] {
-          Tuple.Create(env.repo1.Id, true),
-          Tuple.Create(env.repo2.Id, true),
+          (env.repo1.Id, true),
+          (env.repo2.Id, true),
         });
 
-        var pings = new Dictionary<long, List<Tuple<string, string, long>>>();
+        var pings = new Dictionary<long, List<(string, string, long)>>();
         var mock = MockReaper(pings);
         var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
 

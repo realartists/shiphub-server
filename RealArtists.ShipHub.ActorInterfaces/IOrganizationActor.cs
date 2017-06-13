@@ -14,5 +14,11 @@
     /// TODO: Publish event streams for sync status and data changes.
     /// </summary>
     Task Sync();
+
+    /// <summary>
+    /// This should re-sync all members and their permisions.
+    /// Currently used when a repo is removed or added.
+    /// </summary>
+    Task ForceSyncAllMemberRepositories();
   }
 }

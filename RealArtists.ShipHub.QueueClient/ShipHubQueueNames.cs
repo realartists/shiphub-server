@@ -18,11 +18,6 @@
     }
 
     // Queue Names
-    private const string SyncRepository = "sync-repository";
-    public const string SyncRepositoryComments = SyncRepository + "-comments";
-    public const string SyncRepositoryIssueEvents = SyncRepository + "-issue-events";
-
-    public const string WebhooksEvent = "hooks-event";
     public const string BillingGetOrCreatePersonalSubscription = "billing-get-or-create-personal-subscription";
     public const string BillingSyncOrgSubscriptionState = "billing-sync-org-subscription-state";
     public const string BillingUpdateComplimentarySubscription = "billing-update-complimentary-subscription";

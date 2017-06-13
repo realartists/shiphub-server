@@ -129,7 +129,7 @@
 
         // Rate limit info
         var rateInfo = string.Empty;
-        if (response.Headers.Contains("X-RateLimit-Limit")) {
+        if (response?.Headers.Contains("X-RateLimit-Limit") == true) {
           var rateRemaining = response.ParseHeader("X-RateLimit-Remaining", x => int.Parse(x));
           var rateReset = response.ParseHeader("X-RateLimit-Reset", x => EpochUtility.ToDateTimeOffset(int.Parse(x)));
           rateInfo = $" [{rateRemaining}, {rateReset:o}]";

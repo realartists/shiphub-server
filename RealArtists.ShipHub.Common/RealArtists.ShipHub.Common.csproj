@@ -56,6 +56,7 @@
     <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
     <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
+    <Compile Include="DataUpdater.cs" />
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
@@ -65,6 +66,18 @@
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\CommitCommentPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\IssueCommentPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\IssuesPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\LabelPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\MilestonePayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\PingPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\PullRequestPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\PullRequestReviewCommentPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\PullRequestReviewPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\PushPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\RepositoryPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\StatusPayload.cs" />
     <Compile Include="GitHub\RequestPriority.cs" />
     <Compile Include="HttpUtilities.cs" />
     <Compile Include="Log.cs" />
@@ -130,7 +143,6 @@
     <Compile Include="GitHub\Models\Milestone.cs" />
     <Compile Include="GitHub\Models\Repository.cs" />
     <Compile Include="GitHub\Models\Webhook.cs" />
-    <Compile Include="GitHub\Models\WebhookPayload.cs" />
     <Compile Include="GitHub\EpochUtility.cs" />
     <Compile Include="Legacy\DynamicDataReader.cs" />
     <Compile Include="Legacy\DynamicStoredProcedure.cs" />

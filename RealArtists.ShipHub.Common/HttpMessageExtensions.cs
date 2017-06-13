@@ -17,5 +17,9 @@
     public static T ParseHeader<T>(this HttpResponseMessage response, string headerName, Func<string, T> selector) {
       return response.Headers.ParseHeader(headerName, selector);
     }
+
+    public static T ParseHeader<T>(this HttpRequestMessage request, string headerName, Func<string, T> selector) {
+      return request.Headers.ParseHeader(headerName, selector);
+    }
   }
 }

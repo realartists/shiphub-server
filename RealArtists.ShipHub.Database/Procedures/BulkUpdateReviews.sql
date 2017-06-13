@@ -2,7 +2,8 @@
   @RepositoryId BIGINT,
   @IssueId BIGINT,
   @Date DATETIMEOFFSET,
-  @UserId BIGINT,
+  @UserId BIGINT NULL,
+  @Complete BIT,
   @Reviews ReviewTableType READONLY
 AS
 BEGIN
@@ -27,44 +28,47 @@ BEGIN
   BEGIN TRY
     BEGIN TRANSACTION
 
-    -- Detect any extraneous reviews
-    -- We have to delete any comments referencing it as well
-    INSERT INTO @ReviewChanges
-    SELECT r.Id, 'DELETE' 
-    FROM Reviews as r
-      LEFT OUTER JOIN @Reviews as rr ON (rr.Id = r.Id)
-    WHERE r.IssueId = @IssueId
-      AND rr.Id IS NULL
-      -- Right now only pending reviews can be deleted, but let's play it safe.
-      -- This should delete any reviews that don't match and aren't pending
-      -- plus any that are pending by this user and don't match.
-      AND (r.[State] != 'PENDING' OR r.UserId = @UserId) 
-    OPTION (FORCE ORDER)
+    IF(@Complete = 1)
+    BEGIN
+      -- Detect any extraneous reviews
+      -- We have to delete any comments referencing it as well
+      INSERT INTO @ReviewChanges
+      SELECT r.Id, 'DELETE' 
+      FROM Reviews as r
+        LEFT OUTER JOIN @Reviews as rr ON (rr.Id = r.Id)
+      WHERE r.IssueId = @IssueId
+        AND rr.Id IS NULL
+        -- Right now only pending reviews can be deleted, but let's play it safe.
+        -- This should delete any reviews that don't match and aren't pending
+        -- plus any that are pending by this user and don't match.
+        AND (r.[State] != 'PENDING' OR r.UserId = @UserId) 
+      OPTION (FORCE ORDER)
 
-    -- Delete reactions on review comments
-    -- I don't think this is currently possible but let's play safe
-    DELETE FROM Reactions
-    OUTPUT DELETED.Id INTO @DeletedReactions
-    FROM @ReviewChanges as rc
-      INNER LOOP JOIN PullRequestComments as prc ON (prc.PullRequestReviewId = rc.ReviewId)
-      INNER LOOP JOIN Reactions as r ON (r.PullRequestCommentId = prc.Id)
-    WHERE rc.[Action] = 'DELETE'
-    OPTION (FORCE ORDER)
+      -- Delete reactions on review comments
+      -- I don't think this is currently possible but let's play safe
+      DELETE FROM Reactions
+      OUTPUT DELETED.Id INTO @DeletedReactions
+      FROM @ReviewChanges as rc
+        INNER LOOP JOIN PullRequestComments as prc ON (prc.PullRequestReviewId = rc.ReviewId)
+        INNER LOOP JOIN Reactions as r ON (r.PullRequestCommentId = prc.Id)
+      WHERE rc.[Action] = 'DELETE'
+      OPTION (FORCE ORDER)
 
-    -- Delete comments on deleted reviews
-    DELETE FROM PullRequestComments
-    OUTPUT DELETED.Id INTO @DeletedComments
-    FROM @ReviewChanges as rc
-      INNER LOOP JOIN PullRequestComments as prc ON (rc.ReviewId = prc.PullRequestReviewId)
-    WHERE rc.[Action] = 'DELETE'
-    OPTION (FORCE ORDER)
+      -- Delete comments on deleted reviews
+      DELETE FROM PullRequestComments
+      OUTPUT DELETED.Id INTO @DeletedComments
+      FROM @ReviewChanges as rc
+        INNER LOOP JOIN PullRequestComments as prc ON (rc.ReviewId = prc.PullRequestReviewId)
+      WHERE rc.[Action] = 'DELETE'
+      OPTION (FORCE ORDER)
 
-    -- Delete deleted reviews
-    DELETE FROM Reviews
-    FROM @ReviewChanges as rc
-      INNER LOOP JOIN Reviews as r ON (r.Id = rc.ReviewId)
-    WHERE rc.[Action] = 'DELETE'
-    OPTION (FORCE ORDER)
+      -- Delete deleted reviews
+      DELETE FROM Reviews
+      FROM @ReviewChanges as rc
+        INNER LOOP JOIN Reviews as r ON (r.Id = rc.ReviewId)
+      WHERE rc.[Action] = 'DELETE'
+      OPTION (FORCE ORDER)
+    END
 
     MERGE INTO Reviews WITH (SERIALIZABLE) as [Target]
     USING (

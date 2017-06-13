@@ -106,7 +106,6 @@
 
     private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
-        // context only supports one operation at a time
         await context.UpdateMetadata("Issues", _issueId, _metadata);
         await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
         await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
@@ -227,7 +226,7 @@
 
             var reviewAccounts = reviews.Select(x => x.User).Distinct(x => x.Id);
             changes.UnionWith(await context.BulkUpdateAccounts(prReviewsResponse.Date, _mapper.Map<IEnumerable<AccountTableType>>(reviewAccounts)));
-            changes.UnionWith(await context.BulkUpdateReviews(_repoId, _issueId, prReviewsResponse.Date, forUserId, _mapper.Map<IEnumerable<ReviewTableType>>(reviews)));
+            changes.UnionWith(await context.BulkUpdateReviews(_repoId, _issueId, prReviewsResponse.Date, _mapper.Map<IEnumerable<ReviewTableType>>(reviews), userId: forUserId, complete: true));
           }
 
           // PR Comments

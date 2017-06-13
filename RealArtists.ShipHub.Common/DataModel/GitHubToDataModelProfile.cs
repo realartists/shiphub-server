@@ -43,6 +43,8 @@
 
       CreateMap<g.IssueEvent, IssueEventTableType>(MemberList.Destination);
 
+      CreateMap<g.Label, LabelTableType>(MemberList.Destination);
+
       CreateMap<g.Milestone, MilestoneTableType>(MemberList.Destination);
 
       CreateMap<g.Project, ProjectTableType>(MemberList.Destination)

@@ -76,10 +76,10 @@
               // Retry with someone else.
               Remove(actor);
               actor = null;
-              continue;
+              break;
+            default:
+              return result;
           }
-
-          return result;
         } catch (GitHubRateException) {
           Remove(actor);
           actor = null;
