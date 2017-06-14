@@ -76,14 +76,10 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
-      await Save();
-      await base.OnDeactivateAsync();
-    }
-
-    private async Task Save() {
       using (var context = _contextFactory.CreateInstance()) {
-        await Save();
+        await Save(context);
       }
+      await base.OnDeactivateAsync();
     }
 
     private async Task Save(ShipHubContext context) {

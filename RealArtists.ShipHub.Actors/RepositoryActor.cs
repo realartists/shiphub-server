@@ -175,30 +175,30 @@
       _syncIssueTemplateTimer?.Dispose();
       _syncIssueTemplateTimer = null;
 
-      await Save();
+      using (var context = _contextFactory.CreateInstance()) {
+        await Save(context);
+      }
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save() {
-      using (var context = _contextFactory.CreateInstance()) {
-        await context.SaveRepositoryMetadata(
-          _repoId,
-          _repoSize,
-          _metadata,
-          _assignableMetadata,
-          _issueMetadata,
-          _issueSince,
-          _labelMetadata,
-          _milestoneMetadata,
-          _projectMetadata,
-          _contentsRootMetadata,
-          _contentsDotGithubMetadata,
-          _contentsIssueTemplateMetadata,
-          _contentsPullRequestTemplateMetadata,
-          _pullRequestMetadata,
-          _pullRequestUpdatedAt,
-          _pullRequestSkip);
-      }
+    private async Task Save(ShipHubContext context) {
+      await context.SaveRepositoryMetadata(
+        _repoId,
+        _repoSize,
+        _metadata,
+        _assignableMetadata,
+        _issueMetadata,
+        _issueSince,
+        _labelMetadata,
+        _milestoneMetadata,
+        _projectMetadata,
+        _contentsRootMetadata,
+        _contentsDotGithubMetadata,
+        _contentsIssueTemplateMetadata,
+        _contentsPullRequestTemplateMetadata,
+        _pullRequestMetadata,
+        _pullRequestUpdatedAt,
+        _pullRequestSkip);
     }
 
     public async Task ForceSyncAllLinkedAccountRepositories() {
@@ -332,10 +332,10 @@
         // Send Changes.
         await updater.Changes.Submit(_queueClient);
         _idle = updater.Changes.IsEmpty;
-      }
 
-      // Save
-      await Save();
+        // Save
+        await Save(context);
+      }
     }
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
