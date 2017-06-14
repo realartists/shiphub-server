@@ -142,8 +142,8 @@
               break;
             }
           case "status": {
-              var payload = await ReadPayloadAsync<RepositoryPayload>(signature, secret);
-              hookTask = webhookEventActor.Repository(DateTimeOffset.UtcNow, payload);
+              var payload = await ReadPayloadAsync<StatusPayload>(signature, secret);
+              hookTask = webhookEventActor.Status(DateTimeOffset.UtcNow, payload);
               break;
             }
           default:
