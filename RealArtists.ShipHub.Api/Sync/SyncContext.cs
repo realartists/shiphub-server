@@ -795,6 +795,30 @@
               });
             }
 
+            // Protected Branches
+            reader.NextResult();
+            while (reader.Read()) {
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = SyncEntityType.ProtectedBranch
+              };
+
+              if (entry.Action == SyncLogAction.Set) {
+                entry.Data = new ProtectedBranchEntry() {
+                  Repository = ddr.RepositoryId,
+                  Identifier = ddr.Id,
+                  Name = ddr.Name,
+                  ExtensionData = ddr.Protection
+                };
+              } else {
+                entry.Data = new ProtectedBranchEntry() {
+                  Identifier = ddr.Id
+                };
+              }
+
+              entries.Add(entry);
+            }
+
             // Versions
             reader.NextResult();
             while (reader.Read()) {

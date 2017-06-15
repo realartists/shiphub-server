@@ -171,6 +171,9 @@
     <Build Include="Procedures\DeleteReviewers.sql" />
     <Build Include="Procedures\SyncSpiderProgress.sql" />
     <Build Include="Procedures\MarkRepositoryIssuesAsFullyImported.sql" />
+    <Build Include="Tables\ProtectedBranches.sql" />
+    <Build Include="Procedures\DeleteProtectedBranch.sql" />
+    <Build Include="Procedures\UpdateProtectedBranch.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

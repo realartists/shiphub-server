@@ -52,6 +52,7 @@
     public virtual DbSet<PullRequest> PullRequests { get; set; }
     public virtual DbSet<PullRequestComment> PullRequestComments { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
+    public virtual DbSet<ProtectedBranch> ProtectedBranches { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
     public virtual DbSet<Usage> Usage { get; set; }
@@ -264,6 +265,30 @@
       return ExecuteAndReadChanges("[dbo].[MarkRepositoryIssuesAsFullyImported]", x => {
         x.RepositoryId = repoId;
       });
+    }
+
+    /// <summary>
+    /// Insert, Update, or Delete a protected branch
+    /// </summary>
+    /// <param name="repoId"></param>
+    /// <param name="branchName"></param>
+    /// <param name="branchProtection">Set to null to delete an existing protected branch. Otherwise, must be serialized JSON as returned from GitHub's branch protection API</param>
+    /// <param name="metadata">Must not be null if branchProtection is not null</param>
+    /// <returns></returns>
+    public Task<ChangeSummary> UpdateProtectedBranch(long repoId, string branchName, string branchProtection, GitHubMetadata metadata) {
+      if (branchProtection == null) {
+        return ExecuteAndReadChanges("[dbo].[DeleteProtectedBranch]", x => {
+          x.RepositoryId = repoId;
+          x.Name = branchName;
+        });
+      } else {
+        return ExecuteAndReadChanges("[dbo].[UpdateProtectedBranch]", x => {
+          x.RepositoryId = repoId;
+          x.Name = branchName;
+          x.Protection = branchProtection;
+          x.ProtectionMetadataJson = metadata.SerializeObject();
+        });
+      }
     }
 
     private Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {

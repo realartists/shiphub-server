@@ -36,7 +36,9 @@
 
     // Pull Request Fields
     private long? _prId;
-    private string _prHeadRef;
+    private string _prHeadSha;
+    private string _prBaseBranch;
+    private bool _prMergeableStateBlocked;
 
     private GitHubMetadata _prMetadata;
     private GitHubMetadata _prCommentMetadata;
@@ -88,7 +90,10 @@
             .SingleOrDefaultAsync(x => x.IssueId == _issueId);
 
           _prId = pullRequest?.Id;
-          _prHeadRef = pullRequest?.Head?.Sha;
+          _prHeadSha = pullRequest?.Head?.Sha;
+          _prBaseBranch = pullRequest?.Base?.Ref;
+          _prMergeableStateBlocked = pullRequest?.MergeableState == "blocked";
+
           _prMetadata = pullRequest?.Metadata;
           _prCommentMetadata = pullRequest?.CommentMetadata;
           _prStatusMetadata = pullRequest?.StatusMetadata;
@@ -196,7 +201,9 @@
           if (prResponse.IsOk) {
             var pr = prResponse.Result;
             _prId = pr.Id; // Issues can become PRs
-            _prHeadRef = pr.Head.Sha;
+            _prHeadSha = pr.Head.Sha;
+            _prBaseBranch = pr.Base.Ref;
+            _prMergeableStateBlocked = pr.MergeableState == "blocked";
 
             // Assignees, user, etc all handled by the issue endpoint.
             if (prResponse.Result.RequestedReviewers.Any()) {
@@ -253,9 +260,14 @@
           }
 
           // Commit Status
-          var commitStatusesResponse = await ghc.CommitStatuses(_repoFullName, _prHeadRef, _prStatusMetadata, RequestPriority.Interactive);
-          await SaveCommitStatuses(_prHeadRef, commitStatusesResponse, context, changes);
+          var commitStatusesResponse = await ghc.CommitStatuses(_repoFullName, _prHeadSha, _prStatusMetadata, RequestPriority.Interactive);
+          await SaveCommitStatuses(_prHeadSha, commitStatusesResponse, context, changes);
           _prStatusMetadata = GitHubMetadata.FromResponse(commitStatusesResponse);
+
+          // Branch Protection
+          if (_prMergeableStateBlocked && _prBaseBranch != null) {
+            _grainFactory.GetGrain<IRepositoryActor>(_repoId).SyncProtectedBranch(_prBaseBranch, forUserId).LogFailure();
+          }
         }
 
         // This will be cached per-user by the ShipHubFilter.

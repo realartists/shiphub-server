@@ -15,6 +15,7 @@
   using Common;
   using Common.GitHub;
   using Common.GitHub.Models;
+  using Newtonsoft.Json.Linq;
   using Orleans;
   using Orleans.Concurrency;
   using QueueClient;
@@ -168,6 +169,14 @@
     public Task<GitHubResponse<IEnumerable<CommitStatus>>> CommitStatuses(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/commits/{WebUtility.UrlEncode(reference)}/statuses", cacheOptions, priority);
       return FetchPaged(request, (CommitStatus x) => x.Id);
+    }
+
+    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"repos/{repoFullName}/branches/{WebUtility.UrlEncode(branchName)}/protection") {
+        AcceptHeaderOverride = "application/vnd.github.loki-preview+json"
+      };
+
+      return EnqueueRequest<IDictionary<string, JToken>>(request);
     }
 
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions, RequestPriority priority) {

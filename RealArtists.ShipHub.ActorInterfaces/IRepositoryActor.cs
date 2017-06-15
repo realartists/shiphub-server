@@ -22,5 +22,7 @@
     /// Currently used when a repo is removed.
     /// </summary>
     Task ForceSyncAllLinkedAccountRepositories();
+
+    Task SyncProtectedBranch(string branchName, long forUserId);
   }
 }
