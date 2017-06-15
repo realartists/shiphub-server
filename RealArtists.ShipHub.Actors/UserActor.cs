@@ -161,7 +161,7 @@
 
             if (repos.IsOk) {
               var keepRepos = repos.Result.Where(x => x.HasIssues && x.Permissions.Push);
-              await updater.SetUserRepositories(_userId, repos.Date, repos.Result);
+              await updater.SetUserRepositories(_userId, repos.Date, keepRepos);
             }
 
             // Don't update until saved.
