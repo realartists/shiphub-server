@@ -8,6 +8,7 @@
   using ActorInterfaces.GitHub;
   using Common.GitHub;
   using Common.GitHub.Models;
+  using Newtonsoft.Json.Linq;
   using Orleans;
 
   public class GitHubActorPool : IGitHubPoolable {
@@ -136,6 +137,13 @@
     public Task<GitHubResponse<IEnumerable<CommitStatus>>> CommitStatuses(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.CommitStatuses(repoFullName, reference, cache, priority),
+        cacheOptions
+      );
+    }
+
+    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.BranchProtection(repoFullName, branchName, cache, priority),
         cacheOptions
       );
     }

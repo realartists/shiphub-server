@@ -52,6 +52,7 @@
     public virtual DbSet<PullRequest> PullRequests { get; set; }
     public virtual DbSet<PullRequestComment> PullRequestComments { get; set; }
     public virtual DbSet<Repository> Repositories { get; set; }
+    public virtual DbSet<ProtectedBranch> ProtectedBranches { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
     public virtual DbSet<Usage> Usage { get; set; }
@@ -263,6 +264,42 @@
     public Task<ChangeSummary> MarkRepositoryIssuesAsFullyImported(long repoId) {
       return ExecuteAndReadChanges("[dbo].[MarkRepositoryIssuesAsFullyImported]", x => {
         x.RepositoryId = repoId;
+      });
+    }
+
+    /// <summary>
+    /// Insert, Update, or Delete a protected branch
+    /// </summary>
+    /// <param name="repoId"></param>
+    /// <param name="branchName"></param>
+    /// <param name="branchProtection">Serialized JSON as returned from GitHub's branch protection API</param>
+    /// <param name="metadata">Must not be null</param>
+    /// <returns></returns>
+    public Task<ChangeSummary> UpdateProtectedBranch(long repoId, string branchName, string branchProtection, GitHubMetadata metadata) {
+      if (branchName == null) {
+        throw new ArgumentNullException("branchName");
+      }
+      if (branchProtection == null) {
+        throw new ArgumentNullException("branchProtection");
+      }
+      if (metadata == null) {
+        throw new ArgumentNullException("metadata");
+      }
+      return ExecuteAndReadChanges("[dbo].[UpdateProtectedBranch]", x => {
+        x.RepositoryId = repoId;
+        x.Name = branchName;
+        x.Protection = branchProtection;
+        x.ProtectionMetadataJson = metadata.SerializeObject();
+      });
+    }
+
+    public Task<ChangeSummary> DeleteProtectedBranch(long repoId, string branchName) {
+      if (branchName == null) {
+        throw new ArgumentNullException("branchName");
+      }
+      return ExecuteAndReadChanges("[dbo].[DeleteProtectedBranch]", x => {
+        x.RepositoryId = repoId;
+        x.Name = branchName;
       });
     }
 

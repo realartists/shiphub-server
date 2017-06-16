@@ -331,6 +331,13 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'commitstatus'
 
+    -- Protected Branches
+    SELECT l.ItemId as Id, e.RepositoryId, e.[Name], e.Protection, l.[Delete]
+    FROM @Logs as l
+      LEFT OUTER JOIN ProtectedBranches as e on (l.ItemId = e.Id)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'protectedbranch';
+
     -- Current Versions
     SELECT OwnerType, OwnerId, MAX([RowVersion]) as [RowVersion]
     FROM @OwnerVersions

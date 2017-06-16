@@ -88,6 +88,7 @@
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Sync\Messages\Entries\CommitStatusEntry.cs" />
     <Compile Include="Sync\Messages\Entries\CommitCommentEntry.cs" />
+    <Compile Include="Sync\Messages\Entries\ProtectedBranchEntry.cs" />
     <Compile Include="Sync\Messages\Entries\PullRequestEntry.cs" />
     <Compile Include="Sync\Messages\Entries\PullRequestCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ProjectEntry.cs" />

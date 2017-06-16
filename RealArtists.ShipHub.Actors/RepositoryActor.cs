@@ -108,6 +108,8 @@
     private int _syncCount;
     private bool _issuesFullyImported;
 
+    private IDictionary<string, GitHubMetadata> _protectedBranchMetadata;
+
     public RepositoryActor(
       IMapper mapper,
       IGrainFactory grainFactory,
@@ -158,6 +160,10 @@
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
         _needsIssueTemplateSync = _contentsRootMetadata == null;
         this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
+
+        _protectedBranchMetadata = await context.ProtectedBranches
+          .Where(x => x.RepositoryId == repo.Id)
+          .ToDictionaryAsync(k => k.Name, v => v.ProtectionMetadata);
       }
 
       await base.OnActivateAsync();
@@ -974,6 +980,28 @@
       }
 
       return changes;
+    }
+
+    public async Task SyncProtectedBranch(string branchName, long forUserId) {
+      var changes = new ChangeSummary();
+      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
+
+      var branchProtectionResponse = await ghc.BranchProtection(_fullName, branchName, _protectedBranchMetadata.Val(branchName), RequestPriority.Interactive);
+
+      var metadata = GitHubMetadata.FromResponse(branchProtectionResponse);
+
+      using (var context = _contextFactory.CreateInstance()) {
+        if (branchProtectionResponse.IsOk) {
+          changes.UnionWith(await context.UpdateProtectedBranch(_repoId, branchName, branchProtectionResponse.Result.SerializeObject(), metadata));
+        } else if (branchProtectionResponse.Status == HttpStatusCode.NotFound) {
+          changes.UnionWith(await context.DeleteProtectedBranch(_repoId, branchName));
+        }
+        _protectedBranchMetadata[branchName] = metadata;
+      }
+
+      if (!changes.IsEmpty) {
+        await _queueClient.NotifyChanges(changes);
+      }
     }
   }
 }
