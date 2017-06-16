@@ -994,7 +994,7 @@
         if (branchProtectionResponse.IsOk) {
           changes.UnionWith(await context.UpdateProtectedBranch(_repoId, branchName, branchProtectionResponse.Result.SerializeObject(), metadata));
         } else if (branchProtectionResponse.Status == HttpStatusCode.NotFound) {
-          changes.UnionWith(await context.UpdateProtectedBranch(_repoId, branchName, null, null));
+          changes.UnionWith(await context.DeleteProtectedBranch(_repoId, branchName));
         }
         _protectedBranchMetadata[branchName] = metadata;
       }

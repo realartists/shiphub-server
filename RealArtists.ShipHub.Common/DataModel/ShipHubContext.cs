@@ -272,23 +272,35 @@
     /// </summary>
     /// <param name="repoId"></param>
     /// <param name="branchName"></param>
-    /// <param name="branchProtection">Set to null to delete an existing protected branch. Otherwise, must be serialized JSON as returned from GitHub's branch protection API</param>
-    /// <param name="metadata">Must not be null if branchProtection is not null</param>
+    /// <param name="branchProtection">Serialized JSON as returned from GitHub's branch protection API</param>
+    /// <param name="metadata">Must not be null</param>
     /// <returns></returns>
     public Task<ChangeSummary> UpdateProtectedBranch(long repoId, string branchName, string branchProtection, GitHubMetadata metadata) {
-      if (branchProtection == null) {
-        return ExecuteAndReadChanges("[dbo].[DeleteProtectedBranch]", x => {
-          x.RepositoryId = repoId;
-          x.Name = branchName;
-        });
-      } else {
-        return ExecuteAndReadChanges("[dbo].[UpdateProtectedBranch]", x => {
-          x.RepositoryId = repoId;
-          x.Name = branchName;
-          x.Protection = branchProtection;
-          x.ProtectionMetadataJson = metadata.SerializeObject();
-        });
+      if (branchName == null) {
+        throw new ArgumentNullException("branchName");
       }
+      if (branchProtection == null) {
+        throw new ArgumentNullException("branchProtection");
+      }
+      if (metadata == null) {
+        throw new ArgumentNullException("metadata");
+      }
+      return ExecuteAndReadChanges("[dbo].[UpdateProtectedBranch]", x => {
+        x.RepositoryId = repoId;
+        x.Name = branchName;
+        x.Protection = branchProtection;
+        x.ProtectionMetadataJson = metadata.SerializeObject();
+      });
+    }
+
+    public Task<ChangeSummary> DeleteProtectedBranch(long repoId, string branchName) {
+      if (branchName == null) {
+        throw new ArgumentNullException("branchName");
+      }
+      return ExecuteAndReadChanges("[dbo].[DeleteProtectedBranch]", x => {
+        x.RepositoryId = repoId;
+        x.Name = branchName;
+      });
     }
 
     private Task<int> ExecuteCommandTextAsync(string commandText, params SqlParameter[] parameters) {

@@ -8,16 +8,27 @@ BEGIN
   SET NOCOUNT ON
 
   DECLARE @Changes TABLE (
-    [Id] BIGINT
+    [Id] BIGINT NOT NULL PRIMARY KEY
   );
 
-  DELETE FROM ProtectedBranches
-   WHERE RepositoryId = @RepositoryId AND [Name] = @Name;
+  BEGIN TRY
+    BEGIN TRANSACTION
 
-  UPDATE SyncLog SET 
-    [RowVersion] = Default,
-    [Delete] = 1
-  WHERE ItemType = 'protectedbranch' AND ItemId IN (SELECT Id FROM @Changes);
+    DELETE FROM ProtectedBranches
+    OUTPUT Deleted.Id INTO @Changes
+     WHERE RepositoryId = @RepositoryId AND [Name] = @Name;
+
+    UPDATE SyncLog SET 
+      [RowVersion] = Default,
+      [Delete] = 1
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'protectedbranch' AND  ItemId IN (SELECT Id FROM @Changes);
+    
+    COMMIT TRANSACTION
+  END TRY
+  BEGIN CATCH
+    IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
+    THROW;
+  END CATCH
 
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
   WHERE EXISTS (SELECT * FROM @Changes);
