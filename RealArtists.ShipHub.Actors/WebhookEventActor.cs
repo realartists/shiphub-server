@@ -232,6 +232,7 @@
         case "edited":
         case "closed":
         case "reopened":
+        case "synchronize":
           using (var context = _contextFactory.CreateInstance()) {
             var updater = new DataUpdater(context, _mapper);
             // TODO: Update Org and Sender?
