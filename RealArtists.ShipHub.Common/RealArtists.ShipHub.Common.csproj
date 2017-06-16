@@ -42,6 +42,7 @@
     <Compile Include="ChargeBeeUtilities.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DataModel\CommitComment.cs" />
+    <Compile Include="DataModel\ProtectedBranch.cs" />
     <Compile Include="DataModel\PullRequestComment.cs" />
     <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />

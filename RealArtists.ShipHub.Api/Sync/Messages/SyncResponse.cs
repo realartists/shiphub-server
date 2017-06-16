@@ -62,6 +62,9 @@
 
     [EnumMember(Value = "commitcomment")]
     CommitComment,
+
+    [EnumMember(Value = "protectedbranch")]
+    ProtectedBranch
   }
 
   public abstract class SyncEntity {
@@ -97,6 +100,7 @@
           case SyncEntityType.Label:
           case SyncEntityType.Milestone:
           case SyncEntityType.Project:
+          case SyncEntityType.ProtectedBranch:
           case SyncEntityType.PullRequest:
           case SyncEntityType.PullRequestComment:
           case SyncEntityType.Reaction:
