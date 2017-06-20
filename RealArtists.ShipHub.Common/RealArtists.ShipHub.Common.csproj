@@ -81,6 +81,7 @@
     <Compile Include="GitHub\Models\WebhookPayloads\StatusPayload.cs" />
     <Compile Include="GitHub\RequestPriority.cs" />
     <Compile Include="HttpUtilities.cs" />
+    <Compile Include="KeyEqualityComparer.cs" />
     <Compile Include="Log.cs" />
     <Compile Include="DataModel\ShipHubContextConfiguration.cs" />
     <Compile Include="DataModel\Subscription.cs" />
