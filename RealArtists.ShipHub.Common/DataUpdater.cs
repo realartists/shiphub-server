@@ -210,14 +210,14 @@
       _changes.UnionWith(await _context.BulkUpdateRepositoryProjects(repositoryId, repoProjects));
     }
 
-    public async Task UpdatePullRequestComments(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<g.PullRequestComment> comments) {
+    public async Task UpdatePullRequestComments(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<g.PullRequestComment> comments, long? pendingReviewId = null) {
       if (!comments.Any()) { return; }
 
       var accounts = comments.Select(x => x.User).Distinct(x => x.Id).ToArray();
       await UpdateAccounts(date, accounts);
 
       var mappedComments = _mapper.Map<IEnumerable<PullRequestCommentTableType>>(comments);
-      _changes.UnionWith(await _context.BulkUpdatePullRequestComments(repositoryId, issueId, mappedComments));
+      _changes.UnionWith(await _context.BulkUpdatePullRequestComments(repositoryId, issueId, mappedComments, pendingReviewId));
     }
 
     public async Task UpdatePullRequests(long repositoryId, DateTimeOffset date, IEnumerable<g.PullRequest> pullRequests) {
@@ -289,6 +289,52 @@
 
       var mappedReviews = _mapper.Map<IEnumerable<ReviewTableType>>(reviews);
       _changes.UnionWith(await _context.BulkUpdateReviews(repositoryId, issueId, date, mappedReviews, userId, complete));
+    }
+
+    public async Task UpdateTimelineEvents(long repositoryId, DateTimeOffset date, long forUserId, IEnumerable<g.Account> extraReferencedAccounts, IEnumerable<g.IssueEvent> events) {
+      if (!events.Any()) { return; }
+
+      // This conversion handles the restriction field and hash.
+      var mappedEvents = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
+
+      // Just in case
+      var uniqueAccounts = extraReferencedAccounts.Distinct(x => x.Id).ToArray();
+      await UpdateAccounts(date, uniqueAccounts);
+
+      _changes.UnionWith(await _context.BulkUpdateTimelineEvents(forUserId, repositoryId, mappedEvents, uniqueAccounts.Select(x => x.Id)));
+    }
+
+    public Task UpdateIssueReactions(long repositoryId, DateTimeOffset date, long issueId, IEnumerable<g.Reaction> reactions) {
+      return UpdateReactions(repositoryId, date, reactions, issueId: issueId);
+    }
+
+    public Task UpdateIssueCommentReactions(long repositoryId, DateTimeOffset date, long issueCommentId, IEnumerable<g.Reaction> reactions) {
+      return UpdateReactions(repositoryId, date, reactions, issueCommentId: issueCommentId);
+    }
+
+    public Task UpdateCommitCommentReactions(long repositoryId, DateTimeOffset date, long commitCommentId, IEnumerable<g.Reaction> reactions) {
+      return UpdateReactions(repositoryId, date, reactions, commitCommentId: commitCommentId);
+    }
+
+    public Task UpdatePullRequestCommentReactions(long repositoryId, DateTimeOffset date, long pullRequestCommentId, IEnumerable<g.Reaction> reactions) {
+      return UpdateReactions(repositoryId, date, reactions, pullRequestCommentId: pullRequestCommentId);
+    }
+
+    public async Task UpdateReactions(
+      long repositoryId,
+      DateTimeOffset date,
+      IEnumerable<g.Reaction> reactions,
+      long? issueId = null,
+      long? issueCommentId = null,
+      long? commitCommentId = null,
+      long? pullRequestCommentId = null) {
+      if (!reactions.Any()) { return; }
+
+      var accounts = reactions.Select(x => x.User).Distinct(x => x.Id).ToArray();
+      await UpdateAccounts(date, accounts);
+
+      var mappedReactions = _mapper.Map<IEnumerable<ReactionTableType>>(reactions);
+      _changes.UnionWith(await _context.BulkUpdateReactions(repositoryId, mappedReactions, issueId, issueCommentId, commitCommentId, pullRequestCommentId));
     }
   }
 }

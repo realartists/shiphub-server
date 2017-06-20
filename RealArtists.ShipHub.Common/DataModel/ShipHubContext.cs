@@ -816,36 +816,20 @@
       });
     }
 
-    public Task<ChangeSummary> BulkUpdateIssueReactions(long repositoryId, long issueId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, reactions, issueId: issueId);
-    }
-
-    public Task<ChangeSummary> BulkUpdateIssueCommentReactions(long repositoryId, long issueCommentId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, reactions, issueCommentId: issueCommentId);
-    }
-
-    public Task<ChangeSummary> BulkUpdateCommitCommentReactions(long repositoryId, long commitCommentId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, reactions, commitCommentId: commitCommentId);
-    }
-
-    public Task<ChangeSummary> BulkUpdatePullRequestCommentReactions(long repositoryId, long pullRequestCommentId, IEnumerable<ReactionTableType> reactions) {
-      return BulkUpdateReactions(repositoryId, reactions, prCommentId: pullRequestCommentId);
-    }
-
-    private Task<ChangeSummary> BulkUpdateReactions(
+    public  Task<ChangeSummary> BulkUpdateReactions(
       long repositoryId,
       IEnumerable<ReactionTableType> reactions,
       long? issueId = null,
       long? issueCommentId = null,
       long? commitCommentId = null,
-      long? prCommentId = null) {
+      long? pullRequestCommentId = null) {
 
       return ExecuteAndReadChanges("[dbo].[BulkUpdateReactions]", x => {
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.IssueCommentId = issueCommentId;
         x.CommitCommentId = commitCommentId;
-        x.PullRequestCommentId = prCommentId;
+        x.PullRequestCommentId = pullRequestCommentId;
         x.Reactions = CreateTableParameter(
           "Reactions",
           "[dbo].[ReactionTableType]",
