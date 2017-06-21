@@ -298,7 +298,7 @@
       var mappedEvents = _mapper.Map<IEnumerable<IssueEventTableType>>(events);
 
       // Just in case
-      var uniqueAccounts = extraReferencedAccounts.Distinct(x => x.Id).ToArray();
+      var uniqueAccounts = extraReferencedAccounts.Where(x => x != null).Distinct(x => x.Id).ToArray();
       await UpdateAccounts(date, uniqueAccounts);
 
       _changes.UnionWith(await _context.BulkUpdateTimelineEvents(forUserId, repositoryId, mappedEvents, uniqueAccounts.Select(x => x.Id)));
