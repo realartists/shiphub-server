@@ -159,8 +159,7 @@
         await UpdatePullRequestCommitStatuses(ghc, updater);
       }
 
-      // This acutally does a lot of things, including retrieving referenced
-      // comments, commits, etc.
+      // This does many things, including retrieving referenced comments, commits, etc.
       await UpdateIssueTimeline(ghc, forUserId, updater);
 
       // So many reactions
