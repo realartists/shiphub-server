@@ -87,17 +87,17 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
-      await Save();
+      using (var context = _contextFactory.CreateInstance()) {
+        await Save(context);
+      }
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save() {
-      using (var context = _contextFactory.CreateInstance()) {
-        // MUST MATCH LOAD
-        await context.UpdateMetadata("Accounts", _orgId, _metadata);
-        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
-        await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
-      }
+    private async Task Save(ShipHubContext context) {
+      // MUST MATCH LOAD
+      await context.UpdateMetadata("Accounts", _orgId, _metadata);
+      await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
+      await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
     }
 
     public async Task ForceSyncAllMemberRepositories() {
@@ -191,10 +191,10 @@
 
         // Send Changes.
         await updater.Changes.Submit(_queueClient);
-      }
 
-      // Save
-      await Save();
+        // Save
+        await Save(context);
+      }
     }
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
