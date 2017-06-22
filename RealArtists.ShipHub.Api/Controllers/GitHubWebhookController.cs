@@ -79,11 +79,7 @@
         }
 
         var secret = Encoding.UTF8.GetBytes(hook.Secret.ToString());
-        var randomInt = BitConverter.ToUInt32(Guid.NewGuid().ToByteArray(), 0);
-        // Spread requests across mulitple grains
-        var partition = randomInt % GrainSprayWidth;
-        var webhookEventActor = _grainFactory.GetGrain<IWebhookEventActor>(partition);
-
+        var webhookEventActor = _grainFactory.GetGrain<IWebhookEventActor>(0); // Stateless worker grain with single pool (0)
         var debugInfo = $"[{type}:{id}#{eventName}/{deliveryId}]";
 
         Task hookTask = null;

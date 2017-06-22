@@ -15,6 +15,7 @@
   using RealArtists.ShipHub.Common.GitHub.Models.WebhookPayloads;
 
   [Reentrant]
+  [StatelessWorker]
   public class WebhookEventActor : Grain, IWebhookEventActor {
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
