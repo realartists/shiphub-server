@@ -554,6 +554,7 @@
     [Route("repos/{owner}/{repo}/pulls")]
     public Task<HttpResponseMessage> PullRequestCreate(HttpRequestMessage request, CancellationToken cancellationToken, string owner, string repo) {
       // https://developer.github.com/v3/pulls/#create-a-pull-request
+      // TODO: This doesn't actually work. PRs saved before the associated issue are dropped in the DB. Oops.
       return ProxyPullRequest(request, cancellationToken, owner, repo);
     }
 

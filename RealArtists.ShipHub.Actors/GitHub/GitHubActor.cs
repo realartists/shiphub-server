@@ -171,7 +171,7 @@
       return FetchPaged(request, (CommitStatus x) => x.Id);
     }
 
-    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/branches/{WebUtility.UrlEncode(branchName)}/protection") {
         AcceptHeaderOverride = "application/vnd.github.loki-preview+json"
       };
@@ -475,6 +475,34 @@
 
     public Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return Projects($"orgs/{organizationLogin}/projects", cacheOptions, priority);
+    }
+
+    public Task<GitHubResponse<PullRequest>> CreatePullRequest(string repoFullName, string headSha, string baseSha, string body, RequestPriority priority) {
+      var request = new GitHubRequest<object>(
+        HttpMethod.Post,
+        $"repos/{repoFullName}/pulls",
+        new {
+          Base = baseSha,
+          Head = headSha,
+          Body = body ?? string.Empty,
+        },
+        priority);
+
+      return EnqueueRequest<PullRequest>(request);
+    }
+
+    public Task<GitHubResponse<Issue>> UpdateIssue(string repoFullName, int number, int? milestone, IEnumerable<string> assignees, IEnumerable<string> labels, RequestPriority priority) {
+      var request = new GitHubRequest<object>(
+        new HttpMethod("PATCH"),
+        $"repos/{repoFullName}/issues/{number}",
+        new {
+          Assignees = assignees,
+          Labels = labels,
+          Milestone = milestone,
+        },
+        priority);
+
+      return EnqueueRequest<Issue>(request);
     }
 
     ////////////////////////////////////////////////////////////

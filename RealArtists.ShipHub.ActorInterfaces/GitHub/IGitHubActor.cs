@@ -82,6 +82,10 @@
     Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<UserEmail>>> UserEmails(GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
 
+    // Support creating PRs a little more efficiently
+    Task<GitHubResponse<PullRequest>> CreatePullRequest(string repoFullName, string headSha, string baseSha, string body, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<Issue>> UpdateIssue(string repoFullName, int number, int? milestone, IEnumerable<string> assignees, IEnumerable<string> labels, RequestPriority priority = RequestPriority.Background);
+
     // Not all users can see the same timeline events, reviews, and comments
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Timeline(string repoFullName, int issueNumber, long issueId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

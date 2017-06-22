@@ -28,7 +28,7 @@
   }
 
   [RoutePrefix("api/authentication")]
-  public class AuthenticationController : ShipHubController, IGitHubClient {
+  public class AuthenticationController : ShipHubApiController, IGitHubClient {
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
 
     private IGrainFactory _grainFactory;

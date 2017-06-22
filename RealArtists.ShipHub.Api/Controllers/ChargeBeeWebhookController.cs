@@ -92,7 +92,7 @@
   }
 
   [AllowAnonymous]
-  public class ChargeBeeWebhookController : ShipHubController {
+  public class ChargeBeeWebhookController : ShipHubApiController {
     private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
     private IShipHubMailer _mailer;
