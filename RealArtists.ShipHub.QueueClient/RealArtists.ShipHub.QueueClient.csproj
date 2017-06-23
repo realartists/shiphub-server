@@ -37,7 +37,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Messages\IssueViewMessage.cs" />
     <Compile Include="Messages\SyncOrgSusbscriptionStateMessage.cs" />
     <Compile Include="Messages\UserIdMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
