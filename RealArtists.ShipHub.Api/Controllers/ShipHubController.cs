@@ -8,13 +8,13 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces.GitHub;
   using AutoMapper;
   using Common;
+  using Common.DataModel;
   using Common.GitHub;
   using Orleans;
-  using RealArtists.ShipHub.ActorInterfaces.GitHub;
-  using RealArtists.ShipHub.Common.DataModel;
-  using RealArtists.ShipHub.QueueClient;
+  using QueueClient;
   using gm = Common.GitHub.Models;
 
   public class PullRequestCreateRequest {
@@ -48,49 +48,54 @@
       string owner,
       string repo) {
 
+      GitHubResponse<gm.PullRequest> prResponse = null;
+      GitHubResponse<gm.Issue> issueResponse = null;
       try {
         using (var context = new ShipHubContext()) {
           var updater = new DataUpdater(context, _mapper);
           var ghc = _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
           var repoName = $"{owner}/{repo}";
 
-          var createPrResponse = await ghc.CreatePullRequest(repoName, body.Head, body.Base, body.Body, RequestPriority.Interactive);
-          if (!createPrResponse.IsOk) { return StatusCode(createPrResponse.Status); }
+          prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
           // Can't update the DB yet, because saving the PR requires the issue to already exist.
 
-          var pr = createPrResponse.Result;
-          GitHubResponse<gm.Issue> issueResponse = null;
+          if (prResponse.IsOk) {
+            var pr = prResponse.Result;
 
-          if (body.Milestone != null
+            if (body.Milestone != null
               || body.Assignees?.Any() == true
-              || body.Labels?.Any() == true) {
-            // Have to patch
-            issueResponse = await ghc.UpdateIssue(repoName, pr.Number, body.Milestone, body.Assignees, body.Labels, RequestPriority.Interactive);
-          } else { // Lookup the issue
-            issueResponse = await ghc.Issue(repoName, pr.Number, null, RequestPriority.Interactive);
+              || body.Labels?.Any() == true) { // Have to patch
+              issueResponse = await ghc.UpdateIssue(repoName, pr.Number, body.Milestone, body.Assignees, body.Labels, RequestPriority.Interactive);
+            } else { // Lookup the issue
+              issueResponse = await ghc.Issue(repoName, pr.Number, null, RequestPriority.Interactive);
+            }
+
+            if (issueResponse.IsOk) {
+              // Ugh
+              var repoId = await context.Repositories
+                .AsNoTracking()
+                .Where(x => x.FullName == repoName)
+                .Select(x => x.Id)
+                .SingleAsync();
+
+              // Now we can update
+              await updater.UpdateIssues(repoId, issueResponse.Date, new[] { issueResponse.Result });
+              await updater.UpdatePullRequests(repoId, prResponse.Date, new[] { pr });
+
+              await updater.Changes.Submit(_queueClient);
+            }
           }
-          if (!issueResponse.IsOk) { return StatusCode(createPrResponse.Status); }
-
-          // Ugh
-          var repoId = await context.Repositories
-            .AsNoTracking()
-            .Where(x => x.FullName == repoName)
-            .Select(x => x.Id)
-            .SingleAsync();
-
-          // Now we can update
-          await updater.UpdateIssues(repoId, issueResponse.Date, new[] { issueResponse.Result });
-          await updater.UpdatePullRequests(repoId, createPrResponse.Date, new[] { pr });
-
-          await updater.Changes.Submit(_queueClient);
-
-          // TODO: Check if James wants GitHub or SaneSerializer settings.
-          return ResponseMessage(request.CreateResponse(HttpStatusCode.Created, pr, GitHubSerialization.JsonMediaTypeFormatter));
         }
       } catch (Exception e) {
         e.Report($"request: {request.RequestUri} user: {ShipHubUser.DebugIdentifier}", ShipHubUser.DebugIdentifier);
-        throw;
       }
+
+      var status = (prResponse?.IsOk == true && issueResponse?.IsOk == true) ? HttpStatusCode.Created : HttpStatusCode.InternalServerError;
+      var result = new {
+        PullRequest = prResponse?.IsOk == true ? prResponse.Result : null,
+        Issue = issueResponse?.IsOk == true ? issueResponse.Result : null,
+      };
+      return ResponseMessage(request.CreateResponse(status, result, GitHubSerialization.JsonMediaTypeFormatter));
     }
   }
 }

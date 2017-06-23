@@ -477,17 +477,19 @@
       return Projects($"orgs/{organizationLogin}/projects", cacheOptions, priority);
     }
 
-    public Task<GitHubResponse<PullRequest>> CreatePullRequest(string repoFullName, string headSha, string baseSha, string body, RequestPriority priority) {
-      var request = new GitHubRequest<object>(
-        HttpMethod.Post,
-        $"repos/{repoFullName}/pulls",
-        new {
-          Base = baseSha,
-          Head = headSha,
-          Body = body ?? string.Empty,
-        },
-        priority);
+    public Task<GitHubResponse<PullRequest>> CreatePullRequest(string repoFullName, string title, string body, string baseSha, string headSha, RequestPriority priority) {
+      var prBody = new JObject() {
+        ("title", title),
+        ("base", baseSha),
+        ("head", headSha),
+      };
 
+      // GitHub gets upset if you send null or empty string for body.
+      if (!body.IsNullOrWhiteSpace()) {
+        prBody.Add("body", body);
+      }
+
+      var request = new GitHubRequest<JObject>(HttpMethod.Post, $"repos/{repoFullName}/pulls", prBody, priority);
       return EnqueueRequest<PullRequest>(request);
     }
 
