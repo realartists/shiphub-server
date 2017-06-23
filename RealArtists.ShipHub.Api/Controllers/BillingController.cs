@@ -55,7 +55,7 @@
   }
 
   [RoutePrefix("billing")]
-  public class BillingController : ShipHubController {
+  public class BillingController : ShipHubApiController {
     private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
     private IGrainFactory _grainFactory;
