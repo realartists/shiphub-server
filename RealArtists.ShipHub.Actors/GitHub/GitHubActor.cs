@@ -263,6 +263,11 @@
       return FetchPaged(request, (Reaction x) => x.Id);
     }
 
+    public Task<GitHubResponse<IssueComment>> IssueComment(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments/{commentId}", cacheOptions, priority);
+      return EnqueueRequest<IssueComment>(request);
+    }
+
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions, priority);
       if (since != null) {
@@ -342,6 +347,11 @@
       request.AddParameter("sort", sort);
       request.AddParameter("direction", direction);
       return FetchPaged(request, (PullRequest x) => x.Id, maxPages, skipPages);
+    }
+
+    public Task<GitHubResponse<PullRequestComment>> PullRequestComment(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments/{commentId}", cacheOptions, priority);
+      return EnqueueRequest<PullRequestComment>(request);
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {

@@ -66,8 +66,9 @@
             await updater.UpdateIssueComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
             break;
           case "edited":
-            // TODO: GitHub doesn't send the new comment body
-            // Look it up ourselves?
+            // GitHub doesn't send the new comment body. We have to look it up ourselves.
+            var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+            await repoActor.RefreshIssueComment(payload.Comment.Id);
             break;
           case "deleted":
             await updater.DeleteIssueComment(payload.Comment.Id);
@@ -174,8 +175,9 @@
             }
             break;
           case "edited":
-            // TODO: GitHub doesn't send the new comment body
-            // Look it up ourselves?
+            // GitHub doesn't send the new comment body. We have to look it up ourselves.
+            var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+            await repoActor.RefreshPullRequestReviewComment(payload.Comment.Id);
             break;
           case "deleted":
             await updater.DeletePullRequestComment(payload.Comment.Id);

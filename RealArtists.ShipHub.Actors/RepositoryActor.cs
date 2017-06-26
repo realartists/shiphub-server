@@ -1003,5 +1003,67 @@
         await _queueClient.NotifyChanges(changes);
       }
     }
+
+    public async Task RefreshIssueComment(long commentId) {
+      var users = await GetUsersWithAccess();
+
+      if (!users.Any()) {
+        return;
+      }
+
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
+
+      using (var context = _contextFactory.CreateInstance()) {
+        var updater = new DataUpdater(context, _mapper);
+        try {
+          // TODO: Lookup Metadata?
+          var commentResponse = await github.IssueComment(_fullName, commentId, null, RequestPriority.Background);
+          await updater.UpdateIssueComments(_repoId, commentResponse.Date, new[] { commentResponse.Result });
+          // TODO: Reactions?
+        } catch (GitHubPoolEmptyException) {
+          // Nothing to do.
+          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+        }
+
+        // Send Changes.
+        await updater.Changes.Submit(_queueClient);
+      }
+    }
+
+    public async Task RefreshPullRequestReviewComment(long commentId) {
+      var users = await GetUsersWithAccess();
+
+      if (!users.Any()) {
+        return;
+      }
+
+      var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
+
+      using (var context = _contextFactory.CreateInstance()) {
+        var updater = new DataUpdater(context, _mapper);
+        try {
+          // TODO: Lookup Metadata?
+          var issueId = await context.PullRequestComments
+            .AsNoTracking()
+            .Where(x => x.RepositoryId == _repoId && x.Id == commentId )
+            .Select(x => (long?)x.IssueId)
+            .SingleOrDefaultAsync();
+
+          if (issueId.HasValue) {
+            // We can't update comments until we know about the issue, sadly.
+            // Luckily, this method is a hack that's only used for edited comments, which we're more likely to already have.
+            var commentResponse = await github.PullRequestComment(_fullName, commentId, null, RequestPriority.Background);
+            await updater.UpdatePullRequestComments(_repoId, issueId.Value, commentResponse.Date, new[] { commentResponse.Result });
+          }
+          // TODO: Reactions?
+        } catch (GitHubPoolEmptyException) {
+          // Nothing to do.
+          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+        }
+
+        // Send Changes.
+        await updater.Changes.Submit(_queueClient);
+      }
+    }
   }
 }

@@ -24,5 +24,9 @@
     Task ForceSyncAllLinkedAccountRepositories();
 
     Task SyncProtectedBranch(string branchName, long forUserId);
+
+    Task RefreshIssueComment(long commentId);
+
+    Task RefreshPullRequestReviewComment(long commentId);
   }
 }
