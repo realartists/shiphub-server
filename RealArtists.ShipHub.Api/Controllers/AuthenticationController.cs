@@ -214,6 +214,7 @@
     }
 
     [HttpPost]
+    [AllowAnonymous]
     [Route("lambda_legacy")]
     public async Task<IHttpActionResult> LambdaLegacy(string code, CancellationToken cancellationToken) {
       if (code.IsNullOrWhiteSpace()) {
