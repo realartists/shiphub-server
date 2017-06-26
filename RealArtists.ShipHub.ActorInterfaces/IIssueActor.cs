@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces {
   using System.Threading.Tasks;
   using Orleans;
+  using Common.GitHub;
 
   /// <summary>
   /// An actor for individual issues within a repository.
@@ -10,6 +11,6 @@
     /// <summary>
     /// This refreshes the issue timeline, comments, reactions, etc.
     /// </summary>
-    Task SyncInteractive(long forUserId);
+    Task SyncTimeline(long? forUserId = null, RequestPriority priority = RequestPriority.Background);
   }
 }

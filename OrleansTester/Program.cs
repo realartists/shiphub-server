@@ -38,7 +38,7 @@
             break;
           case ConsoleKey.I:
             Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing issue {issue.GetPrimaryKeyLong(out string repoName)} in {repoName}.");
-            await issue.SyncInteractive(user.GetPrimaryKeyLong());
+            await issue.SyncTimeline(user.GetPrimaryKeyLong(), RealArtists.ShipHub.Common.GitHub.RequestPriority.Interactive);
             break;
         }
       }

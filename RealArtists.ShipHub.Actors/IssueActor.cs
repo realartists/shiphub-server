@@ -57,6 +57,8 @@
       "unsubscribed"
     }, StringComparer.OrdinalIgnoreCase);
 
+    private Random _rand = new Random();
+
     public IssueActor(IMapper mapper, IGrainFactory grainFactory, IFactory<ShipHubContext> contextFactory, IShipHubQueueClient queueClient) {
       _mapper = mapper;
       _grainFactory = grainFactory;
@@ -125,13 +127,47 @@
       }
     }
 
-    public async Task SyncInteractive(long forUserId) {
-      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
+    // ////////////////////////////////////////////////////////////
+    // Utility Functions
+    // ////////////////////////////////////////////////////////////
+
+    private async Task<long[]> GetUsersWithAccess() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: Keep this cached and current instead of looking it up every time.
+        return await context.AccountRepositories
+          .AsNoTracking()
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.Account.Tokens.Any())
+          .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+          .Select(x => x.AccountId)
+          .ToArrayAsync();
+      }
+    }
+
+    // ////////////////////////////////////////////////////////////
+    // Sync
+    // ////////////////////////////////////////////////////////////
+
+    public async Task SyncTimeline(long? forUserId, RequestPriority priority) {
+      if (forUserId == null) {
+        /* Pooling timeline requests is tricky and would require the pool to return the user
+         * who actually made the request[1], since some events are restricted per-user.
+         * Instead, find a random user who should have access, and hope their token is still valid.
+         * 
+         * [1] Technically, it kind of does via the metadata, but that's grossssssss.
+         */
+        var users = await GetUsersWithAccess();
+        if (!users.Any()) { return; }
+
+        forUserId = users[_rand.Next(users.Length)];
+      }
+
+      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId.Value);
 
       using (var context = _contextFactory.CreateInstance()) {
         var updater = new DataUpdater(context, _mapper);
         try {
-          await SyncIssueTimeline(ghc, forUserId, updater, context);
+          await SyncIssueTimeline(ghc, forUserId.Value, updater, context);
         } catch (GitHubRateException) {
           // nothing to do
         }

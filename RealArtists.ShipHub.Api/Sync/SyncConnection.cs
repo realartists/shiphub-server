@@ -129,7 +129,7 @@
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
           var issueGrain = _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
-          issueGrain.SyncInteractive(_user.UserId).LogFailure(_user.DebugIdentifier);
+          issueGrain.SyncTimeline(_user.UserId, Common.GitHub.RequestPriority.Interactive).LogFailure(_user.DebugIdentifier);
           return;
         default:
           // Ignore unknown messages for now
