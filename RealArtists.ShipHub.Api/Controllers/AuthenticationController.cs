@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Collections.Immutable;
   using System.Data.Entity;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Net;
   using System.Net.Http;
@@ -20,37 +21,51 @@
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
+  using Newtonsoft.Json.Linq;
   using Orleans;
+  using g = Common.GitHub.Models;
 
   public class LoginRequest {
     public string AccessToken { get; set; }
     public string ClientName { get; set; }
   }
 
+  public class CreatedAccessToken {
+    public string AccessToken { get; set; }
+    public string Scope { get; set; }
+    public string TokenType { get; set; }
+  }
+
   [RoutePrefix("api/authentication")]
   public class AuthenticationController : ShipHubApiController, IGitHubClient {
+    private static readonly ImmutableHashSet<string> PrivateScopes = ImmutableHashSet.Create(
+      "admin:org_hook",
+      "admin:repo_hook",
+      "read:org",
+      "repo", // grants access to notifications
+      "user:email");
+
+    private static readonly ImmutableHashSet<string> PublicScopes = ImmutableHashSet.Create(
+      "admin:org_hook",
+      "admin:repo_hook",
+      "notifications",
+      "public_repo",
+      "read:org",
+      "user:email");
+
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
 
+    private IShipHubConfiguration _config;
     private IGrainFactory _grainFactory;
     private IMapper _mapper;
 
     private static readonly IReadOnlyList<ImmutableHashSet<string>> _validScopesCollection = new List<ImmutableHashSet<string>>() {
-      ImmutableHashSet.Create(
-        "admin:org_hook",
-        "admin:repo_hook",
-        "read:org",
-        "repo",
-        "user:email"),
-      ImmutableHashSet.Create(
-        "admin:org_hook",
-        "admin:repo_hook",
-        "notifications",
-        "public_repo",
-        "read:org",
-        "user:email"),
+      PrivateScopes,
+      PublicScopes,
     }.AsReadOnly();
 
-    public AuthenticationController(IGrainFactory grainFactory, IMapper mapper) {
+    public AuthenticationController(IShipHubConfiguration config, IGrainFactory grainFactory, IMapper mapper) {
+      _config = config;
       _grainFactory = grainFactory;
       _mapper = mapper;
     }
@@ -72,38 +87,153 @@
       return 1;
     }
 
-    private Task<GitHubResponse<Common.GitHub.Models.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
+    private Task<GitHubResponse<g.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
       AccessToken = accessToken;
       var request = new GitHubRequest("user");
-      return handler.Fetch<Common.GitHub.Models.Account>(this, request, cancellationToken);
+      return handler.Fetch<g.Account>(this, request, cancellationToken);
     }
 
     // ///////////////////////////////////////////////////
     // For grant revocation
     // ///////////////////////////////////////////////////
 
-    private static HttpClient _BasicClient = new HttpClient(HttpUtilities.CreateDefaultHandler());
-    private static readonly string _GitHubClientId = ShipHubCloudConfiguration.Instance.GitHubClientId;
-    private static readonly string _GitHubClientSecret = ShipHubCloudConfiguration.Instance.GitHubClientSecret;
+    private static HttpClient _AppClient = CreateGitHubAppHttpClient();
+
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
+    private static HttpClient CreateGitHubAppHttpClient() {
+      var config = ShipHubCloudConfiguration.Instance;
+
+#if DEBUG
+      var handler = HttpUtilities.CreateDefaultHandler(config.UseFiddler);
+#else
+      var handler = HttpUtilities.CreateDefaultHandler();
+#endif
+
+      var httpClient = new HttpClient(handler, true) {
+        Timeout = TimeSpan.FromSeconds(10),
+      };
+
+      var headers = httpClient.DefaultRequestHeaders;
+      headers.AcceptEncoding.Clear();
+      headers.AcceptEncoding.ParseAdd("gzip");
+      headers.AcceptEncoding.ParseAdd("deflate");
+
+      headers.Accept.Clear();
+      headers.Accept.ParseAdd("application/vnd.github.v3+json");
+
+      headers.AcceptCharset.Clear();
+      headers.AcceptCharset.ParseAdd("utf-8");
+
+      headers.Add("Time-Zone", "Etc/UTC");
+
+      headers.UserAgent.Clear();
+      headers.UserAgent.Add(new ProductInfoHeaderValue(ApplicationName, ApplicationVersion));
+
+      var basicAuth = $"{config.GitHubClientId}:{config.GitHubClientSecret}";
+      var basicBytes = Encoding.ASCII.GetBytes(basicAuth);
+      var basic64 = Convert.ToBase64String(basicBytes);
+      headers.Authorization = new AuthenticationHeaderValue("basic", basic64);
+
+      return httpClient;
+    }
 
     private async Task<bool> RevokeGrant(string accessToken) {
-      var request = new HttpRequestMessage(HttpMethod.Delete, new Uri(ApiRoot, $"applications/{_GitHubClientId}/grants/{accessToken}"));
-      request.Headers.Authorization = new AuthenticationHeaderValue(
-        "basic",
-        Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_GitHubClientId}:{_GitHubClientSecret}"))
-      );
-      request.Headers.UserAgent.Clear();
-      request.Headers.UserAgent.Add(UserAgent);
-      var response = await _BasicClient.SendAsync(request);
+      var request = new HttpRequestMessage(HttpMethod.Delete, new Uri(ApiRoot, $"applications/{_config.GitHubClientId}/grants/{accessToken}"));
+      var response = await _AppClient.SendAsync(request);
       return response.StatusCode == HttpStatusCode.NoContent;
+    }
+
+    private static readonly Uri _OauthTokenRedemption = new Uri("https://github.com/login/oauth/access_token");
+    private async Task<CreatedAccessToken> CreateAccessToken(string code, string state) {
+      var body = new {
+        ClientId = _config.GitHubClientId,
+        ClientSecret = _config.GitHubClientSecret,
+        Code = code,
+        State = state,
+      };
+
+      var httpRequest = new HttpRequestMessage(HttpMethod.Post, _OauthTokenRedemption) {
+        Content = new ObjectContent<object>(body, GitHubSerialization.JsonMediaTypeFormatter, GitHubSerialization.JsonMediaType)
+      };
+      httpRequest.Headers.Accept.Clear();
+      httpRequest.Headers.Accept.ParseAdd("application/json");
+
+      var response = await _AppClient.SendAsync(httpRequest);
+
+      if (response.IsSuccessStatusCode) {
+        var temp = await response.Content.ReadAsAsync<JToken>(GitHubSerialization.MediaTypeFormatters);
+        if (temp["error"] != null) {
+          var error = temp.ToObject<GitHubError>(GitHubSerialization.JsonSerializer);
+          throw error.ToException();
+        } else {
+          return temp.ToObject<CreatedAccessToken>(GitHubSerialization.JsonSerializer);
+        }
+      } else {
+        var error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
+        throw error.ToException();
+      }
     }
 
     // ///////////////////////////////////////////////////
     // Web calls
     // ///////////////////////////////////////////////////
 
+    [HttpGet]
+    [AllowAnonymous]
+    [Route("begin")]
+    public IHttpActionResult Begin(bool publicOnly = false) {
+      var clientId = _config.GitHubClientId;
+      var scope = string.Join(",", publicOnly ? PublicScopes : PrivateScopes);
+      var relRedir = new Uri(Url.Link("callback", new { clientId = clientId }), UriKind.Relative);
+      var redir = new Uri(Request.RequestUri, relRedir).ToString();
+      var uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
+
+      return Redirect(uri);
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    [Route("end", Name = "callback")]
+    public async Task<IHttpActionResult> End(CancellationToken cancellationToken, string code, string state = null) {
+      if (string.IsNullOrWhiteSpace(code)) {
+        return BadRequest($"{nameof(code)} is required.");
+      }
+
+      var tokenInfo = await CreateAccessToken(code, state);
+
+      // Check scopes
+      var scopes = tokenInfo.Scope.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+      var scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(scopes));
+      if (!scopesOk) {
+        return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
+          Granted = scopes,
+        });
+      }
+
+      return await LoginCommon(tokenInfo.AccessToken, cancellationToken);
+    }
+
+    [HttpPost]
+    [Route("lambda_legacy")]
+    private async Task<IHttpActionResult> LambdaLegacy(string code, CancellationToken cancellationToken) {
+      if (code.IsNullOrWhiteSpace()) {
+        return BadRequest($"{nameof(code)} is required.");
+      }
+
+      var token = await CreateAccessToken(code, null);
+      return Json(new {
+        Token = token.AccessToken,
+      });
+    }
+
     [HttpDelete]
     [Route("login")]
+    public Task<IHttpActionResult> ObsoleteLogout() {
+      return Logout();
+    }
+
+    [HttpPost]
+    [Route("logout")]
     public async Task<IHttpActionResult> Logout() {
       // User wants to log out.
       using (var context = new ShipHubContext()) {
@@ -155,24 +285,27 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      var userResponse = await GitHubUser(_handlerPipeline, request.AccessToken, cancellationToken);
+      return await LoginCommon(request.AccessToken, cancellationToken);
+    }
+
+    private async Task<IHttpActionResult> LoginCommon(string token, CancellationToken cancellationToken) {
+      var userResponse = await GitHubUser(_handlerPipeline, token, cancellationToken);
 
       if (!userResponse.IsOk) {
-        Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
+        return Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
       }
 
-      // Check scopes
+      var userInfo = userResponse.Result;
+      if (userInfo.Type != g.GitHubAccountType.User) {
+        return Error("Token must be for a user.", HttpStatusCode.BadRequest);
+      }
+
+      // Check scopes (currently a duplicate check here, I know).
       var scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(userResponse.Scopes));
       if (!scopesOk) {
         return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
           Granted = userResponse.Scopes,
         });
-      }
-
-      var userInfo = userResponse.Result;
-
-      if (userInfo.Type != Common.GitHub.Models.GitHubAccountType.User) {
-        Error("Token must be for a user.", HttpStatusCode.BadRequest);
       }
 
       using (var context = new ShipHubContext()) {
