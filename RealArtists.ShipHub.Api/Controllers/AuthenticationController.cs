@@ -110,7 +110,7 @@
 #endif
 
       var httpClient = new HttpClient(handler, true) {
-        Timeout = TimeSpan.FromSeconds(10),
+        Timeout = TimeSpan.FromSeconds(50),
       };
 
       var headers = httpClient.DefaultRequestHeaders;
@@ -215,7 +215,7 @@
 
     [HttpPost]
     [Route("lambda_legacy")]
-    private async Task<IHttpActionResult> LambdaLegacy(string code, CancellationToken cancellationToken) {
+    public async Task<IHttpActionResult> LambdaLegacy(string code, CancellationToken cancellationToken) {
       if (code.IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(code)} is required.");
       }
