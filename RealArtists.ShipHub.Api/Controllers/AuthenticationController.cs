@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
+  using System.Collections;
   using System.Collections.Generic;
   using System.Collections.Immutable;
   using System.Data.Entity;
@@ -163,14 +164,12 @@
       if (response.IsSuccessStatusCode) {
         var temp = await response.Content.ReadAsAsync<JToken>(GitHubSerialization.MediaTypeFormatters);
         if (temp["error"] != null) {
-          var error = temp.ToObject<GitHubError>(GitHubSerialization.JsonSerializer);
-          throw error.ToException();
+          throw new Exception(temp.ToString());
         } else {
           return temp.ToObject<CreatedAccessToken>(GitHubSerialization.JsonSerializer);
         }
       } else {
-        var error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
-        throw error.ToException();
+        throw new HttpResponseException(response.StatusCode);
       }
     }
 
@@ -216,7 +215,8 @@
     [HttpPost]
     [AllowAnonymous]
     [Route("lambda_legacy")]
-    public async Task<IHttpActionResult> LambdaLegacy(string code, CancellationToken cancellationToken) {
+    public async Task<IHttpActionResult> LambdaLegacy([FromBody] JToken body, CancellationToken cancellationToken) {
+      var code = body?["code"]?.Value<string>();
       if (code.IsNullOrWhiteSpace()) {
         return BadRequest($"{nameof(code)} is required.");
       }
@@ -224,7 +224,7 @@
       var token = await CreateAccessToken(code, null);
       return Json(new {
         Token = token.AccessToken,
-      });
+      }, GitHubSerialization.JsonSerializerSettings);
     }
 
     [HttpDelete]
