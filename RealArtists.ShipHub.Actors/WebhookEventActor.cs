@@ -248,14 +248,14 @@
 
             // For *only* synchronize, go a generic timeline sync:
             if (payload.Action == "synchronize") {
-              var issueId = await context.PullRequests
+              var issueNumber = await context.PullRequests
                 .AsNoTracking()
                 .Where(x => x.Id == payload.PullRequest.Id)
-                .Select(x => (long?)x.IssueId)
+                .Select(x => (int?)x.Number)
                 .FirstOrDefaultAsync();
 
-              if (issueId.HasValue) {
-                var actor = _grainFactory.GetGrain<IIssueActor>(issueId.Value, payload.Repository.FullName, grainClassNamePrefix: null);
+              if (issueNumber.HasValue) {
+                var actor = _grainFactory.GetGrain<IIssueActor>(issueNumber.Value, payload.Repository.FullName, grainClassNamePrefix: null);
                 await actor.SyncTimeline(null, RequestPriority.Background);
               }
             }
