@@ -210,14 +210,14 @@
       _changes.UnionWith(await _context.BulkUpdateRepositoryProjects(repositoryId, repoProjects));
     }
 
-    public async Task UpdatePullRequestComments(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<g.PullRequestComment> comments, long? pendingReviewId = null) {
+    public async Task UpdatePullRequestComments(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<g.PullRequestComment> comments, long? pendingReviewId = null, bool dropWithMissingReview = false) {
       if (!comments.Any()) { return; }
 
       var accounts = comments.Select(x => x.User).Distinct(x => x.Id).ToArray();
       await UpdateAccounts(date, accounts);
 
       var mappedComments = _mapper.Map<IEnumerable<PullRequestCommentTableType>>(comments);
-      _changes.UnionWith(await _context.BulkUpdatePullRequestComments(repositoryId, issueId, mappedComments, pendingReviewId));
+      _changes.UnionWith(await _context.BulkUpdatePullRequestComments(repositoryId, issueId, mappedComments, pendingReviewId, dropWithMissingReview));
     }
 
     public async Task UpdatePullRequests(long repositoryId, DateTimeOffset date, IEnumerable<g.PullRequest> pullRequests) {

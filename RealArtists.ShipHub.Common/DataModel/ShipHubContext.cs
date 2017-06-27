@@ -639,7 +639,8 @@
       long repositoryId,
       long issueId,
       IEnumerable<PullRequestCommentTableType> comments,
-      long? pendingReviewId = null) {
+      long? pendingReviewId = null,
+      bool dropWithMissingReview = false) {
       if (pendingReviewId != null && comments.Any(x => x.PullRequestReviewId != pendingReviewId)) {
         throw new InvalidOperationException($"All comments must be for {nameof(pendingReviewId)} if specified.");
       }
@@ -648,6 +649,7 @@
         x.RepositoryId = repositoryId;
         x.IssueId = issueId;
         x.PendingReviewId = pendingReviewId;
+        x.DropWithMissingReview = dropWithMissingReview;
         x.Comments = CreateTableParameter(
           "Comments",
           "[dbo].[PullRequestCommentTableType]",
