@@ -163,7 +163,7 @@
 
         _protectedBranchMetadata = await context.ProtectedBranches
           .Where(x => x.RepositoryId == repo.Id)
-          .ToDictionaryAsync(k => k.Name, v => v.ProtectionMetadata);
+          .ToDictionaryAsync(k => k.Name, v => v.Metadata);
       }
 
       await base.OnActivateAsync();

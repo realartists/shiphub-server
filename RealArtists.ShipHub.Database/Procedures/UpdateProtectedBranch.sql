@@ -1,8 +1,8 @@
 ﻿CREATE PROCEDURE [dbo].[UpdateProtectedBranch]
   @RepositoryId BIGINT,
-  @Name NVARCHAR(MAX),
+  @Name NVARCHAR(255),
   @Protection NVARCHAR(MAX),
-  @ProtectionMetadataJson NVARCHAR(MAX)
+  @MetadataJson NVARCHAR(MAX)
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -23,13 +23,13 @@ BEGIN
     ON ([Target].RepositoryId = [Source].RepositoryId AND [Target].[Name] = [Source].[Name])
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (RepositoryId, [Name], Protection, ProtectionMetadataJson)
-      VALUES (@RepositoryId, @Name, @Protection, @ProtectionMetadataJson)
+      INSERT (RepositoryId, [Name], Protection, MetadataJson)
+      VALUES (RepositoryId, [Name], Protection, @MetadataJson)
     -- Update 
-    WHEN MATCHED AND [Target].[Protection] != [Source].[Protection] THEN
+    WHEN MATCHED AND [Target].Protection != [Source].Protection THEN
       UPDATE SET
-        [Protection] = @Protection,
-        [ProtectionMetadataJson] = @ProtectionMetadataJson
+        Protection = [Source].Protection,
+        MetadataJson = @MetadataJson
     OUTPUT Inserted.Id INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 

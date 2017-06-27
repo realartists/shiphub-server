@@ -179,10 +179,10 @@
         // Maintain the grain references too.
 
         var allRepos = await context.AccountRepositories
-        .AsNoTracking()
-        .Where(x => x.AccountId == _userId)
-        .Select(x => new { RepositoryId = x.RepositoryId, AccountId = x.Repository.AccountId })
-        .ToArrayAsync();
+          .AsNoTracking()
+          .Where(x => x.AccountId == _userId)
+          .Select(x => new { RepositoryId = x.RepositoryId, AccountId = x.Repository.AccountId })
+          .ToArrayAsync();
 
         if (allRepos.Any()) {
           tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));

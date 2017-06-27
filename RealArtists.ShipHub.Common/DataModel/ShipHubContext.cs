@@ -289,7 +289,7 @@
         x.RepositoryId = repoId;
         x.Name = branchName;
         x.Protection = branchProtection;
-        x.ProtectionMetadataJson = metadata.SerializeObject();
+        x.MetadataJson = metadata.SerializeObject();
       });
     }
 

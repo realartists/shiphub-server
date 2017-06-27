@@ -16,12 +16,12 @@ namespace RealArtists.ShipHub.Common.DataModel {
     public string Protection { get; set; }
 
     [NotMapped]
-    public GitHubMetadata ProtectionMetadata { get; set; }
+    public GitHubMetadata Metadata { get; set; }
 
     [Required]
-    public string ProtectionMetadataJson {
-      get => ProtectionMetadata.SerializeObject();
-      set => ProtectionMetadata = value.DeserializeObject<GitHubMetadata>();
+    public string MetadataJson {
+      get => Metadata.SerializeObject();
+      set => Metadata = value.DeserializeObject<GitHubMetadata>();
     }
   }
 }
