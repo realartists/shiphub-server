@@ -8,11 +8,12 @@
   using AutoMapper;
   using Common;
   using Common.DataModel;
+  using Common.GitHub;
+  using Common.GitHub.Models;
+  using Common.GitHub.Models.WebhookPayloads;
   using Orleans;
   using Orleans.Concurrency;
   using QueueClient;
-  using RealArtists.ShipHub.Common.GitHub.Models;
-  using RealArtists.ShipHub.Common.GitHub.Models.WebhookPayloads;
 
   [Reentrant]
   [StatelessWorker]
@@ -236,6 +237,7 @@
         case "closed":
         case "reopened":
         case "synchronize":
+          // For all actions:
           using (var context = _contextFactory.CreateInstance()) {
             var updater = new DataUpdater(context, _mapper);
             // TODO: Update Org and Sender?
@@ -243,6 +245,20 @@
             await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
 
             await updater.Changes.Submit(_queueClient);
+
+            // For *only* synchronize, go a generic timeline sync:
+            if (payload.Action == "synchronize") {
+              var issueId = await context.PullRequests
+                .AsNoTracking()
+                .Where(x => x.Id == payload.PullRequest.Id)
+                .Select(x => (long?)x.IssueId)
+                .FirstOrDefaultAsync();
+
+              if (issueId.HasValue) {
+                var actor = _grainFactory.GetGrain<IIssueActor>(issueId.Value, payload.Repository.FullName, grainClassNamePrefix: null);
+                await actor.SyncTimeline(null, RequestPriority.Background);
+              }
+            }
           }
           break;
         default:
