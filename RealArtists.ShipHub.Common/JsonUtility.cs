@@ -1,11 +1,16 @@
 ﻿namespace RealArtists.ShipHub.Common {
+  using System.Collections.Generic;
+  using System.Net.Http.Formatting;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
   using Newtonsoft.Json.Serialization;
 
   public static class JsonUtility {
-    public static JsonSerializerSettings SaneDefaults { get; } = CreateSaneDefaultSettings();
-    public static JsonSerializer SaneSerializer { get; } = JsonSerializer.Create(SaneDefaults);
+    public static JsonSerializerSettings JsonSerializerSettings { get; } = CreateSaneDefaultSettings();
+    public static JsonSerializer JsonSerializer { get; } = JsonSerializer.Create(JsonSerializerSettings);
+
+    public static JsonMediaTypeFormatter JsonMediaTypeFormatter { get; } = new JsonMediaTypeFormatter() { SerializerSettings = JsonSerializerSettings };
+    public static IEnumerable<MediaTypeFormatter> MediaTypeFormatters { get; } = new[] { JsonMediaTypeFormatter };
 
     public static JsonSerializerSettings CreateSaneDefaultSettings() {
       var settings = new JsonSerializerSettings() {
@@ -30,9 +35,9 @@
       }
 
       if (formatting != null) {
-        return JsonConvert.SerializeObject(value, formatting.Value, SaneDefaults);
+        return JsonConvert.SerializeObject(value, formatting.Value, JsonSerializerSettings);
       } else {
-        return JsonConvert.SerializeObject(value, SaneDefaults);
+        return JsonConvert.SerializeObject(value, JsonSerializerSettings);
       }
     }
 
@@ -42,7 +47,7 @@
         return null;
       }
 
-      return JsonConvert.DeserializeObject<T>(json, SaneDefaults);
+      return JsonConvert.DeserializeObject<T>(json, JsonSerializerSettings);
     }
   }
 }

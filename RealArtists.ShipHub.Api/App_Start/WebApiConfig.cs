@@ -23,7 +23,7 @@
       RaygunWebApiClient.Attach(config, RaygunClientFactory(raygunApiKey));
 
       config.Formatters.Clear();
-      config.Formatters.Add(new ChunkedJsonMediaTypeFormatter() { SerializerSettings = JsonUtility.SaneDefaults });
+      config.Formatters.Add(new ChunkedJsonMediaTypeFormatter() { SerializerSettings = JsonUtility.JsonSerializerSettings });
 
       config.MapHttpAttributeRoutes();
 

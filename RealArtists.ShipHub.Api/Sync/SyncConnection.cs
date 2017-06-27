@@ -89,7 +89,7 @@
     public override async Task OnMessage(string message) {
       Log.Debug(() => $"{_user.Login} {message}");
       var jobj = JObject.Parse(message);
-      var data = jobj.ToObject<SyncMessageBase>(JsonUtility.SaneSerializer);
+      var data = jobj.ToObject<SyncMessageBase>(JsonUtility.JsonSerializer);
       switch (data.MessageType) {
         case "hello":
           if (_syncContext != null) {
@@ -97,7 +97,7 @@
           }
 
           // parse message, update local versions
-          var hello = jobj.ToObject<HelloRequest>(JsonUtility.SaneSerializer);
+          var hello = jobj.ToObject<HelloRequest>(JsonUtility.JsonSerializer);
 
           // Validate version
           ClientBuild = hello.BuildVersion;
@@ -124,7 +124,7 @@
           Subscribe(userActor); // Also performs the initial sync
           return;
         case "viewing":
-          var viewing = jobj.ToObject<ViewingRequest>(JsonUtility.SaneSerializer);
+          var viewing = jobj.ToObject<ViewingRequest>(JsonUtility.JsonSerializer);
           var parts = viewing.Issue.Split('#');
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
@@ -148,7 +148,7 @@
 
         using (var df = new GZipStream(ms, CompressionLevel.Optimal))
         using (var sw = new StreamWriter(df, Encoding.UTF8)) {
-          JsonUtility.SaneSerializer.Serialize(sw, message);
+          JsonUtility.JsonSerializer.Serialize(sw, message);
           sw.Flush();
         }
 
