@@ -676,7 +676,7 @@
               .AsNoTracking()
               .Where(x => x.Repository.FullName == repoName)
               .Where(x => x.Number == issueNumber)
-              .Select(x => new { IssueId = x.Id, RepositoryId = x.RepositoryId })
+              .Select(x => new { IssueId = x.IssueId, RepositoryId = x.RepositoryId })
               .SingleAsync();
 
             await updater.UpdatePullRequestComments(ids.RepositoryId, ids.IssueId, response.Headers.Date ?? DateTimeOffset.UtcNow, new[] { comment });
