@@ -99,6 +99,13 @@
       );
     }
 
+    public Task<GitHubResponse<IssueComment>> IssueComment(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.IssueComment(repoFullName, commentId, cache, priority),
+        cacheOptions
+      );
+    }
+
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.IssueComments(repoFullName, since, cache, priority),
@@ -228,6 +235,13 @@
     public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequests(repoFullName, sort, direction, skipPages, maxPages, cache, priority),
+         cacheOptions
+       );
+    }
+
+    public Task<GitHubResponse<PullRequestComment>> PullRequestComment(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+         (actor, cache) => actor.PullRequestComment(repoFullName, commentId, cache, priority),
          cacheOptions
        );
     }
