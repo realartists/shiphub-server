@@ -479,9 +479,9 @@
 
     public Task<GitHubResponse<PullRequest>> CreatePullRequest(string repoFullName, string title, string body, string baseSha, string headSha, RequestPriority priority) {
       var prBody = new JObject() {
-        ("title", title),
-        ("base", baseSha),
-        ("head", headSha),
+        { "title", title},
+        { "base", baseSha},
+        { "head", headSha},
       };
 
       // GitHub gets upset if you send null or empty string for body.

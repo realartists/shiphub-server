@@ -13,9 +13,11 @@
   using Common;
   using Common.DataModel;
   using Common.GitHub;
+  using Newtonsoft.Json.Linq;
   using Orleans;
   using QueueClient;
   using gm = Common.GitHub.Models;
+  using sm = Sync.Messages.Entries;
 
   public class PullRequestCreateRequest {
     public IEnumerable<string> Assignees { get; set; }
@@ -50,6 +52,7 @@
 
       GitHubResponse<gm.PullRequest> prResponse = null;
       GitHubResponse<gm.Issue> issueResponse = null;
+      long? repoId = null;
       try {
         using (var context = new ShipHubContext()) {
           var updater = new DataUpdater(context, _mapper);
@@ -59,7 +62,7 @@
           prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
           // Can't update the DB yet, because saving the PR requires the issue to already exist.
 
-          if (prResponse.IsOk) {
+          if (prResponse.Status == HttpStatusCode.Created) {
             var pr = prResponse.Result;
 
             if (body.Milestone != null
@@ -72,30 +75,87 @@
 
             if (issueResponse.IsOk) {
               // Ugh
-              var repoId = await context.Repositories
+              repoId = await context.Repositories
                 .AsNoTracking()
                 .Where(x => x.FullName == repoName)
                 .Select(x => x.Id)
                 .SingleAsync();
 
               // Now we can update
-              await updater.UpdateIssues(repoId, issueResponse.Date, new[] { issueResponse.Result });
-              await updater.UpdatePullRequests(repoId, prResponse.Date, new[] { pr });
+              await updater.UpdateIssues(repoId.Value, issueResponse.Date, new[] { issueResponse.Result });
+              await updater.UpdatePullRequests(repoId.Value, prResponse.Date, new[] { pr });
 
               await updater.Changes.Submit(_queueClient);
             }
           }
         }
       } catch (Exception e) {
-        e.Report($"request: {request.RequestUri} user: {ShipHubUser.DebugIdentifier}", ShipHubUser.DebugIdentifier);
+        e.Report($"request: {request.RequestUri}", ShipHubUser.DebugIdentifier);
       }
 
-      var status = (prResponse?.IsOk == true && issueResponse?.IsOk == true) ? HttpStatusCode.Created : HttpStatusCode.InternalServerError;
+      sm.PullRequestEntry prEntry = null;
+      sm.IssueEntry issueEntry = null;
+
+      if (issueResponse.IsOk) {
+        var issue = issueResponse.Result;
+        issueEntry = new sm.IssueEntry() {
+          Assignees = issue.Assignees.Select(x => x.Id).ToArray(),
+          Body = issue.Body,
+          ClosedAt = issue.ClosedAt,
+          ClosedBy = issue.ClosedBy?.Id,
+          CreatedAt = issue.CreatedAt,
+          Identifier = issue.Id,
+          Labels = issue.Labels.Select(x => x.Id).ToArray(),
+          Locked = issue.Locked,
+          Milestone = issue.Milestone?.Id,
+          Number = issue.Number,
+          PullRequest = issue.PullRequest != null,
+          Repository = repoId ?? -1,
+          ShipReactionSummary = issue.Reactions.SerializeObject().DeserializeObject<sm.ReactionSummary>(),
+          State = issue.State,
+          Title = issue.Title,
+          UpdatedAt = issue.UpdatedAt,
+          User = issue.User.Id,
+        };
+      }
+
+      if (prResponse?.Status == HttpStatusCode.Created) {
+        var pr = prResponse.Result;
+        prEntry = new sm.PullRequestEntry() {
+          Additions = pr.Additions,
+          ChangedFiles = pr.ChangedFiles,
+          Commits = pr.Commits,
+          CreatedAt = pr.CreatedAt,
+          Deletions = pr.Deletions,
+          Identifier = pr.Id,
+          Issue = issueEntry?.Identifier ?? -1,
+          MaintainerCanModify = pr.MaintainerCanModify,
+          Mergeable = pr.Mergeable,
+          MergeableState = pr.MergeableState,
+          MergeCommitSha = pr.MergeCommitSha,
+          MergedAt = pr.MergedAt,
+          MergedBy = pr.MergedBy?.Id,
+          Rebaseable = pr.Rebaseable,
+          RequestedReviewers = pr.RequestedReviewers.Select(x => x.Id).ToArray(),
+          UpdatedAt = pr.UpdatedAt,
+          Base = JToken.FromObject(pr.Base),
+          Head = JToken.FromObject(pr.Head),
+        };
+      }
+
+      var status = HttpStatusCode.Created;
+      if (prEntry == null) {
+        status = HttpStatusCode.InternalServerError;
+      } else if (issueEntry == null) {
+        status = HttpStatusCode.Accepted;
+      }
+
       var result = new {
-        PullRequest = prResponse?.IsOk == true ? prResponse.Result : null,
-        Issue = issueResponse?.IsOk == true ? issueResponse.Result : null,
+        PullRequest = prEntry,
+        Issue = issueEntry,
       };
-      return ResponseMessage(request.CreateResponse(status, result, GitHubSerialization.JsonMediaTypeFormatter));
+
+      return ResponseMessage(request.CreateResponse(status, result, JsonUtility.JsonMediaTypeFormatter));
     }
   }
 }
