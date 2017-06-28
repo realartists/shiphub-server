@@ -172,7 +172,7 @@
               .SingleOrDefaultAsync();
 
             if (issueId != null) {
-              await updater.UpdatePullRequestComments(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Comment });
+              await updater.UpdatePullRequestComments(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Comment }, dropWithMissingReview: true);
             }
             break;
           case "edited":

@@ -2,6 +2,7 @@
   @RepositoryId BIGINT,
   @IssueId BIGINT,
   @PendingReviewId BIGINT = NULL,
+  @DropWithMissingReview BIT = 0,
   @Comments PullRequestCommentTableType READONLY
 AS
 BEGIN
@@ -20,13 +21,23 @@ BEGIN
     BEGIN TRANSACTION
 
     DECLARE @MatchId BIGINT = ISNULL(@PendingReviewId, -1)
+
+    DECLARE @WorkComments PullRequestCommentTableType
+
+    INSERT INTO @WorkComments (Id, UserId, PullRequestReviewId, DiffHunk, [Path], Position, OriginalPosition, CommitId, OriginalCommitId, Body, CreatedAt, UpdatedAt)
+    SELECT c.Id, c.UserId, c.PullRequestReviewId, c.DiffHunk, c.[Path], c.Position, c.OriginalPosition, c.CommitId, c.OriginalCommitId, c.Body, c.CreatedAt, c.UpdatedAt
+    FROM @Comments as c
+      LEFT OUTER JOIN Reviews as r ON (r.Id = c.PullRequestReviewId)
+    WHERE @DropWithMissingReview = 0
+      OR c.PullRequestReviewId IS NULL
+      OR r.Id IS NOT NULL
     
     -- Delete is tricky
     -- We never have a complete view of all pending review comments
     DELETE FROM PullRequestComments
     OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
     FROM PullRequestComments as prc
-      LEFT OUTER JOIN @Comments as prcp ON (prcp.Id = prc.Id)
+      LEFT OUTER JOIN @WorkComments as prcp ON (prcp.Id = prc.Id)
     WHERE prc.IssueId = @IssueId
       AND ISNULL(prc.PullRequestReviewId, -1) = @MatchId
       AND prcp.Id IS NULL
@@ -35,7 +46,7 @@ BEGIN
     MERGE INTO PullRequestComments WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT c.Id, c.UserId, c.PullRequestReviewId, c.DiffHunk, c.[Path], c.Position, c.OriginalPosition, c.CommitId, c.OriginalCommitId, c.Body, c.CreatedAt, c.UpdatedAt
-      FROM @Comments as c
+      FROM @WorkComments as c
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Add
