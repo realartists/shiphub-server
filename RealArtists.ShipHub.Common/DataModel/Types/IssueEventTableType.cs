@@ -26,12 +26,33 @@
     // ACL Helpers
     ///////////////////////////////////
 
-    // restricted events: closed, referenced, cross-referenced
-    private static HashSet<string> _PublicEvents { get; } = new HashSet<string>(
-      new[] { "reopened", "subscribed", "mentioned", "assigned", "unassigned", "labeled", "unlabeled", "milestoned",
-              "demilestoned", "renamed", "locked", "unlocked", "merged", "head_ref_deleted", "head_ref_restored",
-              "commented", "committed", "reopened", },
-      StringComparer.OrdinalIgnoreCase);
+    private static HashSet<string> _PublicEvents { get; } = new HashSet<string>(new[] {
+      "assigned",
+      // "closed", (can have private commit info)
+      "commented", // filtered, but would be public
+      "committed", // only to the PR branch (safe)
+      "converted_note_to_issue",
+      // "cross-referenced", (a comment or issue body in possibly another repo, that refers to this issue)
+      "demilestoned",
+      "head_ref_deleted", // can only be in the PR's repo, so should be safe to mark as public
+      "head_ref_restored", // can only be in the PR's repo, so should be safe to mark as public
+      "labeled",
+      "locked",
+      "mentioned", // filtered, but would be public
+      "merged", // can only be in the PR's repo, so should be safe to mark as public
+      "milestoned",
+      // "referenced", (a commit in a repo, not necessarily the issue's repo)
+      "renamed",
+      "reopened",
+      "review_dismissed",
+      "review_request_removed",
+      "review_requested",
+      "reviewed",
+      "subscribed", // filtered, but would be public
+      "unassigned",
+      "unlabeled",
+      "unlocked",
+    }, StringComparer.OrdinalIgnoreCase);
     public bool Restricted => !_PublicEvents.Contains(Event);
   }
 }
