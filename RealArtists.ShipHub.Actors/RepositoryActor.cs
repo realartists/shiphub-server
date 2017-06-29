@@ -349,6 +349,13 @@
         var repo = await github.Repository(_fullName, _metadata);
 
         if (repo.IsOk) {
+          // It's possible the repo with this Id has been deleted, and a new one
+          // with the same name has been created. If that has happened, ABORT ABORT ABORT
+          if (repo.Result.Id != _repoId) {
+            _disabled = true;
+            return;
+          }
+
           // If we can read it, it's not disabled.
           _disabled = false;
 
