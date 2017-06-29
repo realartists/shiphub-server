@@ -1018,7 +1018,9 @@
         try {
           // TODO: Lookup Metadata?
           var commentResponse = await github.IssueComment(_fullName, commentId, null, RequestPriority.Background);
-          await updater.UpdateIssueComments(_repoId, commentResponse.Date, new[] { commentResponse.Result });
+          if (commentResponse.IsOk) {
+            await updater.UpdateIssueComments(_repoId, commentResponse.Date, new[] { commentResponse.Result });
+          }
           // TODO: Reactions?
         } catch (GitHubPoolEmptyException) {
           // Nothing to do.
@@ -1053,7 +1055,9 @@
             // We can't update comments until we know about the issue, sadly.
             // Luckily, this method is a hack that's only used for edited comments, which we're more likely to already have.
             var commentResponse = await github.PullRequestComment(_fullName, commentId, null, RequestPriority.Background);
-            await updater.UpdatePullRequestComments(_repoId, issueId.Value, commentResponse.Date, new[] { commentResponse.Result });
+            if (commentResponse.IsOk) {
+              await updater.UpdatePullRequestComments(_repoId, issueId.Value, commentResponse.Date, new[] { commentResponse.Result });
+            }
           }
           // TODO: Reactions?
         } catch (GitHubPoolEmptyException) {
