@@ -192,6 +192,12 @@
     }
 
     public async Task PullRequestReview(DateTimeOffset eventDate, PullRequestReviewPayload payload) {
+      // GitHub sends pending reviews that they shouldn't. We don't want them.
+      if (payload.Review.State.Equals("pending", StringComparison.OrdinalIgnoreCase)) {
+        this.Info($"Dropping pending review. {payload.Repository.FullName}#{payload.Review.Id}");
+        return;
+      }
+
       using (var context = _contextFactory.CreateInstance()) {
         var updater = new DataUpdater(context, _mapper);
 
