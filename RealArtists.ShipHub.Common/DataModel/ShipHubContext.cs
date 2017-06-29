@@ -437,7 +437,6 @@
           "[dbo].[CommitStatusTableType]",
           new[] {
             ("Id", typeof(long)),
-            ("CreatorId", typeof(long)),
             ("State", typeof(string)),
             ("TargetUrl", typeof(string)),
             ("Description", typeof(string)),
@@ -447,7 +446,6 @@
           },
           y => new object[] {
             y.Id,
-            y.CreatorId,
             y.State,
             y.TargetUrl,
             y.Description,

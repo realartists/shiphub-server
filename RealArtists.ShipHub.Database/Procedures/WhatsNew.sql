@@ -323,8 +323,8 @@ BEGIN
       AND (ISNULL(r.[State], '') != 'PENDING' OR r.UserId = @UserId)
 
     -- Commit Statuses
-    SELECT l.ItemId as Id, e.RepositoryId, e.Reference, e.CreatorId,
-      e.[State], e.TargetUrl, e.[Description], e.Context,  e.CreatedAt,
+    SELECT l.ItemId as Id, e.RepositoryId, e.Reference, e.[State],
+      e.TargetUrl, e.[Description], e.Context,  e.CreatedAt,
       e.UpdatedAt, l.[Delete]
     FROM @Logs as l
       LEFT OUTER JOIN CommitStatuses as e ON (l.ItemId = e.Id)

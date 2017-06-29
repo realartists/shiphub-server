@@ -346,7 +346,6 @@
         var status = new CommitStatus() {
           Context = payload.Context,
           CreatedAt = payload.CreatedAt,
-          Creator = payload.Sender,
           Description = payload.Description,
           Id = payload.Id,
           State = payload.State,

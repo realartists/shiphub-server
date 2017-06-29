@@ -783,7 +783,6 @@
                 Data = new CommitStatusEntry() {
                   Context = ddr.Context,
                   CreatedAt = ddr.CreatedAt,
-                  Creator = ddr.CreatorId,
                   Description = ddr.Description,
                   Identifier = ddr.Id,
                   Reference = ddr.Reference,

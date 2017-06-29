@@ -3,7 +3,6 @@
 
   public class CommitStatus {
     public long Id { get; set; }
-    public Account Creator { get; set; }
     public string State { get; set; }
     public string TargetUrl { get; set; }
     public string Description { get; set; }

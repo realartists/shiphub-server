@@ -10,8 +10,7 @@ BEGIN
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED,
-    [CreatorId] BIGINT NOT NULL
+    [Id]        BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
 
   BEGIN TRY
@@ -19,26 +18,25 @@ BEGIN
 
     MERGE INTO CommitStatuses WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Id, CreatorId, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt
+      SELECT Id, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt
       FROM @Statuses
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, RepositoryId,  Reference,  CreatorId, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt)
-      VALUES (Id, @RepositoryId, @Reference, CreatorId, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt)
+      INSERT (Id, RepositoryId,  Reference, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt)
+      VALUES (Id, @RepositoryId, @Reference, [State], TargetUrl, [Description], Context, CreatedAt, UpdatedAt)
     -- Update
     WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
       UPDATE SET
         Reference = @Reference,         -- I don't think this can actually change
-        CreatorId = [Source].CreatorId, -- You'd think this couldn't change, but it can become the Ghost
         [State] = [Source].[State],
         TargetUrl = [Source].TargetUrl,
         [Description] = [Source].[Description],
         Context = [Source].Context,
         CreatedAt = [Source].CreatedAt,
         UpdatedAt = [Source].UpdatedAt
-    OUTPUT INSERTED.Id, INSERTED.CreatorId INTO @Changes
+    OUTPUT INSERTED.Id INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
     -- Edited status
@@ -55,14 +53,6 @@ BEGIN
     WHERE NOT EXISTS (
         SELECT * FROM SyncLog
         WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'commitstatus' AND ItemId = c.Id)
-
-    -- New Accounts
-    INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
-    SELECT 'repo', @RepositoryId, 'account', c.CreatorId, 0
-    FROM (SELECT DISTINCT CreatorId FROM @Changes) as c
-    WHERE NOT EXISTS (
-      SELECT * FROM SyncLog
-      WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'account' AND ItemId = c.CreatorId)
 
     COMMIT TRANSACTION
   END TRY
