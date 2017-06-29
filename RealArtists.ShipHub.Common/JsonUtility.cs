@@ -23,7 +23,7 @@
       };
 
       settings.Converters.Add(new StringEnumConverter() {
-        AllowIntegerValues = false,
+        AllowIntegerValues = true, // Needed to serialize unofficial HTTP status codes GitHub uses.
       });
 
       return settings;
