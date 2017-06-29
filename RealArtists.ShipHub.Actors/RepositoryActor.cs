@@ -913,7 +913,8 @@
         try {
           var hookList = await admin.RepositoryWebhooks(_fullName);
           if (!hookList.IsOk) {
-            throw new Exception($"Unable to list hooks for {_fullName}");
+            this.Info($"Unable to list hooks for {_fullName}. {hookList.Status} {hookList.Error}");
+            return changes;
           }
 
           var existingHooks = hookList.Result
@@ -925,7 +926,7 @@
           foreach (var existingHook in existingHooks) {
             var deleteResponse = await admin.DeleteRepositoryWebhook(_fullName, existingHook.Id);
             if (!deleteResponse.Succeeded) {
-              Log.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'");
+              this.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'{deleteResponse.Status} {deleteResponse.Error}");
             }
           }
 
@@ -947,10 +948,10 @@
             newHook.LastError = null;
             changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
           } else {
-            throw new Exception($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error}");
+            this.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error}");
           }
         } catch (Exception e) {
-          e.Report();
+          e.Report($"Failed to add hook for repo '{_fullName}' ({_repoId})");
           // Save LastError
           await context.BulkUpdateHooks(hooks: new[] { newHook });
         }
@@ -964,7 +965,7 @@
         };
 
         try {
-          Log.Info($"Updating webhook {_fullName}/{hook.GitHubId} from [{hook.Events}] to [{string.Join(",", RequiredEvents)}]");
+          this.Info($"Updating webhook {_fullName}/{hook.GitHubId} from [{hook.Events}] to [{string.Join(",", RequiredEvents)}]");
           var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
 
           if (editResponse.Succeeded) {
@@ -974,7 +975,7 @@
             await context.BulkUpdateHooks(hooks: new[] { editHook });
           } else if (editResponse.Status == HttpStatusCode.NotFound) {
             // Our record is out of date.
-            Log.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} Deleting our hook record.");
+            this.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}). Deleting our hook record. {editResponse.Status} {editResponse.Error}");
             changes = await context.BulkUpdateHooks(deleted: new[] { editHook.Id });
           } else {
             throw new Exception($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error}");
@@ -1054,7 +1055,7 @@
           // TODO: Lookup Metadata?
           var issueId = await context.PullRequestComments
             .AsNoTracking()
-            .Where(x => x.RepositoryId == _repoId && x.Id == commentId )
+            .Where(x => x.RepositoryId == _repoId && x.Id == commentId)
             .Select(x => (long?)x.IssueId)
             .SingleOrDefaultAsync();
 
