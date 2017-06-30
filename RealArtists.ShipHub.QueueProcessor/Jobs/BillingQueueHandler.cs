@@ -23,7 +23,10 @@
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
-    public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
+   // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
+  public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 4, 0, 0, 0, TimeSpan.Zero);
+  
+  public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
       : base(logger) {
       _grainFactory = grainFactory;
       _chargeBee = chargeBee;
@@ -75,8 +78,8 @@
         .Request()).List;
       cbm.Subscription sub = null;
 
+      var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
       if (subList.Count == 0) {
-        var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
         var metaData = new ChargeBeePersonalSubscriptionMetadata() {
           // If someone purchases a personal subscription while their free trial is still
           // going, we'll need to know the trial peroid length so we can give the right amount
@@ -93,6 +96,16 @@
       } else {
         logger.WriteLine("Billing: Subscription already exists");
         sub = subList.First().Subscription;
+      }
+
+      if (sub.Status == cbm.Subscription.StatusEnum.Cancelled && (sub.CancelledAt ?? DateTime.UtcNow) < AmnestyDate) {
+        logger.WriteLine("Billing: Applying subscription amnesty for cancelled subscription");
+        // delete any payment sources that we've got for this person
+        if (customer.PaymentMethod != null) {
+          logger.WriteLine("Billing: Deleting existing card for cancelled subscription");
+          await _chargeBee.Card.DeleteCardForCustomer(customerId).Request();
+        }
+        sub = (await _chargeBee.Subscription.Reactivate(sub.Id).TrialEnd(trialEnd).Request()).Subscription;
       }
 
       ChangeSummary changes;
@@ -151,6 +164,8 @@
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
         var gh = _grainFactory.GetGrain<IGitHubActor>(message.UserId);
         await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, gh, logger);
+        // we also need to double check complimentary subscriptions here as well
+        await UpdateComplimentarySubscriptionHelper(message, logger);
       });
     }
 
@@ -245,59 +260,63 @@
       });
     }
 
+    private async Task UpdateComplimentarySubscriptionHelper(UserIdMessage message, TextWriter logger) {
+      var couponId = "member_of_paid_org";
+
+      var sub = (await _chargeBee.Subscription.List()
+        .CustomerId().Is($"user-{message.UserId}")
+        .PlanId().In(ChargeBeeUtilities.PersonalPlanIds)
+        .Limit(1)
+        .Request()).List.FirstOrDefault()?.Subscription;
+
+      var shouldHaveCoupon = false;
+      using (var context = new cm.ShipHubContext()) {
+        var isMemberOfPaidOrg = await context.OrganizationAccounts
+          .AsNoTracking()
+          .Where(x =>
+            x.UserId == message.UserId &&
+            x.Organization.Subscription.StateName == cm.SubscriptionState.Subscribed.ToString())
+          .AnyAsync();
+
+        shouldHaveCoupon = isMemberOfPaidOrg;
+      }
+
+      // We should only apply this coupon to already active subscriptions, and never
+      // to free trials.  If we apply it to a free trial, the amount due at the end
+      // of term would be $0, and the subscription would automatically transition to
+      // active even though no payment method is set.
+      if (sub != null &&
+          sub.Status != cbm.Subscription.StatusEnum.Active &&
+          sub.Status != cbm.Subscription.StatusEnum.NonRenewing) {
+        shouldHaveCoupon = false;
+      }
+
+      if (sub != null) {
+        var hasCoupon = false;
+
+        if (sub.Coupons != null) {
+          hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
+        }
+
+        if (shouldHaveCoupon && !hasCoupon) {
+          await _chargeBee.Subscription.Update(sub.Id)
+            .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
+            .Request();
+        } else if (!shouldHaveCoupon && hasCoupon) {
+          await _chargeBee.Subscription.RemoveCoupons(sub.Id)
+            .CouponIds(new List<string>() { couponId })
+            .Request();
+        }
+      }
+    }
+
     [Singleton("{UserId}")]
     public async Task UpdateComplimentarySubscription(
       [ServiceBusTrigger(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] UserIdMessage message,
       TextWriter logger,
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        var couponId = "member_of_paid_org";
-
-        var sub = (await _chargeBee.Subscription.List()
-          .CustomerId().Is($"user-{message.UserId}")
-          .PlanId().In(ChargeBeeUtilities.PersonalPlanIds)
-          .Limit(1)
-          .Request()).List.FirstOrDefault()?.Subscription;
-
-        var shouldHaveCoupon = false;
-        using (var context = new cm.ShipHubContext()) {
-          var isMemberOfPaidOrg = await context.OrganizationAccounts
-            .AsNoTracking()
-            .Where(x =>
-              x.UserId == message.UserId &&
-              x.Organization.Subscription.StateName == cm.SubscriptionState.Subscribed.ToString())
-            .AnyAsync();
-
-          shouldHaveCoupon = isMemberOfPaidOrg;
-        }
-
-        // We should only apply this coupon to already active subscriptions, and never
-        // to free trials.  If we apply it to a free trial, the amount due at the end
-        // of term would be $0, and the subscription would automatically transition to
-        // active even though no payment method is set.
-        if (sub != null &&
-            sub.Status != cbm.Subscription.StatusEnum.Active &&
-            sub.Status != cbm.Subscription.StatusEnum.NonRenewing) {
-          shouldHaveCoupon = false;
-        }
-
-        if (sub != null) {
-          var hasCoupon = false;
-
-          if (sub.Coupons != null) {
-            hasCoupon = sub.Coupons.SingleOrDefault(x => x.CouponId() == couponId) != null;
-          }
-
-          if (shouldHaveCoupon && !hasCoupon) {
-            await _chargeBee.Subscription.Update(sub.Id)
-              .CouponIds(new List<string>() { couponId }) // ChargeBee API definitely not written by .NET devs.
-              .Request();
-          } else if (!shouldHaveCoupon && hasCoupon) {
-            await _chargeBee.Subscription.RemoveCoupons(sub.Id)
-              .CouponIds(new List<string>() { couponId })
-              .Request();
-          }
-        }
+        await UpdateComplimentarySubscriptionHelper(message, logger);
       });
     }
   }
