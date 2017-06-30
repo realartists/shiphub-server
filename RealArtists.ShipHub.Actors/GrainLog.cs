@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Actors {
   using System;
+  using System.Diagnostics.CodeAnalysis;
   using System.Runtime.CompilerServices;
   using Orleans;
 
@@ -40,23 +41,26 @@
       Common.Log.Exception(ex, $"{grain.LoggingIdentifier()}{message}");
     }
 
+    [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
     public static string LoggingIdentifier(this IGrain grain) {
       var type = grain.GetType();
 
-      string temp = null;
-      if (typeof(IGrainWithIntegerKey).IsAssignableFrom(type)) {
-        return $"[{grain.GetPrimaryKeyLong()}] ";
-      } else if (typeof(IGrainWithIntegerCompoundKey).IsAssignableFrom(type)) {
-        var key = grain.GetPrimaryKeyLong(out temp);
-        return $"[{key} {temp}] ";
-      } else if (typeof(IGrainWithGuidKey).IsAssignableFrom(type)) {
-        return $"[{grain.GetPrimaryKey()}] ";
-      } else if (typeof(IGrainWithGuidCompoundKey).IsAssignableFrom(type)) {
-        var key = grain.GetPrimaryKey(out temp);
-        return $"[{key} {temp}] ";
-      } else if (typeof(IGrainWithStringKey).IsAssignableFrom(type)) {
-        return $"[{grain.GetPrimaryKeyString()}] ";
-      }
+      try {
+        string temp = null;
+        if (typeof(IGrainWithIntegerKey).IsAssignableFrom(type)) {
+          return $"[{grain.GetPrimaryKeyLong()}] ";
+        } else if (typeof(IGrainWithIntegerCompoundKey).IsAssignableFrom(type)) {
+          var key = grain.GetPrimaryKeyLong(out temp);
+          return $"[{key} {temp}] ";
+        } else if (typeof(IGrainWithGuidKey).IsAssignableFrom(type)) {
+          return $"[{grain.GetPrimaryKey()}] ";
+        } else if (typeof(IGrainWithGuidCompoundKey).IsAssignableFrom(type)) {
+          var key = grain.GetPrimaryKey(out temp);
+          return $"[{key} {temp}] ";
+        } else if (typeof(IGrainWithStringKey).IsAssignableFrom(type)) {
+          return $"[{grain.GetPrimaryKeyString()}] ";
+        }
+      } catch { } // Don't throw for logging methods.
 
       return string.Empty;
     }
