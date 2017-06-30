@@ -1,6 +1,5 @@
 ﻿CREATE TYPE [dbo].[CommitStatusTableType] AS TABLE(
   [Id]           BIGINT         NOT NULL PRIMARY KEY CLUSTERED,
-  [CreatorId]    BIGINT         NOT NULL,
   [State]        NVARCHAR(MAX)  NULL,
   [TargetUrl]    NVARCHAR(MAX)  NULL,
   [Description]  NVARCHAR(MAX)  NULL,
