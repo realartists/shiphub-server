@@ -23,12 +23,10 @@
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
-    // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
-    public DateTimeOffset AmnestyDate {
-      get => new DateTimeOffset(2017, 7, 4, 0, 0, 0, TimeSpan.Zero);
-    }
-
-    public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
+   // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
+  public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 4, 0, 0, 0, TimeSpan.Zero);
+  
+  public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
       : base(logger) {
       _grainFactory = grainFactory;
       _chargeBee = chargeBee;
@@ -100,8 +98,7 @@
         sub = subList.First().Subscription;
       }
 
-      if (sub.Status == cbm.Subscription.StatusEnum.Cancelled && 
-          new DateTimeOffset(sub.CancelledAt??DateTime.UtcNow, TimeSpan.Zero) < AmnestyDate) {
+      if (sub.Status == cbm.Subscription.StatusEnum.Cancelled && (sub.CancelledAt ?? DateTime.UtcNow) < AmnestyDate) {
         logger.WriteLine("Billing: Applying subscription amnesty for cancelled subscription");
         // delete any payment sources that we've got for this person
         if (customer.PaymentMethod != null) {
