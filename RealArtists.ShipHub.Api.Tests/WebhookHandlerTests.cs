@@ -1,22 +1,16 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
   using System;
   using System.Collections.Generic;
-  using System.Collections.Immutable;
   using System.Linq;
   using System.Net;
-  using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Common.GitHub.Models;
-  using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
-  using QueueClient.Messages;
-  using QueueProcessor.Jobs;
-  using QueueProcessor.Tracing;
   using RealArtists.ShipHub.Actors;
 
   [TestFixture]
@@ -345,7 +339,7 @@
     }
 
     [Test]
-    public async Task OrgHookIsRemovedIfGitHubAddRequestFails() {
+    public async Task OrgHookSetLastErrorIfGitHubAddRequestFails() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
@@ -367,17 +361,13 @@
            .Setup(x => x.AddOrganizationWebhook(org.Login, It.IsAny<Webhook>(), It.IsAny<RequestPriority>()))
            .ThrowsAsync(new Exception("some exception!"));
 
-        var exceptionThrown = false;
-        try {
-          var orgActor = CreateOrgActor(org.Id, org.Login);
-          await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
-        } catch {
-          exceptionThrown = true;
-        }
-        Assert.True(exceptionThrown, "Creating hook should throw exception.");
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        var changes = await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
+
+        Assert.IsEmpty(changes.Repositories, "Failed hook creation should not send notifications.");
 
         var hook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
-        Assert.IsNull(hook, "hook should have been removed when we noticed the AddRepoHook failed");
+        Assert.IsNotNull(hook.LastError, "hook should have been marked as errored when we noticed the AddRepoHook failed");
       }
     }
 
@@ -665,7 +655,7 @@
     }
 
     [Test]
-    public async Task OrgHookWithNullGitHubIdIsRemoved() {
+    public async Task OrgHookWithErrorIsSkipped() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
         var org = TestUtil.MakeTestOrg(context);
@@ -679,8 +669,35 @@
           GitHubId = null, // Empty GitHub Id
           OrganizationId = org.Id,
           Secret = Guid.NewGuid(),
+          LastError = DateTimeOffset.UtcNow,
         });
         await context.SaveChangesAsync();
+
+        var orgActor = CreateOrgActor(org.Id, org.Login);
+        var changes = await orgActor.AddOrUpdateOrganizationWebhooks(context, null);
+
+        var beforeError = hook.LastError;
+        await context.Entry(hook).ReloadAsync();
+        Assert.IsTrue(hook.LastError == beforeError, "Recent LastError should be skipped.");
+        Assert.IsEmpty(changes.Repositories, "skipped hook should not send changes.");
+      }
+    }
+
+    [Test]
+    public async Task OrgHookWithOldErrorIsRetried() {
+      using (var context = new ShipHubContext()) {
+        var user = TestUtil.MakeTestUser(context);
+        var org = TestUtil.MakeTestOrg(context);
+        var hook = context.Hooks.Add(new Hook() {
+          Id = 1001,
+          Events = "event1,event2",
+          GitHubId = null, // Empty GitHub Id
+          OrganizationId = org.Id,
+          Secret = Guid.NewGuid(),
+          LastError = DateTimeOffset.UtcNow.Subtract(OrganizationActor.HookErrorDelay),
+        });
+        await context.SaveChangesAsync();
+        await context.SetUserOrganizations(user.Id, new[] { org.Id });
 
         var mock = new Mock<IGitHubActor>();
 
@@ -701,14 +718,12 @@
           });
 
         var orgActor = CreateOrgActor(org.Id, org.Login);
-        await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
+        var changes = await orgActor.AddOrUpdateOrganizationWebhooks(context, mock.Object);
 
-        var oldHook = context.Hooks.SingleOrDefault(x => x.Id == 1001);
-        Assert.Null(oldHook, "should have been deleted because it had a null GitHubId");
-
-        var newHook = context.Hooks.SingleOrDefault(x => x.OrganizationId == org.Id);
-        Assert.NotNull(newHook);
-        Assert.AreEqual(9999, newHook.GitHubId);
+        await context.Entry(hook).ReloadAsync();
+        Assert.AreEqual(9999, hook.GitHubId);
+        Assert.IsNull(hook.LastError);
+        Assert.IsTrue(changes.Organizations?.First() == org.Id, "New hook should send notifications.");
       }
     }
 
