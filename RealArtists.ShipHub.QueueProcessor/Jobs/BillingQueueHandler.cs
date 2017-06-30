@@ -23,6 +23,11 @@
     private IGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
+    // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
+    public DateTimeOffset AmnestyDate {
+      get => new DateTimeOffset(2017, 7, 4, 0, 0, 0, TimeSpan.Zero);
+    }
+
     public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
       : base(logger) {
       _grainFactory = grainFactory;
@@ -75,8 +80,8 @@
         .Request()).List;
       cbm.Subscription sub = null;
 
+      var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
       if (subList.Count == 0) {
-        var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
         var metaData = new ChargeBeePersonalSubscriptionMetadata() {
           // If someone purchases a personal subscription while their free trial is still
           // going, we'll need to know the trial peroid length so we can give the right amount
@@ -93,6 +98,17 @@
       } else {
         logger.WriteLine("Billing: Subscription already exists");
         sub = subList.First().Subscription;
+      }
+
+      if (sub.Status == cbm.Subscription.StatusEnum.Cancelled && 
+          new DateTimeOffset(sub.CancelledAt??DateTime.UtcNow, TimeSpan.Zero) < AmnestyDate) {
+        logger.WriteLine("Billing: Applying subscription amnesty for cancelled subscription");
+        // delete any payment sources that we've got for this person
+        if (customer.PaymentMethod != null) {
+          logger.WriteLine("Billing: Deleting existing card for cancelled subscription");
+          await _chargeBee.Card.DeleteCardForCustomer(customerId).Request();
+        }
+        sub = (await _chargeBee.Subscription.Reactivate(sub.Id).TrialEnd(trialEnd).Request()).Subscription;
       }
 
       ChangeSummary changes;
