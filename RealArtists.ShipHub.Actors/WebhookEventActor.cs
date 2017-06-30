@@ -13,6 +13,7 @@
   using Common.GitHub.Models.WebhookPayloads;
   using Orleans;
   using Orleans.Concurrency;
+  using Orleans.Runtime;
   using QueueClient;
 
   [Reentrant]
@@ -319,6 +320,8 @@
                 var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
                 await repoActor.ForceSyncAllLinkedAccountRepositories();
               } catch (InvalidOperationException) {
+                // If the repo has already been deleted it can't be activated.
+              } catch (OrleansException) {
                 // If the repo has already been deleted it can't be activated.
               }
 
