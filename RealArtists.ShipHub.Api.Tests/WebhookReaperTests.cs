@@ -185,7 +185,7 @@
     }
 
     [Test]
-    public async Task WillNotPingOrgHooksWhenWeCannotFindAdmins() {
+    public async Task WillMarkOrgHooksPingedWhenWeCannotFindAdmins() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
 
@@ -205,18 +205,22 @@
 
         await mock.Object.Run(collectorMock.Object);
 
+        // Pinged
         context.Entry(env.org1Hook).Reload();
-        Assert.Null(env.org1Hook.PingCount);
+        Assert.AreEqual(1, env.org1Hook.PingCount);
 
-        // Assert that neither org was pinged
-        // Ignore repo hooks
+        // Not pinged
+        context.Entry(env.org2Hook).Reload();
+        Assert.IsNull(env.org2Hook.PingCount);
+
+        // We didn't actually ping them
         Assert.False(pings.ContainsKey(env.org1Hook.Id));
         Assert.False(pings.ContainsKey(env.org2Hook.Id));
       }
     }
 
     [Test]
-    public async Task WillNotPingOrgHooksWhenWeCannotFindAdminsWithTokens() {
+    public async Task WillMarkOrgHooksPingedWhenWeCannotFindAdminsWithTokens() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
 
@@ -246,20 +250,28 @@
 
         await mock.Object.Run(collectorMock.Object);
 
+        // Pinged
         context.Entry(env.org1Hook).Reload();
-        Assert.Null(env.org1Hook.PingCount,
-          "ping attempt should not count since admins had no tokens");
-        Assert.AreEqual(0, pings.Keys.Count);
+        Assert.AreEqual(1, env.org1Hook.PingCount);
+
+        // Not pinged
+        context.Entry(env.org2Hook).Reload();
+        Assert.IsNull(env.org2Hook.PingCount);
+
+        // We didn't actually ping them
+        Assert.False(pings.ContainsKey(env.org1Hook.Id));
+        Assert.False(pings.ContainsKey(env.org2Hook.Id));
       }
     }
 
     [Test]
-    public async Task WillNotPingRepoHooksWhenWeCannotFindAdmins() {
+    public async Task WillRepoHooksPingedWhenWeCannotFindAdmins() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
 
+        // repo1's hook is stale; repo2's hook is fresh.
         env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
-        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-23);
 
         await context.SaveChangesAsync();
 
@@ -278,8 +290,17 @@
 
         await mock.Object.Run(collectorMock.Object);
 
+        // Pinged
         context.Entry(env.repo1Hook).Reload();
-        Assert.Null(env.repo1Hook.PingCount, "ping should not have counted because we could not find an admin.");
+        Assert.AreEqual(1, env.repo1Hook.PingCount);
+
+        // Not Pinged
+        context.Entry(env.repo2Hook).Reload();
+        Assert.IsNull(env.repo2Hook.PingCount);
+
+        // We didn't actually ping them
+        Assert.False(pings.ContainsKey(env.repo1Hook.Id));
+        Assert.False(pings.ContainsKey(env.repo2Hook.Id));
       }
     }
 
@@ -328,12 +349,13 @@
     }
 
     [Test]
-    public async Task WillNotPingRepoHooksWhenWeCannotFindAdminsWithTokens() {
+    public async Task WillMarkRepoHooksPingedWhenWeCannotFindAdminsWithTokens() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
 
+        // repo1's hook is stale; repo2's hook is fresh.
         env.repo1Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
-        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-25);
+        env.repo2Hook.LastSeen = DateTimeOffset.UtcNow.AddHours(-23);
 
         await context.SaveChangesAsync();
 
@@ -357,8 +379,17 @@
 
         await mock.Object.Run(collectorMock.Object);
 
+        // Pinged
         context.Entry(env.repo1Hook).Reload();
-        Assert.Null(env.repo1Hook.PingCount, "ping attempt should not be counted since we had no tokens to ping with.");
+        Assert.AreEqual(1, env.repo1Hook.PingCount);
+
+        // Not Pinged
+        context.Entry(env.repo2Hook).Reload();
+        Assert.IsNull(env.repo2Hook.PingCount);
+
+        // We didn't actually ping them
+        Assert.False(pings.ContainsKey(env.repo1Hook.Id));
+        Assert.False(pings.ContainsKey(env.repo2Hook.Id));
       }
     }
   }

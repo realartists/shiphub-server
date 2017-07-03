@@ -87,6 +87,11 @@
                 var client = CreateGitHubClient(createHookInfo.UserId);
                 pingTasks.Add(client.PingRepositoryWebhook(createHookInfo.RepoFullName, (long)hook.GitHubId));
                 pinged.Add(hook.Id);
+              } else {
+                // We no longer have any credentials to manage the hook.
+                // Mark it pinged, so that it will eventually be collected as inactive
+                // Don't delete immediately in case it's a temporary lapse.
+                pinged.Add(hook.Id);
               }
             } else if (hook.OrganizationId != null) {
               var createHookInfo = await context.OrganizationAccounts
@@ -101,6 +106,11 @@
               if (createHookInfo != null) {
                 var client = CreateGitHubClient(createHookInfo.UserId);
                 pingTasks.Add(client.PingOrganizationWebhook(createHookInfo.OrgLogin, (long)hook.GitHubId));
+                pinged.Add(hook.Id);
+              } else {
+                // We no longer have any credentials to manage the hook.
+                // Mark it pinged, so that it will eventually be collected as inactive.
+                // Don't delete immediately in case it's a temporary lapse.
                 pinged.Add(hook.Id);
               }
             } else {
