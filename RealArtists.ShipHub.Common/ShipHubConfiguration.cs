@@ -29,6 +29,8 @@
     string RaygunApiKey { get; }
     string ShipHubContext { get; }
     string SmtpPassword { get; }
+    string StatHatKey { get; }
+    string StatHatPrefix { get; }
     bool UseFiddler { get; }
     string WebsiteHostName { get; }
   }
@@ -59,6 +61,8 @@
     public string RaygunApiKey { get; set; }
     public string ShipHubContext { get; set; }
     public string SmtpPassword { get; set; }
+    public string StatHatKey { get; set; }
+    public string StatHatPrefix { get; set; }
     public bool UseFiddler { get; set; }
     public string WebsiteHostName { get; set; }
   }
@@ -155,6 +159,12 @@
 
     private Lazy<string> _smtpPassword = new Lazy<string>(() => GetSetting("SmtpPassword", required: true));
     public string SmtpPassword => _smtpPassword.Value;
+
+    private Lazy<string> _statHatKey = new Lazy<string>(() => GetSetting("StatHatKey"));
+    public string StatHatKey => _statHatKey.Value;
+
+    private Lazy<string> _statHatPrefix = new Lazy<string>(() => GetSetting("StatHatPrefix"));
+    public string StatHatPrefix => _statHatPrefix.Value;
 
     private Lazy<bool> _useFiddler = new Lazy<bool>(() => {
       bool result;
