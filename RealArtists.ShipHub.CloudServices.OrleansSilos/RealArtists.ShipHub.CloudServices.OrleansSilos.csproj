@@ -217,6 +217,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="StatHatTelemetryConsumer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaygunTelemetryConsumer.cs" />
     <Compile Include="ShipStartupProvider.cs" />
