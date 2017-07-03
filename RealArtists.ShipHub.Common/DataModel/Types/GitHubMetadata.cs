@@ -29,7 +29,7 @@
     }
 
     public static GitHubMetadata FromResponse(GitHubResponse response) {
-      if (response == null || response.CacheData == null) {
+      if (response?.Succeeded != true) {
         return null;
       }
 
