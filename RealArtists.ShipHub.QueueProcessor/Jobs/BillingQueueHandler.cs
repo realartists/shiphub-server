@@ -24,7 +24,7 @@
     private cb.ChargeBeeApi _chargeBee;
 
    // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
-  public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 4, 0, 0, 0, TimeSpan.Zero);
+  public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 10, 0, 0, 0, TimeSpan.Zero);
   
   public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
       : base(logger) {
