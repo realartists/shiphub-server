@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
-  using System.Collections;
   using System.Collections.Generic;
   using System.Collections.Immutable;
   using System.Data.Entity;
@@ -183,8 +182,7 @@
     public IHttpActionResult Begin(bool publicOnly = false) {
       var clientId = _config.GitHubClientId;
       var scope = string.Join(",", publicOnly ? PublicScopes : PrivateScopes);
-      var relRedir = new Uri(Url.Link("callback", new { clientId = clientId }), UriKind.Relative);
-      var redir = new Uri(Request.RequestUri, relRedir).ToString();
+      var redir = Url.Link("callback", new { clientId = clientId });
       var uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
 
       return Redirect(uri);
