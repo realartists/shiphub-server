@@ -992,17 +992,21 @@
 
     public async Task SyncProtectedBranch(string branchName, long forUserId) {
       var changes = new ChangeSummary();
-      var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
+      IGitHubActor ghc;
+      if (_protectedBranchMetadata.TryGetValue(branchName, out GitHubMetadata metadata)) {
+        // to work around a GitHub bug, prefer to re-request with the user who succeeded last time.
+        ghc = _grainFactory.GetGrain<IGitHubActor>(metadata.UserId);
+      } else {
+        ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId);
+      }
 
-      var branchProtectionResponse = await ghc.BranchProtection(_fullName, branchName, _protectedBranchMetadata.Val(branchName), RequestPriority.Interactive);
+      var branchProtectionResponse = await ghc.BranchProtection(_fullName, branchName, metadata, RequestPriority.Interactive);
 
-      var metadata = GitHubMetadata.FromResponse(branchProtectionResponse);
+      metadata = GitHubMetadata.FromResponse(branchProtectionResponse);
 
-      using (var context = _contextFactory.CreateInstance()) {
-        if (branchProtectionResponse.IsOk) {
+      if (branchProtectionResponse.IsOk) {
+        using (var context = _contextFactory.CreateInstance()) {
           changes.UnionWith(await context.UpdateProtectedBranch(_repoId, branchName, branchProtectionResponse.Result.SerializeObject(), metadata));
-        } else if (branchProtectionResponse.Status == HttpStatusCode.NotFound) {
-          changes.UnionWith(await context.DeleteProtectedBranch(_repoId, branchName));
         }
         _protectedBranchMetadata[branchName] = metadata;
       }
