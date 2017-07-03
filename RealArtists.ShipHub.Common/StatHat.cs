@@ -142,6 +142,7 @@
           ((StatSink)ctx).TimerFired();
         }, this, Timeout.Infinite, Timeout.Infinite);
         _consumerThread = new Thread(ProcessBuffer) {
+          IsBackground = true,
         };
         _consumerThread.Start();
       }
