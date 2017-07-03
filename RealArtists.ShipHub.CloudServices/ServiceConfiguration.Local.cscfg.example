@@ -33,6 +33,10 @@
                value="" />
       <Setting name="ApiHostName"
                value="your.webhook.hostname" />
+      <Setting name="StatHatKey"
+               value="" />
+      <Setting name="StatHatPrefix"
+               value="" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>

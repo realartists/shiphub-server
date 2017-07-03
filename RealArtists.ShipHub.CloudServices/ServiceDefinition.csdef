@@ -18,6 +18,8 @@
       <Setting name="UseSqlAzureExecutionStrategy" />
       <Setting name="GitHubApiRoot" />
       <Setting name="ApiHostName" />
+      <Setting name="StatHatKey" />
+      <Setting name="StatHatPrefix" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

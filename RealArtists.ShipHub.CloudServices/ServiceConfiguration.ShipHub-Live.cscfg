@@ -33,6 +33,10 @@
                value="" />
       <Setting name="ApiHostName"
                value="hub.realartists.com" />
+      <Setting name="StatHatKey"
+               value="" />
+      <Setting name="StatHatPrefix"
+               value="" />
     </ConfigurationSettings>
   </Role>
   <NetworkConfiguration>

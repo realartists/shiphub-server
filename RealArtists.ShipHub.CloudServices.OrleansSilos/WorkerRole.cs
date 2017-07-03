@@ -37,6 +37,10 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         LogManager.TelemetryConsumers.Add(new RaygunTelemetryConsumer(_config.RaygunApiKey));
       }
 
+      if (!_config.StatHatKey.IsNullOrWhiteSpace()) {
+        LogManager.TelemetryConsumers.Add(new StatHatTelemetryConsumer());
+      }
+
       // For information on handling configuration changes
       // see the MSDN topic at https://go.microsoft.com/fwlink/?LinkId=166357.
       RoleEnvironment.Changing += RoleEnvironmentChanging;
