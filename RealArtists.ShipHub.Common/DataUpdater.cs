@@ -9,6 +9,8 @@
   using g = GitHub.Models;
 
   public class DataUpdater {
+    public const int LargeBatchSize = 500;
+
     private ShipHubContext _context;
     private IMapper _mapper;
     private ChangeSummary _changes = new ChangeSummary();
@@ -156,16 +158,21 @@
         .Distinct(x => x.Id);
       await UpdateLabels(repositoryId, labels);
 
-      var repoIssues = _mapper.Map<IEnumerable<IssueTableType>>(issues);
-      var labelMap = issues.SelectMany(x => x.Labels.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id }));
-      var assigneeMap = issues.SelectMany(x =>
-        x.Assignees?.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id })
-        ?? Array.Empty<IssueMappingTableType>());
-      var issueChanges = await _context.BulkUpdateIssues(repositoryId, repoIssues, labelMap, assigneeMap);
+      var issueArray = issues.ToArray();
+      for (var i = 0; i < issueArray.Length; i += LargeBatchSize) {
+        var segment = new ArraySegment<g.Issue>(issueArray, i, Math.Min(LargeBatchSize, issueArray.Length - i));
 
-      if (!issueChanges.IsEmpty) {
-        IssuesChanged = true;
-        _changes.UnionWith(issueChanges);
+        var repoIssues = _mapper.Map<IEnumerable<IssueTableType>>(segment);
+        var labelMap = segment.SelectMany(x => x.Labels.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id }));
+        var assigneeMap = segment.SelectMany(x =>
+          x.Assignees?.Select(y => new IssueMappingTableType() { IssueId = x.Id, IssueNumber = x.Number, MappedId = y.Id })
+          ?? Array.Empty<IssueMappingTableType>());
+        var issueChanges = await _context.BulkUpdateIssues(repositoryId, repoIssues, labelMap, assigneeMap);
+
+        if (!issueChanges.IsEmpty) {
+          IssuesChanged = true;
+          _changes.UnionWith(issueChanges);
+        }
       }
     }
 
@@ -253,11 +260,16 @@
         await UpdateMilestones(repositoryId, date, milestones);
       }
 
-      var prs = _mapper.Map<IEnumerable<PullRequestTableType>>(pullRequests);
-      var prReviewers = pullRequests.SelectMany(x =>
-        x.RequestedReviewers?.Select(y => new IssueMappingTableType(y.Id, x.Number))
-        ?? Array.Empty<IssueMappingTableType>());
-      _changes.UnionWith(await _context.BulkUpdatePullRequests(repositoryId, prs, prReviewers));
+      var issueArray = pullRequests.ToArray();
+      for (var i = 0; i < issueArray.Length; i += LargeBatchSize) {
+        var segment = new ArraySegment<g.PullRequest>(issueArray, i, Math.Min(LargeBatchSize, issueArray.Length - i));
+
+        var prs = _mapper.Map<IEnumerable<PullRequestTableType>>(segment);
+        var prReviewers = segment.SelectMany(x =>
+          x.RequestedReviewers?.Select(y => new IssueMappingTableType(y.Id, x.Number))
+          ?? Array.Empty<IssueMappingTableType>());
+        _changes.UnionWith(await _context.BulkUpdatePullRequests(repositoryId, prs, prReviewers));
+      }
     }
 
     public async Task UpdateRepositories(DateTimeOffset date, IEnumerable<g.Repository> repositories, bool enable = false) {
