@@ -1030,7 +1030,8 @@
       GitHubMetadata contentsPullRequestTemplateMetadata,
       GitHubMetadata pullRequestMetadata,
       DateTimeOffset? pullRequestUpdatedAt,
-      uint pullRequestSkip) {
+      uint pullRequestSkip,
+      IDictionary<string, GitHubMetadata> protectedBranchMetadata) {
       return RetryOnDeadlock(async () => {
         using (var sp = new DynamicStoredProcedure("[dbo].[SaveRepositoryMetadata]", ConnectionFactory)) {
           dynamic dsp = sp;
@@ -1050,6 +1051,19 @@
           dsp.PullRequestMetadataJson = pullRequestMetadata.SerializeObject();
           dsp.PullRequestUpdatedAt = pullRequestUpdatedAt;
           dsp.PullRequestSkip = (int)pullRequestSkip;
+          dsp.ProtectedBranchMetadata = CreateTableParameter(
+            "ProtectedBranchMetadata",
+            "[dbo].[ProtectedBranchMetadataTableType]",
+            new[] {
+              ("Name", typeof(string)),
+              ("MetadataJson", typeof(string))
+            },
+            pbr => new object[] {
+              pbr.Key,
+              pbr.Value.SerializeObject()
+            },
+            protectedBranchMetadata
+          );
 
           return await sp.ExecuteNonQueryAsync();
         }

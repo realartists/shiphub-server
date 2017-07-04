@@ -204,7 +204,8 @@
         _contentsPullRequestTemplateMetadata,
         _pullRequestMetadata,
         _pullRequestUpdatedAt,
-        _pullRequestSkip);
+        _pullRequestSkip,
+        _protectedBranchMetadata);
     }
 
     public async Task ForceSyncAllLinkedAccountRepositories() {
@@ -993,7 +994,8 @@
     public async Task SyncProtectedBranch(string branchName, long forUserId) {
       var changes = new ChangeSummary();
       IGitHubActor ghc;
-      if (_protectedBranchMetadata.TryGetValue(branchName, out GitHubMetadata metadata)) {
+      var metadata = _protectedBranchMetadata.Val(branchName);
+      if (metadata != null) {
         // to work around a GitHub bug, prefer to re-request with the user who succeeded last time.
         ghc = _grainFactory.GetGrain<IGitHubActor>(metadata.UserId);
       } else {
@@ -1008,8 +1010,9 @@
         using (var context = _contextFactory.CreateInstance()) {
           changes.UnionWith(await context.UpdateProtectedBranch(_repoId, branchName, branchProtectionResponse.Result.SerializeObject(), metadata));
         }
-        _protectedBranchMetadata[branchName] = metadata;
       }
+
+      _protectedBranchMetadata[branchName] = metadata;
 
       if (!changes.IsEmpty) {
         await _queueClient.NotifyChanges(changes);
