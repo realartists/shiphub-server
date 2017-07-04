@@ -248,7 +248,7 @@
         await context.BulkUpdateIssues(
           repo.Id,
           new[] { issue },
-          labels.Select(x => new IssueMappingTableType() { IssueId = issue.Id.Value, IssueNumber = issue.Number, MappedId = x.Id }),
+          labels.Select(x => new IssueMappingTableType() { IssueId = issue.Id, IssueNumber = issue.Number, MappedId = x.Id }),
           Array.Empty<IssueMappingTableType>());
         await syncContext.Sync(changeSummary);
 
