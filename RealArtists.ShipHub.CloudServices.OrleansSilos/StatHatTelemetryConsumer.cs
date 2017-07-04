@@ -30,7 +30,7 @@
     }
 
     private string StatName(string name) {
-      return $"SiloTelemetry.{HostName}.{name}";
+      return $"{HostName}.SiloTelemetry.{name}";
     }
 
     private void ReportCount(string name, long count = 1, DateTimeOffset? timestamp = null) {
