@@ -14,7 +14,8 @@
   @ContentsPullRequestTemplateMetadataJson NVARCHAR(MAX) = NULL,
   @PullRequestMetadataJson NVARCHAR(MAX) = NULL,
   @PullRequestUpdatedAt DATETIMEOFFSET = NULL,
-  @PullRequestSkip INT = NULL
+  @PullRequestSkip INT = NULL,
+  @ProtectedBranchMetadata ProtectedBranchMetadataTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -38,4 +39,14 @@ BEGIN
     PullRequestUpdatedAt = @PullRequestUpdatedAt,
     PullRequestSkip = @PullRequestSkip
   WHERE Id = @RepositoryId
+
+  MERGE INTO ProtectedBranches AS [Target]
+  USING (
+    SELECT [Name], MetadataJson
+      FROM @ProtectedBranchMetadata
+  ) AS [Source]
+  ON ([Target].RepositoryId = @RepositoryId AND [Target].[Name] = [Source].[Name])
+  WHEN MATCHED THEN UPDATE SET
+    MetadataJson = [Source].MetadataJson;
+
 END
