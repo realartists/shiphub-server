@@ -238,6 +238,9 @@
         if (pr.Assignees?.Any() == true) {
           allAccounts.AddRange(pr.Assignees);
         }
+        if (pr.RequestedReviewers?.Any() == true) {
+          allAccounts.AddRange(pr.RequestedReviewers);
+        }
       }
       var accounts = allAccounts.Where(x => x != null).Distinct(x => x.Id);
       await UpdateAccounts(date, accounts);
