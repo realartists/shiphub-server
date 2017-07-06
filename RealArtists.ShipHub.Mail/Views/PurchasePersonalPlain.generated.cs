@@ -31,7 +31,7 @@ WriteLiteral("\r\n");
 
             
             #line 3 "..\..\Views\PurchasePersonalPlain.cshtml"
-   
+  
   Layout = new RealArtists.ShipHub.Mail.Views.LayoutPlain() { Model = Model };
 
 
@@ -59,8 +59,8 @@ WriteLiteral("\r\n");
             
             #line default
             #line hidden
-WriteLiteral("\r\nA discount was applied to your first invoice becuase you still had some time re" +
-"maining on your free trial.  Next month you\'ll see the regular price of $9/month" +
+WriteLiteral("\r\nA discount was applied to your first invoice because you still had some time re" +
+"maining on your free trial.  Next month you\'ll see the regular price of $5/month" +
 ".\r\n");
 
 
