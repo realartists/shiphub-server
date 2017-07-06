@@ -73,9 +73,9 @@ WriteLiteral("\">Download a PDF receipt</a> for your records.\r\n</p>\r\n");
             
             #line default
             #line hidden
-WriteLiteral("<p>\r\n    A discount was applied to your first invoice becuase you still had some " +
+WriteLiteral("<p>\r\n    A discount was applied to your first invoice because you still had some " +
 "time\r\n    remaining on your free trial.  Next month you\'ll see the regular price" +
-" of $9/month.\r\n</p>\r\n");
+" of $5/month.\r\n</p>\r\n");
 
 
             
@@ -118,7 +118,8 @@ WriteLiteral(@"
     from within the Ship application. From the <em>Ship</em> menu,
     choose <em>Manage Subscription</em>.  Then click <em>Manage</em> for
     your account.
-</p>");
+</p>
+");
 
 
         }

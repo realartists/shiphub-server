@@ -20,105 +20,100 @@ namespace RealArtists.ShipHub.Mail.Views
     public partial class LayoutHtml : RealArtists.ShipHub.Mail.ShipHubTemplateBase<RealArtists.ShipHub.Mail.Models.MailMessageBase>
     {
 #line hidden
+
         public override void Execute()
         {
+
+
 WriteLiteral("\r\n");
 
+
 WriteLiteral("<!--\r\n  Original template borrowed from:\r\n  https://github.com/leemunroe/responsi" +
-"ve-html-email-template\r\n-->\r\n<!doctype html>\r\n<html>\r\n<head>\r\n    <meta");
+"ve-html-email-template\r\n-->\r\n<!doctype html>\r\n<html>\r\n<head>\r\n    <meta name=\"vi" +
+"ewport\" content=\"width=device-width\" />\r\n    <meta http-equiv=\"Content-Type\" con" +
+"tent=\"text/html; charset=UTF-8\" />\r\n    <style>\r\n/* ----------------------------" +
+"---------\r\nCONFIGURE YOUR VARIABLES\r\n------------------------------------- */\r\n/" +
+"* -------------------------------------\r\nGLOBAL RESETS\r\n------------------------" +
+"------------- */\r\ntable,\r\ntd,\r\ndiv,\r\na {\r\n  box-sizing: border-box;\r\n}\r\n\r\nimg {\r" +
+"\n  -ms-interpolation-mode: bicubic;\r\n  max-width: 100%;\r\n}\r\n\r\nbody {\r\n  font-fam" +
+"ily: \"Helvetica Neue\", \"Helvetica\", Helvetica, Arial, sans-serif;\r\n  -webkit-fon" +
+"t-smoothing: antialiased;\r\n  font-size: 14px;\r\n  height: 100% !important;\r\n  lin" +
+"e-height: 1.6em;\r\n  margin: 0;\r\n  padding: 0;\r\n  -ms-text-size-adjust: 100%;\r\n  " +
+"-webkit-text-size-adjust: 100%;\r\n  width: 100% !important;\r\n}\r\n\r\ntable {\r\n  bord" +
+"er-collapse: separate !important;\r\n  mso-table-lspace: 0pt;\r\n  mso-table-rspace:" +
+" 0pt;\r\n  width: 100%;\r\n}\r\ntable td {\r\n  font-family: \"Helvetica Neue\", Helvetica" +
+", Arial, \"Lucida Grande\", sans-serif;\r\n  font-size: 14px;\r\n  vertical-align: top" +
+";\r\n}\r\n\r\n.ExternalClass {\r\n  width: 100%;\r\n}\r\n\r\n.ExternalClass,\r\n.ExternalClass p" +
+",\r\n.ExternalClass span,\r\n.ExternalClass font,\r\n.ExternalClass td,\r\n.ExternalClas" +
+"s div {\r\n  line-height: 100%;\r\n}\r\n\r\n/* -------------------------------------\r\nBO" +
+"DY & CONTAINER\r\n------------------------------------- */\r\nbody {\r\n  background-c" +
+"olor: #fff;\r\n}\r\n\r\n.body {\r\n  color: #333;\r\n  width: 100%;\r\n}\r\n\r\n/* Set a max-wid" +
+"th, and make it display as block so it will automatically stretch to that width," +
+" but will also shrink down on a phone or something */\r\n.container {\r\n  display: " +
+"block;\r\n  margin: 0 auto !important;\r\n  /* makes it centered */\r\n  max-width: 58" +
+"0px;\r\n  padding: 0px;\r\n  width: 100%;\r\n}\r\n\r\n/* This should also be a block eleme" +
+"nt, so that it will fill 100% of the .container */\r\n.content {\r\n  display: block" +
+";\r\n  margin: 0 auto;\r\n  max-width: 580px;\r\n  padding: 0px;\r\n}\r\n\r\n/* ------------" +
+"-------------------------\r\nHEADER, FOOTER, MAIN\r\n-------------------------------" +
+"------ */\r\n.main {\r\n  width: 100%;\r\n}\r\n\r\n.wrapper-horiz-padding {\r\n  padding-lef" +
+"t: 10px;\r\n  padding-right: 10px;\r\n}\r\n\r\n.wrapper-vert-padding {\r\n  padding-bottom" +
+": 30px;\r\n  padding-top: 30px;\r\n}\r\n\r\n.header {\r\n  margin-bottom: 15px;\r\n  margin-" +
+"top: 20px;\r\n  width: 100%;\r\n}\r\n\r\n.footer {\r\n  clear: both;\r\n  width: 100%;\r\n}\r\n." +
+"footer * {\r\n  color: #999999;\r\n  font-size: 12px;\r\n}\r\n\r\n/* ---------------------" +
+"----------------\r\nTYPOGRAPHY\r\n------------------------------------- */\r\nh1,\r\nh2," +
+"\r\nh3,\r\nh4 {\r\n  color: #222 !important;\r\n  font-family: \"Helvetica Neue\", Helveti" +
+"ca, Arial, \"Lucida Grande\", sans-serif;\r\n  font-weight: bold;\r\n  line-height: 1." +
+"4em;\r\n  margin: 0;\r\n  padding-bottom: 8px;\r\n}\r\n\r\nh1 {\r\n  font-size: 38px;\r\n  tex" +
+"t-transform: capitalize;\r\n  font-weight: bolder;\r\n}\r\n\r\nh2 {\r\n  font-size: 24px;\r" +
+"\n}\r\n\r\nh3 {\r\n  font-size: 18px;\r\n}\r\n\r\nh4 {\r\n  font-size: 14px;\r\n  font-weight: bo" +
+"ld;\r\n}\r\n\r\np,\r\nul,\r\nol {\r\n  font-family: \"Helvetica Neue\", Helvetica, Arial, \"Luc" +
+"ida Grande\", sans-serif;\r\n  font-size: 14px;\r\n  font-weight: normal;\r\n  margin: " +
+"0;\r\n  margin-bottom: 15px;\r\n}\r\np li,\r\nul li,\r\nol li {\r\n  list-style-position: in" +
+"side;\r\n  margin-left: 5px;\r\n}\r\n\r\na {\r\n  color: #348eda;\r\n  text-decoration: unde" +
+"rline;\r\n}\r\n\r\ncode,\r\npre,\r\n.word-wrap {\r\n  word-break: break-word;\r\n  word-wrap: " +
+"break-word;\r\n  -webkit-hyphens: auto;\r\n  -moz-hyphens: auto;\r\n  hyphens: auto;\r\n" +
+"}\r\n\r\n/* -------------------------------------\r\nBUTTONS\r\n------------------------" +
+"------------- */\r\n.btn {\r\n  width: 100%;\r\n}\r\n.btn > tr > td {\r\n  padding-bottom:" +
+" 15px;\r\n}\r\n.btn table {\r\n  width: auto;\r\n}\r\n.btn table td {\r\n  background-color:" +
+" #ffffff;\r\n  border-radius: 5px;\r\n  text-align: center;\r\n}\r\n.btn a {\r\n  backgrou" +
+"nd-color: #ffffff;\r\n  border: solid 1px #348eda;\r\n  border-radius: 5px;\r\n  color" +
+": #348eda;\r\n  cursor: pointer;\r\n  display: inline-block;\r\n  font-size: 14px;\r\n  " +
+"font-weight: bold;\r\n  margin: 0;\r\n  padding: 12px 25px;\r\n  text-decoration: none" +
+";\r\n  text-transform: capitalize;\r\n}\r\n\r\n.btn-primary table td {\r\n  background-col" +
+"or: #348eda;\r\n}\r\n\r\n.btn-primary a {\r\n  background-color: #348eda;\r\n  border-colo" +
+"r: #348eda;\r\n  color: #ffffff;\r\n}\r\n\r\n.btn-secondary table td {\r\n  background-col" +
+"or: transparent;\r\n}\r\n\r\n.btn-secondary a {\r\n  background-color: transparent;\r\n  b" +
+"order-color: #348eda;\r\n  color: #348eda;\r\n}\r\n\r\n/* ------------------------------" +
+"-------\r\nNOTICES\r\n------------------------------------- */\r\n.notice {\r\n  border-" +
+"collapse: separate;\r\n}\r\n.notice-spacer {\r\n  padding: 10px 0;\r\n}\r\n.notice td {\r\n " +
+" line-height: 1.6;\r\n  font-size: 14px;\r\n  font-weight: normal;\r\n}\r\n.notice-info " +
+"td {\r\n  background: #f0f6fb;\r\n  border: 1px solid #b7d3ed;\r\n  border-radius: 6px" +
+";\r\n  color: #2c6eac;\r\n  padding: 8px 12px;\r\n}\r\n.notice-success td {\r\n  backgroun" +
+"d: #e1f2bd;\r\n  border: 1px solid #c6e682;\r\n  border-radius: 6px;\r\n  color: #6182" +
+"1a;\r\n  padding: 8px 12px;\r\n}\r\n.notice-warning td {\r\n  background: #f7eed0;\r\n  bo" +
+"rder: 1px solid #edd993;\r\n  border-radius: 6px;\r\n  color: #9a7d1a;\r\n  padding: 8" +
+"px 12px;\r\n}\r\n.notice-danger td {\r\n  background: #f5d5d5;\r\n  border: 1px solid #e" +
+"89b9b;\r\n  border-radius: 6px;\r\n  color: #952222;\r\n  padding: 8px 12px;\r\n}\r\n.noti" +
+"ce-lg td {\r\n  font-size: 16.8px;\r\n  line-height: 1.6;\r\n}\r\n\r\n/* -----------------" +
+"--------------------\r\nDIVIDERS\r\n------------------------------------- */\r\n.divid" +
+"er {\r\n  border-collapse: separate;\r\n}\r\n.divider-spacer {\r\n  padding: 20px 0;\r\n}\r" +
+"\n.divider td {\r\n  border-top: 1px solid #ccc;\r\n  line-height: 0;\r\n  font-size: 0" +
+";\r\n  height: 1px;\r\n  margin: 0;\r\n  padding: 0;\r\n}\r\n\r\n/* ------------------------" +
+"-------------\r\nOTHER STYLES THAT MIGHT BE USEFUL\r\n------------------------------" +
+"------- */\r\n.last {\r\n  margin-bottom: 0;\r\n}\r\n\r\n.first {\r\n  margin-top: 0;\r\n}\r\n\r\n" +
+".align-center {\r\n  text-align: center;\r\n}\r\n\r\n.align-right {\r\n  text-align: right" +
+";\r\n}\r\n\r\n.align-left {\r\n  text-align: left;\r\n}\r\n\r\n.clear {\r\n  clear: both;\r\n}\r\n\r\n" +
+".mt0 {\r\n  margin-top: 0;\r\n}\r\n\r\n.mb0 {\r\n  margin-bottom: 0;\r\n}\r\n\r\n.preheader {\r\n " +
+" color: transparent;\r\n  display: none;\r\n  height: 0;\r\n  max-height: 0;\r\n  max-wi" +
+"dth: 0;\r\n  opacity: 0;\r\n  overflow: hidden;\r\n  mso-hide: all;\r\n  visibility: hid" +
+"den;\r\n  width: 0;\r\n}\r\n\r\ndiv.hero {\r\n  font-size: 22px;\r\n  color: #999 !important" +
+";\r\n  font-weight: bold;\r\n  padding-top: 8px;\r\n}\r\n\r\nhr {\r\n  margin-top: 5px;\r\n  m" +
+"argin-bottom: 8px;\r\n  height: 1px;\r\n  border-top: 0;\r\n  border-left: 0;\r\n  borde" +
+"r-right: 0;\r\n  border-bottom: 1px solid #ccc;\r\n}\r\n\r\np.reply-burb {\r\n  text-align" +
+": center;\r\n}\r\n\r\nimg.ship-logo {\r\n  width: 54px;\r\n  height: 54px;\r\n}\r\n\r\n/* ------" +
+"-------------------------------\r\nRESPONSIVE AND MOBILE FRIENDLY STYLES\r\n--------" +
+"----------------------------- */\r\n");
 
-WriteLiteral(" name=\"viewport\"");
-
-WriteLiteral(" content=\"width=device-width\"");
-
-WriteLiteral(" />\r\n    <meta");
-
-WriteLiteral(" http-equiv=\"Content-Type\"");
-
-WriteLiteral(" content=\"text/html; charset=UTF-8\"");
-
-WriteLiteral(" />\r\n    <style>\r\n/* -------------------------------------\r\nCONFIGURE YOUR VARIAB" +
-"LES\r\n------------------------------------- */\r\n/* ------------------------------" +
-"-------\r\nGLOBAL RESETS\r\n------------------------------------- */\r\ntable,\r\ntd,\r\nd" +
-"iv,\r\na {\r\n  box-sizing: border-box;\r\n}\r\n\r\nimg {\r\n  -ms-interpolation-mode: bicub" +
-"ic;\r\n  max-width: 100%;\r\n}\r\n\r\nbody {\r\n  font-family: \"Helvetica Neue\", \"Helvetic" +
-"a\", Helvetica, Arial, sans-serif;\r\n  -webkit-font-smoothing: antialiased;\r\n  fon" +
-"t-size: 14px;\r\n  height: 100% !important;\r\n  line-height: 1.6em;\r\n  margin: 0;\r\n" +
-"  padding: 0;\r\n  -ms-text-size-adjust: 100%;\r\n  -webkit-text-size-adjust: 100%;\r" +
-"\n  width: 100% !important;\r\n}\r\n\r\ntable {\r\n  border-collapse: separate !important" +
-";\r\n  mso-table-lspace: 0pt;\r\n  mso-table-rspace: 0pt;\r\n  width: 100%;\r\n}\r\ntable " +
-"td {\r\n  font-family: \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", sans-s" +
-"erif;\r\n  font-size: 14px;\r\n  vertical-align: top;\r\n}\r\n\r\n.ExternalClass {\r\n  widt" +
-"h: 100%;\r\n}\r\n\r\n.ExternalClass,\r\n.ExternalClass p,\r\n.ExternalClass span,\r\n.Extern" +
-"alClass font,\r\n.ExternalClass td,\r\n.ExternalClass div {\r\n  line-height: 100%;\r\n}" +
-"\r\n\r\n/* -------------------------------------\r\nBODY & CONTAINER\r\n----------------" +
-"--------------------- */\r\nbody {\r\n  background-color: #fff;\r\n}\r\n\r\n.body {\r\n  col" +
-"or: #333;\r\n  width: 100%;\r\n}\r\n\r\n/* Set a max-width, and make it display as block" +
-" so it will automatically stretch to that width, but will also shrink down on a " +
-"phone or something */\r\n.container {\r\n  display: block;\r\n  margin: 0 auto !import" +
-"ant;\r\n  /* makes it centered */\r\n  max-width: 580px;\r\n  padding: 0px;\r\n  width: " +
-"100%;\r\n}\r\n\r\n/* This should also be a block element, so that it will fill 100% of" +
-" the .container */\r\n.content {\r\n  display: block;\r\n  margin: 0 auto;\r\n  max-widt" +
-"h: 580px;\r\n  padding: 0px;\r\n}\r\n\r\n/* -------------------------------------\r\nHEADE" +
-"R, FOOTER, MAIN\r\n------------------------------------- */\r\n.main {\r\n  width: 100" +
-"%;\r\n}\r\n\r\n.wrapper-horiz-padding {\r\n  padding-left: 10px;\r\n  padding-right: 10px;" +
-"\r\n}\r\n\r\n.wrapper-vert-padding {\r\n  padding-bottom: 30px;\r\n  padding-top: 30px;\r\n}" +
-"\r\n\r\n.header {\r\n  margin-bottom: 15px;\r\n  margin-top: 20px;\r\n  width: 100%;\r\n}\r\n\r" +
-"\n.footer {\r\n  clear: both;\r\n  width: 100%;\r\n}\r\n.footer * {\r\n  color: #999999;\r\n " +
-" font-size: 12px;\r\n}\r\n\r\n/* -------------------------------------\r\nTYPOGRAPHY\r\n--" +
-"----------------------------------- */\r\nh1,\r\nh2,\r\nh3,\r\nh4 {\r\n  color: #222 !impo" +
-"rtant;\r\n  font-family: \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", sans" +
-"-serif;\r\n  font-weight: bold;\r\n  line-height: 1.4em;\r\n  margin: 0;\r\n  padding-bo" +
-"ttom: 8px;\r\n}\r\n\r\nh1 {\r\n  font-size: 38px;\r\n  text-transform: capitalize;\r\n  font" +
-"-weight: bolder;\r\n}\r\n\r\nh2 {\r\n  font-size: 24px;\r\n}\r\n\r\nh3 {\r\n  font-size: 18px;\r\n" +
-"}\r\n\r\nh4 {\r\n  font-size: 14px;\r\n  font-weight: bold;\r\n}\r\n\r\np,\r\nul,\r\nol {\r\n  font-" +
-"family: \"Helvetica Neue\", Helvetica, Arial, \"Lucida Grande\", sans-serif;\r\n  font" +
-"-size: 14px;\r\n  font-weight: normal;\r\n  margin: 0;\r\n  margin-bottom: 15px;\r\n}\r\np" +
-" li,\r\nul li,\r\nol li {\r\n  list-style-position: inside;\r\n  margin-left: 5px;\r\n}\r\n\r" +
-"\na {\r\n  color: #348eda;\r\n  text-decoration: underline;\r\n}\r\n\r\ncode,\r\npre,\r\n.word-" +
-"wrap {\r\n  word-break: break-word;\r\n  word-wrap: break-word;\r\n  -webkit-hyphens: " +
-"auto;\r\n  -moz-hyphens: auto;\r\n  hyphens: auto;\r\n}\r\n\r\n/* ------------------------" +
-"-------------\r\nBUTTONS\r\n------------------------------------- */\r\n.btn {\r\n  widt" +
-"h: 100%;\r\n}\r\n.btn > tr > td {\r\n  padding-bottom: 15px;\r\n}\r\n.btn table {\r\n  width" +
-": auto;\r\n}\r\n.btn table td {\r\n  background-color: #ffffff;\r\n  border-radius: 5px;" +
-"\r\n  text-align: center;\r\n}\r\n.btn a {\r\n  background-color: #ffffff;\r\n  border: so" +
-"lid 1px #348eda;\r\n  border-radius: 5px;\r\n  color: #348eda;\r\n  cursor: pointer;\r\n" +
-"  display: inline-block;\r\n  font-size: 14px;\r\n  font-weight: bold;\r\n  margin: 0;" +
-"\r\n  padding: 12px 25px;\r\n  text-decoration: none;\r\n  text-transform: capitalize;" +
-"\r\n}\r\n\r\n.btn-primary table td {\r\n  background-color: #348eda;\r\n}\r\n\r\n.btn-primary " +
-"a {\r\n  background-color: #348eda;\r\n  border-color: #348eda;\r\n  color: #ffffff;\r\n" +
-"}\r\n\r\n.btn-secondary table td {\r\n  background-color: transparent;\r\n}\r\n\r\n.btn-seco" +
-"ndary a {\r\n  background-color: transparent;\r\n  border-color: #348eda;\r\n  color: " +
-"#348eda;\r\n}\r\n\r\n/* -------------------------------------\r\nNOTICES\r\n--------------" +
-"----------------------- */\r\n.notice {\r\n  border-collapse: separate;\r\n}\r\n.notice-" +
-"spacer {\r\n  padding: 10px 0;\r\n}\r\n.notice td {\r\n  line-height: 1.6;\r\n  font-size:" +
-" 14px;\r\n  font-weight: normal;\r\n}\r\n.notice-info td {\r\n  background: #f0f6fb;\r\n  " +
-"border: 1px solid #b7d3ed;\r\n  border-radius: 6px;\r\n  color: #2c6eac;\r\n  padding:" +
-" 8px 12px;\r\n}\r\n.notice-success td {\r\n  background: #e1f2bd;\r\n  border: 1px solid" +
-" #c6e682;\r\n  border-radius: 6px;\r\n  color: #61821a;\r\n  padding: 8px 12px;\r\n}\r\n.n" +
-"otice-warning td {\r\n  background: #f7eed0;\r\n  border: 1px solid #edd993;\r\n  bord" +
-"er-radius: 6px;\r\n  color: #9a7d1a;\r\n  padding: 8px 12px;\r\n}\r\n.notice-danger td {" +
-"\r\n  background: #f5d5d5;\r\n  border: 1px solid #e89b9b;\r\n  border-radius: 6px;\r\n " +
-" color: #952222;\r\n  padding: 8px 12px;\r\n}\r\n.notice-lg td {\r\n  font-size: 16.8px;" +
-"\r\n  line-height: 1.6;\r\n}\r\n\r\n/* -------------------------------------\r\nDIVIDERS\r\n" +
-"------------------------------------- */\r\n.divider {\r\n  border-collapse: separat" +
-"e;\r\n}\r\n.divider-spacer {\r\n  padding: 20px 0;\r\n}\r\n.divider td {\r\n  border-top: 1p" +
-"x solid #ccc;\r\n  line-height: 0;\r\n  font-size: 0;\r\n  height: 1px;\r\n  margin: 0;\r" +
-"\n  padding: 0;\r\n}\r\n\r\n/* -------------------------------------\r\nOTHER STYLES THAT" +
-" MIGHT BE USEFUL\r\n------------------------------------- */\r\n.last {\r\n  margin-bo" +
-"ttom: 0;\r\n}\r\n\r\n.first {\r\n  margin-top: 0;\r\n}\r\n\r\n.align-center {\r\n  text-align: c" +
-"enter;\r\n}\r\n\r\n.align-right {\r\n  text-align: right;\r\n}\r\n\r\n.align-left {\r\n  text-al" +
-"ign: left;\r\n}\r\n\r\n.clear {\r\n  clear: both;\r\n}\r\n\r\n.mt0 {\r\n  margin-top: 0;\r\n}\r\n\r\n." +
-"mb0 {\r\n  margin-bottom: 0;\r\n}\r\n\r\n.preheader {\r\n  color: transparent;\r\n  display:" +
-" none;\r\n  height: 0;\r\n  max-height: 0;\r\n  max-width: 0;\r\n  opacity: 0;\r\n  overfl" +
-"ow: hidden;\r\n  mso-hide: all;\r\n  visibility: hidden;\r\n  width: 0;\r\n}\r\n\r\ndiv.hero" +
-" {\r\n  font-size: 22px;\r\n  color: #999 !important;\r\n  font-weight: bold;\r\n  paddi" +
-"ng-top: 8px;\r\n}\r\n\r\nhr {\r\n  margin-top: 5px;\r\n  margin-bottom: 8px;\r\n  height: 1p" +
-"x;\r\n  border-top: 0;\r\n  border-left: 0;\r\n  border-right: 0;\r\n  border-bottom: 1p" +
-"x solid #ccc;\r\n}\r\n\r\np.reply-burb {\r\n  text-align: center;\r\n}\r\n\r\nimg.ship-logo {\r" +
-"\n  width: 54px;\r\n  height: 54px;\r\n}\r\n\r\n/* -------------------------------------\r" +
-"\nRESPONSIVE AND MOBILE FRIENDLY STYLES\r\n------------------------------------- */" +
-"\r\n");
 
 WriteLiteral(@"@media only screen and (max-width: 667px) {
   table[class=body] h1,
@@ -160,13 +155,9 @@ WriteLiteral(@"@media only screen and (max-width: 667px) {
     </style>
 </head>
 <body>
-    <div");
+    <div class=""preheader"">
+        ");
 
-WriteLiteral(" class=\"preheader\"");
-
-WriteLiteral(">\r\n");
-
-WriteLiteral("        ");
 
             
             #line 431 "..\..\Views\LayoutHtml.cshtml"
@@ -175,52 +166,32 @@ WriteLiteral("        ");
             
             #line default
             #line hidden
-WriteLiteral("\r\n        <br />\r\n    </div>\r\n    <table");
+WriteLiteral(@"
+        <br />
+    </div>
+    <table class=""body"">
+        <tr>
+            <td></td>
+            <td class=""container"">
+                <div class=""content"">
+                    <div class=""header"">
+                        <table>
+                            <tr>
+                                <td class=""align-center"">
+                                    <img src=""cid:ShipLogo.png"" height=""54"" width=""54"" alt=""Ship"" class=""ship-logo"">
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <table class=""main"">
+                        <tr>
+                            <td class=""wrapper-horiz-padding wrapper-vert-padding"">
+                                <table>
+                                    <tr>
+                                        <td>
+                                            <p>
+                                                Hi ");
 
-WriteLiteral(" class=\"body\"");
-
-WriteLiteral(">\r\n        <tr>\r\n            <td></td>\r\n            <td");
-
-WriteLiteral(" class=\"container\"");
-
-WriteLiteral(">\r\n                <div");
-
-WriteLiteral(" class=\"content\"");
-
-WriteLiteral(">\r\n                    <div");
-
-WriteLiteral(" class=\"header\"");
-
-WriteLiteral(">\r\n                        <table>\r\n                            <tr>\r\n           " +
-"                     <td");
-
-WriteLiteral(" class=\"align-center\"");
-
-WriteLiteral(">\r\n                                    <img");
-
-WriteLiteral(" src=\"cid:ShipLogo.png\"");
-
-WriteLiteral(" height=\"54\"");
-
-WriteLiteral(" width=\"54\"");
-
-WriteLiteral(" alt=\"Ship\"");
-
-WriteLiteral(" class=\"ship-logo\"");
-
-WriteLiteral(">\r\n                                </td>\r\n                            </tr>\r\n    " +
-"                    </table>\r\n                    </div>\r\n                    <t" +
-"able");
-
-WriteLiteral(" class=\"main\"");
-
-WriteLiteral(">\r\n                        <tr>\r\n                            <td");
-
-WriteLiteral(" class=\"wrapper-horiz-padding wrapper-vert-padding\"");
-
-WriteLiteral(">\r\n                                <table>\r\n                                    <" +
-"tr>\r\n                                        <td>\r\n                             " +
-"               <p>\r\n                                                Hi ");
 
             
             #line 455 "..\..\Views\LayoutHtml.cshtml"
@@ -229,9 +200,9 @@ WriteLiteral(">\r\n                                <table>\r\n                  
             
             #line default
             #line hidden
-WriteLiteral(",\r\n                                            </p>\r\n");
+WriteLiteral(",\r\n                                            </p>\r\n                            " +
+"                ");
 
-WriteLiteral("                                            ");
 
             
             #line 457 "..\..\Views\LayoutHtml.cshtml"
@@ -247,16 +218,10 @@ WriteLiteral(@"
                             </td>
                         </tr>
                     </table>
-                    <table");
-
-WriteLiteral(" class=\"footer\"");
-
-WriteLiteral(">\r\n                        <tr>\r\n                            <td>\r\n              " +
-"                  <table");
-
-WriteLiteral(" class=\"wrapper-horiz-padding\"");
-
-WriteLiteral(@">
+                    <table class=""footer"">
+                        <tr>
+                            <td>
+                                <table class=""wrapper-horiz-padding"">
                                     <tr>
                                         <td>
                                             <p>
@@ -264,11 +229,7 @@ WriteLiteral(@">
                                             </p>
                                             <p>
                                                 Real Artists, Inc.<br>
-                                                <a");
-
-WriteLiteral(" href=\"mailto:support@realartists.com\"");
-
-WriteLiteral(@">support@realartists.com</a>
+                                                <a href=""mailto:support@realartists.com"">support@realartists.com</a>
                                             </p>
                                         </td>
                                     </tr>
@@ -284,6 +245,7 @@ WriteLiteral(@">support@realartists.com</a>
 </body>
 </html>
 ");
+
 
         }
     }
