@@ -3,12 +3,17 @@
   using System.Threading;
   using System.Threading.Tasks;
   using Orleans;
+  using Orleans.Runtime;
 
   public class LazyGrainFactory : IGrainFactory {
     private Lazy<IGrainFactory> _grainFactory;
 
     public LazyGrainFactory(Func<IGrainFactory> valueFactory) {
       _grainFactory = new Lazy<IGrainFactory>(valueFactory, LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    public void BindGrainReference(IAddressable grain) {
+      _grainFactory.Value.BindGrainReference(grain);
     }
 
     public Task<TGrainObserverInterface> CreateObjectReference<TGrainObserverInterface>(IGrainObserver obj) where TGrainObserverInterface : IGrainObserver {
