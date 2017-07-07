@@ -22,10 +22,11 @@
     }
 
     private static async Task<Environment> MakeEnvironment(ShipHubContext context) {
-      var env = new Environment();
-      env.user1 = TestUtil.MakeTestUser(context, 3001, "alok");
-      env.user2 = TestUtil.MakeTestUser(context, 3002, "aroon");
-      env.org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary");
+      var env = new Environment() {
+        user1 = TestUtil.MakeTestUser(context, 3001, "alok"),
+        user2 = TestUtil.MakeTestUser(context, 3002, "aroon"),
+        org = TestUtil.MakeTestOrg(context, 6001, "pureimaginary")
+      };
       await context.SetUserOrganizations(env.user1.Id, new[] { env.org.Id });
       await context.SaveChangesAsync();
 

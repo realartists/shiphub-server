@@ -2,23 +2,23 @@
   using System.Threading.Tasks;
   using System.Web.Http;
   using ActorInterfaces;
-  using Orleans;
+  using Common;
 
   [RoutePrefix("orleans")]
   public class OrleansTestController : ApiController {
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
 
-    public OrleansTestController(IGrainFactory grainFactory) {
+    public OrleansTestController(IAsyncGrainFactory grainFactory) {
       _grainFactory = grainFactory;
     }
 
     [HttpGet]
     [Route("test")]
     [AllowAnonymous]
-    public Task<string> Test() {
-      var echoGrain = _grainFactory.GetGrain<IEchoActor>(0);
+    public async Task<string> Test() {
+      var echoGrain = await _grainFactory.GetGrain<IEchoActor>(0);
 
-      return echoGrain.Echo("Hello!");
+      return await echoGrain.Echo("Hello!");
     }
   }
 }

@@ -514,15 +514,16 @@
         var mockMixpanelClient = new Mock<IMixpanelClient>();
         mockMixpanelClient.Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<object>(), It.IsAny<object>())).ReturnsAsync(true);
 
-        var mock = new Mock<BillingController>(Configuration, null, api, null, mockMixpanelClient.Object) { CallBase = true };
-        mock
-          .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
-          .Returns((long forUserId) => {
-            Assert.AreEqual(user.Id, forUserId);
-            return mockClient.Object;
+        var mockGrainFactory = new Mock<IAsyncGrainFactory>();
+        mockGrainFactory.Setup(x => x.GetGrain<IGitHubActor>(It.IsAny<long>(), It.IsAny<string>()))
+          .Returns((long id, string _) => {
+            Assert.AreEqual(user.Id, id);
+            return Task.FromResult(mockClient.Object);
           });
 
-        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id), "someAnalyticsId");
+        var billingController = new BillingController(Configuration, mockGrainFactory.Object, api, null, mockMixpanelClient.Object);
+
+        var response = await billingController.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id), "someAnalyticsId");
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
       }
@@ -616,15 +617,16 @@
           }
         });
 
-        var mock = new Mock<BillingController>(Configuration, null, api, null, null) { CallBase = true };
-        mock
-          .Setup(x => x.CreateGitHubActor(It.IsAny<long>()))
-          .Returns((long forUserId) => {
-            Assert.AreEqual(user.Id, forUserId);
-            return mockClient.Object;
+        var mockGrainFactory = new Mock<IAsyncGrainFactory>();
+        mockGrainFactory.Setup(x => x.GetGrain<IGitHubActor>(It.IsAny<long>(), It.IsAny<string>()))
+          .Returns((long id, string _) => {
+            Assert.AreEqual(user.Id, id);
+            return Task.FromResult(mockClient.Object);
           });
 
-        var response = await mock.Object.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
+        var billingController = new BillingController(Configuration, mockGrainFactory.Object, api, null, null);
+
+        var response = await billingController.Buy(user.Id, org.Id, BillingController.CreateSignature(user.Id, org.Id));
         Assert.IsInstanceOf<RedirectResult>(response);
         Assert.AreEqual("https://realartists-test.chargebee.com/some/path/123", ((RedirectResult)response).Location.AbsoluteUri);
 

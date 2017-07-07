@@ -7,25 +7,21 @@
   using System.Linq;
   using System.Threading.Tasks;
   using ActorInterfaces.GitHub;
+  using Common;
   using Common.DataModel;
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
-  using Orleans;
   using RealArtists.ShipHub.Common.DataModel.Types;
   using RealArtists.ShipHub.QueueClient;
   using RealArtists.ShipHub.QueueClient.Messages;
   using Tracing;
 
   public class WebhookReaperTimer : LoggingHandlerBase {
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
 
-    public WebhookReaperTimer(IGrainFactory grainFactory, IDetailedExceptionLogger logger)
+    public WebhookReaperTimer(IAsyncGrainFactory grainFactory, IDetailedExceptionLogger logger)
       : base(logger) {
       _grainFactory = grainFactory;
-    }
-
-    public virtual IGitHubActor CreateGitHubClient(long userId) {
-      return _grainFactory.GetGrain<IGitHubActor>(userId);
     }
 
     public virtual DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
@@ -84,7 +80,7 @@
                 .FirstOrDefaultAsync();
 
               if (createHookInfo != null) {
-                var client = CreateGitHubClient(createHookInfo.UserId);
+                var client = await _grainFactory.GetGrain<IGitHubActor>(createHookInfo.UserId);
                 pingTasks.Add(client.PingRepositoryWebhook(createHookInfo.RepoFullName, (long)hook.GitHubId));
                 pinged.Add(hook.Id);
               } else {
@@ -104,7 +100,7 @@
                 .FirstOrDefaultAsync();
 
               if (createHookInfo != null) {
-                var client = CreateGitHubClient(createHookInfo.UserId);
+                var client = await _grainFactory.GetGrain<IGitHubActor>(createHookInfo.UserId);
                 pingTasks.Add(client.PingOrganizationWebhook(createHookInfo.OrgLogin, (long)hook.GitHubId));
                 pinged.Add(hook.Id);
               } else {

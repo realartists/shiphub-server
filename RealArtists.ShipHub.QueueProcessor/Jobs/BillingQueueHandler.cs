@@ -11,7 +11,6 @@
   using Common.GitHub;
   using Microsoft.Azure.WebJobs;
   using Newtonsoft.Json.Linq;
-  using Orleans;
   using QueueClient;
   using QueueClient.Messages;
   using Tracing;
@@ -20,14 +19,14 @@
   using cm = Common.DataModel;
 
   public class BillingQueueHandler : LoggingHandlerBase {
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
 
-   // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
-  public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 10, 0, 0, 0, TimeSpan.Zero);
-  
-  public BillingQueueHandler(IGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
-      : base(logger) {
+    // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
+    public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 10, 0, 0, 0, TimeSpan.Zero);
+
+    public BillingQueueHandler(IAsyncGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
+        : base(logger) {
       _grainFactory = grainFactory;
       _chargeBee = chargeBee;
     }
@@ -162,7 +161,7 @@
       TextWriter logger,
       ExecutionContext executionContext) {
       await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        var gh = _grainFactory.GetGrain<IGitHubActor>(message.UserId);
+        var gh = await _grainFactory.GetGrain<IGitHubActor>(message.UserId);
         await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, gh, logger);
         // we also need to double check complimentary subscriptions here as well
         await UpdateComplimentarySubscriptionHelper(message, logger);
@@ -255,7 +254,7 @@
       ExecutionContext executionContext) {
 
       await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        var gh = _grainFactory.GetGrain<IGitHubActor>(message.ForUserId);
+        var gh = await _grainFactory.GetGrain<IGitHubActor>(message.ForUserId);
         await SyncOrgSubscriptionStateHelper(message, notifyChanges, gh, logger);
       });
     }

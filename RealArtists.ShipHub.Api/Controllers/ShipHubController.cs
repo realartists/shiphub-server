@@ -14,7 +14,6 @@
   using Common.DataModel;
   using Common.GitHub;
   using Newtonsoft.Json.Linq;
-  using Orleans;
   using QueueClient;
   using gm = Common.GitHub.Models;
   using sm = Sync.Messages.Entries;
@@ -31,11 +30,11 @@
 
   [RoutePrefix("api/shiphub")]
   public class ShipHubController : ShipHubApiController {
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
     private IMapper _mapper;
     private IShipHubQueueClient _queueClient;
 
-    public ShipHubController(IGrainFactory grainFactory, IMapper mapper, IShipHubQueueClient queueClient) {
+    public ShipHubController(IAsyncGrainFactory grainFactory, IMapper mapper, IShipHubQueueClient queueClient) {
       _grainFactory = grainFactory;
       _mapper = mapper;
       _queueClient = queueClient;
@@ -56,7 +55,7 @@
       try {
         using (var context = new ShipHubContext()) {
           var updater = new DataUpdater(context, _mapper);
-          var ghc = _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
+          var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
           var repoName = $"{owner}/{repo}";
 
           prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
