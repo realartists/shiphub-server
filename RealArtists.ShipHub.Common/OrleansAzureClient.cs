@@ -2,7 +2,6 @@
   using System;
   using System.Collections.Generic;
   using System.Configuration;
-  using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.Reflection;
@@ -74,11 +73,6 @@
         throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null connectionString. config.DataConnectionString = {config.DataConnectionString}");
       }
 
-      // Work around https://github.com/dotnet/orleans/issues/2152
-      var listeners = new TraceListener[Trace.Listeners.Count];
-      Trace.Listeners.CopyTo(listeners, 0);
-      Trace.Listeners.Clear();
-
       Log.Info($"Initializing Orleans Client.");
       Exception lastException = null;
       for (var i = 0; i < MaxRetries; i++) {
@@ -96,10 +90,6 @@
           exc.Report("Error initializing Orleans Client. Will retry.");
         }
       }
-
-      // Work around https://github.com/dotnet/orleans/issues/2152
-      // Restore trace listeners
-      Trace.Listeners.AddRange(listeners);
 
       if (lastException != null) {
         throw new OrleansException($"Could not Initialize Client for DeploymentId={deploymentId}.", lastException);
