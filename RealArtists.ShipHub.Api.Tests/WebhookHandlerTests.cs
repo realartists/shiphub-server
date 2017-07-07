@@ -19,7 +19,7 @@
     private static IShipHubConfiguration Configuration { get; } = new ShipHubCloudConfiguration();
 
     public static RepositoryActor CreateRepoActor(long repoId, string fullName) {
-      var repoActor = new RepositoryActor(null, null, null, null, Configuration);
+      var repoActor = new RepositoryActor(null, null, new GenericFactory<ShipHubContext>(() => new ShipHubContext()), null, Configuration);
       repoActor.Initialize(repoId, fullName);
       return repoActor;
     }
@@ -90,7 +90,7 @@
           });
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
@@ -158,7 +158,7 @@
           });
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         mock.Verify(x => x.EditRepositoryWebhookEvents(repo.FullName, (long)hook.GitHubId, RepositoryActor.RequiredEvents, It.IsAny<RequestPriority>()));
         context.Entry(hook).Reload();
@@ -238,7 +238,7 @@
           });
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
@@ -283,7 +283,7 @@
           });
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         var hook = context.Hooks.Single(x => x.RepositoryId == repo.Id);
 
@@ -329,7 +329,7 @@
            .ThrowsAsync(new Exception("some exception!"));
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         Assert.IsEmpty(changes.Repositories, "Failed hook creation should not send notifications.");
 
@@ -743,7 +743,7 @@
         await context.SaveChangesAsync();
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, null);
+        var changes = await repoActor.AddOrUpdateWebhooks(null);
 
         var beforeError = hook.LastError;
         await context.Entry(hook).ReloadAsync();
@@ -784,7 +784,7 @@
           });
 
         var repoActor = CreateRepoActor(repo.Id, repo.FullName);
-        var changes = await repoActor.AddOrUpdateWebhooks(context, mock.Object);
+        var changes = await repoActor.AddOrUpdateWebhooks(mock.Object);
 
         await context.Entry(hook).ReloadAsync();
         Assert.AreEqual(9999, hook.GitHubId);

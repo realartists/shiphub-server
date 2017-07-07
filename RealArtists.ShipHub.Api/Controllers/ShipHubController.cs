@@ -53,32 +53,33 @@
       GitHubResponse<gm.Issue> issueResponse = null;
       long? repoId = null;
       try {
-        using (var context = new ShipHubContext()) {
-          var updater = new DataUpdater(context, _mapper);
           var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
-          var repoName = $"{owner}/{repo}";
+        var repoName = $"{owner}/{repo}";
 
-          prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
-          // Can't update the DB yet, because saving the PR requires the issue to already exist.
+        prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
+        // Can't update the DB yet, because saving the PR requires the issue to already exist.
 
-          if (prResponse.Status == HttpStatusCode.Created) {
-            var pr = prResponse.Result;
+        if (prResponse.Status == HttpStatusCode.Created) {
+          var pr = prResponse.Result;
 
-            if (body.Milestone != null
-              || body.Assignees?.Any() == true
-              || body.Labels?.Any() == true) { // Have to patch
-              issueResponse = await ghc.UpdateIssue(repoName, pr.Number, body.Milestone, body.Assignees, body.Labels, RequestPriority.Interactive);
-            } else { // Lookup the issue
-              issueResponse = await ghc.Issue(repoName, pr.Number, null, RequestPriority.Interactive);
-            }
+          if (body.Milestone != null
+            || body.Assignees?.Any() == true
+            || body.Labels?.Any() == true) { // Have to patch
+            issueResponse = await ghc.UpdateIssue(repoName, pr.Number, body.Milestone, body.Assignees, body.Labels, RequestPriority.Interactive);
+          } else { // Lookup the issue
+            issueResponse = await ghc.Issue(repoName, pr.Number, null, RequestPriority.Interactive);
+          }
 
-            if (issueResponse.IsOk) {
-              // Ugh
+          if (issueResponse.IsOk) {
+            // Ugh
+            using (var context = new ShipHubContext()) {
               repoId = await context.Repositories
                 .AsNoTracking()
                 .Where(x => x.FullName == repoName)
                 .Select(x => x.Id)
                 .SingleAsync();
+
+              var updater = new DataUpdater(context, _mapper);
 
               // Now we can update
               await updater.UpdateIssues(repoId.Value, issueResponse.Date, new[] { issueResponse.Result });
@@ -86,6 +87,8 @@
 
               await updater.Changes.Submit(_queueClient);
             }
+
+            
           }
         }
       } catch (Exception e) {

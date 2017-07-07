@@ -107,23 +107,23 @@
     }
 
     public override async Task OnDeactivateAsync() {
-      using (var context = _contextFactory.CreateInstance()) {
-        await Save(context);
-      }
+      await Save();
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save(ShipHubContext context) {
-      // TODO: These actors churn a lot. Make a stored proc for save.
-      await context.UpdateMetadata("Issues", _issueId, _metadata);
-      await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
-      await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
+    private async Task Save() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // TODO: These actors churn a lot. Make a stored proc for save.
+        await context.UpdateMetadata("Issues", _issueId, _metadata);
+        await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
+        await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
 
-      if (_prId.HasValue) {
-        await context.UpdateMetadata("PullRequests", "MetadataJson", _prId.Value, _prMetadata);
-        await context.UpdateMetadata("PullRequests", "CommentMetadataJson", _prId.Value, _prCommentMetadata);
-        await context.UpdateMetadata("PullRequests", "StatusMetadataJson", _prId.Value, _prStatusMetadata);
-        await context.UpdateMetadata("PullRequests", "MergeStatusMetadataJson", _prId.Value, _prMergeStatusMetadata);
+        if (_prId.HasValue) {
+          await context.UpdateMetadata("PullRequests", "MetadataJson", _prId.Value, _prMetadata);
+          await context.UpdateMetadata("PullRequests", "CommentMetadataJson", _prId.Value, _prCommentMetadata);
+          await context.UpdateMetadata("PullRequests", "StatusMetadataJson", _prId.Value, _prStatusMetadata);
+          await context.UpdateMetadata("PullRequests", "MergeStatusMetadataJson", _prId.Value, _prMergeStatusMetadata);
+        }
       }
     }
 
@@ -164,22 +164,20 @@
 
       var ghc = _grainFactory.GetGrain<IGitHubActor>(forUserId.Value);
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        try {
-          await SyncIssueTimeline(ghc, forUserId.Value, updater, context);
-        } catch (GitHubRateException) {
-          // nothing to do
-        }
-
-        await updater.Changes.Submit(_queueClient);
-
-        // Save metadata and other updates
-        await Save(context);
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      try {
+        await SyncIssueTimeline(ghc, forUserId.Value, updater);
+      } catch (GitHubRateException) {
+        // nothing to do
       }
+
+      await updater.Changes.Submit(_queueClient);
+
+      // Save metadata and other updates
+      await Save();
     }
 
-    private async Task SyncIssueTimeline(IGitHubActor ghc, long forUserId, DataUpdater updater, ShipHubContext context) {
+    private async Task SyncIssueTimeline(IGitHubActor ghc, long forUserId, DataUpdater updater) {
       // Always refresh the issue when viewed
       await UpdateIssueDetails(ghc, updater);
 
@@ -200,10 +198,10 @@
 
       // So many reactions
       await UpdateIssueReactions(ghc, updater);
-      await UpdateIssueCommentReactions(ghc, updater, context);
-      await UpdateCommitCommentReactions(ghc, updater, context);
+      await UpdateIssueCommentReactions(ghc, updater);
+      await UpdateCommitCommentReactions(ghc, updater);
       if (_isPullRequest) { // Can't roll this up into other PR code because it must come after timeline
-        await UpdatePullRequestCommentReactions(ghc, updater, context);
+        await UpdatePullRequestCommentReactions(ghc, updater);
       }
     }
 
@@ -495,11 +493,14 @@
       }
     }
 
-    private async Task UpdateIssueCommentReactions(IGitHubActor ghc, DataUpdater updater, ShipHubContext context) {
-      var commentReactionMetadata = await context.IssueComments
-        .AsNoTracking()
-        .Where(x => x.IssueId == _issueId)
-        .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+    private async Task UpdateIssueCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+      IDictionary<long, GitHubMetadata> commentReactionMetadata;
+      using (var context = _contextFactory.CreateInstance()) {
+        commentReactionMetadata = await context.IssueComments
+          .AsNoTracking()
+          .Where(x => x.IssueId == _issueId)
+          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+      }
 
       if (commentReactionMetadata.Any()) {
         // Now, find the ones that need updating.
@@ -525,27 +526,36 @@
                 await updater.UpdateIssueCommentReactions(_repoId, resp.Date, commentReactionsResponse.Key, resp.Result);
                 break;
             }
-            await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
+            using (var context = _contextFactory.CreateInstance()) {
+              await context.UpdateMetadata("Comments", "ReactionMetadataJson", commentReactionsResponse.Key, resp);
+            }
           }
         }
       }
     }
 
-    private async Task UpdateCommitCommentReactions(IGitHubActor ghc, DataUpdater updater, ShipHubContext context) {
-      var committedEvents = await context.IssueEvents
-        .AsNoTracking()
-        .Where(x => x.IssueId == _issueId && x.Event == "committed")
-        .ToArrayAsync();
-      var commitShas = committedEvents
+    private async Task UpdateCommitCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+      IssueEvent[] committedEvents;
+      string[] commitShas;
+      IDictionary<long, GitHubMetadata> commitCommentCommentMetadata = null;
+      using (var context = _contextFactory.CreateInstance()) {
+        committedEvents = await context.IssueEvents
+          .AsNoTracking()
+          .Where(x => x.IssueId == _issueId && x.Event == "committed")
+          .ToArrayAsync();
+        commitShas = committedEvents
         .Select(x => x.ExtensionData.DeserializeObject<JToken>().Value<string>("sha"))
         .ToArray();
 
+        if (commitShas.Any()) {
+          commitCommentCommentMetadata = await context.CommitComments
+            .AsNoTracking()
+            .Where(x => commitShas.Contains(x.CommitId))
+            .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+        }
+      }
+      
       if (commitShas.Any()) {
-        var commitCommentCommentMetadata = await context.CommitComments
-          .AsNoTracking()
-          .Where(x => commitShas.Contains(x.CommitId))
-          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
-
         var commitCommentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
         foreach (var reactionMetadata in commitCommentCommentMetadata) {
           if (reactionMetadata.Value.IsExpired()) {
@@ -568,18 +578,23 @@
                 await updater.UpdateCommitCommentReactions(_repoId, resp.Date, commitCommentReactionsResponse.Key, resp.Result);
                 break;
             }
-            await context.UpdateMetadata("CommitComments", "ReactionMetadataJson", commitCommentReactionsResponse.Key, resp);
+            using (var context = _contextFactory.CreateInstance()) {
+              await context.UpdateMetadata("CommitComments", "ReactionMetadataJson", commitCommentReactionsResponse.Key, resp);
+            }
           }
         }
       }
     }
 
-    private async Task UpdatePullRequestCommentReactions(IGitHubActor ghc, DataUpdater updater, ShipHubContext context) {
-      var prcReactionMetadata = await context.PullRequestComments
-        .AsNoTracking()
-        .Where(x => x.IssueId == _issueId)
-        .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
-      context.Database.Connection.Close();
+    private async Task UpdatePullRequestCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+      IDictionary<long, GitHubMetadata> prcReactionMetadata = null;
+
+      using (var context = _contextFactory.CreateInstance()) {
+        prcReactionMetadata = await context.PullRequestComments
+          .AsNoTracking()
+          .Where(x => x.IssueId == _issueId)
+          .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
+      }
 
       if (prcReactionMetadata.Any()) {
         var prcReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
@@ -604,7 +619,9 @@
                 await updater.UpdatePullRequestCommentReactions(_repoId, resp.Date, prcReactionsResponse.Key, resp.Result);
                 break;
             }
-            await context.UpdateMetadata("PullRequestComments", "ReactionMetadataJson", prcReactionsResponse.Key, resp);
+            using (var context = _contextFactory.CreateInstance()) {
+              await context.UpdateMetadata("PullRequestComments", "ReactionMetadataJson", prcReactionsResponse.Key, resp);
+            }
           }
         }
       }

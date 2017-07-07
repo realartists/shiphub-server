@@ -89,17 +89,17 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
-      using (var context = _contextFactory.CreateInstance()) {
-        await Save(context);
-      }
+      await Save();
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save(ShipHubContext context) {
-      // MUST MATCH LOAD
-      await context.UpdateMetadata("Accounts", _orgId, _metadata);
-      await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
-      await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
+    private async Task Save() {
+      using (var context = _contextFactory.CreateInstance()) {
+        // MUST MATCH LOAD
+        await context.UpdateMetadata("Accounts", _orgId, _metadata);
+        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _orgId, _adminMetadata);
+        await context.UpdateMetadata("Accounts", "ProjectMetadataJson", _orgId, _projectMetadata);
+      }
     }
 
     public async Task ForceSyncAllMemberRepositories() {
@@ -175,28 +175,28 @@
         admin = _grainFactory.GetGrain<IGitHubActor>(users.First(x => x.IsAdmin).UserId);
       }
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        try {
-          await UpdateDetails(updater, github);
-          await UpdateAdmins(updater, github);
-          await UpdateProjects(updater, github);
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      try {
+        await UpdateDetails(updater, github);
+        await UpdateAdmins(updater, github);
+        await UpdateProjects(updater, github);
 
-          // Webhooks
-          if (admin != null) {
+        // Webhooks
+        if (admin != null) {
+          using (var context = _contextFactory.CreateInstance()) {
             updater.UnionWithExternalChanges(await AddOrUpdateOrganizationWebhooks(context, admin));
           }
-        } catch (GitHubPoolEmptyException) {
-          // Nothing to do.
-          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
         }
-
-        // Send Changes.
-        await updater.Changes.Submit(_queueClient);
-
-        // Save
-        await Save(context);
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
       }
+
+      // Send Changes.
+      await updater.Changes.Submit(_queueClient);
+
+      // Save
+      await Save();
     }
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
