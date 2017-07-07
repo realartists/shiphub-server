@@ -40,7 +40,7 @@
 
     // Should be less than Orleans timeout.
     // If changing, may also need to update values in CreateGitHubHttpClient()
-    public static readonly TimeSpan GitHubRequestTimeout = OrleansAzureClient.ResponseTimeout.Subtract(TimeSpan.FromSeconds(2));
+    public static readonly TimeSpan GitHubRequestTimeout = OrleansClientFactory.ResponseTimeout.Subtract(TimeSpan.FromSeconds(2));
 
     public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
     public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
