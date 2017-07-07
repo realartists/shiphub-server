@@ -1,13 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Api {
   using System.Diagnostics.CodeAnalysis;
   using System.Web.Http;
-  using ActorInterfaces.Injection;
   using AutoMapper;
   using Common;
   using Common.DataModel;
   using Mail;
   using Mixpanel;
-  using Orleans;
   using QueueClient;
   using RealArtists.ChargeBee;
   using SimpleInjector;
@@ -22,7 +20,7 @@
       container.Options.DefaultScopedLifestyle = new AsyncScopedLifestyle();
 
       // ShipHubConfiguration
-      container.Register<IShipHubConfiguration, ShipHubCloudConfiguration>(Lifestyle.Singleton);
+      container.RegisterSingleton(config);
 
       // AutoMapper
       container.Register(() => new MapperConfiguration(cfg => {
@@ -40,12 +38,7 @@
       }, Lifestyle.Singleton);
 
       // Orleans
-      container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
-        Log.Trace();
-        var orleansConfig = OrleansAzureClient.DefaultConfiguration();
-        OrleansAzureClient.Initialize(orleansConfig);
-        return GrainClient.GrainFactory;
-      }));
+      container.RegisterSingleton<IAsyncGrainFactory>(new OrleansAzureClient(config.DeploymentId, config.DataConnectionString));
 
       // Queue Client
       container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);

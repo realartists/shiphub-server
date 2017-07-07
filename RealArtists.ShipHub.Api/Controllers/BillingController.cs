@@ -21,7 +21,6 @@
   using Mixpanel;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
-  using Orleans;
   using QueueClient;
   using cb = ChargeBee;
   using cba = ChargeBee.Api;
@@ -58,11 +57,11 @@
   public class BillingController : ShipHubApiController {
     private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
     private IMixpanelClient _mixpanelClient;
 
-    public BillingController(IShipHubConfiguration config, IGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient, IMixpanelClient mixpanelClient) {
+    public BillingController(IShipHubConfiguration config, IAsyncGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient, IMixpanelClient mixpanelClient) {
       _configuration = config;
       _queueClient = queueClient;
       _grainFactory = grainFactory;
@@ -207,10 +206,6 @@
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html#{WebUtility.UrlEncode(hashParamBase64)}");
     }
 
-    public virtual IGitHubActor CreateGitHubActor(long userId) {
-      return _grainFactory.GetGrain<IGitHubActor>(userId);
-    }
-
     private async Task<RedirectResult> BuyPersonal(Account actorAccount, long targetId, string analyticsId = null) {
       var subList = (await _chargeBee.Subscription.List()
         .CustomerId().Is($"user-{targetId}")
@@ -304,7 +299,7 @@
     }
 
     private async Task<RedirectResult> BuyOrganization(Account actorAccount, long targetId, Account targetAccount, string analyticsId = null) {
-      var ghc = CreateGitHubActor(actorAccount.Id);
+      var ghc = await _grainFactory.GetGrain<IGitHubActor>(actorAccount.Id);
       var ghcUser = (await ghc.User()).Result;
       var ghcOrg = (await ghc.Organization(targetAccount.Login)).Result;
 

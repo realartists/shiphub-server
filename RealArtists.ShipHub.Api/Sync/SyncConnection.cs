@@ -18,7 +18,6 @@
   using Filters;
   using Messages;
   using Newtonsoft.Json.Linq;
-  using Orleans;
 
   public interface ISyncConnection {
     Task SendJsonAsync(object message);
@@ -38,14 +37,14 @@
     private ShipHubPrincipal _user;
     private SyncContext _syncContext;
     private ISyncManager _syncManager;
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
 
     private IDisposable _syncSubscription;
     private IDisposable _pollSubscription;
 
     public Version ClientBuild { get; set; }
 
-    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IGrainFactory grainFactory)
+    public SyncConnection(ShipHubPrincipal user, ISyncManager syncManager, IAsyncGrainFactory grainFactory)
       : base(_MaxMessageSize) {
       _user = user;
       _syncManager = syncManager;
@@ -118,7 +117,7 @@
           );
           await _syncContext.SendHelloResponse(Constants.PurgeIdentifier);
 
-          var userActor = _grainFactory.GetGrain<IUserActor>(_user.UserId);
+          var userActor = await _grainFactory.GetGrain<IUserActor>(_user.UserId);
           await userActor.OnHello();
 
           Subscribe(userActor); // Also performs the initial sync
@@ -128,7 +127,7 @@
           var parts = viewing.Issue.Split('#');
           var repoFullName = parts[0];
           var issueNumber = int.Parse(parts[1]);
-          var issueGrain = _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
+          var issueGrain = await _grainFactory.GetGrain<IIssueActor>(issueNumber, repoFullName, grainClassNamePrefix: null);
           issueGrain.SyncTimeline(_user.UserId, Common.GitHub.RequestPriority.Interactive).LogFailure(_user.DebugIdentifier);
           return;
         default:

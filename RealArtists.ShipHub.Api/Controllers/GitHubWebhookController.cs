@@ -14,7 +14,6 @@
   using Common.DataModel;
   using Common.GitHub;
   using Newtonsoft.Json;
-  using Orleans;
   using RealArtists.ShipHub.Common.GitHub.Models.WebhookPayloads;
 
   [AllowAnonymous]
@@ -26,9 +25,9 @@
 
     public const int GrainSprayWidth = 256;
 
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
 
-    public GitHubWebhookController(IGrainFactory grainFactory) {
+    public GitHubWebhookController(IAsyncGrainFactory grainFactory) {
       _grainFactory = grainFactory;
     }
 
@@ -79,7 +78,7 @@
         }
 
         var secret = Encoding.UTF8.GetBytes(hook.Secret.ToString());
-        var webhookEventActor = _grainFactory.GetGrain<IWebhookEventActor>(0); // Stateless worker grain with single pool (0)
+        var webhookEventActor = await _grainFactory.GetGrain<IWebhookEventActor>(0); // Stateless worker grain with single pool (0)
         var debugInfo = $"[{type}:{id}#{eventName}/{deliveryId}]";
 
         Task hookTask = null;

@@ -22,7 +22,6 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Newtonsoft.Json.Linq;
-  using Orleans;
   using g = Common.GitHub.Models;
 
   public class LoginRequest {
@@ -56,7 +55,7 @@
     private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
 
     private IShipHubConfiguration _config;
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
     private IMapper _mapper;
 
     private static readonly IReadOnlyList<ImmutableHashSet<string>> _validScopesCollection = new List<ImmutableHashSet<string>>() {
@@ -64,7 +63,7 @@
       PublicScopes,
     }.AsReadOnly();
 
-    public AuthenticationController(IShipHubConfiguration config, IGrainFactory grainFactory, IMapper mapper) {
+    public AuthenticationController(IShipHubConfiguration config, IAsyncGrainFactory grainFactory, IMapper mapper) {
       _config = config;
       _grainFactory = grainFactory;
       _mapper = mapper;
@@ -237,7 +236,7 @@
       // User wants to log out.
       using (var context = new ShipHubContext()) {
         var hookDetails = await context.GetLogoutWebhooks(ShipHubUser.UserId);
-        var github = _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
+        var github = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
         var tasks = new List<Task>();
 
         // Delete all repo hooks where they're the only user
@@ -316,7 +315,7 @@
         await context.SetUserAccessToken(userInfo.Id, string.Join(",", userResponse.Scopes), userResponse.RateLimit);
       }
 
-      var userGrain = _grainFactory.GetGrain<IUserActor>(userInfo.Id);
+      var userGrain = await _grainFactory.GetGrain<IUserActor>(userInfo.Id);
       userGrain.Sync().LogFailure($"{userInfo.Login} ({userInfo.Id})");
 
       return Ok(userInfo);

@@ -12,6 +12,7 @@
   using NUnit.Framework;
   using QueueProcessor.Jobs;
   using QueueProcessor.Tracing;
+  using RealArtists.ShipHub.Common;
   using RealArtists.ShipHub.QueueClient.Messages;
 
   [TestFixture]
@@ -19,10 +20,10 @@
   public class WebhookReaperTests {
     private static Mock<WebhookReaperTimer> MockReaper(
       Dictionary<long, List<(string hookType, string resourceName, long hookId)>> pings) {
-      var mock = new Mock<WebhookReaperTimer>(null, new DetailedExceptionLogger()) { CallBase = true };
-      mock
-        .Setup(x => x.CreateGitHubClient(It.IsAny<long>()))
-        .Returns((long userId) => {
+
+      var mockGrainFactory = new Mock<IAsyncGrainFactory>();
+      mockGrainFactory.Setup(x => x.GetGrain<IGitHubActor>(It.IsAny<long>(), It.IsAny<string>()))
+        .Returns((long userId, string _) => {
           if (!pings.ContainsKey(userId)) {
             pings[userId] = new List<(string, string, long)>();
           }
@@ -47,8 +48,10 @@
                 });
               });
 
-          return mockClient.Object;
+          return Task.FromResult(mockClient.Object);
         });
+
+      var mock = new Mock<WebhookReaperTimer>(mockGrainFactory.Object, new DetailedExceptionLogger()) { CallBase = true };
 
       return mock;
     }
@@ -67,12 +70,13 @@
     }
 
     private static async Task<Environment> MakeEnvironment(ShipHubContext context) {
-      var env = new Environment();
-      env.user1 = TestUtil.MakeTestUser(context, 3001, "aroon");
-      env.user2 = TestUtil.MakeTestUser(context, 3002, "alok");
+      var env = new Environment() {
+        user1 = TestUtil.MakeTestUser(context, 3001, "aroon"),
+        user2 = TestUtil.MakeTestUser(context, 3002, "alok"),
 
-      env.org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1");
-      env.org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2");
+        org1 = TestUtil.MakeTestOrg(context, 6001, "myorg1"),
+        org2 = TestUtil.MakeTestOrg(context, 6002, "myorg2")
+      };
 
       env.repo1 = TestUtil.MakeTestRepo(context, env.org1.Id, 2001, "unicorns");
       env.repo2 = TestUtil.MakeTestRepo(context, env.org1.Id, 2002, "girafficorns");

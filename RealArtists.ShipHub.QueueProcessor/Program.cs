@@ -2,7 +2,6 @@
   using System;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
-  using ActorInterfaces.Injection;
   using AutoMapper;
   using Common;
   using Common.DataModel;
@@ -11,11 +10,10 @@
   using Microsoft.Azure.WebJobs;
   using Microsoft.Azure.WebJobs.ServiceBus;
   using Mindscape.Raygun4Net;
-  using Orleans;
   using QueueClient;
   using SimpleInjector;
   using Tracing;
-  using cb = RealArtists.ChargeBee;
+  using cb = ChargeBee;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
@@ -58,7 +56,7 @@
       var timer = new Stopwatch();
       timer.Restart();
       Log.Info("[Orleans Client]: Initializing");
-      container.GetInstance<IGrainFactory>();
+      container.GetInstance<IAsyncGrainFactory>();
       timer.Stop();
       Log.Info($"[Orleans Client]: Initialized in {timer.Elapsed}");
 
@@ -142,14 +140,15 @@
         container = new Container();
 
         // ShipHub Configuration
-        container.Register<IShipHubConfiguration, ShipHubCloudConfiguration>(Lifestyle.Singleton);
+        var config = ShipHubCloudConfiguration.Instance;
+        container.RegisterSingleton(config);
 
         // AutoMapper
         container.Register(() => {
-          var config = new MapperConfiguration(cfg => {
+          var mapperConfig = new MapperConfiguration(cfg => {
             cfg.AddProfile<GitHubToDataModelProfile>();
           });
-          return config.CreateMapper();
+          return mapperConfig.CreateMapper();
         }, Lifestyle.Singleton);
 
         // Service Bus
@@ -161,13 +160,11 @@
         }, Lifestyle.Singleton);
 
         // Orleans
-        container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
-          Log.Trace();
-          var orleansConfig = OrleansAzureClient.DefaultConfiguration();
-          orleansConfig.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
-          OrleansAzureClient.Initialize(orleansConfig);
-          return GrainClient.GrainFactory;
-        }));
+        container.RegisterSingleton<IAsyncGrainFactory>(() => {
+          var factory = new OrleansAzureClient(config.DeploymentId, config.DataConnectionString);
+          factory.Configuration.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
+          return factory;
+        });
 
         // Queue Client
         container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);

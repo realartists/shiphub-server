@@ -134,9 +134,9 @@
 
     private static async Task<IHttpActionResult> HandleWebhook(string type, long id, string eventName, string body, string signature) {
       var mockActor = new Mock<IWebhookEventActor>();
-      var mockGrainFactory = new Mock<IGrainFactory>();
+      var mockGrainFactory = new Mock<IAsyncGrainFactory>();
       mockGrainFactory.Setup(x => x.GetGrain<IWebhookEventActor>(It.IsAny<long>(), It.IsAny<string>()))
-        .Returns((long primaryKey, string prefix) => mockActor.Object);
+        .Returns((long primaryKey, string prefix) => Task.FromResult(mockActor.Object));
 
       var controller = new GitHubWebhookController(mockGrainFactory.Object);
       ConfigureController(controller, eventName, body, signature);

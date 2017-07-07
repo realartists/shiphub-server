@@ -7,16 +7,16 @@
   using System.Web;
   using System.Web.Http;
   using System.Web.WebSockets;
+  using Common;
   using Filters;
-  using Orleans;
   using Sync;
 
   [RoutePrefix("api/sync")]
   public class SyncController : ApiController {
     private ISyncManager _syncManager;
-    private IGrainFactory _grainFactory;
+    private IAsyncGrainFactory _grainFactory;
 
-    public SyncController(ISyncManager syncManager, IGrainFactory grainFactory) {
+    public SyncController(ISyncManager syncManager, IAsyncGrainFactory grainFactory) {
       _syncManager = syncManager;
       _grainFactory = grainFactory;
     }
