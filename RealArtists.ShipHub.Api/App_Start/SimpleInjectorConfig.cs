@@ -42,9 +42,9 @@
       // Orleans
       container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
         Log.Trace();
-        var factory = new OrleansClientFactory(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
-        var client = factory.CreateOrleansClient().GetAwaiter().GetResult();
-        return client;
+        var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+        OrleansAzureClient.Initialize(orleansConfig);
+        return GrainClient.GrainFactory;
       }));
 
       // Queue Client

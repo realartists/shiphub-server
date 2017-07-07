@@ -15,7 +15,7 @@
   using QueueClient;
   using SimpleInjector;
   using Tracing;
-  using cb = ChargeBee;
+  using cb = RealArtists.ChargeBee;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
@@ -163,10 +163,10 @@
         // Orleans
         container.RegisterSingleton<IGrainFactory>(new LazyGrainFactory(() => {
           Log.Trace();
-          var factory = new OrleansClientFactory(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
-          factory.Configuration.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
-          var client = factory.CreateOrleansClient().GetAwaiter().GetResult();
-          return client;
+          var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+          orleansConfig.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
+          OrleansAzureClient.Initialize(orleansConfig);
+          return GrainClient.GrainFactory;
         }));
 
         // Queue Client

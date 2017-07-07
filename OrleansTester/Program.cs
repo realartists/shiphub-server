@@ -54,8 +54,9 @@
     }
 
     static async Task DoIt() {
-      var factory = new OrleansClientFactory(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
-      var gc = await factory.CreateOrleansClient();
+      var orleansConfig = OrleansAzureClient.DefaultConfiguration();
+      OrleansAzureClient.Initialize(orleansConfig);
+      var gc = GrainClient.GrainFactory;
 
       var user = gc.GetGrain<IUserActor>(87309); // kogir
 
