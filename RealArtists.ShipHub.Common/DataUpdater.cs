@@ -152,9 +152,10 @@
     }
 
     public async Task SetUserRepositories(long userId, DateTimeOffset date, IEnumerable<g.Repository> repositories) {
+      var permissions = repositories.Select(x => (RepositoryId: x.Id, IsAdmin: x.Permissions.Admin));
+
       await WithContext(async context => {
         await UpdateRepositories(date, repositories);
-        var permissions = repositories.Select(x => (RepositoryId: x.Id, IsAdmin: x.Permissions.Admin));
         _changes.UnionWith(await context.SetAccountLinkedRepositories(userId, permissions));
       });
     }
@@ -163,6 +164,7 @@
       if (!accounts.Any()) { return; }
 
       var mapped = _mapper.Map<IEnumerable<AccountTableType>>(accounts);
+
       await WithContext(async context => {
         _changes.UnionWith(await context.BulkUpdateAccounts(date, mapped));
       });
@@ -172,10 +174,10 @@
       if (!comments.Any()) { return; }
 
       var authors = comments.Select(x => x.User).Distinct(x => x.Id);
+      var mapped = _mapper.Map<IEnumerable<CommitCommentTableType>>(comments);
+
       await WithContext(async context => {
         await UpdateAccounts(date, authors);
-
-        var mapped = _mapper.Map<IEnumerable<CommitCommentTableType>>(comments);
         _changes.UnionWith(await context.BulkUpdateCommitComments(repositoryId, mapped));
       });
     }
@@ -184,6 +186,7 @@
       if (!statuses.Any()) { return; }
 
       var mappedStatuses = _mapper.Map<IEnumerable<CommitStatusTableType>>(statuses);
+
       await WithContext(async context => {
         _changes.UnionWith(await context.BulkUpdateCommitStatuses(repositoryId, reference, mappedStatuses));
       });
@@ -193,10 +196,10 @@
       if (!comments.Any()) { return; }
 
       var authors = comments.Select(x => x.User).Distinct(x => x.Id);
-      await UpdateAccounts(date, authors);
-
       var mapped = _mapper.Map<IEnumerable<CommentTableType>>(comments);
+
       await WithContext(async context => {
+        await UpdateAccounts(date, authors);
         _changes.UnionWith(await context.BulkUpdateIssueComments(repositoryId, mapped));
       });
     }
@@ -214,21 +217,22 @@
       }
       var accounts = allAccounts.Where(x => x != null).Distinct(x => x.Id);
 
-      await WithContext(async context => {
-        await UpdateAccounts(date, accounts);
-
-        var milestones = issues
+      var milestones = issues
           .Select(x => x.Milestone)
           .Where(x => x != null)
           .Distinct(x => x.Id);
-        await UpdateMilestones(repositoryId, date, milestones);
 
-        var labels = issues
+      var labels = issues
           .SelectMany(x => x.Labels)
           .Distinct(x => x.Id);
+
+      var issueArray = issues.ToArray();
+
+      await WithContext(async context => {
+        await UpdateAccounts(date, accounts);
+        await UpdateMilestones(repositoryId, date, milestones);
         await UpdateLabels(repositoryId, labels);
 
-        var issueArray = issues.ToArray();
         for (var i = 0; i < issueArray.Length; i += LargeBatchSize) {
           var segment = new ArraySegment<g.Issue>(issueArray, i, Math.Min(LargeBatchSize, issueArray.Length - i));
 
@@ -251,6 +255,7 @@
       if (!labels.Any() && !complete) { return; }
 
       var repoLabels = _mapper.Map<IEnumerable<LabelTableType>>(labels);
+
       await WithContext(async context => {
         _changes.UnionWith(await context.BulkUpdateLabels(repositoryId, repoLabels, complete));
       });
@@ -267,7 +272,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
-
         _changes.UnionWith(await context.BulkUpdateMilestones(repositoryId, repoMilestones, complete));
       });
     }
@@ -280,7 +284,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, creators);
-
         _changes.UnionWith(await context.BulkUpdateOrganizationProjects(organizationId, orgProjects));
       });
     }
@@ -293,7 +296,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, creators);
-
         _changes.UnionWith(await context.BulkUpdateRepositoryProjects(repositoryId, repoProjects));
       });
     }
@@ -306,7 +308,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
-
         _changes.UnionWith(await context.BulkUpdatePullRequestComments(repositoryId, issueId, mappedComments, pendingReviewId, dropWithMissingReview));
       });
     }
@@ -327,11 +328,20 @@
         }
       }
       var accounts = allAccounts.Where(x => x != null).Distinct(x => x.Id);
+
       var repos = pullRequests
         .SelectMany(x => new[] { x.Head?.Repo, x.Base?.Repo })
         .Where(x => x != null)
         .Distinct(x => x.Id)
         .ToArray();
+
+      var milestones = pullRequests
+        .Select(x => x.Milestone)
+        .Where(x => x != null)
+        .Distinct(x => x.Id)
+        .ToArray();
+
+      var prArray = pullRequests.ToArray();
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
@@ -340,18 +350,12 @@
           await UpdateRepositories(date, repos);
         }
 
-        var milestones = pullRequests
-          .Select(x => x.Milestone)
-          .Where(x => x != null)
-          .Distinct(x => x.Id)
-          .ToArray();
         if (milestones.Any()) {
           await UpdateMilestones(repositoryId, date, milestones);
         }
 
-        var issueArray = pullRequests.ToArray();
-        for (var i = 0; i < issueArray.Length; i += LargeBatchSize) {
-          var segment = new ArraySegment<g.PullRequest>(issueArray, i, Math.Min(LargeBatchSize, issueArray.Length - i));
+        for (var i = 0; i < prArray.Length; i += LargeBatchSize) {
+          var segment = new ArraySegment<g.PullRequest>(prArray, i, Math.Min(LargeBatchSize, prArray.Length - i));
 
           var prs = _mapper.Map<IEnumerable<PullRequestTableType>>(segment);
           var prReviewers = segment.SelectMany(x =>
@@ -377,7 +381,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
-
         _changes.UnionWith(await context.BulkUpdateRepositories(date, repos));
       });
     }
@@ -396,7 +399,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
-
         _changes.UnionWith(await context.BulkUpdateReviews(repositoryId, issueId, date, mappedReviews, userId, complete));
       });
     }
@@ -412,7 +414,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, uniqueAccounts);
-
         _changes.UnionWith(await context.BulkUpdateTimelineEvents(forUserId, repositoryId, mappedEvents, uniqueAccounts.Select(x => x.Id)));
       });
     }
@@ -446,10 +447,8 @@
       var accounts = reactions.Select(x => x.User).Distinct(x => x.Id).ToArray();
       var mappedReactions = _mapper.Map<IEnumerable<ReactionTableType>>(reactions);
 
-      
-      await UpdateAccounts(date, accounts);
-
       await WithContext(async context => {
+        await UpdateAccounts(date, accounts);
         _changes.UnionWith(await context.BulkUpdateReactions(repositoryId, mappedReactions, issueId, issueCommentId, commitCommentId, pullRequestCommentId));
       });
     }
