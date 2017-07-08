@@ -32,55 +32,51 @@
     }
 
     public async Task CommitComment(DateTimeOffset eventDate, CommitCommentPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
 
-        // NOTE: As of this commit, edited and deleted are never sent.
-        // We're ready to support it if they're added later
-        switch (payload.Action) {
-          case "created":
-          case "edited":
-            await updater.UpdateCommitComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
-            break;
-          case "deleted":
-            await updater.DeleteCommitComment(payload.Comment.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(CommitComment)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+      // NOTE: As of this commit, edited and deleted are never sent.
+      // We're ready to support it if they're added later
+      switch (payload.Action) {
+        case "created":
+        case "edited":
+          await updater.UpdateCommitComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
+          break;
+        case "deleted":
+          await updater.DeleteCommitComment(payload.Comment.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(CommitComment)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task IssueComment(DateTimeOffset eventDate, IssueCommentPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        // Ensure the issue that owns this comment exists locally before we add the comment.
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
-        await updater.UpdateIssues(payload.Repository.Id, eventDate, new[] { payload.Issue });
+      // Ensure the issue that owns this comment exists locally before we add the comment.
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdateIssues(payload.Repository.Id, eventDate, new[] { payload.Issue });
 
-        switch (payload.Action) {
-          case "created":
-            await updater.UpdateIssueComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
-            break;
-          case "edited":
-            // GitHub doesn't send the new comment body. We have to look it up ourselves.
-            var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
-            await repoActor.RefreshIssueComment(payload.Comment.Id);
-            break;
-          case "deleted":
-            await updater.DeleteIssueComment(payload.Comment.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(IssueComment)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+      switch (payload.Action) {
+        case "created":
+          await updater.UpdateIssueComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
+          break;
+        case "edited":
+          // GitHub doesn't send the new comment body. We have to look it up ourselves.
+          var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+          await repoActor.RefreshIssueComment(payload.Comment.Id);
+          break;
+        case "deleted":
+          await updater.DeleteIssueComment(payload.Comment.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(IssueComment)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task Issues(DateTimeOffset eventDate, IssuesPayload payload) {
@@ -94,9 +90,8 @@
         case "milestoned":
         case "demilestoned":
         case "closed":
-        case "reopened":
-          using (var context = _contextFactory.CreateInstance()) {
-            var updater = new DataUpdater(context, _mapper);
+        case "reopened": {
+            var updater = new DataUpdater(_contextFactory, _mapper);
             // TODO: Update Org and Sender?
             await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
             await updater.UpdateIssues(payload.Repository.Id, eventDate, new[] { payload.Issue });
@@ -110,86 +105,83 @@
     }
 
     public async Task Label(DateTimeOffset eventDate, LabelPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
 
-        switch (payload.Action) {
-          case "created":
-          case "edited":
-            await updater.UpdateLabels(payload.Repository.Id, new[] { payload.Label });
-            break;
-          case "deleted":
-            await updater.DeleteLabel(payload.Label.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Label)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+      switch (payload.Action) {
+        case "created":
+        case "edited":
+          await updater.UpdateLabels(payload.Repository.Id, new[] { payload.Label });
+          break;
+        case "deleted":
+          await updater.DeleteLabel(payload.Label.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Label)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task Milestone(DateTimeOffset eventDate, MilestonePayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
 
-        switch (payload.Action) {
-          case "created":
-          case "closed":
-          case "opened":
-          case "edited":
-            await updater.UpdateMilestones(payload.Repository.Id, eventDate, new[] { payload.Milestone });
-            break;
-          case "deleted":
-            await updater.DeleteMilestone(payload.Milestone.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Milestone)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+      switch (payload.Action) {
+        case "created":
+        case "closed":
+        case "opened":
+        case "edited":
+          await updater.UpdateMilestones(payload.Repository.Id, eventDate, new[] { payload.Milestone });
+          break;
+        case "deleted":
+          await updater.DeleteMilestone(payload.Milestone.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Milestone)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task PullRequestReviewComment(DateTimeOffset eventDate, PullRequestReviewCommentPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
-        await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
 
-        switch (payload.Action) {
-          case "created":
-            // We need the issueId
-            // TODO: Modify BulkUpdate to work with PR/Issue Number instead?
-            var issueId = await context.Issues
+      switch (payload.Action) {
+        case "created":
+          // We need the issueId
+          // TODO: Modify BulkUpdate to work with PR/Issue Number instead?
+          long? issueId;
+          using (var context = _contextFactory.CreateInstance()) {
+            issueId = await context.Issues
               .AsNoTracking()
               .Where(x => x.RepositoryId == payload.Repository.Id && x.Number == payload.PullRequest.Number)
               .Select(x => (long?)x.Id)
               .SingleOrDefaultAsync();
+          }
 
-            if (issueId != null) {
-              await updater.UpdatePullRequestComments(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Comment }, dropWithMissingReview: true);
-            }
-            break;
-          case "edited":
-            // GitHub doesn't send the new comment body. We have to look it up ourselves.
-            var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
-            await repoActor.RefreshPullRequestReviewComment(payload.Comment.Id);
-            break;
-          case "deleted":
-            await updater.DeletePullRequestComment(payload.Comment.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(PullRequestReviewComment)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+          if (issueId != null) {
+            await updater.UpdatePullRequestComments(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Comment }, dropWithMissingReview: true);
+          }
+          break;
+        case "edited":
+          // GitHub doesn't send the new comment body. We have to look it up ourselves.
+          var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+          await repoActor.RefreshPullRequestReviewComment(payload.Comment.Id);
+          break;
+        case "deleted":
+          await updater.DeletePullRequestComment(payload.Comment.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(PullRequestReviewComment)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task PullRequestReview(DateTimeOffset eventDate, PullRequestReviewPayload payload) {
@@ -199,36 +191,37 @@
         return;
       }
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
-        await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
 
-        switch (payload.Action) {
-          case "submitted":
-          case "edited":
-            // We need the issueId
-            // TODO: Modify BulkUpdate to work with PR/Issue Number instead?
-            var issueId = await context.Issues
+      switch (payload.Action) {
+        case "submitted":
+        case "edited":
+          // We need the issueId
+          // TODO: Modify BulkUpdate to work with PR/Issue Number instead?
+          long? issueId;
+          using (var context = _contextFactory.CreateInstance()) {
+            issueId = await context.Issues
               .AsNoTracking()
               .Where(x => x.RepositoryId == payload.Repository.Id && x.Number == payload.PullRequest.Number)
               .Select(x => (long?)x.Id)
               .SingleOrDefaultAsync();
+          }
 
-            if (issueId != null) {
-              await updater.UpdateReviews(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Review });
-            }
-            break;
-          case "dismissed":
-            await updater.DeleteReview(payload.Review.Id);
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(PullRequestReview)}.");
-        }
-
-        await updater.Changes.Submit(_queueClient);
+          if (issueId != null) {
+            await updater.UpdateReviews(payload.Repository.Id, issueId.Value, eventDate, new[] { payload.Review });
+          }
+          break;
+        case "dismissed":
+          await updater.DeleteReview(payload.Review.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(PullRequestReview)}.");
       }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task PullRequest(DateTimeOffset eventDate, PullRequestPayload payload) {
@@ -243,10 +236,9 @@
         case "edited":
         case "closed":
         case "reopened":
-        case "synchronize":
-          // For all actions:
-          using (var context = _contextFactory.CreateInstance()) {
-            var updater = new DataUpdater(context, _mapper);
+        case "synchronize": {
+            // For all actions:
+            var updater = new DataUpdater(_contextFactory, _mapper);
             // TODO: Update Org and Sender?
             await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
             await updater.UpdatePullRequests(payload.Repository.Id, eventDate, new[] { payload.PullRequest });
@@ -255,11 +247,14 @@
 
             // For *only* synchronize, go a generic timeline sync:
             if (payload.Action == "synchronize") {
-              var issueNumber = await context.PullRequests
-                .AsNoTracking()
-                .Where(x => x.Id == payload.PullRequest.Id)
-                .Select(x => (int?)x.Number)
-                .FirstOrDefaultAsync();
+              int? issueNumber;
+              using (var context = _contextFactory.CreateInstance()) {
+                issueNumber = await context.PullRequests
+                  .AsNoTracking()
+                  .Where(x => x.Id == payload.PullRequest.Id)
+                  .Select(x => (int?)x.Number)
+                  .FirstOrDefaultAsync();
+              }
 
               if (issueNumber.HasValue) {
                 var actor = _grainFactory.GetGrain<IIssueActor>(issueNumber.Value, payload.Repository.FullName, grainClassNamePrefix: null);
@@ -304,67 +299,63 @@
     }
 
     public async Task Repository(DateTimeOffset eventDate, RepositoryPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        switch (payload.Action) {
-          case "created":
-          case "publicized":
-          case "privatized":
-            await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
-            break;
-          case "deleted": {
-              // Sync contributors on deletion
-              try {
-                // Use the account links before we delete them
-                var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
-                await repoActor.ForceSyncAllLinkedAccountRepositories();
-              } catch (InvalidOperationException) {
-                // If the repo has already been deleted it can't be activated.
-              } catch (OrleansException) {
-                // If the repo has already been deleted it can't be activated.
-              }
-
-              // Now delete
-              await updater.DeleteRepository(payload.Repository.Id);
+      switch (payload.Action) {
+        case "created":
+        case "publicized":
+        case "privatized":
+          await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+          break;
+        case "deleted": {
+            // Sync contributors on deletion
+            try {
+              // Use the account links before we delete them
+              var repoActor = _grainFactory.GetGrain<IRepositoryActor>(payload.Repository.Id);
+              await repoActor.ForceSyncAllLinkedAccountRepositories();
+            } catch (InvalidOperationException) {
+              // If the repo has already been deleted it can't be activated.
+            } catch (OrleansException) {
+              // If the repo has already been deleted it can't be activated.
             }
-            break;
-          default:
-            throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Repository)}.");
-        }
 
-        // Sync org members on both creation and deletion
-        if (payload.Action == "created" || payload.Action == "deleted") {
-          if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
-            var orgActor = _grainFactory.GetGrain<IOrganizationActor>(payload.Repository.Owner.Id);
-            orgActor.ForceSyncAllMemberRepositories().LogFailure(); // Best effort only
+            // Now delete
+            await updater.DeleteRepository(payload.Repository.Id);
           }
-        }
-
-        await updater.Changes.Submit(_queueClient);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Repository)}.");
       }
+
+      // Sync org members on both creation and deletion
+      if (payload.Action == "created" || payload.Action == "deleted") {
+        if (payload.Repository.Owner.Type == GitHubAccountType.Organization) {
+          var orgActor = _grainFactory.GetGrain<IOrganizationActor>(payload.Repository.Owner.Id);
+          orgActor.ForceSyncAllMemberRepositories().LogFailure(); // Best effort only
+        }
+      }
+
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task Status(DateTimeOffset eventDate, StatusPayload payload) {
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
+      await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
 
-        // Since we only do this here there's no need to add a mapping
-        var status = new CommitStatus() {
-          Context = payload.Context,
-          CreatedAt = payload.CreatedAt,
-          Description = payload.Description,
-          Id = payload.Id,
-          State = payload.State,
-          TargetUrl = payload.TargetUrl,
-          UpdatedAt = payload.UpdatedAt,
-        };
-        await updater.UpdateCommitStatuses(payload.Repository.Id, payload.Sha, new[] { status });
+      // Since we only do this here there's no need to add a mapping
+      var status = new CommitStatus() {
+        Context = payload.Context,
+        CreatedAt = payload.CreatedAt,
+        Description = payload.Description,
+        Id = payload.Id,
+        State = payload.State,
+        TargetUrl = payload.TargetUrl,
+        UpdatedAt = payload.UpdatedAt,
+      };
+      await updater.UpdateCommitStatuses(payload.Repository.Id, payload.Sha, new[] { status });
 
-        await updater.Changes.Submit(_queueClient);
-      }
+      await updater.Changes.Submit(_queueClient);
     }
   }
 }

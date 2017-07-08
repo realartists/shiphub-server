@@ -180,15 +180,14 @@
 
       _syncIssueTemplateTimer?.Dispose();
       _syncIssueTemplateTimer = null;
-
-      using (var context = _contextFactory.CreateInstance()) {
-        await Save(context);
-      }
+  
+      await Save();
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save(ShipHubContext context) {
-      await context.SaveRepositoryMetadata(
+    private async Task Save() {
+      using (var context = _contextFactory.CreateInstance()) {
+        await context.SaveRepositoryMetadata(
         _repoId,
         _repoSize,
         _metadata,
@@ -206,6 +205,7 @@
         _pullRequestUpdatedAt,
         _pullRequestSkip,
         _protectedBranchMetadata);
+      }
     }
 
     public async Task ForceSyncAllLinkedAccountRepositories() {
@@ -286,63 +286,61 @@
         admin = _grainFactory.GetGrain<IGitHubActor>(users.First(x => x.IsAdmin).UserId);
       }
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        try {
-          _syncCount++;
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      try {
+        _syncCount++;
 
-          await UpdateDetails(updater, github);
+        await UpdateDetails(updater, github);
 
-          // Private repos in orgs that have reverted to the free plan show in users'
-          // repo lists but are inaccessible (404). We mark such repos _disabled until
-          // we can access them.
-          if (_disabled) {
-            DeactivateOnIdle();
-          } else {
-            await UpdateIssueTemplate(updater, github);
-            await UpdateAssignees(updater, github);
-            await UpdateLabels(updater, github);
-            await UpdateMilestones(updater, github);
+        // Private repos in orgs that have reverted to the free plan show in users'
+        // repo lists but are inaccessible (404). We mark such repos _disabled until
+        // we can access them.
+        if (_disabled) {
+          DeactivateOnIdle();
+        } else {
+          await UpdateIssueTemplate(updater, github);
+          await UpdateAssignees(updater, github);
+          await UpdateLabels(updater, github);
+          await UpdateMilestones(updater, github);
 
-            if (_hasProjects) {
-              await UpdateProjects(updater, github);
-            }
-
-            /* Nibblers
-             * 
-             * Things that nibble are tricky, as they have dependencies on one another.
-             * We have to sync all issues before events, comments, and PRs.
-             * This sucks but unless we drop referential integrity it's required.
-             */
-            await UpdateIssues(updater, github);
-
-            /* IFF there are no issue changes, it's *probably* ok to sync the rest, in
-             * priority order. It's still possible to race and discover (for example)
-             * a PR before its Issue. For now let this fail - it'll eventually complete.
-             */
-            if (!updater.IssuesChanged) {
-              await UpdatePullRequests(updater, github);
-              //await UpdateComments(updater, github);
-              //await UpdateEvents(updater, github);
-            }
+          if (_hasProjects) {
+            await UpdateProjects(updater, github);
           }
 
-          // Probably best to keep last
-          if (admin != null) {
-            updater.UnionWithExternalChanges(await AddOrUpdateWebhooks(context, admin));
+          /* Nibblers
+            * 
+            * Things that nibble are tricky, as they have dependencies on one another.
+            * We have to sync all issues before events, comments, and PRs.
+            * This sucks but unless we drop referential integrity it's required.
+            */
+          await UpdateIssues(updater, github);
+
+          /* IFF there are no issue changes, it's *probably* ok to sync the rest, in
+            * priority order. It's still possible to race and discover (for example)
+            * a PR before its Issue. For now let this fail - it'll eventually complete.
+            */
+          if (!updater.IssuesChanged) {
+            await UpdatePullRequests(updater, github);
+            //await UpdateComments(updater, github);
+            //await UpdateEvents(updater, github);
           }
-        } catch (GitHubPoolEmptyException) {
-          // Nothing to do.
-          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
         }
 
-        // Send Changes.
-        await updater.Changes.Submit(_queueClient);
-        _idle = updater.Changes.IsEmpty;
-
-        // Save
-        await Save(context);
+        // Probably best to keep last
+        if (admin != null) {
+          updater.UnionWithExternalChanges(await AddOrUpdateWebhooks(admin));
+        }
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
       }
+
+      // Send Changes.
+      await updater.Changes.Submit(_queueClient);
+      _idle = updater.Changes.IsEmpty;
+
+      // Save
+      await Save();
     }
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
@@ -407,11 +405,9 @@
 
       var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        await UpdateIssueTemplate(updater, github);
-        await updater.Changes.Submit(_queueClient);
-      }
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      await UpdateIssueTemplate(updater, github);
+      await updater.Changes.Submit(_queueClient);
     }
 
     private static bool IsIssueTemplateFile(Common.GitHub.Models.ContentsFile file) {
@@ -878,39 +874,42 @@
     //  return Task.FromResult(ChangeSummary.Empty);
     //}
 
-    public async Task<IChangeSummary> AddOrUpdateWebhooks(ShipHubContext context, IGitHubRepositoryAdmin admin) {
+    public async Task<IChangeSummary> AddOrUpdateWebhooks(IGitHubRepositoryAdmin admin) {
       var changes = ChangeSummary.Empty;
 
-      var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
-      context.Database.Connection.Close();
+      Hook hook = null;
+      HookTableType newHook = null;
+      using (var context = _contextFactory.CreateInstance()) {
+        hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
+        // If our last operation on this repo hook resulted in error, delay.
+        if (hook?.LastError != null && hook?.LastError.Value > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
+          return changes; // Wait to try later.
+        }
+        if (hook?.GitHubId == null) {
+          // GitHub will immediately send a ping when the webhook is created.
+          // To avoid any chance for a race, add the Hook to the DB first, then
+          // create on GitHub.
+          if (hook == null) {
+            newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
+          } else {
+            newHook = new HookTableType() {
+              Id = hook.Id,
+              Secret = hook.Secret,
+              Events = string.Join(",", RequiredEvents),
+            };
+          }
 
-      // If our last operation on this repo hook resulted in error, delay.
-      if (hook?.LastError != null && hook?.LastError.Value > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
-        return changes; // Wait to try later.
+          // Assume failure until we succeed
+          newHook.LastError = DateTimeOffset.UtcNow;
+        }
       }
+      
 
       // There are now a few cases to handle
       // If there is no record of a hook, try to make one.
       // If there is an incomplete record, try to make it.
       // If there is an errored record, sleep or retry
       if (hook?.GitHubId == null) {
-        // GitHub will immediately send a ping when the webhook is created.
-        // To avoid any chance for a race, add the Hook to the DB first, then
-        // create on GitHub.
-        HookTableType newHook = null;
-        if (hook == null) {
-          newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
-        } else {
-          newHook = new HookTableType() {
-            Id = hook.Id,
-            Secret = hook.Secret,
-            Events = string.Join(",", RequiredEvents),
-          };
-        }
-
-        // Assume failure until we succeed
-        newHook.LastError = DateTimeOffset.UtcNow;
-
         try {
           var hookList = await admin.RepositoryWebhooks(_fullName);
           if (!hookList.IsOk) {
@@ -947,14 +946,18 @@
           if (addRepoHookResponse.Succeeded) {
             newHook.GitHubId = addRepoHookResponse.Result.Id;
             newHook.LastError = null;
-            changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
+            using (var context = _contextFactory.CreateInstance()) {
+              changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
+            }
           } else {
             this.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error}");
           }
         } catch (Exception e) {
           e.Report($"Failed to add hook for repo '{_fullName}' ({_repoId})");
           // Save LastError
-          await context.BulkUpdateHooks(hooks: new[] { newHook });
+          using (var context = _contextFactory.CreateInstance()) {
+            await context.BulkUpdateHooks(hooks: new[] { newHook });
+          }
         }
       } else if (!RequiredEvents.SetEquals(hook.Events.Split(','))) {
         var editHook = new HookTableType() {
@@ -973,18 +976,24 @@
             editHook.LastError = null;
             editHook.GitHubId = editResponse.Result.Id;
             editHook.Events = string.Join(",", editResponse.Result.Events);
-            await context.BulkUpdateHooks(hooks: new[] { editHook });
+            using (var context = _contextFactory.CreateInstance()) {
+              await context.BulkUpdateHooks(hooks: new[] { editHook });
+            }
           } else if (editResponse.Status == HttpStatusCode.NotFound) {
             // Our record is out of date.
             this.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}). Deleting our hook record. {editResponse.Status} {editResponse.Error}");
-            changes = await context.BulkUpdateHooks(deleted: new[] { editHook.Id });
+            using (var context = _contextFactory.CreateInstance()) {
+              changes = await context.BulkUpdateHooks(deleted: new[] { editHook.Id });
+            }
           } else {
             throw new Exception($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error}");
           }
         } catch (Exception e) {
           e.Report();
           // Save LastError
-          await context.BulkUpdateHooks(hooks: new[] { editHook });
+          using (var context = _contextFactory.CreateInstance()) {
+            await context.BulkUpdateHooks(hooks: new[] { editHook });
+          }
         }
       }
 
@@ -1028,23 +1037,21 @@
 
       var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        try {
-          // TODO: Lookup Metadata?
-          var commentResponse = await github.IssueComment(_fullName, commentId, null, RequestPriority.Background);
-          if (commentResponse.IsOk) {
-            await updater.UpdateIssueComments(_repoId, commentResponse.Date, new[] { commentResponse.Result });
-          }
-          // TODO: Reactions?
-        } catch (GitHubPoolEmptyException) {
-          // Nothing to do.
-          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      try {
+        // TODO: Lookup Metadata?
+        var commentResponse = await github.IssueComment(_fullName, commentId, null, RequestPriority.Background);
+        if (commentResponse.IsOk) {
+          await updater.UpdateIssueComments(_repoId, commentResponse.Date, new[] { commentResponse.Result });
         }
-
-        // Send Changes.
-        await updater.Changes.Submit(_queueClient);
+        // TODO: Reactions?
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
       }
+
+      // Send Changes.
+      await updater.Changes.Submit(_queueClient);
     }
 
     public async Task RefreshPullRequestReviewComment(long commentId) {
@@ -1056,33 +1063,34 @@
 
       var github = new GitHubActorPool(_grainFactory, users.Select(x => x.UserId));
 
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
-        try {
-          // TODO: Lookup Metadata?
-          var issueId = await context.PullRequestComments
+      var updater = new DataUpdater(_contextFactory, _mapper);
+      try {
+        // TODO: Lookup Metadata?
+        long? issueId;
+        using (var context = _contextFactory.CreateInstance()) {
+          issueId = await context.PullRequestComments
             .AsNoTracking()
             .Where(x => x.RepositoryId == _repoId && x.Id == commentId)
             .Select(x => (long?)x.IssueId)
             .SingleOrDefaultAsync();
-
-          if (issueId.HasValue) {
-            // We can't update comments until we know about the issue, sadly.
-            // Luckily, this method is a hack that's only used for edited comments, which we're more likely to already have.
-            var commentResponse = await github.PullRequestComment(_fullName, commentId, null, RequestPriority.Background);
-            if (commentResponse.IsOk) {
-              await updater.UpdatePullRequestComments(_repoId, issueId.Value, commentResponse.Date, new[] { commentResponse.Result });
-            }
-          }
-          // TODO: Reactions?
-        } catch (GitHubPoolEmptyException) {
-          // Nothing to do.
-          // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
         }
-
-        // Send Changes.
-        await updater.Changes.Submit(_queueClient);
+        
+        if (issueId.HasValue) {
+          // We can't update comments until we know about the issue, sadly.
+          // Luckily, this method is a hack that's only used for edited comments, which we're more likely to already have.
+          var commentResponse = await github.PullRequestComment(_fullName, commentId, null, RequestPriority.Background);
+          if (commentResponse.IsOk) {
+            await updater.UpdatePullRequestComments(_repoId, issueId.Value, commentResponse.Date, new[] { commentResponse.Result });
+          }
+        }
+        // TODO: Reactions?
+      } catch (GitHubPoolEmptyException) {
+        // Nothing to do.
+        // No need to also catch GithubRateLimitException, it's handled by GitHubActorPool
       }
+
+      // Send Changes.
+      await updater.Changes.Submit(_queueClient);
     }
   }
 }

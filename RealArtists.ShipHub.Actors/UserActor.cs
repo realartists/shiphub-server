@@ -76,16 +76,16 @@
       _syncTimer?.Dispose();
       _syncTimer = null;
 
-      using (var context = _contextFactory.CreateInstance()) {
-        await Save(context);
-      }
+      await Save();
       await base.OnDeactivateAsync();
     }
 
-    private async Task Save(ShipHubContext context) {
-      await context.UpdateMetadata("Accounts", _userId, _metadata);
-      await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
-      await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
+    private async Task Save() {
+      using (var context = _contextFactory.CreateInstance()) {
+        await context.UpdateMetadata("Accounts", _userId, _metadata);
+        await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
+        await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
+      }
     }
 
     public Task OnHello() {
@@ -117,96 +117,100 @@
       }
 
       var tasks = new List<Task>();
-      using (var context = _contextFactory.CreateInstance()) {
-        var updater = new DataUpdater(context, _mapper);
+      var updater = new DataUpdater(_contextFactory, _mapper);
 
-        try {
-          // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
-          // Give them high priority.
+      try {
+        // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
+        // Give them high priority.
 
-          // User
-          if (_metadata.IsExpired()) {
-            var user = await _github.User(_metadata, RequestPriority.Interactive);
+        // User
+        if (_metadata.IsExpired()) {
+          var user = await _github.User(_metadata, RequestPriority.Interactive);
 
-            if (user.IsOk) {
-              await updater.UpdateAccounts(user.Date, new[] { user.Result });
-            }
-
-            // Don't update until saved.
-            _metadata = GitHubMetadata.FromResponse(user);
+          if (user.IsOk) {
+            await updater.UpdateAccounts(user.Date, new[] { user.Result });
           }
 
-          if (_syncBillingState) {
-            tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
-          }
-
-          // Update this user's org memberships
-          if (_orgMetadata.IsExpired()) {
-            var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata, priority: RequestPriority.Interactive);
-
-            if (orgs.IsOk) {
-              await updater.SetUserOrganizations(_userId, orgs.Date, orgs.Result);
-
-              // When this user's org membership changes, re-evaluate whether or not they
-              // should have a complimentary personal subscription.
-              tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
-            }
-
-            _orgMetadata = GitHubMetadata.FromResponse(orgs);
-          }
-
-          // Update this user's repo memberships
-          if (_forceRepos || _repoMetadata.IsExpired()) {
-            var repos = await _github.Repositories(_repoMetadata, RequestPriority.Interactive);
-
-            if (repos.IsOk) {
-              var keepRepos = repos.Result.Where(x => x.HasIssues && x.Permissions.Push);
-              await updater.SetUserRepositories(_userId, repos.Date, keepRepos);
-            }
-
-            // Don't update until saved.
-            _repoMetadata = GitHubMetadata.FromResponse(repos);
-            _forceRepos = false;
-          }
-        } catch (GitHubRateException) {
-          // nothing to do
+          // Don't update until saved.
+          _metadata = GitHubMetadata.FromResponse(user);
         }
 
-        await updater.Changes.Submit(_queueClient);
+        if (_syncBillingState) {
+          tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
+        }
 
-        // TODO: Save the repo list locally in this object
-        // TODO: Actually and load and maintain the list of orgs inside the object
-        // Maintain the grain references too.
+        // Update this user's org memberships
+        if (_orgMetadata.IsExpired()) {
+          var orgs = await _github.OrganizationMemberships(cacheOptions: _orgMetadata, priority: RequestPriority.Interactive);
 
+          if (orgs.IsOk) {
+            await updater.SetUserOrganizations(_userId, orgs.Date, orgs.Result);
+
+            // When this user's org membership changes, re-evaluate whether or not they
+            // should have a complimentary personal subscription.
+            tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
+          }
+
+          _orgMetadata = GitHubMetadata.FromResponse(orgs);
+        }
+
+        // Update this user's repo memberships
+        if (_forceRepos || _repoMetadata.IsExpired()) {
+          var repos = await _github.Repositories(_repoMetadata, RequestPriority.Interactive);
+
+          if (repos.IsOk) {
+            var keepRepos = repos.Result.Where(x => x.HasIssues && x.Permissions.Push);
+            await updater.SetUserRepositories(_userId, repos.Date, keepRepos);
+          }
+
+          // Don't update until saved.
+          _repoMetadata = GitHubMetadata.FromResponse(repos);
+          _forceRepos = false;
+        }
+      } catch (GitHubRateException) {
+        // nothing to do
+      }
+
+      await updater.Changes.Submit(_queueClient);
+
+      // TODO: Save the repo list locally in this object
+      // TODO: Actually and load and maintain the list of orgs inside the object
+      // Maintain the grain references too.
+
+      long[] allRepoIds;
+      long[] allOrgIds;
+      HashSet<long> orgsToSync;
+      using (var context = _contextFactory.CreateInstance()) {
         var allRepos = await context.AccountRepositories
           .AsNoTracking()
           .Where(x => x.AccountId == _userId)
           .Select(x => new { RepositoryId = x.RepositoryId, AccountId = x.Repository.AccountId })
           .ToArrayAsync();
+        allRepoIds = allRepos.Select(r => r.RepositoryId).ToArray();
 
-        if (allRepos.Any()) {
-          tasks.AddRange(allRepos.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x.RepositoryId).Sync()));
-        }
-
-        var orgsToSync = allRepos.Select(x => x.AccountId).ToHashSet(); // Accounts with accessible repos
-        var allOrgIds = await context.OrganizationAccounts
+        orgsToSync = allRepos.Select(x => x.AccountId).ToHashSet(); // Accounts with accessible repos
+        allOrgIds = await context.OrganizationAccounts
           .AsNoTracking()
           .Where(x => x.UserId == _userId)
           .Select(x => x.OrganizationId)
           .ToArrayAsync();
-
-        orgsToSync.IntersectWith(allOrgIds);
-
-        if (orgsToSync.Any()) {
-          tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
-          if (_syncBillingState) {
-            tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(orgsToSync, _userId));
-          }
-        }
-
-        // Save changes
-        await Save(context);
       }
+
+      if (allRepoIds.Any()) {
+        tasks.AddRange(allRepoIds.Select(x => _grainFactory.GetGrain<IRepositoryActor>(x).Sync()));
+      }
+      
+      orgsToSync.IntersectWith(allOrgIds);
+
+      if (orgsToSync.Any()) {
+        tasks.AddRange(allOrgIds.Select(x => _grainFactory.GetGrain<IOrganizationActor>(x).Sync()));
+        if (_syncBillingState) {
+          tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(orgsToSync, _userId));
+        }
+      }
+
+      // Save changes
+      await Save();
       // Await all outstanding operations.
       await Task.WhenAll(tasks);
 
