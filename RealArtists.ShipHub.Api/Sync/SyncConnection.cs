@@ -26,7 +26,7 @@
   }
 
   public class SyncConnection : WebSocketHandler, ISyncConnection {
-    private const int _MaxMessageSize = 64 * 1024; // 64 KB
+    private const int _MaxMessageSize = 1024 * 1024; // 1 MB
     private static readonly Version _MinimumClientBuild = new Version(338, 0);
 
     private static readonly IObservable<long> _PollInterval =
