@@ -264,14 +264,11 @@
     public async Task UpdateMilestones(long repositoryId, DateTimeOffset date, IEnumerable<g.Milestone> milestones, bool complete = false) {
       if (!milestones.Any() && !complete) { return; }
 
-      var accounts = milestones
-        .Select(x => x.Creator)
-        .Distinct(x => x.Id)
-        .ToArray();
+      // Note: Milestones may have a Creator field, but we currently ignore it.
+
       var repoMilestones = _mapper.Map<IEnumerable<MilestoneTableType>>(milestones);
 
       await WithContext(async context => {
-        await UpdateAccounts(date, accounts);
         _changes.UnionWith(await context.BulkUpdateMilestones(repositoryId, repoMilestones, complete));
       });
     }
