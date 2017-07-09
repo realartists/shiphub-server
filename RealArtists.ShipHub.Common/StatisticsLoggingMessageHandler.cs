@@ -10,10 +10,9 @@
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
       var result = await base.SendAsync(request, cancellationToken);
 
-      StatHat.Count("HTTP");
-      StatHat.Count($"HTTP.{(int)(result.StatusCode)}");
-      StatHat.Count($"HTTP.{request.RequestUri.Host}");
-      StatHat.Count($"HTTP.{request.RequestUri.Host}.{(int)(result.StatusCode)}");
+      var host = request.RequestUri.Host;
+      var status = (int)result.StatusCode;
+      StatHat.Count($"http~total,{status},{host} total,{host} {status}");
 
       return result;
     }
