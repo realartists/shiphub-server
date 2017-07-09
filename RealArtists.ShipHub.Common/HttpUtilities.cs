@@ -15,7 +15,7 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "It returns it.")]
-    public static HttpClientHandler CreateDefaultHandler(bool useFiddler = false, int maxRedirects = 0) {
+    public static HttpMessageHandler CreateDefaultHandler(bool useFiddler = false, int maxRedirects = 0, bool logStatistics = true) {
       var handler = new HttpClientHandler() {
         AllowAutoRedirect = maxRedirects > 0,
         AutomaticDecompression = DecompressionMethods.Deflate | DecompressionMethods.GZip,
@@ -34,7 +34,11 @@
       }
 #endif
 
-      return handler;
+      if (logStatistics) {
+        return new StatisticsLoggingMessageHandler(handler);
+      } else {
+        return handler;
+      }
     }
   }
 }

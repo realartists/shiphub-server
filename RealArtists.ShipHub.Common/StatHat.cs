@@ -134,7 +134,9 @@
         // Allow loads of requests to StatHat
         HttpUtilities.SetServicePointConnectionLimit(StatHatApiRoot);
 
-        _client = new HttpClient(HttpUtilities.CreateDefaultHandler(), true) {
+        // NOTE: Very important we not log statistics for calls to StatHat, as the statistics
+        // generate calls to StatHat, which would log more statistics, which ...
+        _client = new HttpClient(HttpUtilities.CreateDefaultHandler(logStatistics: false), true) {
           Timeout = TimeSpan.FromMinutes(2),
         };
 
