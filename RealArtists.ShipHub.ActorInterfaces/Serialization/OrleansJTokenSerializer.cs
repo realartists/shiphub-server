@@ -24,7 +24,7 @@
       // This value appears to work well with both DateTimes (without time zone information) and DateTimeOffsets.
       DateParseHandling = DateParseHandling.DateTimeOffset,
       NullValueHandling = NullValueHandling.Ignore,
-      Formatting = Formatting.Indented
+      Formatting = Formatting.None,
     };
 
     [CopierMethod]
