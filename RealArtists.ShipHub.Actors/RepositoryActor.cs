@@ -29,6 +29,7 @@
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
     public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
+    public static readonly int SaveSkip = 5; // Saving metadata is expensive
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
       "commit_comment"
@@ -180,7 +181,7 @@
 
       _syncIssueTemplateTimer?.Dispose();
       _syncIssueTemplateTimer = null;
-  
+
       await Save();
       await base.OnDeactivateAsync();
     }
@@ -288,8 +289,6 @@
 
       var updater = new DataUpdater(_contextFactory, _mapper);
       try {
-        _syncCount++;
-
         await UpdateDetails(updater, github);
 
         // Private repos in orgs that have reverted to the free plan show in users'
@@ -341,7 +340,11 @@
       _idle = updater.Changes.IsEmpty;
 
       // Save
-      await Save();
+      if (_syncCount % SaveSkip == 0) {
+        await Save();
+      }
+
+      _syncCount++; // Last so it remains zero first run
     }
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
@@ -424,7 +427,7 @@
     }
 
     private async Task UpdateIssueTemplate(DataUpdater updater, IGitHubPoolable github) {
-      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount - 1 % PollIssueTemplateSkip == 0))) {
+      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount % PollIssueTemplateSkip == 0))) {
         this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
         return;
       }
@@ -904,7 +907,6 @@
           newHook.LastError = DateTimeOffset.UtcNow;
         }
       }
-      
 
       // There are now a few cases to handle
       // If there is no record of a hook, try to make one.
@@ -1075,7 +1077,7 @@
             .Select(x => (long?)x.IssueId)
             .SingleOrDefaultAsync();
         }
-        
+
         if (issueId.HasValue) {
           // We can't update comments until we know about the issue, sadly.
           // Luckily, this method is a hack that's only used for edited comments, which we're more likely to already have.
