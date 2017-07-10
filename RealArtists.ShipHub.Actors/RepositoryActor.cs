@@ -297,6 +297,7 @@
         // we can access them.
         if (_disabled) {
           DeactivateOnIdle();
+          return; // Do nothing else
         } else {
           await UpdateIssueTemplate(updater, github);
           await UpdateAssignees(updater, github);
