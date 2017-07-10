@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
+  using System.Linq;
   using System.Net.Http;
   using System.Net.Http.Formatting;
   using System.Threading;
@@ -89,7 +90,7 @@
     // Submission
     // /////////////////////////////////////////////////////////////
 
-    private struct StatHatStatistic {
+    private class StatHatStatistic {
       [JsonProperty("stat")]
       public string Name { get; set; }
 
@@ -103,7 +104,7 @@
       public int UnixTimestamp { get; set; }
     }
 
-    private struct StatHatRequest {
+    private class StatHatRequest {
       [JsonProperty("ezkey")]
       [SuppressMessage("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
       public string Key { get; set; }
@@ -121,7 +122,10 @@
       private const long FlushCount = 1000; // logs will be flushed immediately if more than this amount queue up
       private const long MaxBufferCount = 10000; // max logs to buffer. above this count, we start dropping them.
 
-      private List<StatHatStatistic> _buffer = new List<StatHatStatistic>();
+      private object _lock = new object();
+      private int _count = 0;
+      private Dictionary<long, Dictionary<string, StatHatStatistic>> _buffer = new Dictionary<long, Dictionary<string, StatHatStatistic>>();
+
       private Timer _timer;
       private bool _timerScheduled = false;
       private Thread _consumerThread;
@@ -134,7 +138,9 @@
         // Allow loads of requests to StatHat
         HttpUtilities.SetServicePointConnectionLimit(StatHatApiRoot);
 
-        _client = new HttpClient(HttpUtilities.CreateDefaultHandler(), true) {
+        // NOTE: Very important we not log statistics for calls to StatHat, as the statistics
+        // generate calls to StatHat, which would log more statistics, which ...
+        _client = new HttpClient(HttpUtilities.CreateDefaultHandler(logStatistics: false), true) {
           Timeout = TimeSpan.FromMinutes(2),
         };
 
@@ -149,17 +155,29 @@
 
       /* Add a single line to _buffer. Callable from any thread */
       public void Record(StatHatStatistic stat) {
-        lock (_buffer) {
-          if (_buffer.Count >= MaxBufferCount) {
-            return;
+        lock (_lock) {
+          if (_count >= MaxBufferCount) { return; }
+
+          var update = _buffer.Valn(stat.UnixTimestamp).Vald(stat.Name, () => stat);
+
+          if (ReferenceEquals(update, stat) == false) {
+            if (stat.Value.HasValue) {
+              update.Count += stat.Count;
+            } else {
+              // Replace (old) value
+              update.Value = stat.Value;
+            }
+          } else {
+            // we added a new stat
+            ++_count;
           }
-          _buffer.Add(stat);
-          if (_buffer.Count >= FlushCount) {
+
+          if (_count >= FlushCount) {
             if (_timerScheduled) {
               _timerScheduled = false;
               _timer.Change(Timeout.Infinite, Timeout.Infinite); // cancel the timer
             }
-            Monitor.Pulse(_buffer);
+            Monitor.Pulse(_lock);
           } else if (!_timerScheduled) {
             _timerScheduled = true;
             _timer.Change(HysteresisMillis, Timeout.Infinite);
@@ -168,9 +186,9 @@
       }
 
       private void TimerFired() {
-        lock (_buffer) {
+        lock (_lock) {
           _timerScheduled = false;
-          Monitor.Pulse(_buffer);
+          Monitor.Pulse(_lock);
         }
       }
 
@@ -178,17 +196,17 @@
       private void ProcessBuffer() {
         do {
           StatHatStatistic[] stats = null;
-          lock (_buffer) {
-            if (_buffer.Count == 0) {
-              Monitor.Wait(_buffer);
-              if (_buffer.Count == 0) {
+          lock (_lock) {
+            if (_count == 0) {
+              Monitor.Wait(_lock);
+              if (_count == 0) {
                 continue; // skip spurious wakeup
               }
             }
 
-            stats = new StatHatStatistic[_buffer.Count];
-            _buffer.CopyTo(stats);
+            stats = _buffer.Values.SelectMany(x => x.Values).ToArray();
             _buffer.Clear();
+            _count = 0;
           }
 
           ReportStats(stats).GetAwaiter().GetResult();
