@@ -175,6 +175,7 @@
     <Build Include="Procedures\DeleteProtectedBranch.sql" />
     <Build Include="Procedures\UpdateProtectedBranch.sql" />
     <Build Include="User Defined Types\ProtectedBranchMetadataTableType.sql" />
+    <Build Include="Security\StateOnly.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />
