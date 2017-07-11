@@ -2,5 +2,6 @@
   public class AccountEntry : SyncEntity {
     public long Identifier { get; set; }
     public string Login { get; set; }
+    public string Name { get; set; }
   }
 }

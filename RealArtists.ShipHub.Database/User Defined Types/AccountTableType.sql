@@ -1,5 +1,7 @@
 ﻿CREATE TYPE [dbo].[AccountTableType] AS TABLE (
-  [Id]        BIGINT         NOT NULL PRIMARY KEY CLUSTERED,
-  [Type]      NVARCHAR(4)    NOT NULL,
-  [Login]     NVARCHAR(255)  NOT NULL
+  [Id]    BIGINT        NOT NULL PRIMARY KEY CLUSTERED,
+  [Type]  NVARCHAR(4)   NOT NULL,
+  [Login] NVARCHAR(255) NOT NULL,
+  [Name]  NVARCHAR(255) NULL,
+  [Email] NVARCHAR(320) NULL
 )

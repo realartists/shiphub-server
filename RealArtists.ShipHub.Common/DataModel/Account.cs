@@ -18,6 +18,12 @@
     [StringLength(255)]
     public string Login { get; set; }
 
+    [StringLength(255)]
+    public string Name { get; set; }
+
+    [StringLength(320)]
+    public string Email { get; set; }
+
     public DateTimeOffset Date { get; set; }
 
     public string MetadataJson {

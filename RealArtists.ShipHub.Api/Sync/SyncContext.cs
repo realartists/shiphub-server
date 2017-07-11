@@ -336,6 +336,7 @@
             var org = new OrganizationEntry() {
               Identifier = ddr.Id,
               Login = ddr.Login,
+              Name = ddr.Name,
               ShipNeedsWebhookHelp = !(ddr.HasHook || ddr.Admin),
               // Users set later
             };
@@ -398,6 +399,7 @@
                   Data = new AccountEntry() {
                     Identifier = accountId,
                     Login = ddr.Login,
+                    Name = ddr.Name,
                   },
                 });
               }
