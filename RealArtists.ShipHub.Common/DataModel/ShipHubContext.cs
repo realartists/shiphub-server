@@ -39,6 +39,7 @@
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
+    public virtual DbSet<AccountSettings> AccountSettings { get; set; }
     public virtual DbSet<CommitComment> CommitComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -108,6 +109,11 @@
 
       modelBuilder.Entity<Account>()
         .HasOptional(e => e.Subscription)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Account>()
+        .HasOptional(e => e.Settings)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 

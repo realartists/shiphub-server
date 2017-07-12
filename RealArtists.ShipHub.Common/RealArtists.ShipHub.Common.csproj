@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="ChargeBeeUtilities.cs" />
     <Compile Include="Constants.cs" />
+    <Compile Include="DataModel\AccountSettings.cs" />
     <Compile Include="DataModel\CommitComment.cs" />
     <Compile Include="DataModel\ProtectedBranch.cs" />
     <Compile Include="DataModel\PullRequestComment.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="DataModel\Types\PullRequestCommentTableType.cs" />
     <Compile Include="DataModel\Types\ReviewTableType.cs" />
     <Compile Include="DataModel\Types\SubscriptionTableType.cs" />
+    <Compile Include="DataModel\Types\SyncSettings.cs" />
     <Compile Include="DataUpdater.cs" />
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />

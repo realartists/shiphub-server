@@ -57,5 +57,7 @@
     public virtual ICollection<Repository> OwnedRepositories { get; set; } = new HashSet<Repository>();
 
     public virtual Subscription Subscription { get; set; }
+
+    public virtual AccountSettings Settings { get; set; }
   }
 }
