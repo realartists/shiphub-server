@@ -9,6 +9,7 @@
     public string FullName { get; set; }
     public string IssueTemplate { get; set; }
     public string PullRequestTemplate { get; set; }
+    public bool HasIssues { get; set; }
     public bool Disabled { get; set; }
 
     public IEnumerable<long> Assignees { get; set; }

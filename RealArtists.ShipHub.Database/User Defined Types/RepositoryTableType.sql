@@ -5,6 +5,7 @@
   [Name]        NVARCHAR(255)  NOT NULL,
   [FullName]    NVARCHAR(510)  NOT NULL,
   [Size]        BIGINT         NOT NULL,
+  [HasIssues]   BIT            NOT NULL,
   [HasProjects] BIT            NOT NULL,
   [Disabled]    BIT            NULL
 )

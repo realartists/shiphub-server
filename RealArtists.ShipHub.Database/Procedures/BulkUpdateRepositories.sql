@@ -31,19 +31,19 @@ BEGIN
 
     MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Id, AccountId, [Private], [Name], FullName, Size, HasProjects, [Disabled]
+      SELECT Id, AccountId, [Private], [Name], FullName, Size, HasIssues, HasProjects, [Disabled]
       FROM @Repositories
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, AccountId, [Private], [Name], FullName, Size, [Date], HasProjects, [Disabled])
-      VALUES (Id, AccountId, [Private], [Name], FullName, Size, @Date,  HasProjects, ISNULL([Disabled], 0))
+      INSERT (Id, AccountId, [Private], [Name], FullName, Size, [Date], HasIssues, HasProjects, [Disabled])
+      VALUES (Id, AccountId, [Private], [Name], FullName, Size, @Date,  HasIssues, HasProjects, ISNULL([Disabled], 0))
     WHEN MATCHED
       AND [Target].[Date] < @Date
       AND EXISTS (
-        SELECT [Target].AccountId, [Target].[Private], [Target].[Name], [Target].FullName, [Target].Size, [Target].HasProjects, [Target].[Disabled]
+        SELECT [Target].AccountId, [Target].[Private], [Target].[Name], [Target].FullName, [Target].Size, [Target].HasIssues, [Target].HasProjects, [Target].[Disabled]
         EXCEPT
-        SELECT [Source].AccountId, [Source].[Private], [Source].[Name], [Source].FullName, [Source].Size, [Source].HasProjects, ISNULL([Source].[Disabled], [Target].[Disabled])
+        SELECT [Source].AccountId, [Source].[Private], [Source].[Name], [Source].FullName, [Source].Size, [Source].HasIssues, [Source].HasProjects, ISNULL([Source].[Disabled], [Target].[Disabled])
       ) THEN
       UPDATE SET
         AccountId = [Source].AccountId,
@@ -52,6 +52,7 @@ BEGIN
         FullName = [Source].FullName,
         Size = [Source].Size,
         [Date] = @Date,
+        HasIssues = [Source].HasIssues,
         HasProjects = [Source].HasProjects,
         [Disabled] = ISNULL([Source].[Disabled], [Target].[Disabled])
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes

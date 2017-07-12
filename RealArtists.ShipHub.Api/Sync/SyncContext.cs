@@ -712,6 +712,7 @@
                   ShipNeedsWebhookHelp = !(ddr.HasHook || ddr.Admin),
                   IssueTemplate = ddr.IssueTemplate,
                   PullRequestTemplate = ddr.PullRequestTemplate,
+                  HasIssues = ddr.HasIssues,
                   Disabled = ddr.Disabled,
                 },
               });
