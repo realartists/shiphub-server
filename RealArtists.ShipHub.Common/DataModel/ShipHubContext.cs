@@ -816,7 +816,7 @@
       });
     }
 
-    public  Task<ChangeSummary> BulkUpdateReactions(
+    public Task<ChangeSummary> BulkUpdateReactions(
       long repositoryId,
       IEnumerable<ReactionTableType> reactions,
       long? issueId = null,
@@ -954,12 +954,25 @@
       return sp;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<(long RepositoryId, bool IsAdmin)> permissions) {
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<RepositoryPermissionsTableType> permissions) {
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
-        x.RepositoryIds = CreateMappingTable(
-          "RepositoryIds",
-          permissions.Select(y => new MappingTableType() { Item1 = y.RepositoryId, Item2 = y.IsAdmin ? 1 : 0 }));
+        x.Permissions = CreateTableParameter(
+          "Permissions",
+          "[dbo].[RepositoryPermissionsTableType]",
+          new[] {
+            ("RepositoryId", typeof(long)),
+            ("Admin", typeof(bool)),
+            ("Push", typeof(bool)),
+            ("Pull", typeof(bool)),
+          },
+          y => new object[] {
+            y.RepositoryId,
+            y.Admin,
+            y.Push,
+            y.Pull,
+          },
+          permissions);
       });
     }
 

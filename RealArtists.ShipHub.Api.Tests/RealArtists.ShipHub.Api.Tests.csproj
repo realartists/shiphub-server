@@ -49,6 +49,7 @@
     <Compile Include="GitHubWebhookTests.cs" />
     <Compile Include="ShipHubContextTests.cs" />
     <Compile Include="SubscriptionEntrySyncTests.cs" />
+    <Compile Include="SuperLazyRefactoringHelpers.cs" />
     <Compile Include="SyncContextTests.cs" />
     <Compile Include="WebhookHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />

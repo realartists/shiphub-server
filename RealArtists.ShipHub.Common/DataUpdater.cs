@@ -152,7 +152,13 @@
     }
 
     public async Task SetUserRepositories(long userId, DateTimeOffset date, IEnumerable<g.Repository> repositories) {
-      var permissions = repositories.Select(x => (RepositoryId: x.Id, IsAdmin: x.Permissions.Admin));
+      var permissions = repositories
+        .Select(x => new RepositoryPermissionsTableType() {
+          RepositoryId = x.Id,
+          Admin = x.Permissions.Admin,
+          Pull = x.Permissions.Pull,
+          Push = x.Permissions.Push,
+        });
 
       await WithContext(async context => {
         await UpdateRepositories(date, repositories);
