@@ -316,7 +316,7 @@
       foreach (var pr in pullRequests) {
         allAccounts.Add(pr.User);
         if (pr.ClosedBy != null) { allAccounts.Add(pr.ClosedBy); }
-        if (pr.ClosedBy != null) { allAccounts.Add(pr.MergedBy); }
+        if (pr.MergedBy != null) { allAccounts.Add(pr.MergedBy); }
         if (pr.Assignees?.Any() == true) {
           allAccounts.AddRange(pr.Assignees);
         }
