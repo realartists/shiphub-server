@@ -5,10 +5,12 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Newtonsoft.Json.Linq;
+  using Orleans.CodeGeneration;
 
   /// <summary>
   /// These GitHub requests and responses are free of user specific state.
   /// </summary>
+  [Version(1)]
   public interface IGitHubPoolable {
     // Issues
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

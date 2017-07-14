@@ -1,7 +1,9 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces {
   using System.Threading.Tasks;
   using Orleans;
+  using Orleans.CodeGeneration;
 
+  [Version(1)]
   public interface IRepositoryActor : IGrainWithIntegerKey {
     /// <summary>
     /// Right now this simply refreshes a timer. If no sync interest

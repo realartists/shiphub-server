@@ -1,10 +1,12 @@
 ﻿namespace RealArtists.ShipHub.ActorInterfaces {
   using System.Threading.Tasks;
   using Orleans;
+  using Orleans.CodeGeneration;
 
   /// <summary>
   /// Represents a GitHub/ShipHub user.
   /// </summary>
+  [Version(1)]
   public interface IUserActor : IGrainWithIntegerKey {
     /// <summary>
     /// Right now this simply refreshes a timer. If no sync interest
