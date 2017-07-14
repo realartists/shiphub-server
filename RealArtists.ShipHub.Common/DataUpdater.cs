@@ -326,12 +326,6 @@
       }
       var accounts = allAccounts.Where(x => x != null).Distinct(x => x.Id);
 
-      var repos = pullRequests
-        .SelectMany(x => new[] { x.Head?.Repo, x.Base?.Repo })
-        .Where(x => x != null)
-        .Distinct(x => x.Id)
-        .ToArray();
-
       var milestones = pullRequests
         .Select(x => x.Milestone)
         .Where(x => x != null)
@@ -342,10 +336,6 @@
 
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
-
-        if (repos.Any()) {
-          await UpdateRepositories(date, repos);
-        }
 
         if (milestones.Any()) {
           await UpdateMilestones(repositoryId, date, milestones);
