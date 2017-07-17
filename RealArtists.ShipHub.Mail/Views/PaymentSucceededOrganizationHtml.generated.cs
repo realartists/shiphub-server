@@ -169,13 +169,7 @@ WriteLiteral(" on this invoice.\r\n</p>\r\n");
             
             #line 29 "..\..\Views\PaymentSucceededOrganizationHtml.cshtml"
  if (Model.PreviousMonthActiveUsersCount > 0) {
-    
-            
-            #line default
-            #line hidden
-            
-            #line 30 "..\..\Views\PaymentSucceededOrganizationHtml.cshtml"
-     if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
+    if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
 
             
             #line default
@@ -223,7 +217,6 @@ WriteLiteral(", and <strong>");
             #line default
             #line hidden
 WriteLiteral(" others</strong>.\r\n    </p>\r\n");
-
 
 
             

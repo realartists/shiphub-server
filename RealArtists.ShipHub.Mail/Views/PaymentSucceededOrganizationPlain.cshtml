@@ -19,7 +19,7 @@ In the prior month beginning on @Model.PreviousMonthStart.ToString("MMM d, yyyy"
 </text>
 }
 @if (Model.PreviousMonthActiveUsersCount > 0) {
-    @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
+    if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
 <text>Active Ship users in your organization in the prior month were: @(string.Join(", ", Model.PreviousMonthActiveUsersSample)).
 </text>
     } else {

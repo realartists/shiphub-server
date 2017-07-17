@@ -27,7 +27,7 @@
 </p>
 }
 @if (Model.PreviousMonthActiveUsersCount > 0) {
-    @if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
+    if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Length) {
     <p>
         Active Ship users in your organization in the prior month were: @(string.Join(", ", Model.PreviousMonthActiveUsersSample.Select(x => "<strong>" + x + "</strong>"))).
     </p>

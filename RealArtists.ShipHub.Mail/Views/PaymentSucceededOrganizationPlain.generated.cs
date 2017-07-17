@@ -169,13 +169,7 @@ WriteLiteral("\r\n");
             
             #line 21 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
  if (Model.PreviousMonthActiveUsersCount > 0) {
-    
-            
-            #line default
-            #line hidden
-            
-            #line 22 "..\..\Views\PaymentSucceededOrganizationPlain.cshtml"
-     if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
+    if (Model.PreviousMonthActiveUsersCount == Model.PreviousMonthActiveUsersSample.Count()) {
 
             
             #line default
@@ -225,7 +219,6 @@ WriteLiteral(", and ");
 WriteLiteral(" others.\r\n");
 
 WriteLiteral("\r\n");
-
 
 
             
