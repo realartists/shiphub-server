@@ -214,8 +214,10 @@
           result.Error = await response.Content.ReadAsAsync<GitHubError>(GitHubSerialization.MediaTypeFormatters);
           result.Error.Status = response.StatusCode;
         } else {
+          // So far, these have all been nginx errors, mostly unicorns and 502s
+          // They're already logged by the LoggingMessageProcessingHandler.
           var body = await response.Content.ReadAsStringAsync();
-          throw new GitHubException($"Invalid GitHub Response for [{request.Uri}]:\n\n{body}");
+          Log.Info($"Invalid GitHub Response for [{request.Uri}]:\n\n{body}");
         }
       }
 
