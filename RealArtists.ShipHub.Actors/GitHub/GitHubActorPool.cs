@@ -92,6 +92,20 @@
       }
     }
 
+    public Task<GitHubResponse<Account>> User(string login, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.User(login, cache, priority),
+        cacheOptions
+      );
+    }
+
+    public Task<GitHubResponse<Account>> User(long id, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.User(id, cache, priority),
+        cacheOptions
+      );
+    }
+
     public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Assignable(repoFullName, cache, priority),
@@ -211,9 +225,16 @@
       );
     }
 
-    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<Account>> Organization(string login, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
-        (actor, cache) => actor.Organization(orgName, cache, priority),
+        (actor, cache) => actor.Organization(login, cache, priority),
+        cacheOptions
+      );
+    }
+
+    public Task<GitHubResponse<Account>> Organization(long id, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.Organization(id, cache, priority),
         cacheOptions
       );
     }
@@ -270,6 +291,13 @@
     public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Repository(repoFullName, cache, priority),
+        cacheOptions
+      );
+    }
+
+    public Task<GitHubResponse<Repository>> Repository(long repoId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.Repository(repoId, cache, priority),
         cacheOptions
       );
     }
