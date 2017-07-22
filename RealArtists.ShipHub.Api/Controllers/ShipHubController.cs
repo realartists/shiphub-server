@@ -15,6 +15,7 @@
   using Common.GitHub;
   using Newtonsoft.Json.Linq;
   using QueueClient;
+  using RealArtists.ShipHub.Common.DataModel.Types;
   using gm = Common.GitHub.Models;
   using sm = Sync.Messages.Entries;
 
@@ -53,7 +54,7 @@
       GitHubResponse<gm.Issue> issueResponse = null;
       long? repoId = null;
       try {
-          var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
+        var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
         var repoName = $"{owner}/{repo}";
 
         prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
@@ -87,8 +88,6 @@
 
               await updater.Changes.Submit(_queueClient);
             }
-
-            
           }
         }
       } catch (Exception e) {
@@ -158,6 +157,36 @@
       };
 
       return ResponseMessage(request.CreateResponse(status, result, JsonUtility.JsonMediaTypeFormatter));
+    }
+
+    [HttpGet]
+    [Route("sync/settings")]
+    public async Task<IHttpActionResult> GetSyncSettings(HttpRequestMessage request) {
+      AccountSettings settings = null;
+
+      using (var context = new ShipHubContext()) {
+        settings = await context.AccountSettings
+         .AsNoTracking()
+         .SingleOrDefaultAsync(x => x.AccountId == ShipHubUser.UserId);
+      }
+
+      return Json(settings?.SyncSettings);
+    }
+
+    [HttpPost]
+    [Route("sync/settings")]
+    public async Task<IHttpActionResult> SetSyncSettings([FromBody] SyncSettings syncSettings) {
+      if (syncSettings == null
+        || syncSettings.Include.Count() > 100
+        || syncSettings.Exclude.Count() > 1000) {
+        return StatusCode(HttpStatusCode.InternalServerError);
+      }
+
+      using (var context = new ShipHubContext()) {
+        await context.SetAccountSettings(ShipHubUser.UserId, syncSettings);
+      }
+
+      return StatusCode(HttpStatusCode.Accepted);
     }
   }
 }

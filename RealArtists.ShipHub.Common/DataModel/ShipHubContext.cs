@@ -962,6 +962,7 @@
       return sp;
     }
 
+
     public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<RepositoryPermissionsTableType> permissions) {
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
@@ -981,6 +982,17 @@
             y.Pull,
           },
           permissions);
+      });
+    }
+
+    public Task SetAccountSettings(long accountId, SyncSettings syncSettings) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[SetAccountSettings]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.AccountId = accountId;
+          dsp.SyncSettingsJson = syncSettings.SerializeObject(Formatting.None);
+          return await sp.ExecuteNonQueryAsync();
+        }
       });
     }
 

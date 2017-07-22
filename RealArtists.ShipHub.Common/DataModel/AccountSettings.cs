@@ -14,6 +14,7 @@
       set => SyncSettings = value?.DeserializeObject<SyncSettings>();
     }
 
+    [NotMapped]
     public SyncSettings SyncSettings { get; set; }
 
     public virtual Account Account { get; set; }
