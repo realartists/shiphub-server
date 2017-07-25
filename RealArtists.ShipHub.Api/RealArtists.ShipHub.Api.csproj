@@ -74,6 +74,7 @@
     <Compile Include="Controllers\ChargeBeeWebhookController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\OrleansTestController.cs" />
+    <Compile Include="Controllers\SettingsController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\ShipHubApiController.cs" />
     <Compile Include="Controllers\SyncController.cs" />
