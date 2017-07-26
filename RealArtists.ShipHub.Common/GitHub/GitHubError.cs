@@ -5,6 +5,7 @@
   using Newtonsoft.Json.Linq;
 
   public class GitHubError {
+    [JsonIgnore]
     public HttpStatusCode Status { get; set; }
     public bool IsAbuse => Message?.Contains("abuse") == true;
 
