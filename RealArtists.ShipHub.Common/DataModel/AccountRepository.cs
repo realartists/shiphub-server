@@ -11,8 +11,9 @@
     [Column(Order = 1)]
     public long RepositoryId { get; set; }
 
-    public bool Hidden { get; set; }
     public bool Admin { get; set; }
+    public bool Push { get; set; }
+    public bool Pull { get; set; }
 
     public virtual User Account { get; set; }
 

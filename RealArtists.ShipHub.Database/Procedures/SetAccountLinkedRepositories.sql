@@ -1,6 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[SetAccountLinkedRepositories]
   @AccountId BIGINT,
-  @RepositoryIds MappingTableType READONLY
+  @Permissions RepositoryPermissionsTableType READONLY
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -13,26 +13,32 @@ BEGIN
     DELETE FROM AccountRepositories
     OUTPUT 'user' as ItemType, DELETED.AccountId as ItemId
     FROM AccountRepositories as ar
-      LEFT OUTER JOIN @RepositoryIds as rids ON (rids.Item1 = ar.AccountId)
+      LEFT OUTER JOIN @Permissions as p ON (p.RepositoryId = ar.RepositoryId)
     WHERE ar.AccountId = @AccountId
-      AND rids.Item1 IS NULL
+      AND p.RepositoryId IS NULL
     OPTION (FORCE ORDER)
 
     MERGE INTO AccountRepositories WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT @AccountId as AccountId, Item1 as RepositoryId, Item2 as [Admin]
-        FROM @RepositoryIds
+      SELECT @AccountId as AccountId, RepositoryId, [Admin], Push, Pull
+        FROM @Permissions
     ) as [Source]
     ON [Target].AccountId = [Source].AccountId
       AND [Target].RepositoryId = [Source].RepositoryId
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (AccountId, RepositoryId, [Hidden], [Admin])
-      VALUES (AccountId, RepositoryId, 0, [Admin])
+      INSERT (AccountId, RepositoryId, [Admin], Push, Pull)
+      VALUES (AccountId, RepositoryId, [Admin], Push, Pull)
     -- Update
-    WHEN MATCHED AND [Target].[Admin] != [Source].[Admin] THEN
+    WHEN MATCHED AND EXISTS (
+        SELECT [Target].[Admin], [Target].Pull, [Target].Push
+        EXCEPT
+        SELECT [Source].[Admin], [Source].Pull, [Source].Push
+      ) THEN
       UPDATE SET
-        [Admin] = [Source].[Admin]
+        [Admin] = [Source].[Admin],
+        Push = [Source].Push,
+        Pull = [Source].Pull
     OUTPUT 'user' as ItemType, INSERTED.AccountId as ItemId
     OPTION (LOOP JOIN, FORCE ORDER);
 

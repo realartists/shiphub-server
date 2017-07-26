@@ -6,6 +6,7 @@
     public string FullName { get; set; }
     public bool Private { get; set; }
     public long Size { get; set; }
+    public bool HasIssues { get; set; }
     public bool HasProjects { get; set; }
     public bool? Disabled { get; set; }
   }

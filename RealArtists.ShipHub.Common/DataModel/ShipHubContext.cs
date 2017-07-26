@@ -39,6 +39,7 @@
 
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
+    public virtual DbSet<AccountSettings> AccountSettings { get; set; }
     public virtual DbSet<CommitComment> CommitComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -108,6 +109,11 @@
 
       modelBuilder.Entity<Account>()
         .HasOptional(e => e.Subscription)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<Account>()
+        .HasOptional(e => e.Settings)
         .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
@@ -816,7 +822,7 @@
       });
     }
 
-    public  Task<ChangeSummary> BulkUpdateReactions(
+    public Task<ChangeSummary> BulkUpdateReactions(
       long repositoryId,
       IEnumerable<ReactionTableType> reactions,
       long? issueId = null,
@@ -862,6 +868,7 @@
             ("Name", typeof(string)),
             ("FullName", typeof(string)),
             ("Size", typeof(long)),
+            ("HasIssues", typeof(bool)),
             ("HasProjects", typeof(bool)),
             ("Disabled", typeof(bool)),
           },
@@ -872,6 +879,7 @@
             y.Name,
             y.FullName,
             y.Size,
+            y.HasIssues,
             y.HasProjects,
             y.Disabled,
           },
@@ -954,12 +962,37 @@
       return sp;
     }
 
-    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<(long RepositoryId, bool IsAdmin)> permissions) {
+
+    public Task<ChangeSummary> SetAccountLinkedRepositories(long accountId, IEnumerable<RepositoryPermissionsTableType> permissions) {
       return ExecuteAndReadChanges("[dbo].[SetAccountLinkedRepositories]", x => {
         x.AccountId = accountId;
-        x.RepositoryIds = CreateMappingTable(
-          "RepositoryIds",
-          permissions.Select(y => new MappingTableType() { Item1 = y.RepositoryId, Item2 = y.IsAdmin ? 1 : 0 }));
+        x.Permissions = CreateTableParameter(
+          "Permissions",
+          "[dbo].[RepositoryPermissionsTableType]",
+          new[] {
+            ("RepositoryId", typeof(long)),
+            ("Admin", typeof(bool)),
+            ("Push", typeof(bool)),
+            ("Pull", typeof(bool)),
+          },
+          y => new object[] {
+            y.RepositoryId,
+            y.Admin,
+            y.Push,
+            y.Pull,
+          },
+          permissions);
+      });
+    }
+
+    public Task SetAccountSettings(long accountId, SyncSettings syncSettings) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[SetAccountSettings]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.AccountId = accountId;
+          dsp.SyncSettingsJson = syncSettings.SerializeObject(Formatting.None);
+          return await sp.ExecuteNonQueryAsync();
+        }
       });
     }
 

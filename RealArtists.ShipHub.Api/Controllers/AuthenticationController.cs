@@ -18,15 +18,20 @@
   using Actors.GitHub;
   using AutoMapper;
   using Common;
-  using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
+  using Newtonsoft.Json;
   using Newtonsoft.Json.Linq;
+  using d = Common.DataModel;
   using g = Common.GitHub.Models;
 
   public class LoginRequest {
     public string AccessToken { get; set; }
+    public string ApplicationId { get; set; }
     public string ClientName { get; set; }
+
+    [JsonProperty("repoPrefs")]
+    public SyncSettings SyncSettings { get; set; }
   }
 
   public class CreatedAccessToken {
@@ -86,10 +91,10 @@
       return 1;
     }
 
-    private Task<GitHubResponse<g.Account>> GitHubUser(IGitHubHandler handler, string accessToken, CancellationToken cancellationToken) {
+    private Task<GitHubResponse<g.Account>> GitHubUser(string accessToken, CancellationToken cancellationToken) {
       AccessToken = accessToken;
       var request = new GitHubRequest("user");
-      return handler.Fetch<g.Account>(this, request, cancellationToken);
+      return _handlerPipeline.Fetch<g.Account>(this, request, cancellationToken);
     }
 
     // ///////////////////////////////////////////////////
@@ -175,40 +180,6 @@
     // Web calls
     // ///////////////////////////////////////////////////
 
-    [HttpGet]
-    [AllowAnonymous]
-    [Route("begin")]
-    public IHttpActionResult Begin(bool publicOnly = false) {
-      var clientId = _config.GitHubClientId;
-      var scope = string.Join(",", publicOnly ? PublicScopes : PrivateScopes);
-      var redir = Url.Link("callback", new { clientId = clientId });
-      var uri = $"https://github.com/login/oauth/authorize?client_id={clientId}&scope={scope}&redirect_uri={WebUtility.UrlEncode(redir)}";
-
-      return Redirect(uri);
-    }
-
-    [HttpGet]
-    [AllowAnonymous]
-    [Route("end", Name = "callback")]
-    public async Task<IHttpActionResult> End(CancellationToken cancellationToken, string code, string state = null) {
-      if (string.IsNullOrWhiteSpace(code)) {
-        return BadRequest($"{nameof(code)} is required.");
-      }
-
-      var tokenInfo = await CreateAccessToken(code, state);
-
-      // Check scopes
-      var scopes = tokenInfo.Scope.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-      var scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(scopes));
-      if (!scopesOk) {
-        return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
-          Granted = scopes,
-        });
-      }
-
-      return await LoginCommon(tokenInfo.AccessToken, cancellationToken);
-    }
-
     [HttpPost]
     [AllowAnonymous]
     [Route("lambda_legacy")]
@@ -219,22 +190,43 @@
       }
 
       var token = await CreateAccessToken(code, null);
-      return Json(new {
-        Token = token.AccessToken,
-      }, GitHubSerialization.JsonSerializerSettings);
+
+      /* Some exposition:
+       * 
+       * I go ahead and create the account here even though the client is going to call
+       * /login in just a bit. Before it does, it will request the user's sync settings.
+       * We need to ensure that authorization succeeds *and* the correct settings are
+       * returned, even if this is a new token for an existing user.
+       * 
+       * It's gross, but this will work and retain both backward and forward compatibility.
+       * 
+       * NOTE WELL: This logic CANNOT replace the /login logic, since older clients still
+       * use the Amazon Lambda endpoint and don't call this endpoint before logging in.
+       */
+
+      var login = await LoginCommon(token.AccessToken, cancellationToken);
+
+      // Notably (and intentionally) does not start a sync yet.
+      // Clients using this flow should check for and set SyncSettings before they
+      // open the web socket.
+
+      if (login.ErrorResult != null) {
+        return login.ErrorResult;
+      } else {
+        // This uses the GitHub serialization style because the old lambda code
+        // just relayed GitHub's response.
+        return Json(new {
+          Token = token.AccessToken,
+          User = login.UserInfo,
+        }, GitHubSerialization.JsonSerializerSettings);
+      }
     }
 
     [HttpDelete]
     [Route("login")]
-    public Task<IHttpActionResult> ObsoleteLogout() {
-      return Logout();
-    }
-
-    [HttpPost]
-    [Route("logout")]
     public async Task<IHttpActionResult> Logout() {
       // User wants to log out.
-      using (var context = new ShipHubContext()) {
+      using (var context = new d.ShipHubContext()) {
         var hookDetails = await context.GetLogoutWebhooks(ShipHubUser.UserId);
         var github = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
         var tasks = new List<Task>();
@@ -283,30 +275,81 @@
         return BadRequest($"{nameof(request.ClientName)} is required.");
       }
 
-      return await LoginCommon(request.AccessToken, cancellationToken);
+      d.User user = null;
+      g.Account userInfo;
+      IHttpActionResult errorResult = null;
+
+      // Newer clients will have already authenticated via lambda_legacy
+      // They don't send the authorization header though, so let's check
+      // if we recognize this token.
+      using (var context = new d.ShipHubContext()) {
+        user = await context.Tokens
+          .AsNoTracking()
+          .Where(x => x.Token == request.AccessToken)
+          .Select(x => x.User)
+          .SingleOrDefaultAsync();
+      }
+
+      if (user != null) {
+        // We know this user already.
+        userInfo = new g.Account() {
+          Id = user.Id,
+          Login = user.Login,
+          // TODO: Add name once we sync it.
+          Type = g.GitHubAccountType.User,
+        };
+      } else { // End goal is to make everything below obsolete.
+        var login = await LoginCommon(request.AccessToken, cancellationToken);
+        userInfo = login.UserInfo;
+        errorResult = login.ErrorResult;
+      }
+
+      if (errorResult != null) {
+        // Abort early on error
+        return errorResult;
+      }
+
+      // Save settings if sent
+      if (request.SyncSettings != null) {
+        using (var context = new d.ShipHubContext()) {
+          await context.SetAccountSettings(userInfo.Id, request.SyncSettings);
+        }
+      }
+
+      // Start sync
+      var userGrain = await _grainFactory.GetGrain<IUserActor>(userInfo.Id);
+      userGrain.Sync().LogFailure($"{userInfo.Login} ({userInfo.Id})");
+
+      return Ok(userInfo);
     }
 
-    private async Task<IHttpActionResult> LoginCommon(string token, CancellationToken cancellationToken) {
-      var userResponse = await GitHubUser(_handlerPipeline, token, cancellationToken);
+    private async Task<(g.Account UserInfo, IHttpActionResult ErrorResult)> LoginCommon(string token, CancellationToken cancellationToken) {
+      // This would really be a great place for F# discriminated unions.
+      // Return the user info or an error.
+
+      var userResponse = await GitHubUser(token, cancellationToken);
 
       if (!userResponse.IsOk) {
-        return Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error);
+        return (UserInfo: null, ErrorResult: Error("Unable to determine account from token.", HttpStatusCode.InternalServerError, userResponse.Error));
       }
 
       var userInfo = userResponse.Result;
       if (userInfo.Type != g.GitHubAccountType.User) {
-        return Error("Token must be for a user.", HttpStatusCode.BadRequest);
+        return (UserInfo: null, ErrorResult: Error("Token must be for a user.", HttpStatusCode.BadRequest));
       }
 
       // Check scopes (currently a duplicate check here, I know).
       var scopesOk = _validScopesCollection.Any(x => x.IsSubsetOf(userResponse.Scopes));
       if (!scopesOk) {
-        return Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
-          Granted = userResponse.Scopes,
-        });
+        return (
+          UserInfo: null,
+          ErrorResult: Error("Insufficient scopes granted.", HttpStatusCode.Unauthorized, new {
+            Granted = userResponse.Scopes,
+          })
+        );
       }
 
-      using (var context = new ShipHubContext()) {
+      using (var context = new d.ShipHubContext()) {
         // Create account using stored procedure
         // This ensures it exists (simpler logic) and also won't collide with sync.
         await context.BulkUpdateAccounts(userResponse.Date, new[] { _mapper.Map<AccountTableType>(userInfo) });
@@ -315,10 +358,7 @@
         await context.SetUserAccessToken(userInfo.Id, string.Join(",", userResponse.Scopes), userResponse.RateLimit);
       }
 
-      var userGrain = await _grainFactory.GetGrain<IUserActor>(userInfo.Id);
-      userGrain.Sync().LogFailure($"{userInfo.Login} ({userInfo.Id})");
-
-      return Ok(userInfo);
+      return (UserInfo: userInfo, ErrorResult: null);
     }
   }
 }

@@ -176,6 +176,9 @@
     <Build Include="Procedures\UpdateProtectedBranch.sql" />
     <Build Include="User Defined Types\ProtectedBranchMetadataTableType.sql" />
     <Build Include="Security\StateOnly.sql" />
+    <Build Include="User Defined Types\RepositoryPermissionsTableType.sql" />
+    <Build Include="Tables\AccountSettings.sql" />
+    <Build Include="Procedures\SetAccountSettings.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

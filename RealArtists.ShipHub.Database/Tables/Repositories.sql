@@ -7,6 +7,7 @@
   [Date]                              DATETIMEOFFSET NOT NULL,
   [Size]                              BIGINT         NOT NULL DEFAULT 0,
   [Disabled]                          BIT            NOT NULL DEFAULT 0,
+  [HasIssues]                         BIT            NOT NULL DEFAULT 1,
   [HasProjects]                       BIT            NOT NULL DEFAULT 1,
   [IssuesFullyImported]               BIT            NOT NULL DEFAULT 0,
   [IssueTemplate]                     NVARCHAR(MAX)  NULL,

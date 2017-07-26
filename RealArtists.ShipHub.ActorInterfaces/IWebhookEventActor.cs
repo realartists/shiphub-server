@@ -3,7 +3,9 @@
   using System.Threading.Tasks;
   using Common.GitHub.Models.WebhookPayloads;
   using Orleans;
+  using Orleans.CodeGeneration;
 
+  [Version(1)]
   public interface IWebhookEventActor : IGrainWithIntegerKey {
     Task CommitComment(DateTimeOffset eventDate, CommitCommentPayload payload);
     Task IssueComment(DateTimeOffset eventDate, IssueCommentPayload payload);

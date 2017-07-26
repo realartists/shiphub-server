@@ -53,7 +53,7 @@
       GitHubResponse<gm.Issue> issueResponse = null;
       long? repoId = null;
       try {
-          var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
+        var ghc = await _grainFactory.GetGrain<IGitHubActor>(ShipHubUser.UserId);
         var repoName = $"{owner}/{repo}";
 
         prResponse = await ghc.CreatePullRequest(repoName, body.Title, body.Body, body.Base, body.Head, RequestPriority.Interactive);
@@ -87,8 +87,6 @@
 
               await updater.Changes.Submit(_queueClient);
             }
-
-            
           }
         }
       } catch (Exception e) {

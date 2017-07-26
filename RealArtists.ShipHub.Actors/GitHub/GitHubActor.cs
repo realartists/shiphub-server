@@ -179,6 +179,16 @@
       return EnqueueRequest<IDictionary<string, JToken>>(request);
     }
 
+    public Task<GitHubResponse<Account>> User(string login, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"users/{login}", cacheOptions, priority);
+      return EnqueueRequest<Account>(request);
+    }
+
+    public Task<GitHubResponse<Account>> User(long id, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"user/{id}", cacheOptions, priority);
+      return EnqueueRequest<Account>(request);
+    }
+
     public Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest("user", cacheOptions, priority);
       return EnqueueRequest<Account>(request);
@@ -191,6 +201,11 @@
 
     public Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"/repos/{repoFullName}", cacheOptions, priority);
+      return EnqueueRequest<Repository>(request);
+    }
+
+    public Task<GitHubResponse<Repository>> Repository(long repoId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"/repositories/{repoId}", cacheOptions, priority);
       return EnqueueRequest<Repository>(request);
     }
 
@@ -309,8 +324,13 @@
       return FetchPaged(request, (Milestone x) => x.Id);
     }
 
-    public Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"orgs/{orgName}", cacheOptions, priority);
+    public Task<GitHubResponse<Account>> Organization(string login, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"orgs/{login}", cacheOptions, priority);
+      return EnqueueRequest<Account>(request);
+    }
+
+    public Task<GitHubResponse<Account>> Organization(long id, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"organizations/{id}", cacheOptions, priority);
       return EnqueueRequest<Account>(request);
     }
 

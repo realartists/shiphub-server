@@ -5,11 +5,17 @@
   using Common.GitHub;
   using Common.GitHub.Models;
   using Newtonsoft.Json.Linq;
+  using Orleans.CodeGeneration;
 
   /// <summary>
   /// These GitHub requests and responses are free of user specific state.
   /// </summary>
+  [Version(1)]
   public interface IGitHubPoolable {
+    // Users
+    Task<GitHubResponse<Account>> User(string login, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<Account>> User(long id, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+
     // Issues
     Task<GitHubResponse<IEnumerable<IssueEvent>>> Events(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Issue>> Issue(string repoFullName, int number, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
@@ -41,13 +47,15 @@
     Task<GitHubResponse<IEnumerable<Label>>> Labels(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Milestone>>> Milestones(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Repository>> Repository(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<Repository>> Repository(long repoId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Project>>> RepositoryProjects(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
 
     Task<GitHubResponse<IEnumerable<ContentsFile>>> ListDirectoryContents(string repoFullName, string directoryPath, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<byte[]>> FileContents(string repoFullName, string filePath, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
 
     // Orgs
-    Task<GitHubResponse<Account>> Organization(string orgName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<Account>> Organization(string login, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
+    Task<GitHubResponse<Account>> Organization(long id, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Account>>> OrganizationMembers(string orgLogin, string role = "all", GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Project>>> OrganizationProjects(string organizationLogin, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
   }
