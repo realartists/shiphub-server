@@ -28,7 +28,7 @@
         // Never set
         return StatusCode(HttpStatusCode.NoContent);
       } else {
-        return Ok(settings);
+        return Ok(settings.SyncSettings);
       }
     }
 
