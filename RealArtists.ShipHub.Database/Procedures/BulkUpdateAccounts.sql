@@ -54,7 +54,7 @@ BEGIN
         -- Once an org, always an org. Even if GitHub lies to us about it.
         [Type] = IIF([Target].[Type] = 'org', [Target].[Type], [Source].[Type]), 
         [Login] = [Source].[Login],
-        [Name] = [Source].[Name],
+        [Name] = ISNULL([Source].[Name], [Target].[Name]),
         Email = ISNULL([Source].Email, [Target].Email),
         [Date] = @Date
     OUTPUT INSERTED.Id, IIF(ISNULL(DELETED.[Type], INSERTED.[Type]) != INSERTED.[Type], 1, 0) INTO @Changes
