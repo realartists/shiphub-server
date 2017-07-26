@@ -295,7 +295,7 @@
         userInfo = new g.Account() {
           Id = user.Id,
           Login = user.Login,
-          // TODO: Add name once we sync it.
+          Name = user.Name,
           Type = g.GitHubAccountType.User,
         };
       } else { // End goal is to make everything below obsolete.
