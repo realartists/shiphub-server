@@ -2,6 +2,8 @@
   [Id]                  BIGINT         NOT NULL,
   [Type]                NVARCHAR(4)    NOT NULL,
   [Login]               NVARCHAR(255)  NOT NULL,
+  [Name]                NVARCHAR(255)  NULL,
+  [Email]               NVARCHAR(320)  NULL,
   [Date]                DATETIMEOFFSET NOT NULL,
   [MetadataJson]        NVARCHAR(MAX)  NULL,
   [RepoMetadataJson]    NVARCHAR(MAX)  NULL,

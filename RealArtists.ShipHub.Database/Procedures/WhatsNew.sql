@@ -146,7 +146,7 @@ BEGIN
   -- New/Updated Orgs
   -- ------------------------------------------------------------------------------------------------------------------
 
-  SELECT e.Id, e.[Type], e.[Login], uo.[Admin],
+  SELECT e.Id, e.[Type], e.[Login], e.[Name], uo.[Admin], -- DO NOT SEND EMAIL (PRIVATE!)
     CAST(CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END as BIT) as HasHook
   FROM @UpdatedOrgs as u
     INNER JOIN @UserOrgs as uo ON (uo.OrganizationId = u.OrganizationId)
@@ -178,7 +178,7 @@ BEGIN
   WHILE @WindowBegin <= @TotalLogs -- When there's a single log entry to sync, @WindowBegin = @TotalLogs
   BEGIN
     -- Accounts
-    SELECT e.Id, e.[Type], e.[Login]
+    SELECT e.Id, e.[Type], e.[Login], e.[Name] -- DO NOT SEND EMAIL (PRIVATE!)
     FROM Accounts as e
       INNER JOIN @Logs as l ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd

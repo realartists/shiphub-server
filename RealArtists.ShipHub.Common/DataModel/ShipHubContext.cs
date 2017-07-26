@@ -392,11 +392,15 @@
             ("Id", typeof(long)),
             ("Type", typeof(string)),
             ("Login", typeof(string)),
+            ("Name", typeof(string)),
+            ("Email", typeof(string)),
           },
           y => new object[] {
             y.Id,
             y.Type,
             y.Login,
+            y.Name,
+            y.Email,
           },
           accounts);
       });

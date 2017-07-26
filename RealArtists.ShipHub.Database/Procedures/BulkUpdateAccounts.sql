@@ -34,26 +34,28 @@ BEGIN
 
     MERGE INTO Accounts WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Id, [Type], [Login]
+      SELECT Id, [Type], [Login], [Name], Email
       FROM @Accounts
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, [Type], [Login], [Date])
-      VALUES (Id, [Type], [Login], @Date)
+      INSERT (Id, [Type], [Login], [Name], Email, [Date])
+      VALUES (Id, [Type], [Login], [Name], Email,  @Date)
     -- Update
     WHEN MATCHED 
       AND [Target].[Date] < @Date
       AND EXISTS (
-        SELECT [Target].[Type], [Target].[Login]
+        SELECT [Target].[Type], [Target].[Login], [Target].[Name], [Target].Email
         EXCEPT
-        SELECT [Source].[Type], [Source].[Login]
+        SELECT [Source].[Type], [Source].[Login], [Source].[Name], ISNULL([Source].Email, [Target].Email)
       ) THEN
       UPDATE SET
         -- Once an org, always an org. Even if GitHub lies to us about it.
         [Type] = IIF([Target].[Type] = 'org', [Target].[Type], [Source].[Type]), 
         [Login] = [Source].[Login],
+        [Name] = ISNULL([Source].[Name], [Target].[Name]),
+        Email = ISNULL([Source].Email, [Target].Email),
         [Date] = @Date
     OUTPUT INSERTED.Id, IIF(ISNULL(DELETED.[Type], INSERTED.[Type]) != INSERTED.[Type], 1, 0) INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
