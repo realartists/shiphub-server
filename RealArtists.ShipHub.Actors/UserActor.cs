@@ -88,12 +88,12 @@
       }
     }
 
-    public Task OnHello() {
+    public Task SyncBillingState() {
       _syncBillingState = true;
       return Sync();
     }
 
-    public Task ForceSyncRepositories() {
+    public Task SyncRepositories() {
       _forceRepos = true;
       return Sync();
     }

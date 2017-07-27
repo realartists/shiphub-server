@@ -118,7 +118,7 @@
           await _syncContext.SendHelloResponse(Constants.PurgeIdentifier);
 
           var userActor = await _grainFactory.GetGrain<IUserActor>(_user.UserId);
-          await userActor.OnHello();
+          await userActor.SyncBillingState();
 
           Subscribe(userActor); // Also performs the initial sync
           return;
