@@ -208,15 +208,19 @@
       return UpdateMetadata(table, "MetadataJson", id, response);
     }
 
-    public Task UpdateMetadata(string table, string column, long id, GitHubResponse response) {
-      return UpdateMetadata(table, column, id, GitHubMetadata.FromResponse(response));
+    public Task UpdateMetadata(string table, string metadataColumn, long id, GitHubResponse response) {
+      return UpdateMetadata(table, "Id", metadataColumn, id, GitHubMetadata.FromResponse(response));
     }
 
     public Task UpdateMetadata(string table, long id, GitHubMetadata metadata) {
-      return UpdateMetadata(table, "MetadataJson", id, metadata);
+      return UpdateMetadata(table, "Id", "MetadataJson", id, metadata);
     }
 
-    public Task UpdateMetadata(string table, string column, long id, GitHubMetadata metadata) {
+    public Task UpdateMetadata(string table, string metadataColumn, long id, GitHubMetadata metadata) {
+      return UpdateMetadata(table, "Id", metadataColumn, id, metadata);
+    }
+
+    public Task UpdateMetadata(string table, string keyColumn, string metadataColumn, long key, GitHubMetadata metadata) {
       // This can happen sometimes and doesn't make sense to handle until here.
       // Obviously, don't update.
       if (metadata == null) {
@@ -225,10 +229,10 @@
 
       return ExecuteCommandTextAsync(
         $@"UPDATE [{table}] SET
-             [{column}] = @Metadata
-           WHERE Id = @Id
-             AND ([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))",
-        new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
+             [{metadataColumn}] = @Metadata
+           WHERE [{keyColumn}] = @Key
+             AND ([{metadataColumn}] IS NULL OR CAST(JSON_VALUE([{metadataColumn}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))",
+        new SqlParameter("Key", SqlDbType.BigInt) { Value = key },
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
@@ -280,7 +284,6 @@
     /// <param name="branchName"></param>
     /// <param name="branchProtection">Serialized JSON as returned from GitHub's branch protection API</param>
     /// <param name="metadata">Must not be null</param>
-    /// <returns></returns>
     public Task<ChangeSummary> UpdateProtectedBranch(long repoId, string branchName, string branchProtection, GitHubMetadata metadata) {
       if (branchName == null) {
         throw new ArgumentNullException("branchName");
