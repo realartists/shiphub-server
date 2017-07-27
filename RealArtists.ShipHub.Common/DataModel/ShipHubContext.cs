@@ -40,6 +40,7 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<AccountSettings> AccountSettings { get; set; }
+    public virtual DbSet<AccountSyncRepository> AccountSyncRepositories { get; set; }
     public virtual DbSet<CommitComment> CommitComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -180,6 +181,11 @@
       modelBuilder.Entity<User>()
         .HasMany(e => e.Tokens)
         .WithRequired(e => e.User)
+        .WillCascadeOnDelete(false);
+
+      modelBuilder.Entity<User>()
+        .HasMany(e => e.SyncRepositories)
+        .WithRequired(e => e.Account)
         .WillCascadeOnDelete(false);
 
       modelBuilder.Entity<Organization>()
@@ -378,6 +384,26 @@
             return result;
           }
         }
+      });
+    }
+
+    public Task<ChangeSummary> UpdateAccountSyncRepositories(long accountId, bool autoTrack, IEnumerable<StringMappingTableType> include, IEnumerable<long> exclude) {
+      return ExecuteAndReadChanges("[dbo].[UpdateAccountSyncRepositories]", x => {
+        x.AccountId = accountId;
+        x.AutoTrack = autoTrack;
+        x.Exclude = CreateItemListTable("Exclude", exclude);
+        x.Include = CreateTableParameter(
+          "Include",
+          "[dbo].[StringMappingTableType]",
+          new[] {
+            ("Key", typeof(long)),
+            ("Value", typeof(string)),
+          },
+          y => new object[] {
+            y.Key,
+            y.Value,
+          },
+          include);
       });
     }
 

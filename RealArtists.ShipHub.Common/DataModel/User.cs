@@ -25,5 +25,8 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<GitHubToken> Tokens { get; set; } = new HashSet<GitHubToken>();
+
+    [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
+    public virtual ICollection<AccountSyncRepository> SyncRepositories { get; set; } = new HashSet<AccountSyncRepository>();
   }
 }

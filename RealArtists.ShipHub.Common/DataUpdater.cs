@@ -176,6 +176,33 @@
       });
     }
 
+    public async Task UpdateAccountSyncRepositories(long accountId, DateTimeOffset date, bool autoTrack, IEnumerable<g.Repository> includeRepos, IDictionary<long, GitHubMetadata> repoMetadata, IEnumerable<long> exclude) {
+      includeRepos = includeRepos ?? Array.Empty<g.Repository>();
+      var included = includeRepos.Distinct(x => x.Id).ToArray();
+      var includedSet = included.Select(x => x.Id).ToHashSet();
+
+      // This intersection is super important. It ensures users can only add repos
+      // they can access. If a repo goes private, or the user is blocked, it'll be
+      // removed.
+      if (includedSet.Any()) { // Allow repoMetadata to be null
+        includedSet.IntersectWith(repoMetadata.Keys);
+      }
+
+      var includedMetaMapping = included
+        .Where(x => includedSet.Contains(x.Id))
+        .Select(x => new StringMappingTableType() {
+          Key = x.Id,
+          Value = repoMetadata[x.Id].SerializeObject(),
+        })
+        .Where(x => x.Value != null) // Just in case
+        .ToArray();
+
+      await WithContext(async context => {
+        await UpdateRepositories(date, included);
+        _changes.UnionWith(await context.UpdateAccountSyncRepositories(accountId, autoTrack, includedMetaMapping, exclude));
+      });
+    }
+
     public async Task UpdateCommitComments(long repositoryId, DateTimeOffset date, IEnumerable<g.CommitComment> comments) {
       if (!comments.Any()) { return; }
 
