@@ -176,30 +176,36 @@
       });
     }
 
-    public async Task UpdateAccountSyncRepositories(long accountId, DateTimeOffset date, bool autoTrack, IEnumerable<g.Repository> includeRepos, IDictionary<long, GitHubMetadata> repoMetadata, IEnumerable<long> exclude) {
-      includeRepos = includeRepos ?? Array.Empty<g.Repository>();
-      var included = includeRepos.Distinct(x => x.Id).ToArray();
-      var includedSet = included.Select(x => x.Id).ToHashSet();
-
-      // This intersection is super important. It ensures users can only add repos
-      // they can access. If a repo goes private, or the user is blocked, it'll be
-      // removed.
-      if (includedSet.Any()) { // Allow repoMetadata to be null
-        includedSet.IntersectWith(repoMetadata.Keys);
-      }
-
-      var includedMetaMapping = included
-        .Where(x => includedSet.Contains(x.Id))
-        .Select(x => new StringMappingTableType() {
-          Key = x.Id,
-          Value = repoMetadata[x.Id].SerializeObject(),
+    /// <summary>
+    /// Updates the repositories we sync for a given account.
+    /// </summary>
+    /// <param name="accountId">The user's id.</param>
+    /// <param name="autoTrack">The user's auto-track sync setting.</param>
+    /// <param name="date">The date of the earliest public repo response. Used to update owner account info.</param>
+    /// <param name="publicRepos">Public repos this user wishes to sync and that we may need to save. Need not be complete if unchanged. Can be null.</param>
+    /// <param name="includeRepoMetadata">Repo ids and metadata (can be null for linked repos) the user explicitly wishes to include. Can be null.</param>
+    /// <param name="excludeRepos">Repo ids the user explicitly wishes to exclude. Can be null.</param>
+    /// <returns>True if the list of synced repos for this user has changed.</returns>
+    public async Task UpdateAccountSyncRepositories(
+      long accountId,
+      bool autoTrack,
+      DateTimeOffset date,
+      IEnumerable<g.Repository> publicRepos,
+      IDictionary<long, GitHubMetadata> includeRepoMetadata,
+      IEnumerable<long> excludeRepos) {
+      
+      var include = includeRepoMetadata
+        ?.Select(x => new StringMappingTableType() {
+          Key = x.Key,
+          Value = x.Value?.SerializeObject(),
         })
-        .Where(x => x.Value != null) // Just in case
         .ToArray();
 
       await WithContext(async context => {
-        await UpdateRepositories(date, included);
-        _changes.UnionWith(await context.UpdateAccountSyncRepositories(accountId, autoTrack, includedMetaMapping, exclude));
+        if (publicRepos?.Any() == true) {
+          await UpdateRepositories(date, publicRepos);
+        }
+        _changes.UnionWith(await context.UpdateAccountSyncRepositories(accountId, autoTrack, include, excludeRepos));
       });
     }
 

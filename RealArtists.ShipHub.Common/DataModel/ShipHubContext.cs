@@ -391,19 +391,23 @@
       return ExecuteAndReadChanges("[dbo].[UpdateAccountSyncRepositories]", x => {
         x.AccountId = accountId;
         x.AutoTrack = autoTrack;
-        x.Exclude = CreateItemListTable("Exclude", exclude);
-        x.Include = CreateTableParameter(
-          "Include",
-          "[dbo].[StringMappingTableType]",
-          new[] {
+        if (exclude?.Any() == true) {
+          x.Exclude = CreateItemListTable("Exclude", exclude);
+        }
+        if (include?.Any() == true) {
+          x.Include = CreateTableParameter(
+            "Include",
+            "[dbo].[StringMappingTableType]",
+            new[] {
             ("Key", typeof(long)),
             ("Value", typeof(string)),
-          },
-          y => new object[] {
+            },
+            y => new object[] {
             y.Key,
             y.Value,
-          },
-          include);
+            },
+            include);
+        }
       });
     }
 
