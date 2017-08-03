@@ -13,7 +13,7 @@
 Param
 (
 	[bool]$serverGC = $true,
-	[bool]$concurrentGC = $false
+	[bool]$concurrentGC = $true
 )
 
 [string]$configFilePath = "$(${env:RoleRoot})\base\x64\WaWorkerHost.exe.config"

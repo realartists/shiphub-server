@@ -10,6 +10,6 @@ REM     PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 REM 
 REM *********************************************************
 
-PowerShell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ".\GCSettingsManagement.ps1 -serverGC $true -concurrentGC $false"
+PowerShell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Unrestricted -Command ".\GCSettingsManagement.ps1 -serverGC $true -concurrentGC $true"
 
 Exit /b
