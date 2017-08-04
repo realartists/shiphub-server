@@ -65,19 +65,23 @@
       RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.CultureInvariant,
       TimeSpan.FromMilliseconds(200));
 
+    // Constructor parameters
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
     private IFactory<ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
+    private string _apiHostName;
 
+    // Repo properties
     private long _repoId;
     private string _fullName;
+    private bool _disabled;
+    private bool _hasProjects;
+    private bool _isPrivate;
+
     private long _repoSize;
     private string _issueTemplateContent;
     private string _pullRequestTemplateContent;
-    private bool _disabled;
-    private string _apiHostName;
-    private bool _hasProjects;
 
     // Metadata
     private GitHubMetadata _metadata;
@@ -85,12 +89,13 @@
     private GitHubMetadata _issueMetadata;
     private GitHubMetadata _labelMetadata;
     private GitHubMetadata _milestoneMetadata;
+    private GitHubMetadata _pullRequestMetadata;
     private GitHubMetadata _projectMetadata;
+
     private GitHubMetadata _contentsRootMetadata;
     private GitHubMetadata _contentsDotGithubMetadata;
     private GitHubMetadata _contentsIssueTemplateMetadata;
     private GitHubMetadata _contentsPullRequestTemplateMetadata;
-    private GitHubMetadata _pullRequestMetadata;
 
     // Chunk tracking
     private DateTimeOffset _issueSince;
@@ -136,27 +141,37 @@
           throw new InvalidOperationException($"Repository {repoId} does not exist and cannot be activated.");
         }
 
+        // Core properties
         Initialize(repo.Id, repo.FullName);
-        _repoSize = repo.Size;
-        _issueTemplateContent = repo.IssueTemplate;
-        _pullRequestTemplateContent = repo.PullRequestTemplate;
-        _metadata = repo.Metadata;
         _disabled = repo.Disabled;
         _hasProjects = repo.HasProjects;
+        _isPrivate = repo.Private;
+
+        // Repo metadata
+        _metadata = repo.Metadata;
         _assignableMetadata = repo.AssignableMetadata;
         _issueMetadata = repo.IssueMetadata;
-        _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
-        _issuesFullyImported = repo.IssuesFullyImported;
         _labelMetadata = repo.LabelMetadata;
         _milestoneMetadata = repo.MilestoneMetadata;
         _projectMetadata = repo.ProjectMetadata;
         _pullRequestMetadata = repo.PullRequestMetadata; // Null signals walk in creation asc order, non-null signals walk in updated desc order
-        _pullRequestSkip = (uint)(repo.PullRequestSkip ?? 0);
-        _pullRequestUpdatedAt = repo.PullRequestUpdatedAt;
         _contentsRootMetadata = repo.ContentsRootMetadata;
         _contentsDotGithubMetadata = repo.ContentsDotGitHubMetadata;
         _contentsIssueTemplateMetadata = repo.ContentsIssueTemplateMetadata;
         _contentsPullRequestTemplateMetadata = repo.ContentsPullRequestTemplateMetadata;
+
+        // Issue sync state
+        _issueSince = repo.IssueSince ?? EpochUtility.EpochOffset; // Reasonable default.
+        _issuesFullyImported = repo.IssuesFullyImported;
+
+        // PR sync state
+        _pullRequestSkip = (uint)(repo.PullRequestSkip ?? 0);
+        _pullRequestUpdatedAt = repo.PullRequestUpdatedAt;
+
+        // Issue and PR template sync state
+        _repoSize = repo.Size;
+        _issueTemplateContent = repo.IssueTemplate;
+        _pullRequestTemplateContent = repo.PullRequestTemplate;
 
         // if we have no webhook, we must poll the ISSUE_TEMPLATE
         _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
@@ -258,17 +273,37 @@
     private async Task<IEnumerable<(long UserId, bool IsAdmin)>> GetUsersWithAccess() {
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: Keep this cached and current instead of looking it up every time.
-        var users = await context.AccountRepositories
-          .AsNoTracking()
-          .Where(x => x.RepositoryId == _repoId)
-          .Where(x => x.Account.Tokens.Any())
-          .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
-          .Select(x => new { UserId = x.AccountId, Admin = x.Admin })
-          .ToArrayAsync();
+        var users = new HashSet<(long UserId, bool IsAdmin)>(KeyEqualityComparer.FromKeySelector(((long UserId, bool IsAdmin) x) => x.UserId));
 
-        return users
-          .Select(x => (UserId: x.UserId, IsAdmin: x.Admin))
-          .ToArray();
+        // Always use members for sync
+        var members = await context.AccountRepositories
+            .AsNoTracking()
+            .Where(x => x.RepositoryId == _repoId)
+            .Where(x => x.Account.Tokens.Any())
+            .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+            .Select(x => new { UserId = x.AccountId, Admin = x.Admin })
+            .ToArrayAsync();
+
+        if (members.Any()) {
+          users.UnionWith(members.Select(x => (UserId: x.UserId, Admin: x.Admin)));
+        }
+
+        // If public, also use interested users
+        if (!_isPrivate) {
+          var watchers = await context.AccountSyncRepositories
+            .AsNoTracking()
+            .Where(x => x.RepositoryId == _repoId)
+            .Where(x => x.Account.Tokens.Any())
+            .Where(x => x.Account.RateLimit > GitHubRateLimit.RateLimitFloor || x.Account.RateLimitReset < DateTime.UtcNow)
+            .Select(x => x.AccountId)
+            .ToArrayAsync();
+
+          if (watchers.Any()) {
+            users.UnionWith(watchers.Select(x => (UserId: x, Admin: false)));
+          }
+        }
+
+        return users;
       }
     }
 
