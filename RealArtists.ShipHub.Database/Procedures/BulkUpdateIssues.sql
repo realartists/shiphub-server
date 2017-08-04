@@ -105,7 +105,8 @@ BEGIN
 
     -- Update existing issues
     UPDATE SyncLog SET
-      [RowVersion] = DEFAULT
+      [RowVersion] = DEFAULT,
+      [Delete] = 0
     FROM (SELECT DISTINCT IssueId FROM @Changes) as c
       INNER LOOP JOIN SyncLog as sl ON (sl.OwnerType = 'repo' AND sl.OwnerId = @RepositoryId AND sl.ItemType = 'issue' AND sl.ItemId = c.IssueId)
     OPTION (FORCE ORDER)

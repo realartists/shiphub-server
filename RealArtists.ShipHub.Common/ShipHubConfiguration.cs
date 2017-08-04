@@ -33,6 +33,7 @@
     string StatHatPrefix { get; }
     bool UseFiddler { get; }
     string WebsiteHostName { get; }
+    string AdminSecret { get; }
   }
 
   /// <summary>
@@ -65,6 +66,7 @@
     public string StatHatPrefix { get; set; }
     public bool UseFiddler { get; set; }
     public string WebsiteHostName { get; set; }
+    public string AdminSecret { get; set; }
   }
 
   /// <summary>
@@ -180,6 +182,9 @@
 
     private Lazy<string> _websiteHostName = new Lazy<string>(() => GetSetting("WebsiteHostName", required: true));
     public string WebsiteHostName => _websiteHostName.Value;
+
+    private Lazy<string> _adminSecret = new Lazy<string>(() => GetSetting("AdminSecret", required: true));
+    public string AdminSecret => _adminSecret.Value;
 
     private static string GetSetting(string key, bool required = false) {
       var value = CloudConfigurationManager.GetSetting(key);

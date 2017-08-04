@@ -108,6 +108,7 @@
     private bool _pollIssueTemplate;
     private int _syncCount;
     private bool _issuesFullyImported;
+    private bool _needsForceResyncIssues;
 
     private IDictionary<string, GitHubMetadata> _protectedBranchMetadata;
 
@@ -225,6 +226,31 @@
       }
     }
 
+    public async Task ForceResyncRepositoryIssues() {
+      _needsForceResyncIssues = true;
+      await Sync();
+    }
+
+    private async Task ForceResyncRepositoryIssuesIfNeeded(DataUpdater updater) {
+      if (!_needsForceResyncIssues) {
+        return;
+      }
+
+      this.Info("Force resyncing issues");
+
+      _needsForceResyncIssues = false;
+
+      await updater.ForceResyncRepositoryIssues(_repoId);
+
+      _issueMetadata = null;
+      _pullRequestMetadata = null;
+      _issueSince = EpochUtility.EpochOffset;
+      _pullRequestSkip = 0;
+      _pullRequestUpdatedAt = null;
+      _issuesFullyImported = false;
+      _syncCount = 0;
+  }
+
     // ////////////////////////////////////////////////////////////
     // Utility Functions
     // ////////////////////////////////////////////////////////////
@@ -289,6 +315,7 @@
 
       var updater = new DataUpdater(_contextFactory, _mapper);
       try {
+        await ForceResyncRepositoryIssuesIfNeeded(updater);
         await UpdateDetails(updater, github);
 
         // Private repos in orgs that have reverted to the free plan show in users'

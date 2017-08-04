@@ -176,6 +176,7 @@
     <Build Include="Procedures\UpdateProtectedBranch.sql" />
     <Build Include="User Defined Types\ProtectedBranchMetadataTableType.sql" />
     <Build Include="Security\StateOnly.sql" />
+    <Build Include="Procedures\ForceResyncRepositoryIssues.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

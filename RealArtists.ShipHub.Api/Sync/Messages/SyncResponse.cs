@@ -95,6 +95,7 @@
     private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
       if (action == SyncLogAction.Delete) {
         switch (entity) {
+          case SyncEntityType.Issue:
           case SyncEntityType.CommitComment:
           case SyncEntityType.IssueComment:
           case SyncEntityType.Label:

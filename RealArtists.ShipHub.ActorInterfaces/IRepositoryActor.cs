@@ -28,5 +28,10 @@
     Task RefreshIssueComment(long commentId);
 
     Task RefreshPullRequestReviewComment(long commentId);
+
+    /// <summary>
+    /// Delete and respider all issues and pull requests on the next sync timer tick.
+    /// </summary>
+    Task ForceResyncRepositoryIssues();
   }
 }
