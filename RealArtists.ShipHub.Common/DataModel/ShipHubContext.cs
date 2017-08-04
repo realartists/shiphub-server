@@ -947,6 +947,12 @@
       });
     }
 
+    public Task<ChangeSummary> ForceResyncRepositoryIssues(long repositoryId) {
+      return ExecuteAndReadChanges("[dbo].[ForceResyncRepositoryIssues]", x => {
+        x.RepositoryId = repositoryId;
+      });
+    }
+
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
     public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);

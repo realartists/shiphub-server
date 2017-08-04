@@ -445,5 +445,11 @@
         _changes.UnionWith(await context.BulkUpdateReactions(repositoryId, mappedReactions, issueId, issueCommentId, commitCommentId, pullRequestCommentId));
       });
     }
+
+    public async Task ForceResyncRepositoryIssues(long repositoryId) {
+      await WithContext(async context => {
+        _changes.UnionWith(await context.ForceResyncRepositoryIssues(repositoryId));
+      });
+    }
   }
 }
