@@ -262,11 +262,11 @@ BEGIN
       AND l.ItemType = 'issue'
 
     -- Issues
-    SELECT e.Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
+    SELECT l.ItemId as Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,
-           e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions
+           e.ClosedAt, e.ClosedById, e.PullRequest, e.Reactions, l.[Delete]
     FROM @Logs as l
-      INNER JOIN Issues as e ON (l.ItemId = e.Id)
+      LEFT OUTER JOIN Issues as e ON (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
 

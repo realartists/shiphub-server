@@ -45,6 +45,7 @@
       <Word>sha</Word>
       <Word>submodule</Word>
       <Word>symlink</Word>
+      <Word>resync</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
       <Word>AzureClient</Word>
