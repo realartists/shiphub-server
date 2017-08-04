@@ -105,6 +105,9 @@
           await _chargeBee.Card.DeleteCardForCustomer(customerId).Request();
         }
         sub = (await _chargeBee.Subscription.Reactivate(sub.Id).TrialEnd(trialEnd).Request()).Subscription;
+        // realartists/shiphub-server#539 Don't turn off billing auto-collection when reinstating trials
+        // Re-enable auto-collection, otherwise at the end of the trial period an invoice will be generated.
+        await _chargeBee.Customer.Update(customerId).AutoCollection(cbm.Enums.AutoCollectionEnum.On).Request();
       }
 
       ChangeSummary changes;
