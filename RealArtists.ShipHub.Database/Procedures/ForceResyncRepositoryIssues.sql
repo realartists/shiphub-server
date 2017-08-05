@@ -66,6 +66,11 @@ BEGIN
     OUTPUT Deleted.Id, 'comment' INTO @RemoveFromSyncLog
      WHERE RepositoryId = @RepositoryId;
 
+    DELETE FROM IssueEventAccess
+    FROM IssueEventAccess as iea
+    INNER JOIN IssueEvents as ie on (ie.Id = iea.IssueEventId)
+    WHERE ie.RepositoryId = @RepositoryId;
+
     DELETE FROM IssueEvents
     OUTPUT Deleted.Id, 'event' INTO @RemoveFromSyncLog
      WHERE RepositoryId = @RepositoryId;
@@ -79,6 +84,11 @@ BEGIN
       FROM IssueAssignees
       JOIN Issues ON (Issues.Id = IssueAssignees.IssueId)
      WHERE Issues.RepositoryId = @RepositoryId
+
+    DELETE FROM PullRequestReviewers
+    FROM PullRequestReviewers as prr
+    INNER JOIN Issues as i ON (i.Id = prr.IssueId)
+    WHERE i.RepositoryId = @RepositoryId;
 
     DELETE FROM PullRequestComments
     OUTPUT Deleted.Id, 'prcomment' INTO @RemoveFromSyncLog
