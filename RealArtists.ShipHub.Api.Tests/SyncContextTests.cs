@@ -49,6 +49,7 @@
           Name = "unicorns",
           FullName = "pureimaginary/unicorns",
           Private = true,
+          HasIssues = true,
         };
 
         await context.BulkUpdateAccounts(DateTimeOffset.UtcNow, new[] { orgAccount });
@@ -61,6 +62,7 @@
         await context.SetAccountLinkedRepositories(
           userAccount.Id,
           new[] { (repo.Id, isAdmin) });
+        await context.UpdateAccountSyncRepositories(userAccount.Id, true, null, null);
 
         if (hasHook) {
           context.Hooks.Add(new Hook() {
@@ -189,11 +191,13 @@
           Name = "things",
           FullName = $"{userAccount.Login}/things",
           Private = true,
+          HasIssues = true,
         };
         await context.BulkUpdateRepositories(DateTimeOffset.UtcNow, new[] { repo });
         await context.SetAccountLinkedRepositories(userAccount.Id, new[] {
           (repo.Id, true),
         });
+        await context.UpdateAccountSyncRepositories(userAccount.Id, true, null, null);
 
         var issue = new IssueTableType() {
           Id = 5001,
