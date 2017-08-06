@@ -16,10 +16,13 @@
   using RealArtists.ShipHub.Legacy;
 
   public class SyncContext {
+    private static readonly Version MinimumSelectiveSyncVersion = new Version(662, 0);
+
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
     private SyncVersions _versions;
     private DateTimeOffset? _lastRecordedUsage;
+    private bool _selectiveSyncEnabled;
 
     private VersionDetails VersionDetails => new VersionDetails() {
       Organizations = _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
@@ -31,6 +34,7 @@
       _user = user;
       _connection = connection;
       _versions = initialVersions;
+      _selectiveSyncEnabled = connection.ClientBuild >= MinimumSelectiveSyncVersion;
 
       RunUpgradeCheck();
     }
@@ -205,7 +209,7 @@
     }
 
     private async Task<SyncSpiderProgress> SpiderProgress(ShipHubContext context) {
-      var dsp = context.SyncSpiderProgress(_user.UserId);
+      var dsp = context.SyncSpiderProgress(_user.UserId, _selectiveSyncEnabled);
       using (var reader = await dsp.ExecuteReaderAsync()) {
         return ReadSpiderProgress(reader);
       }
@@ -226,7 +230,8 @@
           _versions.OrgVersions.Select(x => new VersionTableType() {
             ItemId = x.Key,
             RowVersion = x.Value,
-          })
+          }),
+          _selectiveSyncEnabled
         );
 
         var entries = new List<SyncLogEntry>();

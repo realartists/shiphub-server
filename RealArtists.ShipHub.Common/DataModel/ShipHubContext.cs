@@ -987,10 +987,11 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions, bool selectiveSync) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
       dynamic dsp = sp;
       dsp.UserId = userId;
+      dsp.SelectiveSync = selectiveSync;
       dsp.PageSize = pageSize;
       dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
       dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
@@ -998,10 +999,11 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure SyncSpiderProgress(long userId) {
+    public DynamicStoredProcedure SyncSpiderProgress(long userId, bool selectiveSync) {
       var sp = new DynamicStoredProcedure("[dbo].[SyncSpiderProgress]", ConnectionFactory);
       dynamic dsp = sp;
       dsp.UserId = userId;
+      dsp.SelectiveSync = selectiveSync;
       return sp;
     }
 
