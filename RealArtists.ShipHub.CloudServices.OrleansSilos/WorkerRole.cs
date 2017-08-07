@@ -67,6 +67,9 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // This allows App Services and Cloud Services to agree on a deploymentId.
         siloConfig.Globals.DeploymentId = _config.DeploymentId;
 
+        // Add custom JSON.Net object serialization
+        siloConfig.Globals.SerializationProviders.Add(typeof(JsonObjectSerializer).GetTypeInfo());
+
         // Ensure exceptions can be serialized
         siloConfig.Globals.FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo();
 

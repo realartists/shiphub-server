@@ -57,6 +57,8 @@
         FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo(),
       };
 
+      Configuration.SerializationProviders.Add(typeof(JsonObjectSerializer).GetTypeInfo());
+
       _instance = new Lazy<Task<IClusterClient>>(new Func<Task<IClusterClient>>(CreateOrleansClient), LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
