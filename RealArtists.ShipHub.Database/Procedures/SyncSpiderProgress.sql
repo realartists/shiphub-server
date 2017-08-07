@@ -18,5 +18,6 @@ BEGIN
   FROM AccountRepositories AR
     INNER LOOP JOIN Repositories R ON (R.Id = AR.RepositoryId)
   WHERE AR.AccountId = @UserId
+    AND R.[Disabled] = 0
   OPTION (FORCE ORDER)
 END
