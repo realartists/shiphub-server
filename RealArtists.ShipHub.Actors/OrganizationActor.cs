@@ -114,7 +114,7 @@
 
       // Best Effort
       foreach (var userId in memberIds) {
-        _grainFactory.GetGrain<IUserActor>(userId).ForceSyncRepositories().LogFailure();
+        _grainFactory.GetGrain<IUserActor>(userId).SyncRepositories().LogFailure();
       }
     }
 

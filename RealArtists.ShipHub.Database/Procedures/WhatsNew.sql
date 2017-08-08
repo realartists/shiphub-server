@@ -1,5 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[WhatsNew]
   @UserId BIGINT,
+  @SelectiveSync BIT = 0,
   @PageSize BIGINT = 1000,
   @RepositoryVersions VersionTableType READONLY,
   @OrganizationVersions VersionTableType READONLY
@@ -75,10 +76,14 @@ BEGIN
   ;WITH LogViewForUser AS (
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
-      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = sl.OwnerId AND ar.AccountId = @UserId)
+      INNER JOIN AccountSyncRepositories as asr ON (asr.RepositoryId = sl.OwnerId AND asr.AccountId = @UserId)
+      INNER JOIN Repositories as r ON (r.Id = asr.RepositoryId)
+      LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = asr.RepositoryId AND ar.AccountId = asr.AccountId)
       LEFT OUTER JOIN @RepositoryVersions as rv ON (rv.ItemId = sl.OwnerId)
     WHERE sl.OwnerType = 'repo'
       AND ISNULL(rv.[RowVersion], 0) < sl.[RowVersion]
+      AND (@SelectiveSync = 1 OR ar.RepositoryId IS NOT NULL) -- Filter for older clients
+      AND (r.[Private] = 0 OR ar.RepositoryId IS NOT NULL) -- This *should* be redundant, but that's ok
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
@@ -125,7 +130,7 @@ BEGIN
   -- Spider Sync Progress
   -- ------------------------------------------------------------------------------------------------------------------
 
-  EXEC SyncSpiderProgress @UserId
+  EXEC SyncSpiderProgress @UserId = @UserId, @SelectiveSync = @SelectiveSync
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- Deleted orgs and repos (permission removed or deleted)
@@ -134,7 +139,10 @@ BEGIN
   
   SELECT ItemId as RepositoryId
   FROM @RepositoryVersions as rv
-  WHERE NOT EXISTS (SELECT * FROM AccountRepositories WHERE AccountId = @UserId AND RepositoryId = rv.ItemId)
+  LEFT OUTER JOIN AccountSyncRepositories as asr ON (asr.RepositoryId = rv.ItemId AND asr.AccountId = @UserId)
+  LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = rv.ItemId AND ar.AccountId = @UserId)
+  WHERE asr.RepositoryId IS NULL
+    OR (@SelectiveSync = 0 AND ar.RepositoryId IS NULL)
 
   SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov
@@ -292,10 +300,10 @@ BEGIN
 
     -- Repositories
     SELECT e.Id, e.AccountId, e.[Private], e.Name, e.FullName, e.IssueTemplate, e.PullRequestTemplate, e.[Disabled],
-      e.HasIssues, ar.[Admin], CAST (CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasHook
+      e.HasIssues, ISNULL(ar.[Admin], 0) as [Admin], CAST (CASE WHEN h.GitHubId IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS HasHook
     FROM @Logs as l
       INNER JOIN Repositories as e ON (l.ItemId = e.Id)
-      INNER JOIN AccountRepositories as ar ON (ar.RepositoryId = e.Id AND ar.AccountId = @UserId)
+      LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = e.Id AND ar.AccountId = @UserId)
       LEFT OUTER JOIN Hooks AS h ON (h.RepositoryId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'repository'

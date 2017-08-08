@@ -10,7 +10,6 @@
   /// <summary>
   /// These GitHub requests and responses are free of user specific state.
   /// </summary>
-  [Version(1)]
   public interface IGitHubPoolable {
     // Users
     Task<GitHubResponse<Account>> User(string login, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
@@ -85,6 +84,7 @@
   /// <summary>
   /// Interacts with GitHub on behalf of a user, using their credentials.
   /// </summary>
+  [Version(1)]
   public interface IGitHubActor : Orleans.IGrainWithIntegerKey, IGitHubPoolable, IGitHubOrganizationAdmin, IGitHubRepositoryAdmin {
     // Implict user scope and permissions (My _)
     Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

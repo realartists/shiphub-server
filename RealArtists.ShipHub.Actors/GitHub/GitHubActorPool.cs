@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Actors.GitHub {
   using System;
-  using System.Collections.Concurrent;
   using System.Collections.Generic;
   using System.Linq;
   using System.Net;
@@ -14,42 +13,51 @@
   public class GitHubActorPool : IGitHubPoolable {
     private IGrainFactory _grainFactory;
 
-    private ConcurrentDictionary<long, IGitHubActor> _actorMap;
-    private List<IGitHubActor> _actors;
+    private object _lock = new object();
+    private SortedList<long, IGitHubActor> _actorMap;
+
     private Random _random = new Random();
 
     public GitHubActorPool(IGrainFactory grainFactory, IEnumerable<long> userIds) {
-      _grainFactory = grainFactory;
-      _actorMap = new ConcurrentDictionary<long, IGitHubActor>(
-        userIds.Select(x => new KeyValuePair<long, IGitHubActor>(x, _grainFactory.GetGrain<IGitHubActor>(x)))
-      );
-      _actors = _actorMap.Values.ToList();
+      if (userIds == null || userIds?.Any() != true) {
+        throw new ArgumentException("Cannot be null or empty.", nameof(userIds));
+      }
+      _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
+      _actorMap = new SortedList<long, IGitHubActor>(userIds.ToDictionary(x => x, x => _grainFactory.GetGrain<IGitHubActor>(x)));
     }
 
-    //public void Add(long userId) {
-    //  var actor = _grainFactory.GetGrain<IGitHubActor>(userId);
-    //  if (_actorMap.TryAdd(userId, actor)) {
-    //    lock (this) {
-    //      _actors.Add(actor);
-    //    }
-    //  }
-    //}
+    public void Add(long userId) {
+      lock (_lock) {
+        if (!_actorMap.ContainsKey(userId)) {
+          _actorMap.Add(userId, _grainFactory.GetGrain<IGitHubActor>(userId));
+        }
+      }
+    }
 
-    private void Remove(IGitHubActor actor) {
-      var userId = actor.GetPrimaryKeyLong();
-      if (_actorMap.TryRemove(userId, out var removed)) {
-        lock (this) {
-          _actors.Remove(removed);
+    public void Add(IEnumerable<long> userIds) {
+      lock (_lock) {
+        foreach (var userId in userIds) {
+          if (!_actorMap.ContainsKey(userId)) {
+            _actorMap.Add(userId, _grainFactory.GetGrain<IGitHubActor>(userId));
+          }
+        }
+      }
+    }
+
+    private void Remove(long userId) {
+      lock (_lock) {
+        if (_actorMap.ContainsKey(userId)) {
+          _actorMap.Remove(userId);
         }
       }
     }
 
     private IGitHubActor GetRandomActor() {
       lock (this) {
-        if (_actors.Count == 0) {
+        if (_actorMap.Count == 0) {
           throw new GitHubPoolEmptyException("No actors available.");
         }
-        return _actors[_random.Next(_actors.Count)];
+        return _actorMap.Values[_random.Next(_actorMap.Count)];
       }
     }
 
@@ -75,18 +83,18 @@
             case HttpStatusCode.Forbidden:
             case HttpStatusCode.Unauthorized:
               // Retry with someone else.
-              Remove(actor);
+              Remove(actor.GetPrimaryKeyLong());
               actor = null;
               break;
             default:
               return result;
           }
         } catch (GitHubRateException) {
-          Remove(actor);
+          Remove(actor.GetPrimaryKeyLong());
           actor = null;
         } catch (InvalidOperationException) {
           // Grain activation failed
-          Remove(actor);
+          Remove(actor.GetPrimaryKeyLong());
           actor = null;
         }
       }

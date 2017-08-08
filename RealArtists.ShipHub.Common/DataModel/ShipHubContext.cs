@@ -40,6 +40,7 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<AccountSettings> AccountSettings { get; set; }
+    public virtual DbSet<AccountSyncRepository> AccountSyncRepositories { get; set; }
     public virtual DbSet<CommitComment> CommitComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }
     public virtual DbSet<Hook> Hooks { get; set; }
@@ -182,6 +183,11 @@
         .WithRequired(e => e.User)
         .WillCascadeOnDelete(false);
 
+      modelBuilder.Entity<User>()
+        .HasMany(e => e.SyncRepositories)
+        .WithRequired(e => e.Account)
+        .WillCascadeOnDelete(false);
+
       modelBuilder.Entity<Organization>()
         .HasMany(e => e.Projects)
         .WithOptional(e => e.Organization)
@@ -208,15 +214,19 @@
       return UpdateMetadata(table, "MetadataJson", id, response);
     }
 
-    public Task UpdateMetadata(string table, string column, long id, GitHubResponse response) {
-      return UpdateMetadata(table, column, id, GitHubMetadata.FromResponse(response));
+    public Task UpdateMetadata(string table, string metadataColumn, long id, GitHubResponse response) {
+      return UpdateMetadata(table, "Id", metadataColumn, id, GitHubMetadata.FromResponse(response));
     }
 
     public Task UpdateMetadata(string table, long id, GitHubMetadata metadata) {
-      return UpdateMetadata(table, "MetadataJson", id, metadata);
+      return UpdateMetadata(table, "Id", "MetadataJson", id, metadata);
     }
 
-    public Task UpdateMetadata(string table, string column, long id, GitHubMetadata metadata) {
+    public Task UpdateMetadata(string table, string metadataColumn, long id, GitHubMetadata metadata) {
+      return UpdateMetadata(table, "Id", metadataColumn, id, metadata);
+    }
+
+    public Task UpdateMetadata(string table, string keyColumn, string metadataColumn, long key, GitHubMetadata metadata) {
       // This can happen sometimes and doesn't make sense to handle until here.
       // Obviously, don't update.
       if (metadata == null) {
@@ -225,10 +235,10 @@
 
       return ExecuteCommandTextAsync(
         $@"UPDATE [{table}] SET
-             [{column}] = @Metadata
-           WHERE Id = @Id
-             AND ([{column}] IS NULL OR CAST(JSON_VALUE([{column}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))",
-        new SqlParameter("Id", SqlDbType.BigInt) { Value = id },
+             [{metadataColumn}] = @Metadata
+           WHERE [{keyColumn}] = @Key
+             AND ([{metadataColumn}] IS NULL OR CAST(JSON_VALUE([{metadataColumn}], '$.lastRefresh') as DATETIMEOFFSET) < CAST(JSON_VALUE(@Metadata, '$.lastRefresh') as DATETIMEOFFSET))",
+        new SqlParameter("Key", SqlDbType.BigInt) { Value = key },
         new SqlParameter("Metadata", SqlDbType.NVarChar) { Value = metadata.SerializeObject() });
     }
 
@@ -280,7 +290,6 @@
     /// <param name="branchName"></param>
     /// <param name="branchProtection">Serialized JSON as returned from GitHub's branch protection API</param>
     /// <param name="metadata">Must not be null</param>
-    /// <returns></returns>
     public Task<ChangeSummary> UpdateProtectedBranch(long repoId, string branchName, string branchProtection, GitHubMetadata metadata) {
       if (branchName == null) {
         throw new ArgumentNullException("branchName");
@@ -374,6 +383,30 @@
 
             return result;
           }
+        }
+      });
+    }
+
+    public Task<ChangeSummary> UpdateAccountSyncRepositories(long accountId, bool autoTrack, IEnumerable<StringMappingTableType> include, IEnumerable<long> exclude) {
+      return ExecuteAndReadChanges("[dbo].[UpdateAccountSyncRepositories]", x => {
+        x.AccountId = accountId;
+        x.AutoTrack = autoTrack;
+        if (exclude?.Any() == true) {
+          x.Exclude = CreateItemListTable("Exclude", exclude);
+        }
+        if (include?.Any() == true) {
+          x.Include = CreateTableParameter(
+            "Include",
+            "[dbo].[StringMappingTableType]",
+            new[] {
+            ("Key", typeof(long)),
+            ("Value", typeof(string)),
+            },
+            y => new object[] {
+            y.Key,
+            y.Value,
+            },
+            include);
         }
       });
     }
@@ -954,10 +987,11 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions) {
+    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions, bool selectiveSync) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
       dynamic dsp = sp;
       dsp.UserId = userId;
+      dsp.SelectiveSync = selectiveSync;
       dsp.PageSize = pageSize;
       dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
       dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
@@ -965,10 +999,11 @@
     }
 
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure SyncSpiderProgress(long userId) {
+    public DynamicStoredProcedure SyncSpiderProgress(long userId, bool selectiveSync) {
       var sp = new DynamicStoredProcedure("[dbo].[SyncSpiderProgress]", ConnectionFactory);
       dynamic dsp = sp;
       dsp.UserId = userId;
+      dsp.SelectiveSync = selectiveSync;
       return sp;
     }
 

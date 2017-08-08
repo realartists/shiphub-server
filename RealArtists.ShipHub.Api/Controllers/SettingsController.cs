@@ -5,13 +5,21 @@
   using System.Net.Http;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using ActorInterfaces;
+  using Common;
   using Common.DataModel;
-  using RealArtists.ShipHub.Common.DataModel.Types;
+  using Common.DataModel.Types;
 
   [RoutePrefix("api/sync")]
   public class SettingsController : ShipHubApiController {
     private const int MaxIncludes = 100;
     private const int MaxExcludes = 100000;
+
+    private IAsyncGrainFactory _grainFactory;
+
+    public SettingsController(IAsyncGrainFactory grainFactory) {
+      _grainFactory = grainFactory;
+    }
 
     [HttpGet]
     [Route("settings")]
@@ -44,6 +52,9 @@
       using (var context = new ShipHubContext()) {
         await context.SetAccountSettings(ShipHubUser.UserId, syncSettings);
       }
+
+      var userActor = await _grainFactory.GetGrain<IUserActor>(ShipHubUser.UserId);
+      userActor.SyncRepositories().LogFailure(ShipHubUser.DebugIdentifier);
 
       return StatusCode(HttpStatusCode.Accepted);
     }
