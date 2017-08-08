@@ -1,6 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System.Data.Entity;
-  using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Threading.Tasks;
@@ -12,9 +11,6 @@
 
   [RoutePrefix("api/sync")]
   public class SettingsController : ShipHubApiController {
-    private const int MaxIncludes = 100;
-    private const int MaxExcludes = 100000;
-
     private IAsyncGrainFactory _grainFactory;
 
     public SettingsController(IAsyncGrainFactory grainFactory) {
@@ -43,12 +39,6 @@
     [HttpPut]
     [Route("settings")]
     public async Task<IHttpActionResult> SetSyncSettings([FromBody] SyncSettings syncSettings) {
-      if (syncSettings == null
-        || syncSettings.Include.Count() > MaxIncludes
-        || syncSettings.Exclude.Count() > MaxExcludes) {
-        return StatusCode(HttpStatusCode.InternalServerError);
-      }
-
       using (var context = new ShipHubContext()) {
         await context.SetAccountSettings(ShipHubUser.UserId, syncSettings);
       }
