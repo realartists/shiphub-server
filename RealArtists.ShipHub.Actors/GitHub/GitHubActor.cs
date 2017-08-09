@@ -38,6 +38,11 @@
     public const int PageSize = 100;
     public const bool InterpolationEnabled = false;
 
+    // Rate limits (should these be configurable?)
+    public const int RateLimitFloor = 500;
+    public const int PublicRateLimitFloor = 2000;
+
+
     // Should be less than Orleans timeout.
     // If changing, may also need to update values in CreateGitHubHttpClient()
     public static readonly TimeSpan GitHubRequestTimeout = OrleansAzureClient.ResponseTimeout.Subtract(TimeSpan.FromSeconds(2));
