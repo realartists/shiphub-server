@@ -432,6 +432,7 @@
           _hasProjects = repo.Result.HasProjects;
         } else if (repo.Status == HttpStatusCode.NotFound) {
           // private repo in unpaid org?
+          // public repo gone private?
           _disabled = true;
           // we're not even allowed to get the repo info, so I had to make a special method
           await updater.DisableRepository(_repoId);

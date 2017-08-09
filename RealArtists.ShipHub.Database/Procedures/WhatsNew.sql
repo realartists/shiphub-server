@@ -84,6 +84,7 @@ BEGIN
       AND ISNULL(rv.[RowVersion], 0) < sl.[RowVersion]
       AND (@SelectiveSync = 1 OR ar.RepositoryId IS NOT NULL) -- Filter for older clients
       AND (r.[Private] = 0 OR ar.RepositoryId IS NOT NULL) -- This *should* be redundant, but that's ok
+      AND r.[Disabled] = 0
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
@@ -139,10 +140,12 @@ BEGIN
   
   SELECT ItemId as RepositoryId
   FROM @RepositoryVersions as rv
-  LEFT OUTER JOIN AccountSyncRepositories as asr ON (asr.RepositoryId = rv.ItemId AND asr.AccountId = @UserId)
-  LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = rv.ItemId AND ar.AccountId = @UserId)
+    INNER LOOP JOIN Repositories as r ON (r.Id = rv.ItemId)
+    LEFT OUTER JOIN AccountSyncRepositories as asr ON (asr.RepositoryId = r.Id AND asr.AccountId = @UserId)
+    LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = r.Id AND ar.AccountId = @UserId)
   WHERE asr.RepositoryId IS NULL
     OR (@SelectiveSync = 0 AND ar.RepositoryId IS NULL)
+    OR r.[Disabled] = 1
 
   SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov
