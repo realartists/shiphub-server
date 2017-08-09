@@ -264,7 +264,7 @@
       _pullRequestUpdatedAt = null;
       _issuesFullyImported = false;
       _syncCount = 0;
-  }
+    }
 
     // ////////////////////////////////////////////////////////////
     // Utility Functions
@@ -288,8 +288,9 @@
           users.UnionWith(members.Select(x => (UserId: x.UserId, Admin: x.Admin)));
         }
 
-        // If public, also use interested users
-        if (!_isPrivate) {
+        // If public, AND (there are no members OR the repo is NOT disabled) also use interested users
+        if (!_isPrivate
+          && (!members.Any() || !_disabled)) {
           var watchers = await context.AccountSyncRepositories
             .AsNoTracking()
             .Where(x => x.RepositoryId == _repoId)
@@ -357,8 +358,7 @@
         // repo lists but are inaccessible (404). We mark such repos _disabled until
         // we can access them.
         if (_disabled) {
-          DeactivateOnIdle();
-          return; // Do nothing else
+          return; // Do nothing else until an update succeeds
         } else {
           await UpdateIssueTemplate(updater, github);
           await UpdateAssignees(updater, github);
@@ -413,16 +413,26 @@
       if (_metadata.IsExpired()) {
         var repo = await github.Repository(_fullName, _metadata);
 
+        if (repo.Status == HttpStatusCode.NotFound) {
+          // private repo in unpaid org?
+          // public repo gone private?
+          _disabled = true;
+          // we're not even allowed to get the repo info, so I had to make a special method
+          await updater.DisableRepository(_repoId);
+        } else {
+          // If we can read it, it's not disabled.
+          // Even a cache match means it's valid
+          _disabled = false;
+        }
+
         if (repo.IsOk) {
           // It's possible the repo with this Id has been deleted, and a new one
           // with the same name has been created. If that has happened, ABORT ABORT ABORT
           if (repo.Result.Id != _repoId) {
             _disabled = true;
+            DeactivateOnIdle();
             return;
           }
-
-          // If we can read it, it's not disabled.
-          _disabled = false;
 
           await updater.UpdateRepositories(repo.Date, new[] { repo.Result }, enable: true);
 
@@ -430,11 +440,6 @@
           _fullName = repo.Result.FullName;
           _repoSize = repo.Result.Size;
           _hasProjects = repo.Result.HasProjects;
-        } else if (repo.Status == HttpStatusCode.NotFound) {
-          // private repo in unpaid org?
-          _disabled = true;
-          // we're not even allowed to get the repo info, so I had to make a special method
-          await updater.DisableRepository(_repoId);
         }
 
         // Don't update until saved.
