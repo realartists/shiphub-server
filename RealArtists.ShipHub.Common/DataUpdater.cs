@@ -185,8 +185,8 @@
     /// <param name="publicRepos">Public repos this user wishes to sync and that we may need to save. Need not be complete if unchanged. Can be null.</param>
     /// <param name="includeRepoMetadata">Repo ids and metadata (can be null for linked repos) the user explicitly wishes to include. Can be null.</param>
     /// <param name="excludeRepos">Repo ids the user explicitly wishes to exclude. Can be null.</param>
-    /// <returns>True if the list of synced repos for this user has changed.</returns>
-    public async Task UpdateAccountSyncRepositories(
+    /// <returns>The list of repos to sync for this user.</returns>
+    public async Task<IDictionary<long, GitHubMetadata>> UpdateAccountSyncRepositories(
       long accountId,
       bool autoTrack,
       DateTimeOffset date,
@@ -201,12 +201,17 @@
         })
         .ToArray();
 
+      // This is gross.
+      IDictionary<long, GitHubMetadata> result = null;
+
       await WithContext(async context => {
         if (publicRepos?.Any() == true) {
           await UpdateRepositories(date, publicRepos);
         }
-        _changes.UnionWith(await context.UpdateAccountSyncRepositories(accountId, autoTrack, include, excludeRepos));
+        result = await context.UpdateAccountSyncRepositories(accountId, autoTrack, include, excludeRepos);
       });
+
+      return result;
     }
 
     public async Task UpdateCommitComments(long repositoryId, DateTimeOffset date, IEnumerable<g.CommitComment> comments) {
