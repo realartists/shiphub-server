@@ -86,7 +86,6 @@ BEGIN
     -- UPDATE
     WHEN MATCHED THEN
       UPDATE SET RepoMetadataJson = [Source].RepoMetadataJson
-    OUTPUT 'user' as ItemType, @AccountId as ItemId
     OPTION (LOOP JOIN, FORCE ORDER);
 
     COMMIT TRANSACTION
@@ -95,4 +94,9 @@ BEGIN
     IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
     THROW;
   END CATCH
+
+  -- Return final list
+  SELECT RepositoryId, RepoMetadataJson
+  FROM AccountSyncRepositories
+  WHERE AccountId = @AccountId
 END

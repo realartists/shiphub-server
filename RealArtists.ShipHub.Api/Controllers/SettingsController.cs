@@ -39,13 +39,8 @@
     [HttpPut]
     [Route("settings")]
     public async Task<IHttpActionResult> SetSyncSettings([FromBody] SyncSettings syncSettings) {
-      using (var context = new ShipHubContext()) {
-        await context.SetAccountSettings(ShipHubUser.UserId, syncSettings);
-      }
-
       var userActor = await _grainFactory.GetGrain<IUserActor>(ShipHubUser.UserId);
-      userActor.SyncRepositories().LogFailure(ShipHubUser.DebugIdentifier);
-
+      await userActor.SetSyncSettings(syncSettings);
       return StatusCode(HttpStatusCode.Accepted);
     }
   }

@@ -387,27 +387,52 @@
       });
     }
 
-    public Task<ChangeSummary> UpdateAccountSyncRepositories(long accountId, bool autoTrack, IEnumerable<StringMappingTableType> include, IEnumerable<long> exclude) {
-      return ExecuteAndReadChanges("[dbo].[UpdateAccountSyncRepositories]", x => {
-        x.AccountId = accountId;
-        x.AutoTrack = autoTrack;
-        if (exclude?.Any() == true) {
-          x.Exclude = CreateItemListTable("Exclude", exclude);
+    /// <summary>
+    /// Computes the repository sync list for a user from their sync settings.
+    /// </summary>
+    /// <param name="accountId">The user's id.</param>
+    /// <param name="autoTrack">True to automatically add newly discovered repos.</param>
+    /// <param name="include">Repos to explicitly include.</param>
+    /// <param name="exclude">Repos to explicitly exclude.</param>
+    /// <returns>The computed list of repositories to sync.</returns>
+    public Task<IDictionary<long, GitHubMetadata>> UpdateAccountSyncRepositories(long accountId, bool autoTrack, IEnumerable<StringMappingTableType> include, IEnumerable<long> exclude) {
+      return RetryOnDeadlock(async () => {
+        IDictionary<long, GitHubMetadata> result = new Dictionary<long, GitHubMetadata>();
+
+        using (var dsp = new DynamicStoredProcedure("[dbo].[UpdateAccountSyncRepositories]", ConnectionFactory)) {
+          dynamic x = dsp;
+          x.AccountId = accountId;
+          x.AutoTrack = autoTrack;
+          if (exclude?.Any() == true) {
+            x.Exclude = CreateItemListTable("Exclude", exclude);
+          }
+          if (include?.Any() == true) {
+            x.Include = CreateTableParameter(
+              "Include",
+              "[dbo].[StringMappingTableType]",
+              new[] {
+                ("Key", typeof(long)),
+                ("Value", typeof(string)),
+              },
+              y => new object[] {
+                y.Key,
+                y.Value,
+              },
+              include);
+          }
+
+          using (var sdr = await dsp.ExecuteReaderAsync()) {
+            dynamic ddr = sdr;
+
+            while (sdr.Read()) {
+              var repoId = (long)ddr.RepositoryId;
+              var metadata = ((string)ddr.RepoMetadataJson).DeserializeObject<GitHubMetadata>();
+              result.Add(repoId, metadata);
+            }
+          }
         }
-        if (include?.Any() == true) {
-          x.Include = CreateTableParameter(
-            "Include",
-            "[dbo].[StringMappingTableType]",
-            new[] {
-            ("Key", typeof(long)),
-            ("Value", typeof(string)),
-            },
-            y => new object[] {
-            y.Key,
-            y.Value,
-            },
-            include);
-        }
+
+        return result;
       });
     }
 
