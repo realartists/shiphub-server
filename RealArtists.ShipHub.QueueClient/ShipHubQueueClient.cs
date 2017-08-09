@@ -13,12 +13,12 @@
   }
 
   public static class ShipHubQueueClientExtensions {
-    public static Task Submit(this IChangeSummary summary, IShipHubQueueClient client) {
+    public static Task Submit(this IChangeSummary summary, IShipHubQueueClient client, bool urgent = false) {
       if (summary == null || summary.IsEmpty) {
         return Task.CompletedTask;
       }
 
-      return client.NotifyChanges(summary);
+      return client.NotifyChanges(summary, urgent);
     }
   }
 

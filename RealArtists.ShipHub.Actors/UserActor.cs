@@ -297,7 +297,7 @@
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient);
+      await updater.Changes.Submit(_queueClient, urgent: true);
 
       // Save changes
       if (metaDataMeaningfullyChanged) {

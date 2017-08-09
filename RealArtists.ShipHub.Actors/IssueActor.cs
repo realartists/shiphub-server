@@ -171,7 +171,7 @@
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient);
+      await updater.Changes.Submit(_queueClient, urgent: true);
 
       // Save metadata and other updates
       await Save();
