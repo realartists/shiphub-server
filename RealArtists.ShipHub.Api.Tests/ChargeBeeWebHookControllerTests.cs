@@ -17,7 +17,6 @@
   using Controllers;
   using Mail;
   using Mail.Models;
-  using Microsoft.Azure;
   using Moq;
   using Newtonsoft.Json;
   using NUnit.Framework;
@@ -94,9 +93,9 @@
 
         IChangeSummary changeSummary = null;
         var mockBusClient = new Mock<IShipHubQueueClient>();
-        mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
           .Returns(Task.CompletedTask)
-          .Callback((IChangeSummary arg) => { changeSummary = arg; });
+          .Callback((IChangeSummary arg, bool urgent) => { changeSummary = arg; });
 
         var mockMailer = new Mock<IShipHubMailer>();
         mockMailer
@@ -770,7 +769,7 @@
         }
 
         var mockBusClient = new Mock<IShipHubQueueClient>();
-        mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+        mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
           .Returns(Task.CompletedTask);
 
         var outgoingMessages = new List<MailMessageBase>();
@@ -851,7 +850,7 @@
       bool autoCollection = true,
       bool firstInvoice = false) {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();
@@ -962,7 +961,7 @@
     [Test]
     public async Task PaymentRefundedSendsMessage() {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();
@@ -1022,7 +1021,7 @@
     [Test]
     public async Task PaymentFailedSendsMessage() {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();
@@ -1084,7 +1083,7 @@
     [Test]
     public async Task CardExpiredSendsMessage() {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();
@@ -1140,7 +1139,7 @@
     [Test]
     public async Task CardExpiryReminderSendsMessage() {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();
@@ -1196,7 +1195,7 @@
     [Test]
     public async Task CancellationScheduledSendsMessage() {
       var mockBusClient = new Mock<IShipHubQueueClient>();
-      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
+      mockBusClient.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
         .Returns(Task.CompletedTask);
 
       var outgoingMessages = new List<MailMessageBase>();

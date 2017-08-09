@@ -6,7 +6,7 @@
   using Messages;
 
   public interface IShipHubQueueClient {
-    Task NotifyChanges(IChangeSummary changeSummary);
+    Task NotifyChanges(IChangeSummary changeSummary, bool urgent = false);
     Task BillingGetOrCreatePersonalSubscription(long userId);
     Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId);
     Task BillingUpdateComplimentarySubscription(long userId);
@@ -41,7 +41,7 @@
       return SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
     }
 
-    public Task NotifyChanges(IChangeSummary changeSummary) {
+    public Task NotifyChanges(IChangeSummary changeSummary, bool urgent) {
       return SendIt(ShipHubTopicNames.Changes, new ChangeMessage(changeSummary));
     }
 

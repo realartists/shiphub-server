@@ -668,8 +668,8 @@
       IChangeSummary changes = null;
 
       var queueClientMock = new Mock<IShipHubQueueClient>();
-      queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
-        .Returns((IChangeSummary c) => {
+      queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
+        .Returns((IChangeSummary c, bool urgent) => {
           changes = c;
           return Task.CompletedTask;
         });
@@ -756,7 +756,7 @@
         });
 
         var queueClientMock = new Mock<IShipHubQueueClient>();
-        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>())).Returns(Task.CompletedTask);
+        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>())).Returns(Task.CompletedTask);
 
         var mixpanelEvents = new List<Tuple<string, string, Dictionary<string, object>>>();
         var mockMixpanelClient = new Mock<IMixpanelClient>();
@@ -829,7 +829,7 @@
         });
 
         var queueClientMock = new Mock<IShipHubQueueClient>();
-        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>())).Returns(Task.CompletedTask);
+        queueClientMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>())).Returns(Task.CompletedTask);
 
         var mockMixpanelClient = new Mock<IMixpanelClient>();
         mockMixpanelClient

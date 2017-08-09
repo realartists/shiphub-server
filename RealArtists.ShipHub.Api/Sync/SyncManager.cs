@@ -20,9 +20,8 @@
     public IObservable<ChangeSummary> Changes { get; private set; }
 
     public SyncManager(IServiceBusFactory serviceBusFactory) {
-      Changes = Observable
+      var messages = Observable
         .Create<ChangeSummary>(async observer => {
-          
           var client = await serviceBusFactory.SubscriptionClientForName(ShipHubTopicNames.Changes);
           client.PrefetchCount = _BatchSize;
 
@@ -40,10 +39,20 @@
           // When disconnected, stop listening for changes.
           return Disposable.Create(() => client.Close());
         })
+        .SubscribeOn(TaskPoolScheduler.Default)
+        .Publish()
+        .RefCount();
+
+      var urgent = messages.Where(x => x.IsUrgent);
+      var coalesced = messages
+        .Where(x => !x.IsUrgent)
         .Buffer(_WindowTimeout)
         .Where(x => x.Count > 0)
-        .Select(x => ChangeSummary.UnionAll(x))
-        .SubscribeOn(TaskPoolScheduler.Default) // TODO: Is this the right scheduler?
+        .Select(x => ChangeSummary.UnionAll(x));
+
+      Changes = Observable
+        .Merge(urgent, coalesced)
+        .SubscribeOn(TaskPoolScheduler.Default)
         .Publish()
         .RefCount();
     }

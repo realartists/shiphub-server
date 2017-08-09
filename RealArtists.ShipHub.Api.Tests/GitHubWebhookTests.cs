@@ -180,8 +180,8 @@
     private async Task<IChangeSummary> WithMockWebhookEventActor(Func<IWebhookEventActor, Task> action, IGrainFactory grainFactory = null) {
       var changeList = new List<IChangeSummary>();
       var queueMock = new Mock<IShipHubQueueClient>();
-      queueMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>()))
-        .Returns((IChangeSummary changes) => {
+      queueMock.Setup(x => x.NotifyChanges(It.IsAny<IChangeSummary>(), It.IsAny<bool>()))
+        .Returns((IChangeSummary changes, bool urgent) => {
           changeList.Add(changes);
           return Task.CompletedTask;
         });
