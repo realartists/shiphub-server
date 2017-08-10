@@ -82,7 +82,7 @@ BEGIN
       INSERT (AccountId, RepositoryId, RepoMetadataJson)
       VALUES (AccountId, RepositoryId, RepoMetadataJson)
     -- Delete
-    WHEN NOT MATCHED BY SOURCE THEN DELETE
+    WHEN NOT MATCHED BY SOURCE AND [Source].AccountId = @AccountId THEN DELETE
     -- UPDATE
     WHEN MATCHED THEN
       UPDATE SET RepoMetadataJson = [Source].RepoMetadataJson
