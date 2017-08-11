@@ -72,21 +72,24 @@ BEGIN
 
     MERGE INTO AccountSyncRepositories WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT @AccountId as AccountId, RepositoryId, RepoMetadataJson
-      FROM @SyncRepos
+      SELECT RepositoryId, RepoMetadataJson FROM @SyncRepos
     ) as [Source]
-    ON [Target].AccountId = [Source].AccountId
+    ON [Target].AccountId = @AccountId
       AND [Target].RepositoryId = [Source].RepositoryId
     -- Add
     WHEN NOT MATCHED BY TARGET THEN
       INSERT (AccountId, RepositoryId, RepoMetadataJson)
-      VALUES (AccountId, RepositoryId, RepoMetadataJson)
-    -- Delete
-    WHEN NOT MATCHED BY SOURCE AND [Target].AccountId = @AccountId THEN DELETE
+      VALUES (@AccountId, RepositoryId, RepoMetadataJson)
+    -- Can't DELETE here or it make *terrible* plans
     -- UPDATE
     WHEN MATCHED THEN
       UPDATE SET RepoMetadataJson = [Source].RepoMetadataJson
     OPTION (LOOP JOIN, FORCE ORDER);
+
+    DELETE FROM AccountSyncRepositories
+    FROM AccountSyncRepositories as asr
+    WHERE asr.AccountId = @AccountId
+      AND NOT EXISTS(SELECT * FROM @SyncRepos as sr WHERE sr.RepositoryId = asr.RepositoryId)
 
     COMMIT TRANSACTION
   END TRY
