@@ -1,9 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System;
   using System.Diagnostics.CodeAnalysis;
-  using System.IO;
   using Newtonsoft.Json;
-  using Newtonsoft.Json.Bson;
   using Newtonsoft.Json.Linq;
   using Orleans.Runtime;
   using Orleans.Serialization;
@@ -16,8 +14,6 @@
       NullValueHandling = NullValueHandling.Ignore,
       Formatting = Formatting.None,
     };
-
-    private static readonly JsonSerializer _jsonSerializer = JsonSerializer.Create(_jsonSerializerSettings);
 
     public JsonObjectSerializer() {
       // Parameterless default constructor required.
@@ -37,22 +33,14 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public object Deserialize(Type expectedType, IDeserializationContext context) {
-      var bytes = context.SerializationManager.Deserialize<byte[]>(context.StreamReader);
-      using (var ms = new MemoryStream(bytes, false))
-      using (var bsonReader = new BsonDataReader(ms, false, DateTimeKind.Utc)) {
-        return _jsonSerializer.Deserialize(bsonReader, expectedType);
-      }
+      var json = context.SerializationManager.Deserialize<string>(context.StreamReader);
+      return JsonConvert.DeserializeObject(json, expectedType, _jsonSerializerSettings);
     }
 
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public void Serialize(object item, ISerializationContext context, Type expectedType) {
-      var input = (JToken)item;
-      using (var ms = new MemoryStream()) {
-        using (var bsonWriter = new BsonDataWriter(ms)) {
-          _jsonSerializer.Serialize(bsonWriter, input, expectedType);
-        }
-        context.SerializationManager.Serialize(ms.ToArray(), context.StreamWriter);
-      }
+      var json = JsonConvert.SerializeObject(item, _jsonSerializerSettings);
+      context.SerializationManager.Serialize(json, context.StreamWriter);
     }
   }
 }
