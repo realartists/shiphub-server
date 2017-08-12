@@ -19,10 +19,8 @@
 
     private static readonly JsonSerializer _jsonSerializer = JsonSerializer.Create(_jsonSerializerSettings);
 
-    private SerializationManager _serializationManager;
-
-    public JsonObjectSerializer(SerializationManager serializationManager) {
-      _serializationManager = serializationManager;
+    public JsonObjectSerializer() {
+      // Parameterless default constructor required.
     }
 
     public void Initialize(Logger logger) {
@@ -39,7 +37,7 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public object Deserialize(Type expectedType, IDeserializationContext context) {
-      var bytes = _serializationManager.Deserialize<byte[]>(context.StreamReader);
+      var bytes = context.SerializationManager.Deserialize<byte[]>(context.StreamReader);
       using (var ms = new MemoryStream(bytes, false))
       using (var bsonReader = new BsonDataReader(ms, false, DateTimeKind.Utc)) {
         return _jsonSerializer.Deserialize(bsonReader, expectedType);
@@ -53,7 +51,7 @@
         using (var bsonWriter = new BsonDataWriter(ms)) {
           _jsonSerializer.Serialize(bsonWriter, input, expectedType);
         }
-        _serializationManager.Serialize(ms.ToArray(), context.StreamWriter);
+        context.SerializationManager.Serialize(ms.ToArray(), context.StreamWriter);
       }
     }
   }
