@@ -15,7 +15,6 @@
   [MetadataJson]                      NVARCHAR(MAX)  NULL,
   [AssignableMetadataJson]            NVARCHAR(MAX)  NULL,
   [CommentMetadataJson]               NVARCHAR(MAX)  NULL,
-  [EventMetadataJson]                 NVARCHAR(MAX)  NULL,
   [IssueMetadataJson]                 NVARCHAR(MAX)  NULL,
   [IssueSince]                        DATETIMEOFFSET NULL,
   [LabelMetadataJson]                 NVARCHAR(MAX)  NULL,

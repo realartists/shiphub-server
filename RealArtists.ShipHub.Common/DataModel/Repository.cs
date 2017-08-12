@@ -31,6 +31,7 @@
     public bool IssuesFullyImported { get; set; }
 
     public string IssueTemplate { get; set; }
+
     public string PullRequestTemplate { get; set; }
 
     public long Size { get; set; }
@@ -64,14 +65,6 @@
 
     [NotMapped]
     public GitHubMetadata CommentMetadata { get; set; }
-
-    public string EventMetadataJson {
-      get => EventMetadata.SerializeObject();
-      set => EventMetadata = value.DeserializeObject<GitHubMetadata>();
-    }
-
-    [NotMapped]
-    public GitHubMetadata EventMetadata { get; set; }
 
     public string IssueMetadataJson {
       get => IssueMetadata.SerializeObject();

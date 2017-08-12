@@ -124,7 +124,6 @@ BEGIN
        SET IssuesFullyImported = 0, 
            IssueSince = NULL, 
            CommentMetadataJson = NULL,
-           EventMetadataJson = NULL,
            IssueMetadataJson = NULL,
            PullRequestMetadataJson = NULL,
            PullRequestUpdatedAt = NULL,

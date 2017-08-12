@@ -20,8 +20,7 @@
   using QueueClient;
 
   public class RepositoryActor : Grain, IRepositoryActor {
-    private const int IssueChunkSize = 75;
-    private const int PullRequestChunkSize = IssueChunkSize;
+    private const int BiteChunkPages = 75;
     private const int PullRequestUpdateChunkSize = 5;
 
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
@@ -383,8 +382,6 @@
             */
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
-            //await UpdateComments(updater, github);
-            //await UpdateEvents(updater, github);
           }
         }
 
@@ -698,7 +695,7 @@
 
     private async Task UpdateIssues(DataUpdater updater, IGitHubPoolable github) {
       if (_issueMetadata.IsExpired()) {
-        var issueResponse = await github.Issues(_fullName, _issueSince, IssueChunkSize, _issueMetadata);
+        var issueResponse = await github.Issues(_fullName, _issueSince, BiteChunkPages, _issueMetadata);
         if (issueResponse.IsOk) {
           var nibbledIssues = issueResponse.Result;
           var issues = nibbledIssues;
@@ -762,7 +759,7 @@
 
       if (_pullRequestUpdatedAt == null) {
         // Inital sync. Walk from bottom up.
-        var prCreated = await github.PullRequests(_fullName, "created", "asc", _pullRequestSkip, PullRequestChunkSize);
+        var prCreated = await github.PullRequests(_fullName, "created", "asc", _pullRequestSkip, BiteChunkPages);
         if (prCreated.IsOk) {
           var hasResults = prCreated.Result.Any();
           if (hasResults) {
