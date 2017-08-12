@@ -142,6 +142,13 @@
       );
     }
 
+    public Task<GitHubResponse<IEnumerable<IssueComment>>> Comments(string repoFullName, DateTimeOffset since, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      return TryWithFallback(
+        (actor, cache) => actor.Comments(repoFullName, since, maxPages, cache, priority),
+        cacheOptions
+      );
+    }
+
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
         (actor, cache) => actor.Commit(repoFullName, hash, cache, priority),

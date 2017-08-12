@@ -40,6 +40,10 @@
 
     public DateTimeOffset? PullRequestUpdatedAt { get; set; }
 
+    public DateTimeOffset? CommentSince { get; set; }
+
+    public DateTimeOffset? IssueSince { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
@@ -73,8 +77,6 @@
 
     [NotMapped]
     public GitHubMetadata IssueMetadata { get; set; }
-
-    public DateTimeOffset? IssueSince { get; set; }
 
     public string LabelMetadataJson {
       get => LabelMetadata.SerializeObject();

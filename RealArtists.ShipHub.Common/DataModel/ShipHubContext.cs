@@ -270,6 +270,13 @@
       });
     }
 
+    public Task UpdateRepositoryCommentSince(long repoId, DateTimeOffset? commentSince) {
+      return ExecuteCommandTextAsync(
+        $"UPDATE Repositories SET CommentSince = @CommentSince WHERE Id = @RepoId",
+        new SqlParameter("CommentSince", SqlDbType.DateTimeOffset) { Value = commentSince },
+        new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
+    }
+
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
       return ExecuteCommandTextAsync(
         $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",

@@ -123,8 +123,9 @@ BEGIN
     UPDATE Repositories
        SET IssuesFullyImported = 0, 
            IssueSince = NULL, 
-           CommentMetadataJson = NULL,
            IssueMetadataJson = NULL,
+           CommentMetadataJson = NULL,
+           CommentSince = NULL,
            PullRequestMetadataJson = NULL,
            PullRequestUpdatedAt = NULL,
            PullRequestSkip = NULL
