@@ -301,6 +301,15 @@
       return FetchPaged(request, (IssueComment x) => x.Id);
     }
 
+    public Task<GitHubResponse<IEnumerable<IssueComment>>> Comments(string repoFullName, DateTimeOffset since, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority);
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      request.AddParameter("since", since);
+
+      return FetchPaged(request, (IssueComment x) => x.Id, maxPages);
+    }
+
     public Task<GitHubResponse<Commit>> Commit(string repoFullName, string hash, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/commits/{hash}", cacheOptions, priority);
       return EnqueueRequest<Commit>(request);

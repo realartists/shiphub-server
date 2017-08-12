@@ -416,6 +416,12 @@
       });
     }
 
+    public async Task UpdateRepositoryCommentSince(long repositoryId, DateTimeOffset? commentSince) {
+      await WithContext(async context => {
+        await context.UpdateRepositoryCommentSince(repositoryId, commentSince);
+      });
+    }
+
     public async Task UpdateRepositoryIssueSince(long repositoryId, DateTimeOffset? issueSince) {
       await WithContext(async context => {
         await context.UpdateRepositoryIssueSince(repositoryId, issueSince);

@@ -37,6 +37,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="GitHub\IGitHubActor.cs" />
+    <Compile Include="GitHub\IGitHubOrganizationAdmin.cs" />
+    <Compile Include="GitHub\IGitHubPoolable.cs" />
+    <Compile Include="GitHub\IGitHubPublicPoolActor.cs" />
+    <Compile Include="GitHub\IGitHubRepositoryAdmin.cs" />
     <Compile Include="IEchoActor.cs" />
     <Compile Include="IIssueActor.cs" />
     <Compile Include="IOrganizationActor.cs" />
@@ -44,7 +48,6 @@
     <Compile Include="IUserActor.cs" />
     <Compile Include="IWebhookEventActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Serialization\OrleansJTokenSerializer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

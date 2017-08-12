@@ -31,6 +31,7 @@
     public bool IssuesFullyImported { get; set; }
 
     public string IssueTemplate { get; set; }
+
     public string PullRequestTemplate { get; set; }
 
     public long Size { get; set; }
@@ -38,6 +39,10 @@
     public int? PullRequestSkip { get; set; }
 
     public DateTimeOffset? PullRequestUpdatedAt { get; set; }
+
+    public DateTimeOffset? CommentSince { get; set; }
+
+    public DateTimeOffset? IssueSince { get; set; }
 
     public virtual Account Account { get; set; }
 
@@ -65,14 +70,6 @@
     [NotMapped]
     public GitHubMetadata CommentMetadata { get; set; }
 
-    public string EventMetadataJson {
-      get => EventMetadata.SerializeObject();
-      set => EventMetadata = value.DeserializeObject<GitHubMetadata>();
-    }
-
-    [NotMapped]
-    public GitHubMetadata EventMetadata { get; set; }
-
     public string IssueMetadataJson {
       get => IssueMetadata.SerializeObject();
       set => IssueMetadata = value.DeserializeObject<GitHubMetadata>();
@@ -80,8 +77,6 @@
 
     [NotMapped]
     public GitHubMetadata IssueMetadata { get; set; }
-
-    public DateTimeOffset? IssueSince { get; set; }
 
     public string LabelMetadataJson {
       get => LabelMetadata.SerializeObject();
