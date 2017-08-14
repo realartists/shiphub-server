@@ -21,5 +21,6 @@
 
     public IEnumerable<long> Assignees { get; set; }
     public IEnumerable<long> Labels { get; set; }
+    public IEnumerable<long> Mentions { get; set; }
   }
 }

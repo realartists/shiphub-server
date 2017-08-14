@@ -13,6 +13,8 @@
   [RateLimit]           INT            NOT NULL DEFAULT 0,
   [RateLimitRemaining]  INT            NOT NULL DEFAULT 0,
   [RateLimitReset]      DATETIMEOFFSET NOT NULL DEFAULT '1970-01-01T00:00:00Z',
+  [MentionSince]        DATETIMEOFFSET NULL,
+  [MentionMetadataJson] NVARCHAR(MAX)  NULL,
   CONSTRAINT [PK_Accounts] PRIMARY KEY CLUSTERED ([Id]),
 )
 GO

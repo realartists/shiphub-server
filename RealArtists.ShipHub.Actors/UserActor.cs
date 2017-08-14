@@ -32,6 +32,7 @@
     private GitHubMetadata _metadata;
     private GitHubMetadata _repoMetadata;
     private GitHubMetadata _orgMetadata;
+    private GitHubMetadata _mentionMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -39,6 +40,7 @@
     bool _syncLinkedRepos = false;
     bool _syncSyncRepos = false;
     bool _syncBillingState = true;
+    private DateTimeOffset _mentionSince;
 
     // Local cache
     private SyncSettings _syncSettings;
@@ -84,6 +86,9 @@
       _metadata = user.Metadata;
       _repoMetadata = user.RepositoryMetadata;
       _orgMetadata = user.OrganizationMetadata;
+      _mentionMetadata = user.MentionMetadata;
+
+      _mentionSince = user.MentionSince ?? EpochUtility.EpochOffset;
 
       _syncSettings = user.Settings?.SyncSettings;
       _linkedRepos = user.LinkedRepositories.Select(x => x.RepositoryId).ToHashSet();
@@ -121,6 +126,7 @@
         await context.UpdateMetadata("Accounts", _userId, _metadata);
         await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
+        await context.UpdateMetadata("Accounts", "MentionMetadataJson", _userId, _mentionMetadata);
       }
     }
 
@@ -292,6 +298,23 @@
           updater.UnionWithExternalChanges(cs);
 
           _syncSyncRepos = false;
+        }
+
+        // Issue Mentions
+        if (_mentionMetadata.IsExpired()) {
+          var mentions = await _github.IssueMentions(_mentionSince, _mentionMetadata, RequestPriority.Background);
+
+          if (mentions.IsOk && mentions.Result.Any()) {
+            metaDataMeaningfullyChanged = true;
+
+            await updater.UpdateIssueMentions(_userId, mentions.Result);
+
+            _mentionSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
+            await updater.UpdateAccountMentionSince(_userId, _mentionSince);
+          }
+
+          // Don't update until saved.
+          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
         }
       } catch (GitHubRateException) {
         // nothing to do

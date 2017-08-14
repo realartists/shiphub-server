@@ -272,6 +272,13 @@ BEGIN
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'issue'
 
+    -- Mentions
+    SELECT e.IssueId, e.UserId
+    FROM @Logs as l
+      INNER JOIN IssueMentions as e ON (l.ItemId = e.IssueId)
+    WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
+      AND l.ItemType = 'issue'
+
     -- Issues
     SELECT l.ItemId as Id, e.UserId, e.RepositoryId, e.Number, e.[State], e.Title,
            e.Body, e.MilestoneId, e.Locked, e.CreatedAt, e.UpdatedAt,

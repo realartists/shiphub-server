@@ -87,7 +87,12 @@ BEGIN
 
     DELETE FROM PullRequestReviewers
     FROM PullRequestReviewers as prr
-    INNER JOIN Issues as i ON (i.Id = prr.IssueId)
+      INNER JOIN Issues as i ON (i.Id = prr.IssueId)
+    WHERE i.RepositoryId = @RepositoryId;
+
+    DELETE FROM IssueMentions
+    FROM IssueMentions as im
+      INNER JOIN Issues as i ON (i.Id = im.IssueId)
     WHERE i.RepositoryId = @RepositoryId;
 
     DELETE FROM PullRequestComments

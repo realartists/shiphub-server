@@ -630,6 +630,15 @@
                 .Add((long)ddr.UserId);
             }
 
+            // Issue Mentions
+            var issueMentions = new Dictionary<long, List<long>>();
+            reader.NextResult();
+            while (reader.Read()) {
+              issueMentions
+                .Valn((long)ddr.IssueId)
+                .Add((long)ddr.UserId);
+            }
+
             // Issues (can be deleted)
             reader.NextResult();
             while (reader.Read()) {
@@ -648,6 +657,7 @@
                   Identifier = ddr.Id,
                   Labels = issueLabels.Val((long)ddr.Id, () => new List<long>()),
                   Locked = ddr.Locked,
+                  Mentions = issueMentions.Val((long)ddr.Id, () => new List<long>()),
                   Milestone = ddr.MilestoneId,
                   Number = ddr.Number,
                   // This is hack that works until GitHub changes their version

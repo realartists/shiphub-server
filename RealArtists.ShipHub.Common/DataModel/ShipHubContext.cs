@@ -270,18 +270,23 @@
       });
     }
 
+    public Task UpdateAccountMentionSince(long accountId, DateTimeOffset? mentionSince) {
+      return UpdateSince("Accounts", "MentionSince", accountId, mentionSince);
+    }
+
     public Task UpdateRepositoryCommentSince(long repoId, DateTimeOffset? commentSince) {
-      return ExecuteCommandTextAsync(
-        $"UPDATE Repositories SET CommentSince = @CommentSince WHERE Id = @RepoId",
-        new SqlParameter("CommentSince", SqlDbType.DateTimeOffset) { Value = commentSince },
-        new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
+      return UpdateSince("Repositories", "CommentSince", repoId, commentSince);
     }
 
     public Task UpdateRepositoryIssueSince(long repoId, DateTimeOffset? issueSince) {
+      return UpdateSince("Repositories", "IssueSince", repoId, issueSince);
+    }
+
+    private Task UpdateSince(string tableName, string columnName, long id, DateTimeOffset? since) {
       return ExecuteCommandTextAsync(
-        $"UPDATE Repositories SET IssueSince = @IssueSince WHERE Id = @RepoId",
-        new SqlParameter("IssueSince", SqlDbType.DateTimeOffset) { Value = issueSince },
-        new SqlParameter("RepoId", SqlDbType.BigInt) { Value = repoId });
+        $"UPDATE {tableName} SET {columnName} = @Since WHERE Id = @Id",
+        new SqlParameter("Since", SqlDbType.DateTimeOffset) { Value = since },
+        new SqlParameter("Id", SqlDbType.BigInt) { Value = id });
     }
 
     public Task<ChangeSummary> MarkRepositoryIssuesAsFullyImported(long repoId) {
@@ -646,6 +651,19 @@
         if (assignees != null) {
           x.Assignees = CreateIssueMappingTable("Assignees", assignees);
         }
+      });
+    }
+
+    public Task<ChangeSummary> BulkUpdateIssueMentions(
+      long userId,
+      IEnumerable<long> issues,
+      bool complete = false) {
+      return ExecuteAndReadChanges("[dbo].[BulkUpdateIssueMentions]", x => {
+        x.UserId = userId;
+        if (issues?.Any() == true) {
+          x.Issues = CreateItemListTable("Issues", issues);
+        }
+        x.Complete = complete;
       });
     }
 

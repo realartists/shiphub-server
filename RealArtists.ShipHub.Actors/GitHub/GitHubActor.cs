@@ -257,7 +257,22 @@
       request.AddParameter("state", "all");
       request.AddParameter("sort", "created");
       request.AddParameter("direction", "desc");
-      request.AddParameter("per_page", 100);
+
+      return EnqueueRequest<IEnumerable<Issue>>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"/issues", cacheOptions, priority) {
+        // https://developer.github.com/v3/issues/#reactions-summary 
+        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
+      };
+      request.AddParameter("state", "all");
+      request.AddParameter("sort", "updated");
+      request.AddParameter("direction", "asc");
+      request.AddParameter("filter", "mentioned");
+      if (since.HasValue) {
+        request.AddParameter("since", since);
+      }
 
       return EnqueueRequest<IEnumerable<Issue>>(request);
     }

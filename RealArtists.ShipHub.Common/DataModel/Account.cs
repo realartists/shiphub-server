@@ -52,6 +52,16 @@
 
     public DateTimeOffset RateLimitReset { get; set; } = EpochUtility.EpochOffset;
 
+    public DateTimeOffset? MentionSince { get; set; }
+
+    public string MentionMetadataJson {
+      get => MentionMetadata.SerializeObject();
+      set => MentionMetadata = value.DeserializeObject<GitHubMetadata>();
+    }
+
+    [NotMapped]
+    public GitHubMetadata MentionMetadata { get; set; }
+
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
     public virtual ICollection<Issue> AssignedIssues { get; set; } = new HashSet<Issue>();
 

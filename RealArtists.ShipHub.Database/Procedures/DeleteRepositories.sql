@@ -57,6 +57,12 @@ BEGIN
       INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
 
+    -- Mentioned Users
+    DELETE FROM IssueMentions
+    FROM IssueMentions as im
+      INNER JOIN Issues as i ON (i.Id = im.IssueId)
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
+
     -- IssueLabels
     DELETE FROM IssueLabels
     FROM IssueLabels as il
