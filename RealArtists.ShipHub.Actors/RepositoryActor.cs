@@ -836,19 +836,21 @@
     private async Task UpdateComments(DataUpdater updater, IGitHubPoolable github) {
       if (_commentMetadata.IsExpired()) {
         var response = await github.Comments(_fullName, _commentSince, BiteChunkPages, _commentMetadata);
-        if (response.IsOk) {
-          var comments = response.Result.Where(x => x.IssueNumber != null).ToArray();
 
-          if (comments.Any()) {
-            await updater.UpdateIssueComments(_repoId, response.Date, comments);
+        try {
+          if (response.IsOk && response.Result.Any()) {
+            await updater.UpdateIssueComments(_repoId, response.Date, response.Result);
 
             // Ensure we don't miss any when we hit the page limit.
-            var newSince = comments.Max(x => x.UpdatedAt).AddSeconds(-5);
+            var newSince = response.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
             if (newSince != _commentSince) {
-              await updater.UpdateRepositoryCommentSince(_repoId, _commentSince);
+              await updater.UpdateRepositoryCommentSince(_repoId, newSince);
               _commentSince = newSince;
             }
           }
+        } catch (Exception e) {
+          Log.Info($"{_fullName}[{_commentSince:o}]: {e}");
+          throw;
         }
 
         // This is safe, even when still nibbling because the since parameter will
