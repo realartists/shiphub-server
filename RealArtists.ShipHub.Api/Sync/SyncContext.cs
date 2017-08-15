@@ -79,8 +79,8 @@
         return;
       }
       Log.Debug(() => $"User {_user.UserId} is syncing for changes {changes}");
-      await SendSyncResponse();
       await SendSubscriptionEntry();
+      await SendSyncResponse();
       await RecordUsage();
     }
 
