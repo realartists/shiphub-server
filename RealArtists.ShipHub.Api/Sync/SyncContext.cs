@@ -16,7 +16,14 @@
   using RealArtists.ShipHub.Legacy;
 
   public class SyncContext {
+    // Versions and Feature Flags
     private static readonly Version MinimumSelectiveSyncVersion = new Version(662, 0);
+
+    private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
+    private const long MinimumPullRequestVersion = 1;
+
+    private static readonly Version MinimumMentionsClientVersion = new Version(676, 0);
+    private const long MinimumMentionsVersion = 1;
 
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
@@ -39,17 +46,27 @@
       RunUpgradeCheck();
     }
 
-    private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
-    private const long MinimumPullRequestVersion = 1;
+    
     private void RunUpgradeCheck() {
       // _connection.ClientBuild cannot be null, hello will force upgrade
+      var resync = false;
+
+      // PR upgrade
       if (_connection.ClientBuild >= MinimumPullRequestClientVersion
         && _versions.PullRequestVersion < MinimumPullRequestVersion) {
-        _versions = new SyncVersions(
-          _versions.RepoVersions.ToDictionary(x => x.Key, x => 0L),
-          _versions.OrgVersions.ToDictionary(x => x.Key, x => 0L),
-          MinimumPullRequestVersion
-        );
+        resync = true;
+        _versions.PullRequestVersion = MinimumPullRequestVersion;
+      }
+
+      // Mentions upgrade
+      if (_connection.ClientBuild >= MinimumMentionsClientVersion
+        && _versions.MentionsVersion < MinimumMentionsVersion) {
+        resync = true;
+        _versions.MentionsVersion = MinimumMentionsVersion;
+      }
+
+      if (resync) {
+        _versions.ResyncAll();
       }
     }
 

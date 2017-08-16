@@ -113,7 +113,8 @@
           _syncContext = new SyncContext(_user, this, new SyncVersions(
             hello.Versions?.Repositories?.ToDictionary(x => x.Id, x => x.Version),
             hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version),
-            hello.Versions?.PullRequestVersion)
+            hello.Versions?.PullRequestVersion,
+            hello.Versions?.MentionsVersion)
           );
           await _syncContext.SendHelloResponse(Constants.PurgeIdentifier);
 
