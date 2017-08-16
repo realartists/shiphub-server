@@ -90,10 +90,8 @@ BEGIN
       INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE i.RepositoryId = @RepositoryId;
 
-    DELETE FROM IssueMentions
-    FROM IssueMentions as im
-      INNER JOIN Issues as i ON (i.Id = im.IssueId)
-    WHERE i.RepositoryId = @RepositoryId;
+    -- DO NOT DELETE IssueMentions!
+    -- They're allowed to remain in case mentioned issues are later synced.
 
     DELETE FROM PullRequestComments
     OUTPUT Deleted.Id, 'prcomment' INTO @RemoveFromSyncLog

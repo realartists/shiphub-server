@@ -57,11 +57,8 @@ BEGIN
       INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
 
-    -- Mentioned Users
-    DELETE FROM IssueMentions
-    FROM IssueMentions as im
-      INNER JOIN Issues as i ON (i.Id = im.IssueId)
-    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = i.RepositoryId)
+    -- DO NOT DELETE IssueMentions!
+    -- They're allowed to remain in case mentioned issues are later synced.
 
     -- IssueLabels
     DELETE FROM IssueLabels

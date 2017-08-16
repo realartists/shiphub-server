@@ -2,7 +2,7 @@
   [IssueId] BIGINT NOT NULL,
   [UserId]  BIGINT NOT NULL,
   CONSTRAINT [PK_IssueMentions] PRIMARY KEY CLUSTERED ([IssueId], [UserId]),
-  CONSTRAINT [FK_IssueMentions_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues] ([Id]),
+  -- NOTE! Can't FK to issues here, because we need to track all mentions for a user, even in repos not currently synced.
   CONSTRAINT [FK_IssueMentions_UserId_Accounts_Id] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Accounts] ([Id]),
 )
 GO
