@@ -240,11 +240,11 @@
       var request = new GitHubRequest($"repos/{repoFullName}/issues", cacheOptions, priority) {
         // https://developer.github.com/v3/issues/#reactions-summary 
         AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
-      };
-      request.AddParameter("state", "all");
-      request.AddParameter("sort", "updated");
-      request.AddParameter("direction", "asc");
-      request.AddParameter("since", since);
+      }
+        .AddParameter("state", "all")
+        .AddParameter("sort", "updated")
+        .AddParameter("direction", "asc")
+        .AddParameter("since", since);
 
       return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
@@ -257,9 +257,19 @@
       request.AddParameter("state", "all");
       request.AddParameter("sort", "created");
       request.AddParameter("direction", "desc");
-      request.AddParameter("per_page", 100);
 
       return EnqueueRequest<IEnumerable<Issue>>(request);
+    }
+
+    public Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"/issues", cacheOptions, priority)
+        .AddParameter("state", "all")
+        .AddParameter("sort", "updated")
+        .AddParameter("direction", "asc")
+        .AddParameter("filter", "mentioned")
+        .AddParameter("since", since);
+
+      return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
 
     public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
@@ -285,27 +295,24 @@
 
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, int issueNumber, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/issues/{issueNumber}/comments", cacheOptions, priority);
-      if (since != null) {
-        request.AddParameter("since", since);
-      }
+      request.AddParameter("since", since);
       return FetchPaged(request, (IssueComment x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<IssueComment>>> IssueComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority);
-      if (since != null) {
-        request.AddParameter("since", since);
-      }
-      request.AddParameter("sort", "updated");
-      request.AddParameter("direction", "asc");
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority)
+        .AddParameter("since", since)
+        .AddParameter("sort", "updated")
+        .AddParameter("direction", "asc");
+
       return FetchPaged(request, (IssueComment x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<IssueComment>>> Comments(string repoFullName, DateTimeOffset since, uint maxPages, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority);
-      request.AddParameter("sort", "updated");
-      request.AddParameter("direction", "asc");
-      request.AddParameter("since", since);
+      var request = new GitHubRequest($"repos/{repoFullName}/issues/comments", cacheOptions, priority)
+        .AddParameter("sort", "updated")
+        .AddParameter("direction", "asc")
+        .AddParameter("since", since);
 
       return FetchPaged(request, (IssueComment x) => x.Id, maxPages);
     }
@@ -384,12 +391,10 @@
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, DateTimeOffset? since, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments", cacheOptions, priority);
-      if (since != null) {
-        request.AddParameter("since", since);
-      }
-      request.AddParameter("sort", "updated");
-      request.AddParameter("direction", "asc");
+      var request = new GitHubRequest($"repos/{repoFullName}/pulls/comments", cacheOptions, priority)
+        .AddParameter("since", since)
+        .AddParameter("sort", "updated")
+        .AddParameter("direction", "asc");
       return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 

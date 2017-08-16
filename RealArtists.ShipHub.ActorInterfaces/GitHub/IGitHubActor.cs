@@ -12,6 +12,7 @@
   [Version(1)]
   public interface IGitHubActor : Orleans.IGrainWithIntegerKey, IGitHubPoolable, IGitHubOrganizationAdmin, IGitHubRepositoryAdmin {
     // Implict user scope and permissions (My _)
+    Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<OrganizationMembership>>> OrganizationMemberships(string state = "active", GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Repository>>> Repositories(GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<Account>> User(GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

@@ -87,8 +87,11 @@ BEGIN
 
     DELETE FROM PullRequestReviewers
     FROM PullRequestReviewers as prr
-    INNER JOIN Issues as i ON (i.Id = prr.IssueId)
+      INNER JOIN Issues as i ON (i.Id = prr.IssueId)
     WHERE i.RepositoryId = @RepositoryId;
+
+    -- DO NOT DELETE IssueMentions!
+    -- They're allowed to remain in case mentioned issues are later synced.
 
     DELETE FROM PullRequestComments
     OUTPUT Deleted.Id, 'prcomment' INTO @RemoveFromSyncLog

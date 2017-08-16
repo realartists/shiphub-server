@@ -80,12 +80,24 @@
       return AddParameter(key, value.ToString());
     }
 
+    public GitHubRequest AddParameter<T>(string key, T? value) where T : struct {
+      return value.HasValue ? AddParameter(key, value.Value) : this;
+    }
+
     public GitHubRequest AddParameter(string key, DateTime value) {
       return AddParameter(key, value.ToUniversalTime().ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"));
     }
 
+    public GitHubRequest AddParameter(string key, DateTime? value) {
+      return value.HasValue ? AddParameter(key, value.Value) : this;
+    }
+
     public GitHubRequest AddParameter(string key, DateTimeOffset value) {
       return AddParameter(key, value.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ss'Z'"));
+    }
+
+    public GitHubRequest AddParameter(string key, DateTimeOffset? value) {
+      return value.HasValue ? AddParameter(key, value.Value) : this;
     }
 
     public virtual HttpContent CreateBodyContent() {

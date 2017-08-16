@@ -16,7 +16,14 @@
   using RealArtists.ShipHub.Legacy;
 
   public class SyncContext {
+    // Versions and Feature Flags
     private static readonly Version MinimumSelectiveSyncVersion = new Version(662, 0);
+
+    private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
+    private const long MinimumPullRequestVersion = 1;
+
+    private static readonly Version MinimumMentionsClientVersion = new Version(676, 0);
+    private const long MinimumMentionsVersion = 1;
 
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
@@ -39,17 +46,27 @@
       RunUpgradeCheck();
     }
 
-    private static readonly Version MinimumPullRequestClientVersion = new Version(580, 0);
-    private const long MinimumPullRequestVersion = 1;
+    
     private void RunUpgradeCheck() {
       // _connection.ClientBuild cannot be null, hello will force upgrade
+      var resync = false;
+
+      // PR upgrade
       if (_connection.ClientBuild >= MinimumPullRequestClientVersion
         && _versions.PullRequestVersion < MinimumPullRequestVersion) {
-        _versions = new SyncVersions(
-          _versions.RepoVersions.ToDictionary(x => x.Key, x => 0L),
-          _versions.OrgVersions.ToDictionary(x => x.Key, x => 0L),
-          MinimumPullRequestVersion
-        );
+        resync = true;
+        _versions.PullRequestVersion = MinimumPullRequestVersion;
+      }
+
+      // Mentions upgrade
+      if (_connection.ClientBuild >= MinimumMentionsClientVersion
+        && _versions.MentionsVersion < MinimumMentionsVersion) {
+        resync = true;
+        _versions.MentionsVersion = MinimumMentionsVersion;
+      }
+
+      if (resync) {
+        _versions.ResyncAll();
       }
     }
 
@@ -630,6 +647,15 @@
                 .Add((long)ddr.UserId);
             }
 
+            // Issue Mentions
+            var issueMentions = new Dictionary<long, List<long>>();
+            reader.NextResult();
+            while (reader.Read()) {
+              issueMentions
+                .Valn((long)ddr.IssueId)
+                .Add((long)ddr.UserId);
+            }
+
             // Issues (can be deleted)
             reader.NextResult();
             while (reader.Read()) {
@@ -648,6 +674,7 @@
                   Identifier = ddr.Id,
                   Labels = issueLabels.Val((long)ddr.Id, () => new List<long>()),
                   Locked = ddr.Locked,
+                  Mentions = issueMentions.Val((long)ddr.Id, () => new List<long>()),
                   Milestone = ddr.MilestoneId,
                   Number = ddr.Number,
                   // This is hack that works until GitHub changes their version

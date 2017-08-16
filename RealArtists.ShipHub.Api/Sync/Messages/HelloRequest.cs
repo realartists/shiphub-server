@@ -25,6 +25,9 @@
 
     [JsonProperty("prv")]
     public long? PullRequestVersion { get; set; }
+
+    [JsonProperty("mv")]
+    public long? MentionsVersion { get; set; }
   }
 
   public class HelloRequest : SyncMessageBase {

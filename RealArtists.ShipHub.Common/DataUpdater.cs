@@ -176,6 +176,12 @@
       });
     }
 
+    public async Task UpdateAccountMentionSince(long accountId, DateTimeOffset? mentionSince) {
+      await WithContext(async context => {
+        await context.UpdateAccountMentionSince(accountId, mentionSince);
+      });
+    }
+
     /// <summary>
     /// Updates the repositories we sync for a given account.
     /// </summary>
@@ -193,7 +199,7 @@
       IEnumerable<g.Repository> publicRepos,
       IDictionary<long, GitHubMetadata> includeRepoMetadata,
       IEnumerable<long> excludeRepos) {
-      
+
       var include = includeRepoMetadata
         ?.Select(x => new StringMappingTableType() {
           Key = x.Key,
@@ -293,6 +299,19 @@
           }
         }
       });
+    }
+
+    public async Task UpdateIssueMentions(long userId, IEnumerable<g.Issue> issues, bool complete = false) {
+      IEnumerable<long> issueIds = Array.Empty<long>();
+      if (issues?.Any() == true) {
+        issueIds = issues.Select(x => x.Id).ToArray();
+      }
+
+      if (issueIds.Any() || complete) {
+        await WithContext(async context => {
+          _changes.UnionWith(await context.BulkUpdateIssueMentions(userId, issueIds, complete));
+        });
+      }
     }
 
     public async Task UpdateLabels(long repositoryId, IEnumerable<g.Label> labels, bool complete = false) {

@@ -19,6 +19,7 @@
   public class UserActor : Grain, IUserActor {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
+    public const uint MentionNibblePages = 20;
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -32,6 +33,7 @@
     private GitHubMetadata _metadata;
     private GitHubMetadata _repoMetadata;
     private GitHubMetadata _orgMetadata;
+    private GitHubMetadata _mentionMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
@@ -39,6 +41,7 @@
     bool _syncLinkedRepos = false;
     bool _syncSyncRepos = false;
     bool _syncBillingState = true;
+    private DateTimeOffset _mentionSince;
 
     // Local cache
     private SyncSettings _syncSettings;
@@ -84,6 +87,9 @@
       _metadata = user.Metadata;
       _repoMetadata = user.RepositoryMetadata;
       _orgMetadata = user.OrganizationMetadata;
+      _mentionMetadata = user.MentionMetadata;
+
+      _mentionSince = user.MentionSince ?? EpochUtility.EpochOffset;
 
       _syncSettings = user.Settings?.SyncSettings;
       _linkedRepos = user.LinkedRepositories.Select(x => x.RepositoryId).ToHashSet();
@@ -121,6 +127,7 @@
         await context.UpdateMetadata("Accounts", _userId, _metadata);
         await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
+        await context.UpdateMetadata("Accounts", "MentionMetadataJson", _userId, _mentionMetadata);
       }
     }
 
@@ -292,6 +299,26 @@
           updater.UnionWithExternalChanges(cs);
 
           _syncSyncRepos = false;
+        }
+
+        // Issue Mentions
+        if (_mentionMetadata.IsExpired()) {
+          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
+
+          if (mentions.IsOk && mentions.Result.Any()) {
+            metaDataMeaningfullyChanged = true;
+
+            await updater.UpdateIssueMentions(_userId, mentions.Result);
+
+            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
+            if (maxSince != _mentionSince) {
+              await updater.UpdateAccountMentionSince(_userId, maxSince);
+              _mentionSince = maxSince;
+            }
+          }
+
+          // Don't update until saved.
+          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
         }
       } catch (GitHubRateException) {
         // nothing to do
