@@ -19,6 +19,7 @@
   public class UserActor : Grain, IUserActor {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
+    public const uint MentionNibblePages = 20;
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -302,15 +303,18 @@
 
         // Issue Mentions
         if (_mentionMetadata.IsExpired()) {
-          var mentions = await _github.IssueMentions(_mentionSince, _mentionMetadata, RequestPriority.Background);
+          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
 
           if (mentions.IsOk && mentions.Result.Any()) {
             metaDataMeaningfullyChanged = true;
 
             await updater.UpdateIssueMentions(_userId, mentions.Result);
 
-            _mentionSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
-            await updater.UpdateAccountMentionSince(_userId, _mentionSince);
+            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
+            if (maxSince != _mentionSince) {
+              await updater.UpdateAccountMentionSince(_userId, maxSince);
+              _mentionSince = maxSince;
+            }
           }
 
           // Don't update until saved.

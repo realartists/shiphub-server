@@ -261,11 +261,8 @@
       return EnqueueRequest<IEnumerable<Issue>>(request);
     }
 
-    public Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
-      var request = new GitHubRequest($"/issues", cacheOptions, priority) {
-        // https://developer.github.com/v3/issues/#reactions-summary 
-        AcceptHeaderOverride = "application/vnd.github.squirrel-girl-preview+json"
-      };
+    public Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+      var request = new GitHubRequest($"/issues", cacheOptions, priority);
       request.AddParameter("state", "all");
       request.AddParameter("sort", "updated");
       request.AddParameter("direction", "asc");
@@ -274,7 +271,7 @@
         request.AddParameter("since", since);
       }
 
-      return EnqueueRequest<IEnumerable<Issue>>(request);
+      return FetchPaged(request, (Issue x) => x.Id, maxPages);
     }
 
     public Task<GitHubResponse<IEnumerable<Reaction>>> IssueReactions(string repoFullName, int issueNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
