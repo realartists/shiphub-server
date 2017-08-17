@@ -31,11 +31,12 @@
     private DateTimeOffset? _lastRecordedUsage;
     private bool _selectiveSyncEnabled;
 
-    private VersionDetails VersionDetails => new VersionDetails() {
-      Organizations = _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }),
-      Repositories = _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }),
-      PullRequestVersion = _versions.PullRequestVersion,
-    };
+    private VersionDetails VersionDetails => new VersionDetails(
+        _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }).ToArray(),
+        _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }).ToArray(),
+        _versions.PullRequestVersion,
+        _versions.MentionsVersion
+      );
 
     public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
       _user = user;
@@ -46,7 +47,7 @@
       RunUpgradeCheck();
     }
 
-    
+
     private void RunUpgradeCheck() {
       // _connection.ClientBuild cannot be null, hello will force upgrade
       var resync = false;
@@ -692,7 +693,7 @@
                   Identifier = ddr.Id
                 };
               }
-              
+
               entries.Add(entry);
             }
 

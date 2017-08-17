@@ -17,6 +17,15 @@
   }
 
   public class VersionDetails {
+    public VersionDetails() { }
+
+    public VersionDetails(IEnumerable<RepositoryVersion> repoVersions, IEnumerable<OrganizationVersion> orgVersions, long pullRequestVersion, long mentionsVersion) {
+      Repositories = repoVersions;
+      Organizations = orgVersions;
+      PullRequestVersion = pullRequestVersion;
+      MentionsVersion = mentionsVersion;
+    }
+
     [JsonProperty("repos")]
     public IEnumerable<RepositoryVersion> Repositories { get; set; }
 
