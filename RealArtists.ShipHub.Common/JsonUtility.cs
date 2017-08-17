@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System.Collections.Generic;
+  using System.IO;
   using System.Net.Http.Formatting;
   using Newtonsoft.Json;
   using Newtonsoft.Json.Converters;
@@ -48,6 +49,20 @@
       }
 
       return JsonConvert.DeserializeObject<T>(json, JsonSerializerSettings);
+    }
+
+    public static string DumpJson(this object value, string logMessage) {
+      var tempDir = Path.GetTempPath();
+      var tempFile = Path.GetRandomFileName() + ".json";
+      var tempInfo = new FileInfo(Path.Combine(tempDir, tempFile));
+
+      using (var sw = tempInfo.CreateText()) {
+        JsonSerializer.Serialize(sw, value);
+      }
+
+      Log.Info($"{logMessage} Dumpfile: {tempInfo.FullName}");
+
+      return tempInfo.FullName;
     }
   }
 }
