@@ -81,7 +81,7 @@
         httpRequest.Headers.Accept.ParseAdd("application/vnd.github.v3.raw");
       }
 
-      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", client.AccessToken);
+      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("bearer", client.AccessToken);
 
       var cache = request.CacheOptions;
       if (cache?.UserId == client.UserId) {
