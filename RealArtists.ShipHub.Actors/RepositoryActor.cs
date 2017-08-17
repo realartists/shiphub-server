@@ -835,7 +835,7 @@
 
     private async Task UpdateComments(DataUpdater updater, IGitHubPoolable github) {
       if (_commentMetadata.IsExpired()) {
-        var response = await github.Comments(_fullName, _commentSince, BiteChunkPages, _commentMetadata);
+        var response = await github.Comments(_fullName, _commentSince, NibbleChunkPages, _commentMetadata);
 
         try {
           if (response.IsOk && response.Result.Any()) {
