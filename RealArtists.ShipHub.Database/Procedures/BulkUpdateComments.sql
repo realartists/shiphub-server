@@ -24,9 +24,10 @@ BEGIN
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     -- Add
-    WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
-      VALUES (Id, IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
+    WHEN NOT MATCHED BY TARGET AND [Source].IssueId IS NOT NULL -- GitHub sends comments for issues they won't send
+      THEN
+        INSERT (Id, IssueId, RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
+        VALUES (Id, IssueId, @RepositoryId, UserId, Body, CreatedAt, UpdatedAt)
     -- Update
     WHEN MATCHED AND [Target].[UpdatedAt] < [Source].[UpdatedAt] THEN
       UPDATE SET
