@@ -35,6 +35,8 @@
     Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestComments(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<Reaction>>> PullRequestCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
 
+    Task<GitHubResponse<IDictionary<long, IEnumerable<Review>>>> PullRequestReviews(string repoFullName, IEnumerable<int> pullRequestNumbers, RequestPriority priority = RequestPriority.Background);
+
     // Repos
     Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);
     Task<GitHubResponse<IEnumerable<IssueComment>>> Comments(string repoFullName, DateTimeOffset since, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

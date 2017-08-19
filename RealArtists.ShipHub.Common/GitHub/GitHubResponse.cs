@@ -21,7 +21,7 @@
     /// <summary>
     /// True if the http status code is 200 OK
     /// </summary>
-    public bool IsOk => Status == HttpStatusCode.OK;
+    public bool IsOk => (Error == null && Status == HttpStatusCode.OK);
 
     /// <summary>
     /// True if the http status code is within [200-400)

@@ -268,6 +268,13 @@
        );
     }
 
+    public Task<GitHubResponse<IDictionary<long, IEnumerable<Review>>>> PullRequestReviews(string repoFullName, IEnumerable<int> pullRequestNumbers, RequestPriority priority = RequestPriority.Background) {
+      return TryWithFallback(
+         (actor, cache) => actor.PullRequestReviews(repoFullName, pullRequestNumbers, priority),
+         null
+       );
+    }
+
     public Task<GitHubResponse<IEnumerable<PullRequest>>> PullRequests(string repoFullName, string sort, string direction, uint skipPages, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
       return TryWithFallback(
          (actor, cache) => actor.PullRequests(repoFullName, sort, direction, skipPages, maxPages, cache, priority),

@@ -50,6 +50,7 @@
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\PullRequest.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
+    <Compile Include="GitHub\Models\GraphQLCore.cs" />
     <Compile Include="DataModel\Types\RepositoryPermissionsTableType.cs" />
     <Compile Include="DataModel\Types\CommitStatusTableType.cs" />
     <Compile Include="DataModel\Types\HookTableType.cs" />
@@ -65,9 +66,18 @@
     <Compile Include="DataUpdater.cs" />
     <Compile Include="DateUtilities.cs" />
     <Compile Include="GitHub\GitHubException.cs" />
+    <Compile Include="GitHub\GitHubGraphQLRequest.cs" />
     <Compile Include="GitHub\GitHubRateException.cs" />
+    <Compile Include="GitHub\GraphQLSerialization.cs" />
     <Compile Include="GitHub\Models\CommitStatus.cs" />
     <Compile Include="GitHub\Models\CommitComment.cs" />
+    <Compile Include="GitHub\Models\GraphQL\Commit.cs" />
+    <Compile Include="GitHub\Models\GraphQL\PageInfo.cs" />
+    <Compile Include="GitHub\Models\GraphQL\PullRequest.cs" />
+    <Compile Include="GitHub\Models\GraphQL\PullRequestReview.cs" />
+    <Compile Include="GitHub\Models\GraphQL\PullRequestReviewConnection.cs" />
+    <Compile Include="GitHub\Models\GraphQL\RateLimit.cs" />
+    <Compile Include="GitHub\Models\GraphQL\User.cs" />
     <Compile Include="GitHub\Models\PullRequestComment.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />

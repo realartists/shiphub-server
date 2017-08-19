@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
+  using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
@@ -12,6 +13,7 @@
   using Common.GitHub;
   using Logging;
   using Microsoft.WindowsAzure.Storage;
+  using RealArtists.ShipHub.Common.GitHub.Models;
 
   public interface IGitHubHandler {
     Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken);
@@ -202,6 +204,18 @@
         } else if (response.Content != null && typeof(T) == typeof(byte[])) {
           // Raw byte result
           result.Result = (T)(object)(await response.Content.ReadAsByteArrayAsync());
+        } else if (response.Content != null && request is GitHubGraphQLRequest) {
+          // GraphQL
+          var resp = await response.Content.ReadAsAsync<GraphQLResponse<T>>(GraphQLSerialization.MediaTypeFormatters);
+
+          if (resp.Errors?.Any() == true) {
+            result.Error = new GitHubError() {
+              // This is a gross hack.
+              Message = resp.Errors.SerializeObject(),
+            };
+          } else {
+            result.Result = resp.Data;
+          }
         } else if (response.Content != null) {
           // JSON formatted result
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);

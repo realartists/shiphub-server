@@ -21,6 +21,7 @@
   using QueueClient;
   using dm = Common.DataModel;
   using dmt = Common.DataModel.Types;
+  using gql = Common.GitHub.Models.GraphQL;
 
   public interface IGitHubClient {
     string AccessToken { get; }
@@ -414,6 +415,87 @@
     public Task<GitHubResponse<IEnumerable<Review>>> PullRequestReviews(string repoFullName, int pullRequestNumber, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/pulls/{pullRequestNumber}/reviews", cacheOptions, priority);
       return FetchPaged(request, (Review x) => x.Id);
+    }
+
+    public async Task<GitHubResponse<IDictionary<long, IEnumerable<Review>>>> PullRequestReviews(string repoFullName, IEnumerable<int> pullRequestNumbers, RequestPriority priority) {
+      var resources = pullRequestNumbers
+        .Select(x => $"  _{x}: resource(url: \"https://github.com/{repoFullName}/pull/{x}\") {{ ...PullRequestInfo }}\r\n")
+        .ToArray();
+      var query = "query { rateLimit { cost nodeCount limit remaining resetAt }\r\n"
+        + string.Join("\r\n", resources)
+        + @"}
+          fragment PullRequestInfo on PullRequest {
+            databaseId
+            reviews(first: 100) {
+              pageInfo { hasNextPage }
+              nodes {
+                databaseId
+                author {
+                  login
+                  ... on User { databaseId name }
+                  ... on Organization { databaseId  name }
+                  ... on Bot { databaseId }
+                }
+                body
+                commit { oid }
+                state
+                submittedAt
+              }
+            }
+          }";
+      var request = new GitHubGraphQLRequest(query, priority);
+      var response = await EnqueueRequest<JObject>(request);
+
+      // I hate this
+      var copyResponse = new GitHubResponse<IDictionary<long, IEnumerable<Review>>>(request) {
+        Date = response.Date,
+        Error = response.Error,
+        Redirect = response.Redirect,
+        Status = response.Status,
+        RateLimit = response.RateLimit,
+      };
+
+      // Parse!
+      if (response.IsOk) {
+        var data = response.Result;
+        var reviewMap = new Dictionary<long, IEnumerable<Review>>();
+
+        foreach (var prop in data) {
+          if (prop.Key == "rateLimit") {
+            var rate = prop.Value.ToObject<gql.RateLimit>(GraphQLSerialization.JsonSerializer);
+            copyResponse.RateLimit = new GitHubRateLimit(response.RateLimit.AccessToken, rate.Limit, rate.Remaining, rate.ResetAt);
+          } else {
+            var pr = prop.Value.ToObject<gql.PullRequest>(GraphQLSerialization.JsonSerializer);
+            var reviews = new List<Review>();
+
+            foreach (var review in pr.Reviews.Nodes) {
+              if (review.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) {
+                continue;
+              }
+
+              reviews.Add(new Review() {
+                Body = review.Body,
+                CommitId = review.Commit.Id,
+                Id = review.Id,
+                State = review.State,
+                SubmittedAt = review.SubmittedAt,
+                User = new Account() {
+                  Id = review.Author.Id,
+                  Login = review.Author.Login,
+                  Name = review.Author.Name,
+                  Type = GitHubAccountType.User, // Safe default, could be org or bot but hard to tell
+                }
+              });
+            }
+
+            reviewMap.Add(pr.Id, reviews);
+          }
+        }
+
+        copyResponse.Result = reviewMap;
+      }
+
+      return copyResponse;
     }
 
     public Task<GitHubResponse<IEnumerable<PullRequestComment>>> PullRequestReviewComments(string repoFullName, int pullRequestNumber, long pullRequestReviewId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
