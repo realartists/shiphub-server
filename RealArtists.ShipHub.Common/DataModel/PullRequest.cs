@@ -1,5 +1,6 @@
 ﻿namespace RealArtists.ShipHub.Common.DataModel {
   using System;
+  using System.ComponentModel.DataAnnotations;
   using System.ComponentModel.DataAnnotations.Schema;
   using Types;
   using g = GitHub.Models;
@@ -23,6 +24,10 @@
     public string MergeableState { get; set; }
     public long? MergedById { get; set; }
     public bool? Rebaseable { get; set; }
+
+    [ConcurrencyCheck]
+    [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
+    public long RowVersion { get; set; }
 
     public virtual Issue Issue { get; set; }
     public virtual Repository Repository { get; set; }
@@ -61,6 +66,15 @@
     public string CommentMetadataJson {
       get => CommentMetadata.SerializeObject();
       set => CommentMetadata = value.DeserializeObject<GitHubMetadata>();
+    }
+
+    // StatusMetadata
+    [NotMapped]
+    public GitHubMetadata ReviewMetadata { get; set; }
+
+    public string ReviewMetadataJson {
+      get => ReviewMetadata.SerializeObject();
+      set => ReviewMetadata = value.DeserializeObject<GitHubMetadata>();
     }
 
     // StatusMetadata

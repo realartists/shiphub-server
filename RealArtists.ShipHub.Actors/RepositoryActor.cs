@@ -101,6 +101,7 @@
     // Chunk tracking
     private DateTimeOffset _commentSince;
     private DateTimeOffset _issueSince;
+    private long _pullRequestReviewVersion;
     private uint _pullRequestSkip;
     private DateTimeOffset? _pullRequestUpdatedAt;
 
@@ -170,6 +171,7 @@
         // PR sync state
         _pullRequestSkip = (uint)(repo.PullRequestSkip ?? 0);
         _pullRequestUpdatedAt = repo.PullRequestUpdatedAt;
+        _pullRequestReviewVersion = repo.PullRequestReviewVersion ?? long.MinValue;
 
         // Comment sync state
         _commentSince = repo.CommentSince ?? EpochUtility.EpochOffset;
@@ -390,6 +392,7 @@
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
             await UpdateComments(updater, github);
+            await UpdatePullRequestReviews(updater, github);
           }
         }
 
@@ -856,6 +859,74 @@
         // This is safe, even when still nibbling because the since parameter will
         // continue incrementing and invalidating the ETag.
         _commentMetadata = GitHubMetadata.FromResponse(response);
+      }
+    }
+
+    private async Task UpdatePullRequestReviews(DataUpdater updater, IGitHubPoolable github) {
+      var success = true;
+
+      // Lookup changed PRs
+      // TODO: Populate on activate and track internally thereafter (we discover and update all PRs in this actor)
+      Dictionary<long, (long IssueId, int Number, long RowVersion, GitHubMetadata ReviewMetadata)> updatedPrs;
+      using (var context = _contextFactory.CreateInstance()) {
+        updatedPrs = await context.PullRequests
+          .AsNoTracking()
+          .Where(x => x.RepositoryId == _repoId)
+          .Where(x => x.RowVersion > _pullRequestReviewVersion)
+          .OrderBy(x => x.RowVersion)
+          .Select(x => new {x.IssueId, x.Id, x.Number, x.RowVersion, x.ReviewMetadata })
+          .Take(250)
+          .ToDictionaryAsync(x => x.Id, x => (x.IssueId, x.Number, x.RowVersion, x.ReviewMetadata));
+      }
+
+      if (updatedPrs.Count == 0) {
+        return;
+      }
+
+      var requestV3 = new List<(long IssueId, int Number, long RowVersion, GitHubMetadata ReviewMetadata)>();
+
+      if (updatedPrs.Count == 0) {
+        return;
+      } else if (updatedPrs.Count <= 1) {
+        // Request (with metadata) using V3 API
+        requestV3.AddRange(updatedPrs.Values);
+      } else {
+        // GraphQL
+        var prNumbers = updatedPrs.Values.Select(x => x.Number).ToArray();
+        var resp = await github.PullRequestReviews(_fullName, prNumbers);
+        if (resp.IsOk) {
+          if (resp.Result.Any()) {
+            var issueReviews = resp.Result
+              .Select(x => (IssueId: updatedPrs[x.PullRequestId].IssueId, Reviews: x.Reviews))
+              .ToArray();
+            await updater.UpdateReviews(_repoId, resp.Date, issueReviews);
+            // Check for overflow
+            var overflowed = resp.Result
+              .Where(x => x.Reviews.Count() >= 100)
+              .Select(x => x.PullRequestId)
+              .ToArray();
+            requestV3.AddRange(overflowed.Select(prId => updatedPrs[prId]));
+          }
+        } else if (resp.Error != null) {
+          success = false;
+          Log.Exception(resp.Error.ToException(), "GraphQL PR Review Problem");
+        }
+      }
+
+      foreach (var pr in requestV3) {
+        var resp = await github.PullRequestReviews(_fullName, pr.Number, pr.ReviewMetadata);
+        if (resp.IsOk) {
+          await updater.UpdateReviews(_repoId, pr.IssueId, resp.Date, resp.Result, resp.CacheData.UserId, true);
+        }
+
+        using (var context = _contextFactory.CreateInstance()) {
+          await context.UpdateMetadata("PullRequests", "IssueId", "ReviewMetadataJson", pr.IssueId, GitHubMetadata.FromResponse(resp));
+        }
+      }
+
+      if (success) {
+        _pullRequestReviewVersion = updatedPrs.Max(x => x.Value.RowVersion);
+        await updater.UpdateRepositoryReviewVersion(_repoId, _pullRequestReviewVersion);
       }
     }
 

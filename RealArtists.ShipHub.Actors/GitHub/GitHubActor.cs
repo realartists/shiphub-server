@@ -417,7 +417,7 @@
       return FetchPaged(request, (Review x) => x.Id);
     }
 
-    public async Task<GitHubResponse<IDictionary<long, IEnumerable<Review>>>> PullRequestReviews(string repoFullName, IEnumerable<int> pullRequestNumbers, RequestPriority priority) {
+    public async Task<GitHubResponse<IEnumerable<PullRequestReviewResult>>> PullRequestReviews(string repoFullName, IEnumerable<int> pullRequestNumbers, RequestPriority priority) {
       var resources = pullRequestNumbers
         .Select(x => $"  _{x}: resource(url: \"https://github.com/{repoFullName}/pull/{x}\") {{ ...PullRequestInfo }}\r\n")
         .ToArray();
@@ -431,6 +431,7 @@
               nodes {
                 databaseId
                 author {
+                  __typename
                   login
                   ... on User { databaseId name }
                   ... on Organization { databaseId  name }
@@ -447,7 +448,7 @@
       var response = await EnqueueRequest<JObject>(request);
 
       // I hate this
-      var copyResponse = new GitHubResponse<IDictionary<long, IEnumerable<Review>>>(request) {
+      var copyResponse = new GitHubResponse<IEnumerable<PullRequestReviewResult>>(request) {
         Date = response.Date,
         Error = response.Error,
         Redirect = response.Redirect,
@@ -458,7 +459,7 @@
       // Parse!
       if (response.IsOk) {
         var data = response.Result;
-        var reviewMap = new Dictionary<long, IEnumerable<Review>>();
+        var issueReviews = new List<PullRequestReviewResult>();
 
         foreach (var prop in data) {
           if (prop.Key == "rateLimit") {
@@ -470,6 +471,8 @@
 
             foreach (var review in pr.Reviews.Nodes) {
               if (review.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) {
+                // Drop pending reviews from these responses.
+                // TODO: If possible, safely incorporate them.
                 continue;
               }
 
@@ -483,16 +486,19 @@
                   Id = review.Author.Id,
                   Login = review.Author.Login,
                   Name = review.Author.Name,
-                  Type = GitHubAccountType.User, // Safe default, could be org or bot but hard to tell
+                  Type = review.Author.Type,
                 }
               });
             }
 
-            reviewMap.Add(pr.Id, reviews);
+            issueReviews.Add(new PullRequestReviewResult() {
+              PullRequestId = pr.Id,
+              Reviews = reviews,
+            });
           }
         }
 
-        copyResponse.Result = reviewMap;
+        copyResponse.Result = issueReviews;
       }
 
       return copyResponse;
