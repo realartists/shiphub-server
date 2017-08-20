@@ -494,6 +494,7 @@
             issueReviews.Add(new PullRequestReviewResult() {
               PullRequestId = pr.Id,
               Reviews = reviews,
+              MoreResults = pr.Reviews.PageInfo.HasNextPage,
             });
           }
         }

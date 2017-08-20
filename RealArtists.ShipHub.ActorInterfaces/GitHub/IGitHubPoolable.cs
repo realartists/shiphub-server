@@ -65,5 +65,6 @@
   public class PullRequestReviewResult {
     public long PullRequestId { get; set; }
     public IEnumerable<Review> Reviews { get; set; }
+    public bool MoreResults { get; set; }
   }
 }

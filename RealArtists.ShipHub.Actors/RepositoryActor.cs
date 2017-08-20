@@ -903,10 +903,9 @@
             await updater.UpdateReviews(_repoId, resp.Date, issueReviews);
             // Check for overflow
             var overflowed = resp.Result
-              .Where(x => x.Reviews.Count() >= 100)
-              .Select(x => x.PullRequestId)
-              .ToArray();
-            requestV3.AddRange(overflowed.Select(prId => updatedPrs[prId]));
+              .Where(x => x.MoreResults)
+              .Select(x => updatedPrs[x.PullRequestId]);
+            requestV3.AddRange(overflowed);
           }
         } else if (resp.Error != null) {
           success = false;
