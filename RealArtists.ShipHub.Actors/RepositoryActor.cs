@@ -897,6 +897,7 @@
         if (resp.IsOk) {
           if (resp.Result.Any()) {
             var issueReviews = resp.Result
+              .Where(x => x.Reviews.Any())
               .Select(x => (IssueId: updatedPrs[x.PullRequestId].IssueId, Reviews: x.Reviews))
               .ToArray();
             await updater.UpdateReviews(_repoId, resp.Date, issueReviews);
