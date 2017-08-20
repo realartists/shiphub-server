@@ -241,22 +241,19 @@
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
 #if DEBUG
-      var rootHandler = HttpUtilities.CreateDefaultHandler(ShipHubCloudConfiguration.Instance.UseFiddler);
+      var handler = HttpUtilities.CreateDefaultHandler(ShipHubCloudConfiguration.Instance.UseFiddler);
 #else
-      var rootHandler = HttpUtilities.CreateDefaultHandler();
+      var handler = HttpUtilities.CreateDefaultHandler();
 #endif
-
-      HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
       // Always enable even if not storing bodies for generic request logging.
       var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
-      var logHandler = new LoggingMessageProcessingHandler(
+      handler = new LoggingMessageProcessingHandler(
         gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
         "github-logs2",
         handler
       );
-      handler = logHandler;
 
       var httpClient = new HttpClient(handler, true) {
         Timeout = GitHubActor.GitHubRequestTimeout,

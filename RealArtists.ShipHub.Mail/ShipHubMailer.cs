@@ -72,8 +72,9 @@
         }
 
         var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
-        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png");
-        linkedResource.ContentId = "ShipLogo.png";
+        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png") {
+          ContentId = "ShipLogo.png"
+        };
         htmlView.LinkedResources.Add(linkedResource);
         message.AlternateViews.Add(htmlView);
       }

@@ -169,13 +169,17 @@
     public string StatHatPrefix => _statHatPrefix.Value;
 
     private Lazy<bool> _useFiddler = new Lazy<bool>(() => {
+#pragma warning disable IDE0018 // Inline variable declaration
       bool result;
+#pragma warning restore IDE0018 // Inline variable declaration
       return bool.TryParse(GetSetting("UseFiddler"), out result) && result;
     });
     public bool UseFiddler => _useFiddler.Value;
 
     private Lazy<bool> _useSqlAzureExecutionStrategy = new Lazy<bool>(() => {
+#pragma warning disable IDE0018 // Inline variable declaration
       bool result;
+#pragma warning restore IDE0018 // Inline variable declaration
       return bool.TryParse(GetSetting("UseSqlAzureExecutionStrategy"), out result) && result;
     });
     public bool UseSqlAzureExecutionStrategy => _useSqlAzureExecutionStrategy.Value;
