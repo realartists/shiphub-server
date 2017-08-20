@@ -874,9 +874,9 @@
           .Where(x => x.RepositoryId == _repoId)
           .Where(x => x.RowVersion > _pullRequestReviewVersion)
           .OrderBy(x => x.RowVersion)
-          .Select(x => new {x.IssueId, x.Id, x.Number, x.RowVersion, x.ReviewMetadata })
+          .Select(x => new {x.IssueId, x.Id, x.Number, x.RowVersion, x.ReviewMetadataJson })
           .Take(250)
-          .ToDictionaryAsync(x => x.Id, x => (x.IssueId, x.Number, x.RowVersion, x.ReviewMetadata));
+          .ToDictionaryAsync(x => x.Id, x => (x.IssueId, x.Number, x.RowVersion, x.ReviewMetadataJson.DeserializeObject<GitHubMetadata>()));
       }
 
       if (updatedPrs.Count == 0) {
