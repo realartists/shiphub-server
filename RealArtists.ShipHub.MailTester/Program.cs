@@ -1,17 +1,16 @@
 ﻿namespace RealArtists.ShipHub.MailTester {
   using System;
   using System.Collections.Generic;
-  using System.IO;
   using System.Linq;
   using Mail;
-  using Mail.Views;
 
   class Program {
     static void SendEmails(string toAddress, string toName, string githubUsername, bool includeHtmlVersion) {
       var dummyInvoiceUrl = "https://www.realartists.com/billing/invoice/123/ship-invoice-yourname-2016-12-01.pdf";
 
-      var mailer = new ShipHubMailer();
-      mailer.IncludeHtmlView = includeHtmlVersion;
+      var mailer = new ShipHubMailer {
+        IncludeHtmlView = includeHtmlVersion
+      };
 
       mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {

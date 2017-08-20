@@ -286,8 +286,8 @@
             combinedRepoMetadata,
             _syncSettings?.Exclude);
 
-          _repoActors = syncRepoMetadata
-            .ToDictionary(x => x.Key, x => _grainFactory.GetGrain<IRepositoryActor>(x.Key));
+          _repoActors = syncRepoMetadata.Keys
+            .ToDictionary(x => x, x => _grainFactory.GetGrain<IRepositoryActor>(x));
 
           _includeRepoMetadata = syncRepoMetadata
             .Where(x => !_linkedRepos.Contains(x.Key))

@@ -19,7 +19,7 @@
     public IEnumerable<long> Repositories { get; set; }
     public IEnumerable<long> Users { get; set; }
 
-    public bool IsEmpty { get => Organizations?.Any() == false && Repositories?.Any() == false && Users?.Any() == false; }
+    public bool IsEmpty => Organizations?.Any() == false && Repositories?.Any() == false && Users?.Any() == false;
 
     public override string ToString() {
       return $"ChangeMessage {{ Organizations: [{string.Join(", ", Organizations)}] Repositories: [{string.Join(", ", Repositories)}] Users: [{string.Join(", ", Users)}] Urgent: {IsUrgent} }}";

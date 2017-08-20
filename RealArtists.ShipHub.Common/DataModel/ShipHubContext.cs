@@ -289,6 +289,13 @@
         new SqlParameter("Id", SqlDbType.BigInt) { Value = id });
     }
 
+    public Task UpdateRepositoryReviewVersion(long repoId, long? version) {
+      return ExecuteCommandTextAsync(
+        "UPDATE Repositories SET PullRequestReviewVersion = @Version WHERE Id = @Id",
+        new SqlParameter("Version", SqlDbType.BigInt) { Value = version },
+        new SqlParameter("Id", SqlDbType.BigInt) { Value = repoId });
+    }
+
     public Task<ChangeSummary> MarkRepositoryIssuesAsFullyImported(long repoId) {
       return ExecuteAndReadChanges("[dbo].[MarkRepositoryIssuesAsFullyImported]", x => {
         x.RepositoryId = repoId;

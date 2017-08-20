@@ -3,6 +3,7 @@
   using System.Collections.Generic;
   using System.Diagnostics;
   using System.Diagnostics.CodeAnalysis;
+  using System.Linq;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
@@ -12,6 +13,7 @@
   using Common.GitHub;
   using Logging;
   using Microsoft.WindowsAzure.Storage;
+  using RealArtists.ShipHub.Common.GitHub.Models;
 
   public interface IGitHubHandler {
     Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken);
@@ -81,7 +83,7 @@
         httpRequest.Headers.Accept.ParseAdd("application/vnd.github.v3.raw");
       }
 
-      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("token", client.AccessToken);
+      httpRequest.Headers.Authorization = new AuthenticationHeaderValue("bearer", client.AccessToken);
 
       var cache = request.CacheOptions;
       if (cache?.UserId == client.UserId) {
@@ -202,6 +204,18 @@
         } else if (response.Content != null && typeof(T) == typeof(byte[])) {
           // Raw byte result
           result.Result = (T)(object)(await response.Content.ReadAsByteArrayAsync());
+        } else if (response.Content != null && request is GitHubGraphQLRequest) {
+          // GraphQL
+          var resp = await response.Content.ReadAsAsync<GraphQLResponse<T>>(GraphQLSerialization.MediaTypeFormatters);
+
+          if (resp.Errors?.Any() == true) {
+            result.Error = new GitHubError() {
+              // This is a gross hack.
+              Message = resp.Errors.SerializeObject(),
+            };
+          } else {
+            result.Result = resp.Data;
+          }
         } else if (response.Content != null) {
           // JSON formatted result
           result.Result = await response.Content.ReadAsAsync<T>(GitHubSerialization.MediaTypeFormatters);
@@ -227,22 +241,19 @@
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     private static HttpClient CreateGitHubHttpClient() {
 #if DEBUG
-      var rootHandler = HttpUtilities.CreateDefaultHandler(ShipHubCloudConfiguration.Instance.UseFiddler);
+      var handler = HttpUtilities.CreateDefaultHandler(ShipHubCloudConfiguration.Instance.UseFiddler);
 #else
-      var rootHandler = HttpUtilities.CreateDefaultHandler();
+      var handler = HttpUtilities.CreateDefaultHandler();
 #endif
-
-      HttpMessageHandler handler = rootHandler;
 
       // TODO: Inject this or something.
       // Always enable even if not storing bodies for generic request logging.
       var gitHubLoggingStorage = ShipHubCloudConfiguration.Instance.GitHubLoggingStorage;
-      var logHandler = new LoggingMessageProcessingHandler(
+      handler = new LoggingMessageProcessingHandler(
         gitHubLoggingStorage.IsNullOrWhiteSpace() ? null : CloudStorageAccount.Parse(gitHubLoggingStorage),
         "github-logs2",
         handler
       );
-      handler = logHandler;
 
       var httpClient = new HttpClient(handler, true) {
         Timeout = GitHubActor.GitHubRequestTimeout,

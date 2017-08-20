@@ -1,33 +1,36 @@
 ﻿CREATE TABLE [dbo].[PullRequests] (
   -- Required
-  [Id]                  BIGINT           NOT NULL,
-  [IssueId]             BIGINT           NOT NULL,
-  [RepositoryId]        BIGINT           NOT NULL,
-  [Number]              INT              NOT NULL,
-  -- List Response
-  [CreatedAt]           DATETIMEOFFSET   NOT NULL,
-  [UpdatedAt]           DATETIMEOFFSET   NOT NULL,
-  [MergeCommitSha]      NVARCHAR(500)    NULL,
-  [MergedAt]            DATETIMEOFFSET   NULL,
-  [BaseJson]            NVARCHAR(MAX)    NOT NULL,
-  [HeadJson]            NVARCHAR(MAX)    NOT NULL,
-  -- Full Response
-  [Additions]           INT              NULL,
-  [ChangedFiles]        INT              NULL,
-  [Commits]             INT              NULL,
-  [Deletions]           INT              NULL,
-  [MaintainerCanModify] BIT              NULL,
-  [Mergeable]           BIT              NULL,
-  [MergeableState]      NVARCHAR(25)     NULL,
-  [MergedById]          BIGINT           NULL,
-  [Rebaseable]          BIT              NULL,
-  -- Change tracking
-  [Hash]                UNIQUEIDENTIFIER NULL,
-  -- Metadata
-  [MetadataJson]        NVARCHAR(MAX)    NULL,
-  [CommentMetadataJson] NVARCHAR(MAX)    NULL,
-  [StatusMetadataJson]  NVARCHAR(MAX)    NULL,
+  [Id]                      BIGINT           NOT NULL,
+  [IssueId]                 BIGINT           NOT NULL,
+  [RepositoryId]            BIGINT           NOT NULL,
+  [Number]                  INT              NOT NULL,
+  -- List Response          
+  [CreatedAt]               DATETIMEOFFSET   NOT NULL,
+  [UpdatedAt]               DATETIMEOFFSET   NOT NULL,
+  [MergeCommitSha]          NVARCHAR(500)    NULL,
+  [MergedAt]                DATETIMEOFFSET   NULL,
+  [BaseJson]                NVARCHAR(MAX)    NOT NULL,
+  [HeadJson]                NVARCHAR(MAX)    NOT NULL,
+  -- Full Response          
+  [Additions]               INT              NULL,
+  [ChangedFiles]            INT              NULL,
+  [Commits]                 INT              NULL,
+  [Deletions]               INT              NULL,
+  [MaintainerCanModify]     BIT              NULL,
+  [Mergeable]               BIT              NULL,
+  [MergeableState]          NVARCHAR(25)     NULL,
+  [MergedById]              BIGINT           NULL,
+  [Rebaseable]              BIT              NULL,
+  -- Change tracking        
+  [Hash]                    UNIQUEIDENTIFIER NULL,
+  -- Metadata               
+  [MetadataJson]            NVARCHAR(MAX)    NULL,
+  [CommentMetadataJson]     NVARCHAR(MAX)    NULL,
+  [StatusMetadataJson]      NVARCHAR(MAX)    NULL,
   [MergeStatusMetadataJson] NVARCHAR(MAX)    NULL,
+  [ReviewMetadataJson]      NVARCHAR(MAX)    NULL,
+  [RawRowVersion]           ROWVERSION       NOT NULL,
+  [RowVersion] AS (CONVERT(BIGINT, [RawRowVersion])) PERSISTED
   CONSTRAINT [PK_PullRequests] PRIMARY KEY CLUSTERED ([Id]),
   CONSTRAINT [FK_PullRequests_IssueId_Issues_Id] FOREIGN KEY ([IssueId]) REFERENCES [dbo].[Issues] ([Id]),
   CONSTRAINT [FK_PullRequests_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories] ([Id]),
@@ -42,4 +45,7 @@ CREATE UNIQUE NONCLUSTERED INDEX [UIX_PullRequests_RepositoryId_Number] ON [dbo]
 GO
 
 CREATE NONCLUSTERED INDEX [IX_PullRequests_MergedById] ON [dbo].[PullRequests]([MergedById])
+GO
+
+CREATE NONCLUSTERED INDEX [IX_PullRequests_RepositoryId_RowVersion] ON [dbo].[PullRequests]([RepositoryId], [RowVersion])
 GO

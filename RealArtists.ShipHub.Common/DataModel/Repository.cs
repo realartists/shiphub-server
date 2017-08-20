@@ -44,6 +44,8 @@
 
     public DateTimeOffset? IssueSince { get; set; }
 
+    public long? PullRequestReviewVersion { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {

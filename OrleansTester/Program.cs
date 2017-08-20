@@ -1,16 +1,39 @@
 ﻿namespace OrleansTester {
   using System;
   using System.Threading.Tasks;
+  using Newtonsoft.Json;
   using Orleans;
   using RealArtists.ShipHub.ActorInterfaces;
+  using RealArtists.ShipHub.ActorInterfaces.GitHub;
   using RealArtists.ShipHub.Common;
 
   class Program {
     static void Main(string[] args) {
-      DoIt().Wait();
-      //DoIt2();
+      DoIt3().Wait();
       Console.WriteLine("Done");
       Console.ReadKey();
+    }
+
+    static async Task DoIt3() {
+      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
+
+      var github = await gc.GetGrain<IGitHubActor>(87309); // kogir
+      var repoFullName = "realartists/shiphub-server";
+      var prs = new[] { 147, 164, 166 };
+
+      Console.WriteLine("[q]: Quit, [g]: Make GraphQL request");
+      ConsoleKeyInfo keyInfo;
+      while ((keyInfo = Console.ReadKey(true)).Key != ConsoleKey.Q) {
+        switch (keyInfo.Key) {
+          case ConsoleKey.G:
+            Console.WriteLine($"[{DateTimeOffset.Now}]: Making query on {repoFullName}.");
+            var resp = await github.PullRequestReviews(repoFullName, prs);
+            if (resp.IsOk) {
+              Console.WriteLine(resp.Result.SerializeObject(Formatting.Indented));
+            }
+            break;
+        }
+      }
     }
 
     static void DoIt2() {

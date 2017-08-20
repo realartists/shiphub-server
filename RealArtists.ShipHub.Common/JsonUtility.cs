@@ -52,6 +52,7 @@
     }
 
     public static string DumpJson(this object value, string logMessage) {
+#if DEBUG
       var tempDir = Path.GetTempPath();
       var tempFile = Path.GetRandomFileName() + ".json";
       var tempInfo = new FileInfo(Path.Combine(tempDir, tempFile));
@@ -63,6 +64,9 @@
       Log.Info($"{logMessage} Dumpfile: {tempInfo.FullName}");
 
       return tempInfo.FullName;
+#else
+      return null;
+#endif
     }
   }
 }

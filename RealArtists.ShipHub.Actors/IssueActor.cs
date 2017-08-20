@@ -256,6 +256,10 @@
          .FirstOrDefault(x => x.User.Id == forUserId);
       }
 
+      using (var context = _contextFactory.CreateInstance()) {
+        await context.UpdateMetadata("PullRequests", "IssueId", "ReviewMetadataJson", _issueId, GitHubMetadata.FromResponse(prReviewsResponse));
+      }
+
       // Only fetch if *this user* has a pending review
       // Since we make the request every time, it's ok not to look for pending reviews in the DB
       if (myReview != null) {

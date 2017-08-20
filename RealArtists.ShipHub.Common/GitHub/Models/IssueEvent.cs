@@ -54,7 +54,7 @@
     public ReferenceSource Source => ExtensionDataDictionary.Val("source")?.ToObject<ReferenceSource>(GitHubSerialization.JsonSerializer);
 
     [JsonIgnore]
-    public DateTimeOffset? SubmittedAt { get => ExtensionDataDictionary.Val("submitted_at")?.ToObject<DateTimeOffset?>(); }
+    public DateTimeOffset? SubmittedAt => ExtensionDataDictionary.Val("submitted_at")?.ToObject<DateTimeOffset?>();
 
     ///////////////////////////////////
     // Json bag

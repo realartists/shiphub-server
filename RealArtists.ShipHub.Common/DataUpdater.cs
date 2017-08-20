@@ -15,7 +15,7 @@
     private IMapper _mapper;
     private ChangeSummary _changes = new ChangeSummary();
 
-    public IChangeSummary Changes { get => _changes; }
+    public IChangeSummary Changes => _changes;
 
     // This is gross-ish
     public bool IssuesChanged { get; private set; }
@@ -447,6 +447,12 @@
       });
     }
 
+    public async Task UpdateRepositoryReviewVersion(long repositoryId, long? version) {
+      await WithContext(async context => {
+        await context.UpdateRepositoryReviewVersion(repositoryId, version);
+      });
+    }
+
     public async Task UpdateReviews(long repositoryId, long issueId, DateTimeOffset date, IEnumerable<g.Review> reviews, long? userId = null, bool complete = false) {
       if (!reviews.Any()) { return; }
 
@@ -456,6 +462,22 @@
       await WithContext(async context => {
         await UpdateAccounts(date, accounts);
         _changes.UnionWith(await context.BulkUpdateReviews(repositoryId, issueId, date, mappedReviews, userId, complete));
+      });
+    }
+
+    public async Task UpdateReviews(long repositoryId, DateTimeOffset date, IEnumerable<(long IssueId, IEnumerable<g.Review> Reviews)> reviews) {
+      if (!reviews.Any()) { return; }
+
+      var accounts = reviews.SelectMany(x => x.Reviews.Select(y => y.User)).Distinct(x => x.Id).ToArray();
+
+      await WithContext(async context => {
+        await UpdateAccounts(date, accounts);
+
+        // TODO: Batch this.
+        foreach (var elem in reviews) {
+          var mappedReviews = _mapper.Map<IEnumerable<ReviewTableType>>(elem.Reviews);
+          _changes.UnionWith(await context.BulkUpdateReviews(repositoryId, elem.IssueId, date, mappedReviews));
+        }
       });
     }
 
