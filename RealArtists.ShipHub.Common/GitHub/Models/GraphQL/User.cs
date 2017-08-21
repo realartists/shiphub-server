@@ -3,6 +3,13 @@
   using Newtonsoft.Json;
 
   public class User {
+    public static readonly User Ghost = new User() {
+      Id = 10137,
+      Login = "ghost",
+      Name = "ghost",
+      Type = GitHubAccountType.User,
+    };
+
     [JsonProperty("databaseId")]
     public long Id { get; set; }
 

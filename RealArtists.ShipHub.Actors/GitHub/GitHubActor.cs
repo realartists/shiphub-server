@@ -476,9 +476,13 @@
                 continue;
               }
 
+              if (review.Author == null) {
+                review.Author = gql.User.Ghost;
+              }
+
               reviews.Add(new Review() {
                 Body = review.Body,
-                CommitId = review.Commit.Id,
+                CommitId = review.Commit?.Id,
                 Id = review.Id,
                 State = review.State,
                 SubmittedAt = review.SubmittedAt,
