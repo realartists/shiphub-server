@@ -19,7 +19,7 @@
   public class UserActor : Grain, IUserActor {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
-    public const uint MentionNibblePages = 20;
+    public const uint MentionNibblePages = 10;
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
