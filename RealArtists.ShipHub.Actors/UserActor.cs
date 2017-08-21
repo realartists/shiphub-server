@@ -344,7 +344,7 @@
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient, urgent: true);
+      updater.Changes.Submit(_queueClient, urgent: true).LogFailure(_userId.ToString());
 
       // Save changes
       if (metaDataMeaningfullyChanged) {
@@ -352,22 +352,22 @@
       }
 
       // Sync repos
-      if (_repoActors.Any()) {
-        tasks.AddRange(_repoActors.Values.Select(x => x.Sync()));
+      foreach (var repo in _repoActors.Values) {
+        repo.Sync().LogFailure(_userId.ToString());
       }
 
       // Sync orgs
-      if (_orgActors.Any()) {
-        tasks.AddRange(_orgActors.Values.Select(x => x.Sync()));
+      foreach (var org in _orgActors.Values) {
+        org.Sync().LogFailure(_userId.ToString());
       }
 
       // Billing
       // Must come last since orgs can change above
       if (_syncBillingState) {
-        tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
+        _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userId.ToString());
 
-        if (_orgActors.Any()) {
-          tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId));
+        foreach (var org in _orgActors) {
+          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userId.ToString());
         }
 
         _syncBillingState = false;
