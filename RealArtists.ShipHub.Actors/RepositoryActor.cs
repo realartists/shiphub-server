@@ -863,53 +863,77 @@
     }
 
     private async Task UpdatePullRequestReviews(DataUpdater updater, IGitHubPoolable github) {
-      var success = true;
+      var batchSize = 250; // 1.5-2.5 seconds on average
+      var batches = 5;
 
       // Lookup changed PRs
       // TODO: Populate on activate and track internally thereafter (we discover and update all PRs in this actor)
       Dictionary<long, (long IssueId, int Number, long RowVersion, GitHubMetadata ReviewMetadata)> updatedPrs;
+      var rowLimit = batches * batchSize;
       using (var context = _contextFactory.CreateInstance()) {
         updatedPrs = await context.PullRequests
           .AsNoTracking()
           .Where(x => x.RepositoryId == _repoId)
           .Where(x => x.RowVersion > _pullRequestReviewVersion)
           .OrderBy(x => x.RowVersion)
-          .Select(x => new {x.IssueId, x.Id, x.Number, x.RowVersion, x.ReviewMetadataJson })
-          .Take(250)
+          .Take(rowLimit)
+          .Select(x => new { x.IssueId, x.Id, x.Number, x.RowVersion, x.ReviewMetadataJson })
           .ToDictionaryAsync(x => x.Id, x => (x.IssueId, x.Number, x.RowVersion, x.ReviewMetadataJson.DeserializeObject<GitHubMetadata>()));
       }
 
       if (updatedPrs.Count == 0) {
+        // Noting to do.
         return;
       }
 
       var requestV3 = new List<(long IssueId, int Number, long RowVersion, GitHubMetadata ReviewMetadata)>();
 
-      if (updatedPrs.Count == 0) {
-        return;
-      } else if (updatedPrs.Count <= 1) {
+      if (updatedPrs.Count <= 1) {
         // Request (with metadata) using V3 API
         requestV3.AddRange(updatedPrs.Values);
       } else {
         // GraphQL
-        var prNumbers = updatedPrs.Values.Select(x => x.Number).ToArray();
-        var resp = await github.PullRequestReviews(_fullName, prNumbers);
-        if (resp.IsOk) {
-          if (resp.Result.Any()) {
-            var issueReviews = resp.Result
-              .Where(x => x.Reviews.Any())
-              .Select(x => (IssueId: updatedPrs[x.PullRequestId].IssueId, Reviews: x.Reviews))
-              .ToArray();
-            await updater.UpdateReviews(_repoId, resp.Date, issueReviews);
-            // Check for overflow
-            var overflowed = resp.Result
-              .Where(x => x.MoreResults)
-              .Select(x => updatedPrs[x.PullRequestId]);
-            requestV3.AddRange(overflowed);
+        var tasks = new List<Task<GitHubResponse<IEnumerable<PullRequestReviewResult>>>>();
+
+        var count = 0;
+        IList<int> batch = null;
+        foreach (var pr in updatedPrs) {
+          if ((count % batchSize) == 0) {
+            if (batch != null) {
+              tasks.Add(github.PullRequestReviews(_fullName, batch));
+            }
+            batch = new List<int>();
           }
-        } else if (resp.Error != null) {
-          success = false;
-          Log.Exception(resp.Error.ToException(), "GraphQL PR Review Problem");
+          ++count;
+          batch.Add(pr.Value.Number);
+        }
+        // Final batch
+        if (batch.Any()) {
+          tasks.Add(github.PullRequestReviews(_fullName, batch));
+        }
+
+        await Task.WhenAll(tasks);
+
+        foreach (var t in tasks) {
+          var resp = await t;
+          if (resp.IsOk) {
+            if (resp.Result.Any()) {
+              var issueReviews = resp.Result
+                .Where(x => x.Reviews.Any())
+                .Select(x => (IssueId: updatedPrs[x.PullRequestId].IssueId, Reviews: x.Reviews))
+                .ToArray();
+              await updater.UpdateReviews(_repoId, resp.Date, issueReviews);
+              // Check for overflow
+              var overflowed = resp.Result
+                .Where(x => x.MoreResults)
+                .Select(x => updatedPrs[x.PullRequestId]);
+              foreach (var overflow in overflowed) {
+                requestV3.Add(overflow);
+              }
+            }
+          } else if (resp.Error != null) {
+            throw resp.Error.ToException();
+          }
         }
       }
 
@@ -924,10 +948,8 @@
         }
       }
 
-      if (success) {
-        _pullRequestReviewVersion = updatedPrs.Max(x => x.Value.RowVersion);
-        await updater.UpdateRepositoryReviewVersion(_repoId, _pullRequestReviewVersion);
-      }
+      _pullRequestReviewVersion = updatedPrs.Max(x => x.Value.RowVersion);
+      await updater.UpdateRepositoryReviewVersion(_repoId, _pullRequestReviewVersion);
     }
 
     public async Task<IChangeSummary> AddOrUpdateWebhooks(IGitHubRepositoryAdmin admin) {
