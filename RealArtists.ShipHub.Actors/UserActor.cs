@@ -171,12 +171,12 @@
         return;
       }
 
+      // Essential sync. Updates (repo and org memberships and access) and settings.
       await this.AsReference<IUserActor>().InternalSync();
-    }
 
-    public async Task InternalSync() {
+      // Run what we can without blocking the message queue.
+
       var metaDataMeaningfullyChanged = false;
-      var tasks = new List<Task>();
       var updater = new DataUpdater(_contextFactory, _mapper);
 
       try {
@@ -195,6 +195,46 @@
           // Don't update until saved.
           _metadata = GitHubMetadata.FromResponse(user);
         }
+
+        // Issue Mentions
+        if (_mentionMetadata.IsExpired()) {
+          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
+
+          if (mentions.IsOk && mentions.Result.Any()) {
+            metaDataMeaningfullyChanged = true;
+
+            await updater.UpdateIssueMentions(_userId, mentions.Result);
+
+            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
+            if (maxSince != _mentionSince) {
+              await updater.UpdateAccountMentionSince(_userId, maxSince);
+              _mentionSince = maxSince;
+            }
+          }
+
+          // Don't update until saved.
+          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
+        }
+      } catch (GitHubRateException) {
+        // nothing to do
+      }
+
+      await updater.Changes.Submit(_queueClient);
+
+      // Save changes
+      if (metaDataMeaningfullyChanged) {
+        await Save();
+      }
+    }
+
+    public async Task InternalSync() {
+      var metaDataMeaningfullyChanged = false;
+      var tasks = new List<Task>();
+      var updater = new DataUpdater(_contextFactory, _mapper);
+
+      try {
+        // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
+        // Give them high priority.
 
         // Update this user's org memberships
         if (_orgMetadata.IsExpired()) {
@@ -299,26 +339,6 @@
           updater.UnionWithExternalChanges(cs);
 
           _syncSyncRepos = false;
-        }
-
-        // Issue Mentions
-        if (_mentionMetadata.IsExpired()) {
-          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
-
-          if (mentions.IsOk && mentions.Result.Any()) {
-            metaDataMeaningfullyChanged = true;
-
-            await updater.UpdateIssueMentions(_userId, mentions.Result);
-
-            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
-            if (maxSince != _mentionSince) {
-              await updater.UpdateAccountMentionSince(_userId, maxSince);
-              _mentionSince = maxSince;
-            }
-          }
-
-          // Don't update until saved.
-          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
         }
       } catch (GitHubRateException) {
         // nothing to do
