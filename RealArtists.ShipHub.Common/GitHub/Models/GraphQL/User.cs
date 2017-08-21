@@ -3,6 +3,7 @@
   using Newtonsoft.Json;
 
   public class User {
+    [SuppressMessage("Microsoft.Security", "CA2104:DoNotDeclareReadOnlyMutableReferenceTypes")]
     public static readonly User Ghost = new User() {
       Id = 10137,
       Login = "ghost",
