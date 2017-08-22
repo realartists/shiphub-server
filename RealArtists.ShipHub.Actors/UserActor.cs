@@ -19,7 +19,7 @@
   public class UserActor : Grain, IUserActor {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
-    public const uint MentionNibblePages = 20;
+    public const uint MentionNibblePages = 10;
 
     private IMapper _mapper;
     private IGrainFactory _grainFactory;
@@ -171,12 +171,12 @@
         return;
       }
 
+      // Essential sync. Updates (repo and org memberships and access) and settings.
       await this.AsReference<IUserActor>().InternalSync();
-    }
 
-    public async Task InternalSync() {
+      // Run what we can without blocking the message queue.
+
       var metaDataMeaningfullyChanged = false;
-      var tasks = new List<Task>();
       var updater = new DataUpdater(_contextFactory, _mapper);
 
       try {
@@ -195,6 +195,46 @@
           // Don't update until saved.
           _metadata = GitHubMetadata.FromResponse(user);
         }
+
+        // Issue Mentions
+        if (_mentionMetadata.IsExpired()) {
+          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
+
+          if (mentions.IsOk && mentions.Result.Any()) {
+            metaDataMeaningfullyChanged = true;
+
+            await updater.UpdateIssueMentions(_userId, mentions.Result);
+
+            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
+            if (maxSince != _mentionSince) {
+              await updater.UpdateAccountMentionSince(_userId, maxSince);
+              _mentionSince = maxSince;
+            }
+          }
+
+          // Don't update until saved.
+          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
+        }
+      } catch (GitHubRateException) {
+        // nothing to do
+      }
+
+      await updater.Changes.Submit(_queueClient);
+
+      // Save changes
+      if (metaDataMeaningfullyChanged) {
+        await Save();
+      }
+    }
+
+    public async Task InternalSync() {
+      var metaDataMeaningfullyChanged = false;
+      var tasks = new List<Task>();
+      var updater = new DataUpdater(_contextFactory, _mapper);
+
+      try {
+        // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
+        // Give them high priority.
 
         // Update this user's org memberships
         if (_orgMetadata.IsExpired()) {
@@ -300,31 +340,11 @@
 
           _syncSyncRepos = false;
         }
-
-        // Issue Mentions
-        if (_mentionMetadata.IsExpired()) {
-          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
-
-          if (mentions.IsOk && mentions.Result.Any()) {
-            metaDataMeaningfullyChanged = true;
-
-            await updater.UpdateIssueMentions(_userId, mentions.Result);
-
-            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
-            if (maxSince != _mentionSince) {
-              await updater.UpdateAccountMentionSince(_userId, maxSince);
-              _mentionSince = maxSince;
-            }
-          }
-
-          // Don't update until saved.
-          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
-        }
       } catch (GitHubRateException) {
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient, urgent: true);
+      updater.Changes.Submit(_queueClient, urgent: true).LogFailure(_userId.ToString());
 
       // Save changes
       if (metaDataMeaningfullyChanged) {
@@ -332,22 +352,22 @@
       }
 
       // Sync repos
-      if (_repoActors.Any()) {
-        tasks.AddRange(_repoActors.Values.Select(x => x.Sync()));
+      foreach (var repo in _repoActors.Values) {
+        repo.Sync().LogFailure(_userId.ToString());
       }
 
       // Sync orgs
-      if (_orgActors.Any()) {
-        tasks.AddRange(_orgActors.Values.Select(x => x.Sync()));
+      foreach (var org in _orgActors.Values) {
+        org.Sync().LogFailure(_userId.ToString());
       }
 
       // Billing
       // Must come last since orgs can change above
       if (_syncBillingState) {
-        tasks.Add(_queueClient.BillingGetOrCreatePersonalSubscription(_userId));
+        _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userId.ToString());
 
-        if (_orgActors.Any()) {
-          tasks.Add(_queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId));
+        foreach (var org in _orgActors) {
+          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userId.ToString());
         }
 
         _syncBillingState = false;

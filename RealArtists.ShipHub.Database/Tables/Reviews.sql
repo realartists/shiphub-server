@@ -4,7 +4,7 @@
   [RepositoryId] BIGINT           NOT NULL,
   [UserId]       BIGINT           NOT NULL,
   [Body]         NVARCHAR(MAX)    NULL,
-  [CommitId]     NVARCHAR(200)    NOT NULL,
+  [CommitId]     NVARCHAR(200)    NULL,
   [State]        NVARCHAR(200)    NOT NULL,
   [SubmittedAt]  DATETIMEOFFSET   NULL,
   [Date]         DATETIMEOFFSET   NOT NULL,
