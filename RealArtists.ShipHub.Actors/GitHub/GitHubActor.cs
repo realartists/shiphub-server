@@ -60,9 +60,9 @@
     private volatile GitHubRateLimit _rateLimit; // Do not update directly please.
 
     // One queue for each priority
-    private ConcurrentQueue<Func<Task>> _backgroundQueue = new ConcurrentQueue<Func<Task>>();
-    private ConcurrentQueue<Func<Task>> _subRequestQueue = new ConcurrentQueue<Func<Task>>();
-    private ConcurrentQueue<Func<Task>> _interactiveQueue = new ConcurrentQueue<Func<Task>>();
+    private ConcurrentQueue<FutureRequest> _backgroundQueue = new ConcurrentQueue<FutureRequest>();
+    private ConcurrentQueue<FutureRequest> _subRequestQueue = new ConcurrentQueue<FutureRequest>();
+    private ConcurrentQueue<FutureRequest> _interactiveQueue = new ConcurrentQueue<FutureRequest>();
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
@@ -648,6 +648,17 @@
     // Handling
     ////////////////////////////////////////////////////////////
 
+    private class FutureRequest {
+      public FutureRequest(Func<Task> requestFunc, Action cancelAction) {
+        MakeRequest = requestFunc;
+        Cancel = cancelAction;
+      }
+
+      public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
+      public Func<Task> MakeRequest { get; }
+      public Action Cancel { get; }
+    }
+
     private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
 
     private Task<GitHubResponse<T>> EnqueueRequest<T>(GitHubRequest request) {
@@ -693,17 +704,18 @@
       };
 
       // Enqueue the request
+      var futureRequest = new FutureRequest(executeRequestTask, completionTask.SetCanceled);
       switch (request.Priority) {
         case RequestPriority.Interactive:
-          _interactiveQueue.Enqueue(executeRequestTask);
+          _interactiveQueue.Enqueue(futureRequest);
           break;
         case RequestPriority.SubRequest:
-          _subRequestQueue.Enqueue(executeRequestTask);
+          _subRequestQueue.Enqueue(futureRequest);
           break;
         case RequestPriority.Background:
         case RequestPriority.Unspecified:
         default:
-          _backgroundQueue.Enqueue(executeRequestTask);
+          _backgroundQueue.Enqueue(futureRequest);
           break;
       }
 
@@ -732,14 +744,27 @@
 
     private Func<Task> DequeueNextRequest() {
       // Get next request by priority
-      if (_interactiveQueue.TryDequeue(out var task)
-        || _subRequestQueue.TryDequeue(out task)
-        || _backgroundQueue.TryDequeue(out task)) {
-        // TODO: Drop super old requests (hours)
-        return task;
-      }
+      while (true) {
+        if (_interactiveQueue.TryDequeue(out var nextRequest)
+          || _subRequestQueue.TryDequeue(out nextRequest)
+          || _backgroundQueue.TryDequeue(out nextRequest)) {
+          var delay = DateTimeOffset.UtcNow.Subtract(nextRequest.Timestamp);
+          if (delay.TotalSeconds > 30) {
+            var backlog = _interactiveQueue.Count + _subRequestQueue.Count + _backgroundQueue.Count;
+            if (delay.TotalMinutes < 3) {
+              Log.Info($"[{UserInfo}] Request delayed {delay} with backlog {backlog}");
+            } else {
+              Log.Error($"[{UserInfo}] Request delayed {delay} with backlog {backlog}. CANCELLING!");
+              nextRequest.Cancel();
+              continue;
+            }
+          }
 
-      return null;
+          return nextRequest.MakeRequest;
+        }
+
+        return null;
+      }
     }
 
     private async Task PostProcessResponse(GitHubResponse response) {
