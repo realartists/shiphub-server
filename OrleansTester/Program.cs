@@ -9,7 +9,9 @@
 
   class Program {
     static void Main(string[] args) {
-      DoIt3().Wait();
+      DoIt().Wait();
+      //DoIt2();
+      //DoIt3().Wait();
       Console.WriteLine("Done");
       Console.ReadKey();
     }
@@ -92,15 +94,15 @@
         switch (keyInfo.Key) {
           case ConsoleKey.U:
             Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing user {user.GetPrimaryKeyLong()}.");
-            await user.Sync();
+            user.Sync().LogFailure();
             break;
           case ConsoleKey.R:
             Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing repository {repo.GetPrimaryKeyLong()}.");
-            await repo.Sync();
+            repo.Sync().LogFailure();
             break;
           case ConsoleKey.I:
             Console.WriteLine($"[{DateTimeOffset.Now}]: Syncing issue {issue.GetPrimaryKeyLong(out string repoName)} in {repoName}.");
-            await issue.SyncTimeline(user.GetPrimaryKeyLong(), RealArtists.ShipHub.Common.GitHub.RequestPriority.Interactive);
+            issue.SyncTimeline(user.GetPrimaryKeyLong(), RealArtists.ShipHub.Common.GitHub.RequestPriority.Interactive).LogFailure();
             break;
         }
       }
