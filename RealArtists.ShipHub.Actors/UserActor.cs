@@ -190,6 +190,8 @@
           if (user.IsOk) {
             metaDataMeaningfullyChanged = true;
             await updater.UpdateAccounts(user.Date, new[] { user.Result });
+            // Unlike orgs, login renames are fine here.
+            // Current user is implicit in all calls, not specified.
           }
 
           // Don't update until saved.

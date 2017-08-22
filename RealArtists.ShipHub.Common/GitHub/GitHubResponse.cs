@@ -26,7 +26,7 @@
     /// <summary>
     /// True if the http status code is within [200-400)
     /// </summary>
-    public bool Succeeded => (int)Status >= 200 && (int)Status < 400;
+    public bool Succeeded => (Error == null && (int)Status >= 200 && (int)Status < 400);
 
     public GitHubError Error { get; set; }
     public DateTimeOffset? RetryAfter { get; set; }

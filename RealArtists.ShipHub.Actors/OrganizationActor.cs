@@ -201,9 +201,13 @@
 
     private async Task UpdateDetails(DataUpdater updater, IGitHubPoolable github) {
       if (_metadata.IsExpired()) {
-        var org = await github.Organization(_login, _metadata);
+        var org = await github.Organization(_orgId, _metadata);
         if (org.IsOk) {
           await updater.UpdateAccounts(org.Date, new[] { org.Result });
+          // Update login For the rest of sync.
+          _login = org.Result.Login;
+          // Safest to just start over.
+          DeactivateOnIdle();
         }
         _metadata = GitHubMetadata.FromResponse(org);
       }
@@ -215,7 +219,7 @@
         if (admins.IsOk) {
           await updater.SetOrganizationAdmins(_orgId, admins.Date, admins.Result);
         } else if (!admins.Succeeded) {
-          throw new Exception($"Unexpected response: [{admins.Request.Uri}] {admins.Status}");
+          throw new Exception($"Unexpected response: [{admins?.Request?.Uri}] {admins?.Status}");
         }
         _adminMetadata = GitHubMetadata.FromResponse(admins);
       }
