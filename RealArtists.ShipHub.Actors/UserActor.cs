@@ -2,6 +2,7 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
+  using System.Diagnostics;
   using System.Linq;
   using System.Net;
   using System.Threading.Tasks;
@@ -174,6 +175,8 @@
         return;
       }
 
+      var sw = Stopwatch.StartNew();
+
       // Essential sync. Updates (repo and org memberships and access) and settings.
       await this.AsReference<IUserActor>().InternalSync();
 
@@ -230,8 +233,12 @@
       if (metaDataMeaningfullyChanged) {
         await Save();
       }
+
+      sw.Stop();
+      this.Info($"GRAIN_ELAPSED_TIME UserActor.SyncTimerCallback: {sw.Elapsed}");
     }
 
+    [LogElapsedTime]
     public async Task InternalSync() {
       var metaDataMeaningfullyChanged = false;
       var tasks = new List<Task>();
