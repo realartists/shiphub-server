@@ -391,7 +391,7 @@
             */
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
-            await UpdateComments(updater, github);
+            //await UpdateComments(updater, github);
             await UpdatePullRequestReviews(updater, github);
           }
         }
