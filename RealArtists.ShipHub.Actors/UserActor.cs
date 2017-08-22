@@ -27,6 +27,7 @@
     private IShipHubQueueClient _queueClient;
 
     private long _userId;
+    private string _userInfo;
     private IGitHubActor _github;
 
     // MetaData
@@ -81,6 +82,8 @@
       if (!user.Tokens.Any()) {
         throw new InvalidOperationException($"User {_userId} has an invalid token and cannot be activated.");
       }
+
+      _userInfo = $"{user.Login} ({user.Id})";
 
       _github = _grainFactory.GetGrain<IGitHubActor>(user.Id);
 
@@ -346,7 +349,7 @@
         // nothing to do
       }
 
-      updater.Changes.Submit(_queueClient, urgent: true).LogFailure(_userId.ToString());
+      await updater.Changes.Submit(_queueClient, urgent: true);
 
       // Save changes
       if (metaDataMeaningfullyChanged) {
@@ -355,21 +358,21 @@
 
       // Sync repos
       foreach (var repo in _repoActors.Values) {
-        repo.Sync().LogFailure(_userId.ToString());
+        repo.Sync().LogFailure(_userInfo);
       }
 
       // Sync orgs
       foreach (var org in _orgActors.Values) {
-        org.Sync().LogFailure(_userId.ToString());
+        org.Sync().LogFailure(_userInfo);
       }
 
       // Billing
       // Must come last since orgs can change above
       if (_syncBillingState) {
-        _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userId.ToString());
+        _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
 
         foreach (var org in _orgActors) {
-          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userId.ToString());
+          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
         }
 
         _syncBillingState = false;
