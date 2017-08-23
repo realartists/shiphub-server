@@ -175,8 +175,6 @@
         return;
       }
 
-      var sw = Stopwatch.StartNew();
-
       // Essential sync. Updates (repo and org memberships and access) and settings.
       await this.AsReference<IUserActor>().InternalSync();
 
@@ -233,12 +231,9 @@
       if (metaDataMeaningfullyChanged) {
         await Save();
       }
-
-      sw.Stop();
-      this.Info($"GRAIN_ELAPSED_TIME UserActor.SyncTimerCallback: {sw.Elapsed}");
     }
 
-    [LogElapsedTime]
+    [LogElapsedTime(IfExceedsMilliseconds = 2000)]
     public async Task InternalSync() {
       var metaDataMeaningfullyChanged = false;
       var tasks = new List<Task>();
