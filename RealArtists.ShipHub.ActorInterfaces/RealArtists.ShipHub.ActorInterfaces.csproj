@@ -47,6 +47,7 @@
     <Compile Include="IRepositoryActor.cs" />
     <Compile Include="IUserActor.cs" />
     <Compile Include="IWebhookEventActor.cs" />
+    <Compile Include="IMentionsActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
