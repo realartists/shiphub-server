@@ -140,12 +140,12 @@ BEGIN
   
   SELECT ItemId as RepositoryId
   FROM @RepositoryVersions as rv
-    INNER LOOP JOIN Repositories as r ON (r.Id = rv.ItemId)
+    LEFT OUTER JOIN Repositories as r ON (r.Id = rv.ItemId)
     LEFT OUTER JOIN AccountSyncRepositories as asr ON (asr.RepositoryId = r.Id AND asr.AccountId = @UserId)
     LEFT OUTER JOIN AccountRepositories as ar ON (ar.RepositoryId = r.Id AND ar.AccountId = @UserId)
   WHERE asr.RepositoryId IS NULL
     OR (@SelectiveSync = 0 AND ar.RepositoryId IS NULL)
-    OR r.[Disabled] = 1
+    OR ISNULL(r.[Disabled], 0) = 1
 
   SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov
