@@ -123,6 +123,10 @@ BEGIN
     DELETE FROM Labels
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
 
+    -- Protected Branches
+    DELETE FROM ProtectedBranches
+    WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = RepositoryId)
+
     -- Repositories
     DELETE FROM Repositories
     WHERE EXISTS (SELECT * FROM @Repositories WHERE Item = Id)
