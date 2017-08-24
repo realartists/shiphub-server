@@ -7,7 +7,7 @@
   /// <summary>
   /// Represents a ShipHub user.
   /// </summary>
-  [Version(1)]
+  [Version(2)]
   public interface IUserActor : IGrainWithIntegerKey {
     /// <summary>
     /// Saves the provided sync settings and applies them immediately.
@@ -31,14 +31,5 @@
     /// have been added or deleted. This also refreshes the sync settings.
     /// </summary>
     Task SyncRepositories();
-
-    /// <summary>
-    /// Actually performs the sync operation. Because the UserActor needs
-    /// to respond immediately to settings and repo changes, we can't 
-    /// just set flags and wait a sync cycle. To avoid races, we have the
-    /// sync timer actually make a grain call to this method and leverage
-    /// the single threaded grain scheduler.
-    /// </summary>
-    Task InternalSync();
   }
 }

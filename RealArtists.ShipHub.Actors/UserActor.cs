@@ -2,9 +2,9 @@
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
-  using System.Diagnostics;
   using System.Linq;
   using System.Net;
+  using System.Threading;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using ActorInterfaces.GitHub;
@@ -14,10 +14,12 @@
   using Common.DataModel.Types;
   using Common.GitHub;
   using Orleans;
+  using Orleans.Concurrency;
   using QueueClient;
   using g = Common.GitHub.Models;
 
-  public class UserActor : Grain, IUserActor {
+  [Reentrant]
+  public class UserActor : Grain, IUserActor, IDisposable {
     public static readonly TimeSpan SyncDelay = TimeSpan.FromSeconds(60);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public const uint MentionNibblePages = 10;
@@ -30,20 +32,24 @@
     private long _userId;
     private string _userInfo;
     private IGitHubActor _github;
+    private IMentionsActor _mentions;
+
+    private SemaphoreSlim _syncLimit = new SemaphoreSlim(1); // Only allow one sync at a time
 
     // MetaData
     private GitHubMetadata _metadata;
     private GitHubMetadata _repoMetadata;
     private GitHubMetadata _orgMetadata;
-    private GitHubMetadata _mentionMetadata;
 
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
-    bool _syncLinkedRepos = false;
-    bool _syncSyncRepos = false;
-    bool _syncBillingState = true;
-    private DateTimeOffset _mentionSince;
+    int _linkedReposCurrent = 0;
+    int _linkedReposDesired = 0;
+    int _syncReposCurrent = 0;
+    int _syncReposDesired = 0;
+    int _billingStateCurrent = 0;
+    int _billingStateDesired = 0;
 
     // Local cache
     private SyncSettings _syncSettings;
@@ -87,13 +93,11 @@
       _userInfo = $"{user.Login} ({user.Id})";
 
       _github = _grainFactory.GetGrain<IGitHubActor>(user.Id);
+      _mentions = _grainFactory.GetGrain<IMentionsActor>(user.Id);
 
       _metadata = user.Metadata;
       _repoMetadata = user.RepositoryMetadata;
       _orgMetadata = user.OrganizationMetadata;
-      _mentionMetadata = user.MentionMetadata;
-
-      _mentionSince = user.MentionSince ?? EpochUtility.EpochOffset;
 
       _syncSettings = user.Settings?.SyncSettings;
       _linkedRepos = user.LinkedRepositories.Select(x => x.RepositoryId).ToHashSet();
@@ -111,9 +115,13 @@
       // Migration Step
       // No settings + linked repos + empty sync repos == MIGRATE!
       if (_linkedRepos.Any() && _syncSettings == null && !_repoActors.Any()) {
-        _syncLinkedRepos = true;
-        _syncSyncRepos = true;
+        Interlocked.Increment(ref _linkedReposDesired);
+        Interlocked.Increment(ref _syncReposDesired);
       }
+
+      // We always want to sync while the UserActor is loaded;
+      _lastSyncInterest = DateTimeOffset.UtcNow;
+      _syncTimer = RegisterTimer(SyncTimerCallback, null, TimeSpan.Zero, SyncDelay);
 
       await base.OnActivateAsync();
     }
@@ -131,18 +139,24 @@
         await context.UpdateMetadata("Accounts", _userId, _metadata);
         await context.UpdateMetadata("Accounts", "RepoMetadataJson", _userId, _repoMetadata);
         await context.UpdateMetadata("Accounts", "OrgMetadataJson", _userId, _orgMetadata);
-        await context.UpdateMetadata("Accounts", "MentionMetadataJson", _userId, _mentionMetadata);
       }
     }
 
     public async Task SetSyncSettings(SyncSettings syncSettings) {
-      using (var context = _contextFactory.CreateInstance()) {
-        await context.SetAccountSettings(_userId, syncSettings);
+      await _syncLimit.WaitAsync();
+      try {
+        using (var context = _contextFactory.CreateInstance()) {
+          await context.SetAccountSettings(_userId, syncSettings);
+        }
+
+        _syncSettings = syncSettings;
+
+        Interlocked.Increment(ref _linkedReposDesired);
+        Interlocked.Increment(ref _syncReposDesired);
+        await InternalSync();
+      } finally {
+        _syncLimit.Release();
       }
-      _syncSettings = syncSettings;
-      _syncLinkedRepos = true;
-      _syncSyncRepos = true;
-      await InternalSync();
     }
 
     public Task Sync() {
@@ -150,23 +164,24 @@
       // Rather than sync here, we just ensure that a timer is registered.
       _lastSyncInterest = DateTimeOffset.UtcNow;
 
-      if (_syncTimer == null) {
-        _syncTimer = RegisterTimer(SyncTimerCallback, null, TimeSpan.Zero, SyncDelay);
-      }
-
       return Task.CompletedTask;
     }
 
     public Task SyncBillingState() {
       // Important, but not interactive. Can wait for next sync cycle.
-      _syncBillingState = true;
+      Interlocked.Increment(ref _billingStateDesired);
       return Sync();
     }
 
-    public Task SyncRepositories() {
-      // This gets called when we know a repo has been added or deleted.
-      _syncLinkedRepos = true;
-      return InternalSync();
+    public async Task SyncRepositories() {
+      await _syncLimit.WaitAsync();
+      try {
+        // This gets called when we know a repo has been added or deleted.
+        Interlocked.Increment(ref _linkedReposDesired);
+        await InternalSync();
+      } finally {
+        _syncLimit.Release();
+      }
     }
 
     private async Task SyncTimerCallback(object state = null) {
@@ -174,11 +189,6 @@
         DeactivateOnIdle();
         return;
       }
-
-      // Essential sync. Updates (repo and org memberships and access) and settings.
-      await this.AsReference<IUserActor>().InternalSync();
-
-      // Run what we can without blocking the message queue.
 
       var metaDataMeaningfullyChanged = false;
       var updater = new DataUpdater(_contextFactory, _mapper);
@@ -202,30 +212,32 @@
           _metadata = GitHubMetadata.FromResponse(user);
         }
 
-        // Issue Mentions
-        if (_mentionMetadata.IsExpired()) {
-          var mentions = await _github.IssueMentions(_mentionSince, MentionNibblePages, _mentionMetadata, RequestPriority.Background);
+        await _syncLimit.WaitAsync();
+        try {
+          metaDataMeaningfullyChanged |= await InternalSync(updater);
+        } finally {
+          _syncLimit.Release();
+        }
 
-          if (mentions.IsOk && mentions.Result.Any()) {
-            metaDataMeaningfullyChanged = true;
+        // Mentions
+        _mentions.Sync().LogFailure(_userInfo);
 
-            await updater.UpdateIssueMentions(_userId, mentions.Result);
+        // Billing
+        // Must come last since orgs can change above
+        var savedBillingCurrent = _billingStateCurrent;
+        var savedBillingDesired = _billingStateDesired;
+        if (savedBillingCurrent < savedBillingDesired) {
+          _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
 
-            var maxSince = mentions.Result.Max(x => x.UpdatedAt).AddSeconds(-5);
-            if (maxSince != _mentionSince) {
-              await updater.UpdateAccountMentionSince(_userId, maxSince);
-              _mentionSince = maxSince;
-            }
-          }
+          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
 
-          // Don't update until saved.
-          _mentionMetadata = GitHubMetadata.FromResponse(mentions);
+          Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
         }
       } catch (GitHubRateException) {
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient);
+      await updater.Changes.Submit(_queueClient, urgent: true);
 
       // Save changes
       if (metaDataMeaningfullyChanged) {
@@ -233,11 +245,31 @@
       }
     }
 
-    [LogElapsedTime(IfExceedsMilliseconds = 2000)]
     public async Task InternalSync() {
+      // It's gross that this exists. oh well.
       var metaDataMeaningfullyChanged = false;
-      var tasks = new List<Task>();
       var updater = new DataUpdater(_contextFactory, _mapper);
+
+      try {
+        metaDataMeaningfullyChanged = await InternalSync(updater);
+      } catch (GitHubRateException) {
+        // nothing to do
+      }
+
+      await updater.Changes.Submit(_queueClient, urgent: true);
+
+      // Save changes
+      if (metaDataMeaningfullyChanged) {
+        await Save();
+      }
+    }
+
+    public async Task<bool> InternalSync(DataUpdater updater) {
+      if (_syncLimit.CurrentCount != 0) {
+        throw new InvalidOperationException($"{nameof(InternalSync)} requires the sync semaphore be held.");
+      }
+
+      var metaDataMeaningfullyChanged = false;
 
       try {
         // NOTE: The following requests are (relatively) infrequent and important for access control (repos/orgs)
@@ -256,10 +288,10 @@
 
             // When this user's org membership changes, re-evaluate whether or not they
             // should have a complimentary personal subscription.
-            tasks.Add(_queueClient.BillingUpdateComplimentarySubscription(_userId));
+            _queueClient.BillingUpdateComplimentarySubscription(_userId).LogFailure(_userInfo);
 
-            // Also re-evaluate their synced repos
-            _syncLinkedRepos = true;
+            // Also re-evaluate their linked repos
+            Interlocked.Increment(ref _linkedReposDesired);
           }
 
           // Don't update until saved.
@@ -267,12 +299,15 @@
         }
 
         // Update this user's repo memberships
-        if (_syncLinkedRepos || _repoMetadata.IsExpired()) {
+        var savedLinkCurrent = _linkedReposCurrent;
+        var savedLinkDesired = _linkedReposDesired;
+
+        if ((savedLinkCurrent < savedLinkDesired) || _repoMetadata.IsExpired()) {
           var repos = await _github.Repositories(_repoMetadata, RequestPriority.Interactive);
 
           if (repos.IsOk) {
             metaDataMeaningfullyChanged = true;
-            _syncSyncRepos = true;
+            Interlocked.Increment(ref _syncReposDesired);
 
             await updater.SetUserRepositories(_userId, repos.Date, repos.Result);
 
@@ -282,11 +317,13 @@
 
           // Don't update until saved.
           _repoMetadata = GitHubMetadata.FromResponse(repos);
-          _syncLinkedRepos = false;
+          Interlocked.CompareExchange(ref _linkedReposCurrent, savedLinkDesired, savedLinkCurrent);
         }
 
         // Update this user's sync repos
-        if (_syncSyncRepos) {
+        var savedReposCurrent = _syncReposCurrent;
+        var savedReposDesired = _syncReposDesired;
+        if (savedReposCurrent < savedReposDesired) {
           IEnumerable<g.Repository> updateRepos = null;
           IDictionary<long, GitHubMetadata> combinedRepoMetadata = null;
           var date = DateTimeOffset.UtcNow; // Not *technically* correct, but probably ok
@@ -345,18 +382,13 @@
           cs.Add(userId: _userId);
           updater.UnionWithExternalChanges(cs);
 
-          _syncSyncRepos = false;
+          Interlocked.CompareExchange(ref _syncReposCurrent, savedReposDesired, savedReposCurrent);
         }
       } catch (GitHubRateException) {
         // nothing to do
       }
 
-      await updater.Changes.Submit(_queueClient, urgent: true);
-
-      // Save changes
-      if (metaDataMeaningfullyChanged) {
-        await Save();
-      }
+      // We do this here so newly added repos and orgs sync immediately
 
       // Sync repos
       foreach (var repo in _repoActors.Values) {
@@ -368,20 +400,29 @@
         org.Sync().LogFailure(_userInfo);
       }
 
-      // Billing
-      // Must come last since orgs can change above
-      if (_syncBillingState) {
-        _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
+      return metaDataMeaningfullyChanged;
+    }
 
-        foreach (var org in _orgActors) {
-          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
+    ////////////////////////////////////////////////////////////
+    // IDisposable
+    ////////////////////////////////////////////////////////////
+
+    private bool disposedValue = false;
+    protected virtual void Dispose(bool disposing) {
+      if (!disposedValue) {
+        if (disposing) {
+          if (_syncLimit != null) {
+            _syncLimit.Dispose();
+            _syncLimit = null;
+          }
         }
-
-        _syncBillingState = false;
+        disposedValue = true;
       }
+    }
 
-      // Await all outstanding operations.
-      await Task.WhenAll(tasks);
+    public void Dispose() {
+      Dispose(true);
+      GC.SuppressFinalize(this);
     }
   }
 }
