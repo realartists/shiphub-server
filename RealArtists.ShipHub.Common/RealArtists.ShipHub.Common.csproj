@@ -167,6 +167,7 @@
     <Compile Include="Legacy\SqlConnectionFactory.cs" />
     <Compile Include="ChargeBeePersonalSubscriptionMetadata.cs" />
     <Compile Include="Orleans\OrleansAzureClient.cs" />
+    <Compile Include="Orleans\SqlMembershipProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShipHubConfiguration.cs" />
     <Compile Include="StatHat.cs" />
