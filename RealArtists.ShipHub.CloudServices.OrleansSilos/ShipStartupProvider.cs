@@ -4,9 +4,7 @@
   using Common;
   using Common.DataModel;
   using Microsoft.Extensions.DependencyInjection;
-  using Orleans;
   using QueueClient;
-  using RealArtists.ShipHub.Actors;
 
   public class ShipStartupProvider {
     public IServiceProvider ConfigureServices(IServiceCollection services) {
@@ -39,7 +37,7 @@
       services.AddSingleton<IShipHubQueueClient, ShipHubQueueClient>();
 
       // TimeLoggerFilter Interceptor
-      services.AddSingleton<IGrainCallFilter>(new TimeLoggerFilter());
+      //services.AddSingleton<IGrainCallFilter>(new TimeLoggerFilter());
 
       return services.BuildServiceProvider();
     }
