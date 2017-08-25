@@ -215,29 +215,31 @@
         await _syncLimit.WaitAsync();
         try {
           metaDataMeaningfullyChanged |= await InternalSync(updater);
+
+          // Billing
+          // Must come last since orgs can change above
+          var savedBillingCurrent = _billingStateCurrent;
+          var savedBillingDesired = _billingStateDesired;
+          if (savedBillingCurrent < savedBillingDesired) {
+            _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
+
+            if (_orgActors.Any()) {
+              _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
+            }
+
+            Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
+          }
         } finally {
           _syncLimit.Release();
-        }
-
-        // Mentions
-        _mentions.Sync().LogFailure(_userInfo);
-
-        // Billing
-        // Must come last since orgs can change above
-        var savedBillingCurrent = _billingStateCurrent;
-        var savedBillingDesired = _billingStateDesired;
-        if (savedBillingCurrent < savedBillingDesired) {
-          _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
-
-          _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
-
-          Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
         }
       } catch (GitHubRateException) {
         // nothing to do
       }
 
       await updater.Changes.Submit(_queueClient, urgent: true);
+
+      // Mentions
+      _mentions.Sync().LogFailure(_userInfo);
 
       // Save changes
       if (metaDataMeaningfullyChanged) {
