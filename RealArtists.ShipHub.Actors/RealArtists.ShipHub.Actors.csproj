@@ -37,8 +37,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="EchoActor.cs" />
+    <Compile Include="GitHub\AbstractGitHubPool.cs" />
     <Compile Include="GitHub\GitHubActorPool.cs" />
     <Compile Include="GitHub\GitHubPoolEmptyException.cs" />
+    <Compile Include="GitHub\GitHubPublicPoolActor.cs" />
     <Compile Include="GitHub\Logging\LoggingMessageProcessingHandler.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />
     <Compile Include="IssueActor.cs" />

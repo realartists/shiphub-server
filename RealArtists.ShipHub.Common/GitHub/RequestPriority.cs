@@ -26,5 +26,11 @@
     /// Use judiciously, or background requests may be entirely starved.
     /// </summary>
     Interactive = 3,
+
+    /// <summary>
+    /// Ignore the number, because this is currently the lowest priority level.
+    /// Only make the request if the user has ample remaining rate limit (> 2000) and is not currently occupied.
+    /// </summary>
+    PublicPool = 4,
   }
 }
