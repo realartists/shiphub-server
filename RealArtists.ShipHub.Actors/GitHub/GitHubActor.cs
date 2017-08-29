@@ -657,8 +657,8 @@
       public Action Cancel { get; }
     }
 
-    private object _dequeueLock = new object();
-    private int _dequeueThreads;
+    private object _concurrentRequestThreadsLock = new object();
+    private int _concurrentRequestThreads;
 
     private Task<GitHubResponse<T>> EnqueueRequest<T>(GitHubRequest request) {
       var completionTask = new TaskCompletionSource<GitHubResponse<T>>();
@@ -719,12 +719,12 @@
       }
 
       // Start dispatcher if needed.
-      lock (_dequeueLock) {
+      lock (_concurrentRequestThreadsLock) {
         var desired = _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser;
-        var delta = desired - _dequeueThreads;
+        var delta = desired - _concurrentRequestThreads;
         if (delta > 0) {
           DispatchRequests().LogFailure(UserInfo);
-          ++_dequeueThreads;
+          ++_concurrentRequestThreads;
         }
       }
 
@@ -742,8 +742,8 @@
           await nextRequest();
         }
       } finally {
-        lock (_dequeueLock) {
-          --_dequeueThreads;
+        lock (_concurrentRequestThreadsLock) {
+          --_concurrentRequestThreads;
         }
       }
     }
