@@ -4,7 +4,9 @@
   using Common;
   using Common.DataModel;
   using Microsoft.Extensions.DependencyInjection;
+  using Orleans;
   using QueueClient;
+  using RealArtists.ShipHub.Actors;
 
   public class ShipStartupProvider {
     public IServiceProvider ConfigureServices(IServiceCollection services) {
@@ -15,6 +17,9 @@
       var config = ShipHubCloudConfiguration.Instance;
       // Configuration
       services.AddSingleton(config);
+
+      // Transient configuration
+      services.AddSingleton<IShipHubRuntimeConfiguration, ShipHubRuntimeConfiguration>();
 
       services.AddSingleton<IFactory<ShipHubContext>>(
         new GenericFactory<ShipHubContext>(() => new ShipHubContext(config.ShipHubContext)));
@@ -37,7 +42,7 @@
       services.AddSingleton<IShipHubQueueClient, ShipHubQueueClient>();
 
       // TimeLoggerFilter Interceptor
-      //services.AddSingleton<IGrainCallFilter>(new TimeLoggerFilter());
+      services.AddSingleton<IGrainCallFilter, TimeLoggerFilter>();
 
       return services.BuildServiceProvider();
     }
