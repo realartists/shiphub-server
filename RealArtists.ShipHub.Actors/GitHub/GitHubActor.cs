@@ -256,6 +256,7 @@
       request.AddParameter("state", "all");
       request.AddParameter("sort", "created");
       request.AddParameter("direction", "desc");
+      request.AddParameter("per_page", PageSize);
 
       return EnqueueRequest<IEnumerable<Issue>>(request);
     }
