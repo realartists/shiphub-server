@@ -17,9 +17,10 @@
   [AutoRollback]
   public class WebhookHandlerTests {
     private static IShipHubConfiguration Configuration { get; } = new ShipHubCloudConfiguration();
+    private static IShipHubRuntimeConfiguration TransientConfiguration { get; } = new ShipHubRuntimeConfiguration(new GenericFactory<ShipHubContext>(() => new ShipHubContext()));
 
     public static RepositoryActor CreateRepoActor(long repoId, string fullName) {
-      var repoActor = new RepositoryActor(null, null, new GenericFactory<ShipHubContext>(() => new ShipHubContext()), null, Configuration);
+      var repoActor = new RepositoryActor(null, null, new GenericFactory<ShipHubContext>(() => new ShipHubContext()), null, Configuration, TransientConfiguration);
       repoActor.Initialize(repoId, fullName);
       return repoActor;
     }
