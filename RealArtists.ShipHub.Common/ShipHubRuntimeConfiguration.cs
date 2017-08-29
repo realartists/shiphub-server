@@ -40,41 +40,28 @@
     public int LogGrainCallsExceedingMilliseconds => _LogGrainCallsExceedingMilliseconds;
 
     private void ProcessSettings(IDictionary<string, string> settings = null) {
-      var setting = settings?.Val("GitHubMaxConcurrentRequestsPerUser") ?? "2";
-      if (!int.TryParse(setting, out var newA)) {
-        Log.Info($"Invalid value {setting} for {nameof(GitHubMaxConcurrentRequestsPerUser)}");
-      }
-      var oldA = Interlocked.Exchange(ref _GitHubMaxConcurrentRequestsPerUser, newA);
-      if (oldA != newA) {
-        Log.Info($"{nameof(GitHubMaxConcurrentRequestsPerUser)} changed. {oldA} => {newA}");
+      void UpdateSetting(string name, ref int location, int fallback) {
+        var newValue = fallback;
+
+        var setting = settings?.Val(name);
+        if (setting != null) {
+          if (int.TryParse(setting, out var parsed)) {
+            newValue = parsed;
+          } else {
+            Log.Info($"Invalid value [{setting}] for {name}");
+          }
+        }
+
+        var oldValue = Interlocked.Exchange(ref location, newValue);
+        if (oldValue != newValue) {
+          Log.Info($"{name} changed. {oldValue} => {newValue}");
+        }
       }
 
-      setting = settings?.Val("GitHubPaginationInterpolationEnabled") ?? "0";
-      if (!int.TryParse(setting, out var newB)) {
-        Log.Info($"Invalid value {setting} for {nameof(GitHubPaginationInterpolationEnabled)}");
-      }
-      var oldB = Interlocked.Exchange(ref _GitHubPaginationInterpolationEnabled, newB);
-      if (oldB != newB) {
-        Log.Info($"{nameof(GitHubPaginationInterpolationEnabled)} changed. {oldB} => {newB}");
-      }
-
-      setting = settings?.Val("CommentSpiderEnabled") ?? "0";
-      if (!int.TryParse(setting, out var newC)) {
-        Log.Info($"Invalid value {setting} for {nameof(CommentSpiderEnabled)}");
-      }
-      var oldC = Interlocked.Exchange(ref _CommentSpiderEnabled, newC);
-      if (oldC != newC) {
-        Log.Info($"{nameof(CommentSpiderEnabled)} changed. {oldC} => {newC}");
-      }
-
-      setting = settings?.Val("LogGrainCallsExceedingMilliseconds") ?? "0";
-      if (int.TryParse(setting, out var newD)) {
-        Log.Info($"Invalid value {setting} for {nameof(LogGrainCallsExceedingMilliseconds)}");
-      }
-      var oldD = Interlocked.Exchange(ref _LogGrainCallsExceedingMilliseconds, newD);
-      if (oldD != newD) {
-        Log.Info($"{nameof(LogGrainCallsExceedingMilliseconds)} changed. {oldD} => {newD}");
-      }
+      UpdateSetting("GitHubMaxConcurrentRequestsPerUser", ref _GitHubMaxConcurrentRequestsPerUser, 2);
+      UpdateSetting("GitHubPaginationInterpolationEnabled", ref _GitHubPaginationInterpolationEnabled, 0);
+      UpdateSetting("CommentSpiderEnabled", ref _CommentSpiderEnabled, 0);
+      UpdateSetting("LogGrainCallsExceedingMilliseconds", ref _LogGrainCallsExceedingMilliseconds, 0);
     }
 
     private async Task Reload() {
