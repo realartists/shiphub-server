@@ -857,6 +857,8 @@
               // We skipped more pages than existed.
               response.Pagination = null;
               response.Result = Array.Empty<T>();
+            } else {
+              response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
             }
             break;
         }
