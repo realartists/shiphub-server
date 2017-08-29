@@ -34,10 +34,8 @@
   }
 
   [Reentrant]
-  public class GitHubActor : Grain, IGitHubActor, IGitHubClient, IDisposable {
-    public const int MaxConcurrentRequests = 2; // Also controls pagination fanout, if enabled.
+  public class GitHubActor : Grain, IGitHubActor, IGitHubClient {
     public const int PageSize = 100;
-    public const bool InterpolationEnabled = false;
 
     // Should be less than Orleans timeout.
     // If changing, may also need to update values in CreateGitHubHttpClient()
@@ -49,6 +47,7 @@
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
+    private IShipHubRuntimeConfiguration _runtimeConfiguration;
 
     public string AccessToken { get; private set; }
     public string Login { get; private set; }
@@ -80,10 +79,11 @@
       SharedHandler = new GitHubHandler();
     }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration, IShipHubRuntimeConfiguration runtimeConfiguration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
       _configuration = configuration;
+      _runtimeConfiguration = runtimeConfiguration;
 
       ApiRoot = _configuration.GitHubApiRoot;
       EnsureHandlerPipelineCreated(ApiRoot);
@@ -125,8 +125,6 @@
       using (var context = _shipContextFactory.CreateInstance()) {
         await context.UpdateRateLimit(_rateLimit);
       }
-
-      Dispose();
 
       await base.OnDeactivateAsync();
     }
@@ -659,7 +657,8 @@
       public Action Cancel { get; }
     }
 
-    private SemaphoreSlim _maxConcurrentRequests = new SemaphoreSlim(MaxConcurrentRequests);
+    private object _dequeueLock = new object();
+    private int _dequeueThreads;
 
     private Task<GitHubResponse<T>> EnqueueRequest<T>(GitHubRequest request) {
       var completionTask = new TaskCompletionSource<GitHubResponse<T>>();
@@ -720,8 +719,13 @@
       }
 
       // Start dispatcher if needed.
-      if (_maxConcurrentRequests.Wait(TimeSpan.Zero)) {
-        DispatchRequests().LogFailure(UserInfo);
+      lock (_dequeueLock) {
+        var desired = _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser;
+        var delta = desired - _dequeueThreads;
+        if (delta > 0) {
+          DispatchRequests().LogFailure(UserInfo);
+          ++_dequeueThreads;
+        }
       }
 
       return completionTask.Task;
@@ -738,7 +742,9 @@
           await nextRequest();
         }
       } finally {
-        _maxConcurrentRequests.Release();
+        lock (_dequeueLock) {
+          --_dequeueThreads;
+        }
       }
     }
 
@@ -863,7 +869,7 @@
             subRequestPriority = RequestPriority.Interactive;
           }
 
-          if (InterpolationEnabled && response.Pagination.CanInterpolate) {
+          if (_runtimeConfiguration.GitHubPaginationInterpolationEnabled && response.Pagination.CanInterpolate) {
             response = await EnumerateParallel(response, subRequestPriority, maxPages);
           } else { // Walk in order
             response = await EnumerateSequential(response, subRequestPriority, maxPages);
@@ -913,7 +919,7 @@
       // TODO: Cancellation (for when errors are encountered)?
       for (var i = 0; !abort && i < pageRequestors.Length;) {
         var tasks = new List<Task<GitHubResponse<IEnumerable<TItem>>>>();
-        for (var j = 0; j < MaxConcurrentRequests && i < pageRequestors.Length; ++i, ++j) {
+        for (var j = 0; j < _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser && i < pageRequestors.Length; ++i, ++j) {
           tasks.Add(pageRequestors[i]());
         }
         await Task.WhenAll(tasks);
@@ -1013,28 +1019,6 @@
       }
 
       return result;
-    }
-
-    ////////////////////////////////////////////////////////////
-    // IDisposable
-    ////////////////////////////////////////////////////////////
-
-    private bool disposedValue = false;
-    protected virtual void Dispose(bool disposing) {
-      if (!disposedValue) {
-        if (disposing) {
-          if (_maxConcurrentRequests != null) {
-            _maxConcurrentRequests.Dispose();
-            _maxConcurrentRequests = null;
-          }
-        }
-        disposedValue = true;
-      }
-    }
-
-    public void Dispose() {
-      Dispose(true);
-      GC.SuppressFinalize(this);
     }
   }
 }
