@@ -26,6 +26,6 @@
     // Backward compatibility
     public bool Merged => MergedBy != null;
 
-    public IEnumerable<long> RequestedReviewers { get; set; }
+    public IEnumerable<long> RequestedReviewers { get; set; } = Array.Empty<long>();
   }
 }

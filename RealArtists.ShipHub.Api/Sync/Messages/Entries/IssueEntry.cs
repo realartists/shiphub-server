@@ -19,8 +19,8 @@
     public bool PullRequest { get; set; }
     public ReactionSummary ShipReactionSummary { get; set; }
 
-    public IEnumerable<long> Assignees { get; set; }
-    public IEnumerable<long> Labels { get; set; }
-    public IEnumerable<long> Mentions { get; set; }
+    public IEnumerable<long> Assignees { get; set; } = Array.Empty<long>();
+    public IEnumerable<long> Labels { get; set; } = Array.Empty<long>();
+    public IEnumerable<long> Mentions { get; set; } = Array.Empty<long>();
   }
 }
