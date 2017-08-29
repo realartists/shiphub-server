@@ -51,7 +51,6 @@
       "commit-commented",
       "line-commented",
       "mentioned",
-      "review_dismissed",
       "reviewed",
       "subscribed",
       "unsubscribed"
@@ -153,7 +152,7 @@
         /* Pooling timeline requests is tricky and would require the pool to return the user
          * who actually made the request[1], since some events are restricted per-user.
          * Instead, find a random user who should have access, and hope their token is still valid.
-         * 
+         *
          * [1] Technically, it kind of does via the metadata, but that's grossssssss.
          */
         var users = await GetUsersWithAccess();
@@ -558,7 +557,7 @@
             .ToDictionaryAsync(x => x.Id, x => x.ReactionMetadata);
         }
       }
-      
+
       if (commitShas.Any()) {
         var commitCommentReactionRequests = new Dictionary<long, Task<GitHubResponse<IEnumerable<gm.Reaction>>>>();
         foreach (var reactionMetadata in commitCommentCommentMetadata) {
