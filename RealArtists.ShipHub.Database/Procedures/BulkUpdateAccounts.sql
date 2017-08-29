@@ -48,7 +48,7 @@ BEGIN
       AND EXISTS (
         SELECT [Target].[Type], [Target].[Login], [Target].[Name], [Target].Email
         EXCEPT
-        SELECT [Source].[Type], [Source].[Login], [Source].[Name], ISNULL([Source].Email, [Target].Email)
+        SELECT IIF([Target].[Type] = 'org', [Target].[Type], [Source].[Type]), [Source].[Login], ISNULL([Source].[Name], [Target].[Name]), ISNULL([Source].Email, [Target].Email)
       ) THEN
       UPDATE SET
         -- Once an org, always an org. Even if GitHub lies to us about it.
