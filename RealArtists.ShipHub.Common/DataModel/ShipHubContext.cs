@@ -40,6 +40,7 @@
     public virtual DbSet<AccountRepository> AccountRepositories { get; set; }
     public virtual DbSet<Account> Accounts { get; set; }
     public virtual DbSet<AccountSettings> AccountSettings { get; set; }
+    public virtual DbSet<ApplicationSetting> ApplicationSettings { get; set; }
     public virtual DbSet<AccountSyncRepository> AccountSyncRepositories { get; set; }
     public virtual DbSet<CommitComment> CommitComments { get; set; }
     public virtual DbSet<GitHubToken> Tokens { get; set; }

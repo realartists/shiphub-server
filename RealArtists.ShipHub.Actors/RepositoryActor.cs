@@ -70,6 +70,7 @@
     private IGrainFactory _grainFactory;
     private IFactory<ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
+    private IShipHubRuntimeConfiguration _runtimeConfiguration;
     private string _apiHostName;
 
     // Repo properties
@@ -125,12 +126,14 @@
       IGrainFactory grainFactory,
       IFactory<ShipHubContext> contextFactory,
       IShipHubQueueClient queueClient,
-      IShipHubConfiguration configuration) {
+      IShipHubConfiguration configuration,
+      IShipHubRuntimeConfiguration runtimeConfiguration) {
       _mapper = mapper;
       _grainFactory = grainFactory;
       _contextFactory = contextFactory;
       _queueClient = queueClient;
       _apiHostName = configuration.ApiHostName;
+      _runtimeConfiguration = runtimeConfiguration;
     }
 
     public override async Task OnActivateAsync() {
@@ -391,8 +394,10 @@
             */
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
-            //await UpdateComments(updater, github);
             await UpdatePullRequestReviews(updater, github);
+            if (_runtimeConfiguration.CommentSpiderEnabled) {
+              await UpdateComments(updater, github);
+            }
           }
         }
 
