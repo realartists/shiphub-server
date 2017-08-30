@@ -3,6 +3,8 @@ GO
 
 DELETE FROM [dbo].[AccountRepositories]
 DELETE FROM [dbo].[Accounts]
+DELETE FROM [dbo].[AccountSyncRepositories]
+DELETE FROM [dbo].[AccountSettings]
 DELETE FROM [dbo].[Comments]
 DELETE FROM [dbo].[CommitComments]
 DELETE FROM [dbo].[CommitStatuses]
@@ -12,6 +14,7 @@ DELETE FROM [dbo].[IssueAssignees]
 DELETE FROM [dbo].[IssueEventAccess]
 DELETE FROM [dbo].[IssueEvents]
 DELETE FROM [dbo].[IssueLabels]
+DELETE FROM [dbo].[IssueMentions]
 DELETE FROM [dbo].[Issues]
 DELETE FROM [dbo].[Labels]
 DELETE FROM [dbo].[Milestones]
@@ -31,8 +34,8 @@ DELETE FROM [dbo].[Usage]
 
 GO
 
-DBCC FREEPROCCACHE
-GO
+--DBCC FREEPROCCACHE
+--GO
 
-EXEC sp_updatestats
-GO
+--EXEC sp_updatestats
+--GO
