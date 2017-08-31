@@ -1,14 +1,21 @@
 SET XACT_ABORT OFF
 GO
 
+DECLARE @Keep AS TABLE (
+	[KeepId] BIGINT NOT NULL PRIMARY KEY
+)
+
+INSERT INTO @Keep (KeepId)
+SELECT DISTINCT(UserId) FROM GitHubTokens
+
 DELETE FROM [dbo].[AccountRepositories]
-DELETE FROM [dbo].[Accounts]
+DELETE FROM [dbo].[Accounts] WHERE NOT EXISTS (SELECT * FROM @Keep WHERE KeepId = Id)
 DELETE FROM [dbo].[AccountSyncRepositories]
-DELETE FROM [dbo].[AccountSettings]
+DELETE FROM [dbo].[AccountSettings] WHERE NOT EXISTS (SELECT * FROM @Keep WHERE KeepId = AccountId)
 DELETE FROM [dbo].[Comments]
 DELETE FROM [dbo].[CommitComments]
 DELETE FROM [dbo].[CommitStatuses]
-DELETE FROM [dbo].[GitHubTokens]
+DELETE FROM [dbo].[GitHubTokens] WHERE NOT EXISTS (SELECT * FROM @Keep WHERE KeepId = UserId)
 DELETE FROM [dbo].[Hooks]
 DELETE FROM [dbo].[IssueAssignees]
 DELETE FROM [dbo].[IssueEventAccess]
@@ -31,6 +38,15 @@ DELETE FROM [dbo].[Reviews]
 DELETE FROM [dbo].[Subscriptions]
 DELETE FROM [dbo].[SyncLog]
 DELETE FROM [dbo].[Usage]
+
+-- Metadata cleanup
+UPDATE Accounts SET
+	MetadataJson = NULL,
+	RepoMetadataJson = NULL,
+	OrgMetadataJson = NULL,
+	ProjectMetadataJson = NULL,
+	MentionMetadataJson = NULL,
+	MentionSince = NULL
 
 GO
 
