@@ -47,6 +47,7 @@
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
+    private IShipHubRuntimeConfiguration _runtimeConfiguration;
 
     public string AccessToken { get; private set; }
     public string Login { get; private set; }
@@ -73,10 +74,11 @@
       SharedHandler = new GitHubHandler();
     }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration, IShipHubRuntimeConfiguration runtimeConfiguration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
       _configuration = configuration;
+      _runtimeConfiguration = runtimeConfiguration;
 
       ApiRoot = _configuration.GitHubApiRoot;
       EnsureHandlerPipelineCreated(ApiRoot);
@@ -642,7 +644,7 @@
     ////////////////////////////////////////////////////////////
 
     private object _queueLock = new object();
-    private Task _queueProcessor;
+    private int _queueProcessorThreadCount = 0;
     private ConcurrentQueue<FutureRequest> _backgroundQueue = new ConcurrentQueue<FutureRequest>();
     private ConcurrentQueue<FutureRequest> _subRequestQueue = new ConcurrentQueue<FutureRequest>();
     private ConcurrentQueue<FutureRequest> _interactiveQueue = new ConcurrentQueue<FutureRequest>();
@@ -718,9 +720,11 @@
         }
 
         // Start dispatcher if needed.
-        if (_queueProcessor == null) {
-          _queueProcessor = DispatchRequests();
-          _queueProcessor.LogFailure(UserInfo);
+        var desired = _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser;
+        var delta = desired - _queueProcessorThreadCount;
+        if (delta > 0) {
+          DispatchRequests().LogFailure(UserInfo);
+          ++_queueProcessorThreadCount;
         }
       }
 
@@ -735,7 +739,7 @@
           lock (_queueLock) {
             nextRequest = DequeueNextRequest();
             if (nextRequest == null) {
-              _queueProcessor = null;
+              --_queueProcessorThreadCount;
               return;
             }
           }
