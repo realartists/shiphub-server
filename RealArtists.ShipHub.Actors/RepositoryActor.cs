@@ -28,8 +28,8 @@
     public static readonly TimeSpan HookErrorDelay = TimeSpan.FromHours(12);
     public static readonly TimeSpan SyncIdle = TimeSpan.FromSeconds(SyncDelay.TotalSeconds * 3);
     public static readonly TimeSpan SyncIssueTemplateHysteresis = TimeSpan.FromSeconds(2);
-    public static readonly int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
-    public static readonly int SaveSkip = 5; // Saving metadata is expensive
+    public const int PollIssueTemplateSkip = 5; // If we have to poll the ISSUE_TEMPLATE, do it every N Syncs
+    public const int SaveSkip = 5; // Saving metadata is expensive
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
       "commit_comment"
