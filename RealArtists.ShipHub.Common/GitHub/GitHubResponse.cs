@@ -21,13 +21,17 @@
     /// <summary>
     /// True if the http status code is 200 OK
     /// </summary>
-    public bool IsOk => (Error == null && Status == HttpStatusCode.OK);
+    public bool IsOk => Status == HttpStatusCode.OK;
 
     /// <summary>
     /// True if the http status code is within [200-400)
     /// </summary>
-    public bool Succeeded => (Error == null && (int)Status >= 200 && (int)Status < 400);
+    public bool Succeeded => ((int)Status >= 200 && (int)Status < 400);
 
+    /// <summary>
+    /// The presence of an error does not necessarily mean the entire request failed.
+    /// GraphQL returns partial results when possible.
+    /// </summary>
     public GitHubError Error { get; set; }
     public DateTimeOffset? RetryAfter { get; set; }
 

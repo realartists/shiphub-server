@@ -459,6 +459,7 @@
             copyResponse.RateLimit = new GitHubRateLimit(response.RateLimit.AccessToken, rate.Limit, rate.Remaining, rate.ResetAt);
           } else {
             var pr = prop.Value.ToObject<gql.PullRequest>(GraphQLSerialization.JsonSerializer);
+            if (pr == null) { continue; } // Sometimes GitHub claims PRs don't exist. It's good times.
             var reviews = new List<Review>();
 
             foreach (var review in pr.Reviews.Nodes) {

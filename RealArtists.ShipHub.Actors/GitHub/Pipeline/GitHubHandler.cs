@@ -207,14 +207,14 @@
         } else if (response.Content != null && request is GitHubGraphQLRequest) {
           // GraphQL
           var resp = await response.Content.ReadAsAsync<GraphQLResponse<T>>(GraphQLSerialization.MediaTypeFormatters);
+          result.Result = resp.Data;
 
+          // Possible to get errors and a (partially) useful response.
           if (resp.Errors?.Any() == true) {
             result.Error = new GitHubError() {
               // This is a gross hack.
               Message = resp.Errors.SerializeObject(),
             };
-          } else {
-            result.Result = resp.Data;
           }
         } else if (response.Content != null) {
           // JSON formatted result

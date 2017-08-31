@@ -935,8 +935,11 @@
                 requestV3.Add(overflow);
               }
             }
-          } else if (resp.Error != null) {
-            throw resp.Error.ToException();
+          }
+
+          // Not mutually exclusive with IsOk == true
+          if (resp.Error != null) {
+            resp.Error.ToException().Report(userInfo: $"{_fullName} ({_repoId})");
           }
         }
       }
