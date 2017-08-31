@@ -394,6 +394,7 @@
             */
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
+            await UpdatePullRequestReviews(updater, github, Math.Min(10, github.PoolSize));
             if (_runtimeConfiguration.CommentSpiderEnabled) {
               await UpdateComments(updater, github);
             }
