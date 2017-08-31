@@ -8,8 +8,6 @@
   using RealArtists.ShipHub.Common.DataModel;
 
   public interface IShipHubRuntimeConfiguration {
-    int GitHubMaxConcurrentRequestsPerUser { get; }
-    bool GitHubPaginationInterpolationEnabled { get; }
     bool CommentSpiderEnabled { get; }
     int LogGrainCallsExceedingMilliseconds { get; }
   }
@@ -26,12 +24,6 @@
       ProcessSettings();
       _timer = Reload();
     }
-
-    private int _GitHubMaxConcurrentRequestsPerUser;
-    public int GitHubMaxConcurrentRequestsPerUser => _GitHubMaxConcurrentRequestsPerUser;
-
-    private int _GitHubPaginationInterpolationEnabled;
-    public bool GitHubPaginationInterpolationEnabled => _GitHubPaginationInterpolationEnabled != 0;
 
     private int _CommentSpiderEnabled;
     public bool CommentSpiderEnabled => _CommentSpiderEnabled != 0;
@@ -58,8 +50,6 @@
         }
       }
 
-      UpdateSetting("GitHubMaxConcurrentRequestsPerUser", ref _GitHubMaxConcurrentRequestsPerUser, 2);
-      UpdateSetting("GitHubPaginationInterpolationEnabled", ref _GitHubPaginationInterpolationEnabled, 0);
       UpdateSetting("CommentSpiderEnabled", ref _CommentSpiderEnabled, 0);
       UpdateSetting("LogGrainCallsExceedingMilliseconds", ref _LogGrainCallsExceedingMilliseconds, 0);
     }

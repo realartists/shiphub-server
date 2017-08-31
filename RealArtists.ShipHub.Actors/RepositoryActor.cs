@@ -394,7 +394,7 @@
             */
           if (!updater.IssuesChanged) {
             await UpdatePullRequests(updater, github);
-            await UpdatePullRequestReviews(updater, github);
+            await UpdatePullRequestReviews(updater, github, Math.Max(5, github.PoolSize));
             if (_runtimeConfiguration.CommentSpiderEnabled) {
               await UpdateComments(updater, github);
             }
@@ -867,14 +867,13 @@
       }
     }
 
-    private async Task UpdatePullRequestReviews(DataUpdater updater, IGitHubPoolable github) {
-      var batchSize = 250; // 1.5-2.5 seconds on average
-      var batches = 5;
+    private async Task UpdatePullRequestReviews(DataUpdater updater, IGitHubPoolable github, int numBatches) {
+      const int batchSize = 100; // More is too slow.
 
       // Lookup changed PRs
       // TODO: Populate on activate and track internally thereafter (we discover and update all PRs in this actor)
       Dictionary<long, (long IssueId, int Number, long RowVersion, GitHubMetadata ReviewMetadata)> updatedPrs;
-      var rowLimit = batches * batchSize;
+      var rowLimit = numBatches * batchSize;
       using (var context = _contextFactory.CreateInstance()) {
         updatedPrs = await context.PullRequests
           .AsNoTracking()

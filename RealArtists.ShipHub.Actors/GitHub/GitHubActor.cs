@@ -47,7 +47,6 @@
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
-    private IShipHubRuntimeConfiguration _runtimeConfiguration;
 
     public string AccessToken { get; private set; }
     public string Login { get; private set; }
@@ -57,11 +56,6 @@
     private volatile bool _dropRequestAbuse;
     private volatile bool _lastRequestLimited;
     private volatile GitHubRateLimit _rateLimit; // Do not update directly please.
-
-    // One queue for each priority
-    private ConcurrentQueue<FutureRequest> _backgroundQueue = new ConcurrentQueue<FutureRequest>();
-    private ConcurrentQueue<FutureRequest> _subRequestQueue = new ConcurrentQueue<FutureRequest>();
-    private ConcurrentQueue<FutureRequest> _interactiveQueue = new ConcurrentQueue<FutureRequest>();
 
     public Uri ApiRoot { get; }
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
@@ -79,11 +73,10 @@
       SharedHandler = new GitHubHandler();
     }
 
-    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration, IShipHubRuntimeConfiguration runtimeConfiguration) {
+    public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
       _configuration = configuration;
-      _runtimeConfiguration = runtimeConfiguration;
 
       ApiRoot = _configuration.GitHubApiRoot;
       EnsureHandlerPipelineCreated(ApiRoot);
@@ -647,6 +640,12 @@
     // Handling
     ////////////////////////////////////////////////////////////
 
+    private object _queueLock = new object();
+    private Task _queueProcessor;
+    private ConcurrentQueue<FutureRequest> _backgroundQueue = new ConcurrentQueue<FutureRequest>();
+    private ConcurrentQueue<FutureRequest> _subRequestQueue = new ConcurrentQueue<FutureRequest>();
+    private ConcurrentQueue<FutureRequest> _interactiveQueue = new ConcurrentQueue<FutureRequest>();
+
     private class FutureRequest {
       public FutureRequest(Func<Task> requestFunc, Action cancelAction) {
         MakeRequest = requestFunc;
@@ -657,9 +656,6 @@
       public Func<Task> MakeRequest { get; }
       public Action Cancel { get; }
     }
-
-    private object _concurrentRequestThreadsLock = new object();
-    private int _concurrentRequestThreads;
 
     private Task<GitHubResponse<T>> EnqueueRequest<T>(GitHubRequest request) {
       var completionTask = new TaskCompletionSource<GitHubResponse<T>>();
@@ -705,27 +701,25 @@
 
       // Enqueue the request
       var futureRequest = new FutureRequest(executeRequestTask, completionTask.SetCanceled);
-      switch (request.Priority) {
-        case RequestPriority.Interactive:
-          _interactiveQueue.Enqueue(futureRequest);
-          break;
-        case RequestPriority.SubRequest:
-          _subRequestQueue.Enqueue(futureRequest);
-          break;
-        case RequestPriority.Background:
-        case RequestPriority.Unspecified:
-        default:
-          _backgroundQueue.Enqueue(futureRequest);
-          break;
-      }
+      lock (_queueLock) {
+        switch (request.Priority) {
+          case RequestPriority.Interactive:
+            _interactiveQueue.Enqueue(futureRequest);
+            break;
+          case RequestPriority.SubRequest:
+            _subRequestQueue.Enqueue(futureRequest);
+            break;
+          case RequestPriority.Background:
+          case RequestPriority.Unspecified:
+          default:
+            _backgroundQueue.Enqueue(futureRequest);
+            break;
+        }
 
-      // Start dispatcher if needed.
-      lock (_concurrentRequestThreadsLock) {
-        var desired = _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser;
-        var delta = desired - _concurrentRequestThreads;
-        if (delta > 0) {
-          DispatchRequests().LogFailure(UserInfo);
-          ++_concurrentRequestThreads;
+        // Start dispatcher if needed.
+        if (_queueProcessor == null) {
+          _queueProcessor = DispatchRequests();
+          _queueProcessor.LogFailure(UserInfo);
         }
       }
 
@@ -733,41 +727,42 @@
     }
 
     private async Task DispatchRequests() {
-      try {
-        while (true) {
-          var nextRequest = DequeueNextRequest();
-          if (nextRequest == null) {
-            break;
+      Func<Task> nextRequest;
+
+      while (true) {
+        try {
+          lock (_queueLock) {
+            nextRequest = DequeueNextRequest();
+            if (nextRequest == null) {
+              _queueProcessor = null;
+              return;
+            }
           }
 
           await nextRequest();
-        }
-      } finally {
-        lock (_concurrentRequestThreadsLock) {
-          --_concurrentRequestThreads;
+        } catch (Exception e) {
+          e.Report(userInfo: UserInfo);
         }
       }
-    }
 
-    private Func<Task> DequeueNextRequest() {
-      // Get next request by priority
-      while (true) {
-        if (_interactiveQueue.TryDequeue(out var nextRequest)
-          || _subRequestQueue.TryDequeue(out nextRequest)
-          || _backgroundQueue.TryDequeue(out nextRequest)) {
-          var delay = DateTimeOffset.UtcNow.Subtract(nextRequest.Timestamp);
+      Func<Task> DequeueNextRequest() {
+        // Get next request by priority
+        if (_interactiveQueue.TryDequeue(out var dequeued)
+          || _subRequestQueue.TryDequeue(out dequeued)
+          || _backgroundQueue.TryDequeue(out dequeued)) {
+          var delay = DateTimeOffset.UtcNow.Subtract(dequeued.Timestamp);
           if (delay.TotalSeconds > 30) {
             var backlog = _interactiveQueue.Count + _subRequestQueue.Count + _backgroundQueue.Count;
             if (delay.TotalMinutes < 3) {
               Log.Info($"[{UserInfo}] Request delayed {delay} with backlog {backlog}");
             } else {
               Log.Error($"[{UserInfo}] Request delayed {delay} with backlog {backlog}. CANCELLING!");
-              nextRequest.Cancel();
-              continue;
+              dequeued.Cancel();
+              return DequeueNextRequest();
             }
           }
 
-          return nextRequest.MakeRequest;
+          return dequeued.MakeRequest;
         }
 
         return null;
@@ -872,11 +867,8 @@
             subRequestPriority = RequestPriority.Interactive;
           }
 
-          if (_runtimeConfiguration.GitHubPaginationInterpolationEnabled && response.Pagination.CanInterpolate) {
-            response = await EnumerateParallel(response, subRequestPriority, maxPages);
-          } else { // Walk in order
-            response = await EnumerateSequential(response, subRequestPriority, maxPages);
-          }
+          // Walk in order
+          response = await EnumerateSequential(response, subRequestPriority, maxPages);
         }
       }
 
@@ -886,96 +878,6 @@
       // 3) Number of pages returned
 
       return response.Distinct(keySelector);
-    }
-
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateParallel<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {
-      var partial = false;
-      var results = new List<TItem>(firstPage.Result);
-      uint resultPages = 1;
-      var pages = firstPage.Pagination.Interpolate().ToArray();
-
-      if (maxPages < pages.Length) {
-        partial = true;
-        pages = pages.Take((int)maxPages - 1).ToArray();
-      }
-
-      var pageRequestors = pages
-        .Select(page => {
-          Func<Task<GitHubResponse<IEnumerable<TItem>>>> requestor = () => {
-            var request = firstPage.Request.CloneWithNewUri(page);
-            request.Priority = priority;
-            return EnqueueRequest<IEnumerable<TItem>>(request);
-          };
-
-          return requestor;
-        }).ToArray();
-
-      // Check if we can request all the pages within the limit.
-      if (firstPage.RateLimit.Remaining < pageRequestors.Length) {
-        firstPage.Result = default(IEnumerable<TItem>);
-        firstPage.Status = HttpStatusCode.Forbidden; // Rate Limited
-        return firstPage;
-      }
-
-      var abort = false;
-      var batch = new List<GitHubResponse<IEnumerable<TItem>>>();
-      // TODO: Cancellation (for when errors are encountered)?
-      for (var i = 0; !abort && i < pageRequestors.Length;) {
-        var tasks = new List<Task<GitHubResponse<IEnumerable<TItem>>>>();
-        for (var j = 0; j < _runtimeConfiguration.GitHubMaxConcurrentRequestsPerUser && i < pageRequestors.Length; ++i, ++j) {
-          tasks.Add(pageRequestors[i]());
-        }
-        await Task.WhenAll(tasks);
-        foreach (var task in tasks) {
-          if (task.IsFaulted) {
-            task.Wait(); // force exception to throw
-          } else {
-            var part = task.Result;
-            batch.Add(part);
-            if (!part.IsOk) {
-              // Return error immediately.
-              abort = true;
-            }
-          }
-        }
-      }
-
-      foreach (var response in batch) {
-        if (response.IsOk) {
-          ++resultPages;
-          results.AddRange(response.Result);
-        } else if (maxPages < uint.MaxValue) {
-          // Return results up to this point.
-          partial = true;
-          break;
-        } else {
-          return response;
-        }
-      }
-
-      // Keep cache and other headers from first page.
-      var result = firstPage;
-      result.Result = results;
-      result.Pages = resultPages;
-
-      var rates = batch
-        .Where(x => x.RateLimit != null)
-        .Select(x => x.RateLimit)
-        .GroupBy(x => x.Reset)
-        .OrderByDescending(x => x.Key)
-        .First();
-      result.RateLimit = new GitHubRateLimit(
-        firstPage.RateLimit.AccessToken,
-        rates.Min(x => x.Limit),
-        rates.Min(x => x.Remaining),
-        rates.Key);
-
-      // Don't return cache data for partial results
-      if (partial) {
-        result.CacheData = null;
-      }
-
-      return result;
     }
 
     private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {

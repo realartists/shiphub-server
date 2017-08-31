@@ -14,9 +14,8 @@
     private IGrainFactory _grainFactory;
 
     private object _lock = new object();
+    private int _index;
     private SortedList<long, IGitHubActor> _actorMap;
-
-    private Random _random = new Random();
 
     public GitHubActorPool(IGrainFactory grainFactory, IEnumerable<long> userIds) {
       if (userIds == null || userIds?.Any() != true) {
@@ -24,7 +23,11 @@
       }
       _grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
       _actorMap = new SortedList<long, IGitHubActor>(userIds.ToDictionary(x => x, x => _grainFactory.GetGrain<IGitHubActor>(x)));
+      // Start at a random index
+      _index = new Random().Next(_actorMap.Count);
     }
+
+    public int PoolSize => _actorMap.Count;
 
     public void Add(long userId) {
       lock (_lock) {
@@ -52,12 +55,14 @@
       }
     }
 
-    private IGitHubActor GetRandomActor() {
+    private IGitHubActor GetNextActor() {
       lock (this) {
         if (_actorMap.Count == 0) {
           throw new GitHubPoolEmptyException("No actors available.");
         }
-        return _actorMap.Values[_random.Next(_actorMap.Count)];
+        var index = Math.Abs(_index % _actorMap.Count);
+        ++_index;
+        return _actorMap.Values[index];
       }
     }
 
@@ -72,7 +77,7 @@
 
       while (true) {
         if (actor == null) {
-          actor = GetRandomActor();
+          actor = GetNextActor();
         }
 
         try {
