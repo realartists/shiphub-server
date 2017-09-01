@@ -312,7 +312,7 @@
             entries.Add(new SyncLogEntry() {
               Action = SyncLogAction.Delete,
               Entity = SyncEntityType.Repository,
-              Data = new RepositoryEntry() {
+              Data = new DeletedEntry() {
                 Identifier = repoId,
               },
             });
@@ -450,7 +450,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new CommitCommentEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -475,7 +475,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new IssueCommentEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -540,7 +540,7 @@
                   UpdatedAt = ddr.UpdatedAt,
                 };
               } else {
-                entry.Data = new MilestoneEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -567,7 +567,7 @@
                   Repository = ddr.RepositoryId
                 };
               } else {
-                entry.Data = new ProjectEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -593,7 +593,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new ReactionEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -615,7 +615,7 @@
                   Repository = ddr.RepositoryId,
                 };
               } else {
-                entry.Data = new LabelEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -689,7 +689,7 @@
                 };
                 entry.Data = issueEntry;
               } else {
-                entry.Data = new IssueEntry() {
+                entry.Data = new DeletedEntry() {
                   Identifier = ddr.Id
                 };
               }
@@ -780,7 +780,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new ReviewEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -812,7 +812,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new PullRequestCommentEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
               entries.Add(entry);
@@ -854,7 +854,7 @@
                   ExtensionData = ddr.Protection
                 };
               } else {
-                entry.Data = new ProtectedBranchEntry() {
+                entry.Data = new DeletedEntry() {
                   Identifier = ddr.Id
                 };
               }

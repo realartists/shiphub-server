@@ -89,6 +89,7 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Sync\Messages\Entries\DeletedEntry.cs" />
     <Compile Include="Sync\Messages\Entries\CommitStatusEntry.cs" />
     <Compile Include="Sync\Messages\Entries\CommitCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ProtectedBranchEntry.cs" />
