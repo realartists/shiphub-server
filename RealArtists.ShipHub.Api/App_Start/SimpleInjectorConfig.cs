@@ -23,39 +23,38 @@
       container.RegisterSingleton(config);
 
       // AutoMapper
-      container.Register(() => new MapperConfiguration(cfg => {
+      container.RegisterSingleton(() => new MapperConfiguration(cfg => {
         cfg.AddProfile<GitHubToDataModelProfile>();
         cfg.AddProfile<DataModelToApiModelProfile>();
-      }).CreateMapper(),
-        Lifestyle.Singleton);
+      }).CreateMapper());
 
       // Service Bus
-      container.Register<IServiceBusFactory>(() => {
+      container.RegisterSingleton<IServiceBusFactory>(() => {
         // HACK: This is gross
         var sbf = new ServiceBusFactory();
         sbf.Initialize().GetAwaiter().GetResult();
         return sbf;
-      }, Lifestyle.Singleton);
+      });
 
       // Orleans
       container.RegisterSingleton<IAsyncGrainFactory>(new OrleansAzureClient(config.DeploymentId, config.DataConnectionString));
 
       // Queue Client
-      container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);
+      container.RegisterSingleton<IShipHubQueueClient, ShipHubQueueClient>();
 
       // Sync Manager
-      container.Register<ISyncManager, SyncManager>(Lifestyle.Singleton);
+      container.RegisterSingleton<ISyncManager, SyncManager>();
 
       // Mailer
-      container.Register<IShipHubMailer>(() => new ShipHubMailer(), Lifestyle.Singleton);
+      container.RegisterSingleton<IShipHubMailer, ShipHubMailer>();
 
       // ChargeBee
       if (!config.ChargeBeeHostAndKey.IsNullOrWhiteSpace()) {
         var parts = config.ChargeBeeHostAndKey.Split(':');
-        container.Register(() => new ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
+        container.RegisterSingleton(() => new ChargeBeeApi(parts[0], parts[1]));
       }
 
-      // Mixpanel
+      // Mixpanel (maybe not safe as a singleton?)
       container.Register<IMixpanelClient>(() => new MixpanelClient(config.MixpanelToken, new MixpanelConfig() {
         ErrorLogFn = (message, exception) => {
           Log.Exception(exception, message);

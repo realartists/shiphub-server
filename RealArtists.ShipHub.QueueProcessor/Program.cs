@@ -144,20 +144,20 @@
         container.RegisterSingleton(config);
 
         // AutoMapper
-        container.Register(() => {
+        container.RegisterSingleton(() => {
           var mapperConfig = new MapperConfiguration(cfg => {
             cfg.AddProfile<GitHubToDataModelProfile>();
           });
           return mapperConfig.CreateMapper();
-        }, Lifestyle.Singleton);
+        });
 
         // Service Bus
-        container.Register<IServiceBusFactory>(() => {
+        container.RegisterSingleton<IServiceBusFactory>(() => {
           // HACK: This is gross
           var sbf = new ServiceBusFactory();
           sbf.Initialize().GetAwaiter().GetResult();
           return sbf;
-        }, Lifestyle.Singleton);
+        });
 
         // Orleans
         container.RegisterSingleton<IAsyncGrainFactory>(() => {
@@ -167,16 +167,16 @@
         });
 
         // Queue Client
-        container.Register<IShipHubQueueClient, ShipHubQueueClient>(Lifestyle.Singleton);
+        container.RegisterSingleton<IShipHubQueueClient, ShipHubQueueClient>();
 
         // IDetailedExceptionLogger
-        container.Register(() => detailedLogger, Lifestyle.Singleton);
+        container.RegisterSingleton(() => detailedLogger);
 
         // ChargeBee
         var chargeBeeHostAndApiKey = ShipHubCloudConfiguration.Instance.ChargeBeeHostAndKey;
         if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
           var parts = chargeBeeHostAndApiKey.Split(':');
-          container.Register(() => new cb.ChargeBeeApi(parts[0], parts[1]), Lifestyle.Singleton);
+          container.RegisterSingleton(() => new cb.ChargeBeeApi(parts[0], parts[1]));
         }
 
         container.Verify();
