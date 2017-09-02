@@ -4,7 +4,7 @@
   using Models;
   using RazorGenerator.Templating;
 
-  public class ShipHubTemplateBase<T> : RazorTemplateBase {
+  public class ShipHubTemplateBase<T> : RazorTemplateBase where T : MailMessageBase {
     public T Model { get; set; }
     public bool SkipHeaderFooter { get; set; }
     public string PreHeader { get; set; }

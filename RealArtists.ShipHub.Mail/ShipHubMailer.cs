@@ -3,6 +3,7 @@
   using System.IO;
   using System.Net;
   using System.Net.Mail;
+  using System.Net.Mime;
   using System.Text;
   using System.Threading.Tasks;
   using Common;
@@ -23,7 +24,7 @@
   public class ShipHubMailer : IShipHubMailer {
     public bool IncludeHtmlView { get; set; } = true;
 
-    private static Lazy<string> _BaseDirectory = new Lazy<string>(() => {
+    private static readonly Lazy<string> _BaseDirectory = new Lazy<string>(() => {
       var dir = new DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
       var binDir = new DirectoryInfo(Path.Combine(dir.FullName, "bin"));
       if (binDir.Exists) {
@@ -39,58 +40,58 @@
       ShipHubTemplateBase<T> plainTemplate,
       string subject) where T : MailMessageBase {
 
-      var message = new MailMessage(
-        new MailAddress("support@realartists.com", "Ship"),
-        new MailAddress(htmlTemplate.Model.ToAddress, htmlTemplate.Model.ToName));
-
-      if (ShipHubCloudConfiguration.Instance.ApiHostName == "hub.realartists.com") {
-        message.Bcc.Add(new MailAddress("billing-emails@realartists.com"));
-        message.Subject = subject;
-      } else {
-        // So we never have to wonder where an odd email came from.
-        message.Subject = $"[{ShipHubCloudConfiguration.Instance.ApiHostName}] {subject}";
-      }
-      message.Body = plainTemplate.TransformText();
-
-      if (IncludeHtmlView) {
-        // Let's just use the entire plain text version as the pre-header for now.
-        // We don't need to do anything more clever.  Also, it's important that
-        // pre-header text be sufficiently long so that the <img> tag's alt text and
-        // the href URL don't leak into the pre-header.  The plain text version is long
-        // enough for this.
-        plainTemplate.Clear();
-        plainTemplate.SkipHeaderFooter = true;
-        var preheader = plainTemplate.TransformText().Trim();
-
-        htmlTemplate.PreHeader = preheader;
-        var html = htmlTemplate.TransformText();
-
-        using (var premailer = new PreMailer.Net.PreMailer(html)) {
-          html = premailer.MoveCssInline(
-            removeComments: true
-            ).Html;
-        }
-
-        var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, "text/html");
-        var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png") {
-          ContentId = "ShipLogo.png"
-        };
-        htmlView.LinkedResources.Add(linkedResource);
-        message.AlternateViews.Add(htmlView);
-      }
-
       var smtpPassword = ShipHubCloudConfiguration.Instance.SmtpPassword;
-      if (string.IsNullOrWhiteSpace(smtpPassword)) {
-        Console.WriteLine("SmtpPassword unset so will not send email.");
-      } else {
-        using (var client = new SmtpClient()) {
-          client.Host = "smtp.mailgun.org";
-          client.Port = 587;
-          client.Credentials = new NetworkCredential(
-            "shiphub@email.realartists.com",
-            smtpPassword);
-          await client.SendMailAsync(message);
+      if (smtpPassword.IsNullOrWhiteSpace()) {
+        Log.Info("SmtpPassword unset so will not send email.");
+        return;
+      }
+
+      // MailMessage.Dispose() takes care of views and attchments for us. Yay!
+
+      using (var client = new SmtpClient("smtp.mailgun.org", 587))
+      using (var message = new MailMessage()) {
+        client.Credentials = new NetworkCredential("shiphub@email.realartists.com", smtpPassword);
+
+        message.From = new MailAddress("support@realartists.com", "Ship");
+        message.To.Add(new MailAddress(htmlTemplate.Model.ToAddress, htmlTemplate.Model.ToName));
+        message.Bcc.Add(new MailAddress("billing-emails@realartists.com")); // So we can monitor production billing emails.
+        message.Subject = subject;
+        message.Body = plainTemplate.TransformText();
+
+        // Special behavior if NOT live
+        if (ShipHubCloudConfiguration.Instance.ApiHostName != "hub.realartists.com") {
+          message.Bcc.Clear(); // Too noisy.
+          // So we never have to wonder where an odd email came from.
+          message.Subject = $"[{ShipHubCloudConfiguration.Instance.ApiHostName}] {message.Subject}";
         }
+
+        if (IncludeHtmlView) {
+          // Let's just use the entire plain text version as the pre-header for now.
+          // We don't need to do anything more clever.  Also, it's important that
+          // pre-header text be sufficiently long so that the <img> tag's alt text and
+          // the href URL don't leak into the pre-header.  The plain text version is long
+          // enough for this.
+          plainTemplate.Clear();
+          plainTemplate.SkipHeaderFooter = true;
+          var preheader = plainTemplate.TransformText().Trim();
+
+          htmlTemplate.PreHeader = preheader;
+          var html = htmlTemplate.TransformText();
+
+          // Inline CSS is compatible with more mail clients.
+          using (var premailer = new PreMailer.Net.PreMailer(html)) {
+            html = premailer.MoveCssInline(removeComments: true).Html;
+          }
+
+          var htmlView = AlternateView.CreateAlternateViewFromString(html, Encoding.UTF8, MediaTypeNames.Text.Html);
+          var linkedResource = new LinkedResource(Path.Combine(BaseDirectory, "ShipLogo.png"), "image/png") {
+            ContentId = "ShipLogo.png"
+          };
+          htmlView.LinkedResources.Add(linkedResource);
+          message.AlternateViews.Add(htmlView);
+        }
+
+        await client.SendMailAsync(message);
       }
     }
 

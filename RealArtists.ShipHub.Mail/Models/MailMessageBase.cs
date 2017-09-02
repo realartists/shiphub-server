@@ -3,13 +3,14 @@
 
   public abstract class MailMessageBase {
     public string ToAddress { get; set; }
-    public string ToName { get; set; }
+    public string CustomerName { get; set; }
     public string GitHubUserName { get; set; }
+    public string GreetingName => ToName.Split(' ').First();
 
-    public string GreetingName {
+    public string ToName {
       get {
-        if (!string.IsNullOrWhiteSpace(ToName)) {
-          return ToName.Split(' ').First();
+        if (!string.IsNullOrWhiteSpace(CustomerName)) {
+          return CustomerName;
         } else {
           return GitHubUserName;
         }

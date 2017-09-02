@@ -2,13 +2,12 @@
   using System;
   using System.Collections.Generic;
   using System.Linq;
-  using Mail;
 
   class Program {
     static void SendEmails(string toAddress, string toName, string githubUsername, bool includeHtmlVersion) {
       var dummyInvoiceUrl = "https://www.realartists.com/billing/invoice/123/ship-invoice-yourname-2016-12-01.pdf";
 
-      var mailer = new ShipHubMailer {
+      var mailer = new Mail.ShipHubMailer() {
         IncludeHtmlView = includeHtmlVersion
       };
 
@@ -16,7 +15,7 @@
         new Mail.Models.PurchasePersonalMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           BelongsToOrganization = true,
           WasGivenTrialCredit = true,
           InvoicePdfUrl = dummyInvoiceUrl,
@@ -26,7 +25,7 @@
         new Mail.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
         }).Wait();
 
@@ -34,7 +33,7 @@
         new Mail.Models.PaymentSucceededPersonalMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
           PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
@@ -49,7 +48,7 @@
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
           PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
@@ -66,7 +65,7 @@
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
           PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
@@ -83,7 +82,7 @@
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = githubUsername,
           ToAddress = toAddress,
-          ToName = toName,
+          CustomerName = toName,
           InvoicePdfUrl = dummyInvoiceUrl,
           PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
             PaymentMethod = Mail.Models.PaymentMethod.CreditCard,
@@ -99,7 +98,7 @@
       mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         CreditNotePdfUrl = dummyInvoiceUrl,
         AmountRefunded = 9.00,
         PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
@@ -112,7 +111,7 @@
       mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
         PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
@@ -128,7 +127,7 @@
       mailer.PaymentFailed(new Mail.Models.PaymentFailedMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         InvoicePdfUrl = dummyInvoiceUrl,
         Amount = 9.00,
         PaymentMethodSummary = new Mail.Models.PaymentMethodSummary() {
@@ -143,7 +142,7 @@
       mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         LastCardDigits = "5678",
         AlreadyExpired = true,
         ExpiryMonth = 9,
@@ -155,7 +154,7 @@
       mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         LastCardDigits = "5678",
         AlreadyExpired = false,
         ExpiryMonth = 9,
@@ -166,7 +165,7 @@
       mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
         GitHubUserName = githubUsername,
         ToAddress = toAddress,
-        ToName = toName,
+        CustomerName = toName,
         CurrentTermEnd = new DateTimeOffset(2016, 12, 01, 0, 0, 0, TimeSpan.Zero),
       }).Wait();
     }

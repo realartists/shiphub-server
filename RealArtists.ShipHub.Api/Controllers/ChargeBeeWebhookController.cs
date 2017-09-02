@@ -266,7 +266,7 @@
       await _mailer.CancellationScheduled(new Mail.Models.CancellationScheduledMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
-        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         CurrentTermEnd = DateTimeOffset.FromUnixTimeSeconds(payload.Content.Subscription.CurrentTermEnd),
       });
     }
@@ -292,7 +292,7 @@
       await _mailer.CardExpiryReminder(new Mail.Models.CardExpiryReminderMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
-        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         LastCardDigits = payload.Content.Card.Last4,
         UpdatePaymentMethodUrl = updateUrl,
         ExpiryMonth = payload.Content.Card.ExpiryMonth,
@@ -307,7 +307,7 @@
       var message = new Mail.Models.PaymentFailedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
-        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         Amount = payload.Content.Transaction.Amount / 100.0,
         InvoicePdfUrl = await InvoiceUrl(payload),
         PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
@@ -326,7 +326,7 @@
       await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
-        ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+        CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
         CreditNotePdfUrl = await CreditNoteUrl(payload),
         PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
@@ -340,7 +340,7 @@
         new Mail.Models.PaymentSucceededPersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
-          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoicePdfUrl = await InvoiceUrl(payload),
           AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
@@ -391,7 +391,7 @@
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
-          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoicePdfUrl = await InvoiceUrl(payload),
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
           PreviousMonthActiveUsersCount = activeUsersCount,
@@ -424,7 +424,7 @@
         new Mail.Models.PurchasePersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
-          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           BelongsToOrganization = belongsToOrganization,
           WasGivenTrialCredit = wasGivenTrialCredit,
           InvoicePdfUrl = await InvoiceUrl(payload),
@@ -438,7 +438,7 @@
         new Mail.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
-          ToName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
+          CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           InvoicePdfUrl = await InvoiceUrl(payload),
         });
     }
