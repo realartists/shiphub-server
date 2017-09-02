@@ -596,7 +596,7 @@
 
     private Task<GitHubResponse<IEnumerable<Project>>> Projects(string endpoint, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest(endpoint, cacheOptions, priority) {
-        AcceptHeaderOverride = "application/vnd.github.inertia-preview+json",
+        AcceptHeaderOverride = "application/vnd.github.inertia-preview.iso8601+json",
       };
       return FetchPaged(request, (Project p) => p.Id);
     }
