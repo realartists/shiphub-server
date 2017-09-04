@@ -106,8 +106,9 @@
           .Setup(x => x.PurchaseOrganization(It.IsAny<PurchaseOrganizationMailMessage>()))
           .Returns(Task.CompletedTask)
           .Callback((PurchaseOrganizationMailMessage message) => outgoingMessages?.Add(message));
+        var mockChargeBeeApi = ChargeBeeTestUtil.ShimChargeBeeApiPdf();
 
-        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, mockChargeBeeApi) {
           CallBase = true
         };
 
@@ -778,8 +779,9 @@
           .Setup(x => x.PaymentSucceededOrganization(It.IsAny<PaymentSucceededOrganizationMailMessage>()))
           .Returns(Task.CompletedTask)
           .Callback((PaymentSucceededOrganizationMailMessage message) => outgoingMessages?.Add(message));
+        var mockChargeBeeApi = ChargeBeeTestUtil.ShimChargeBeeApiPdf();
 
-        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+        var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, mockChargeBeeApi) {
           CallBase = true
         };
 
@@ -859,8 +861,9 @@
         .Setup(x => x.PaymentSucceededPersonal(It.IsAny<PaymentSucceededPersonalMailMessage>()))
         .Returns(Task.CompletedTask)
         .Callback((PaymentSucceededPersonalMailMessage message) => outgoingMessages?.Add(message));
+      var mockChargeBeeApi = ChargeBeeTestUtil.ShimChargeBeeApiPdf();
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, mockChargeBeeApi) {
         CallBase = true
       };
 
@@ -970,8 +973,9 @@
         .Setup(x => x.PaymentRefunded(It.IsAny<PaymentRefundedMailMessage>()))
         .Returns(Task.CompletedTask)
         .Callback((PaymentRefundedMailMessage message) => outgoingMessages?.Add(message));
+      var mockChargeBeeApi = ChargeBeeTestUtil.ShimChargeBeeApiPdf();
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, mockChargeBeeApi) {
         CallBase = true
       };
 
@@ -1030,8 +1034,9 @@
         .Setup(x => x.PaymentFailed(It.IsAny<PaymentFailedMailMessage>()))
         .Returns(Task.CompletedTask)
         .Callback((PaymentFailedMailMessage message) => outgoingMessages?.Add(message));
+      var mockChargeBeeApi = ChargeBeeTestUtil.ShimChargeBeeApiPdf();
 
-      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, null) {
+      var controller = new Mock<ChargeBeeWebhookController>(Configuration, mockBusClient.Object, mockMailer.Object, mockChargeBeeApi) {
         CallBase = true
       };
 

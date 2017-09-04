@@ -2,19 +2,16 @@
   using System;
   using System.Collections.Generic;
   using System.Collections.Specialized;
-  using System.IO;
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Formatting;
-  using System.Net.Http.Headers;
   using System.Threading;
   using System.Threading.Tasks;
-  using System.Web;
   using ChargeBee;
-  using ChargeBee.Api;
-  using Newtonsoft.Json.Linq;
 
   public class ChargeBeeTestUtil {
+    public const string TestApiRoot = "http://localhost/api/v2/";
+
     private class InterceptingHandler : HttpMessageHandler {
       private Func<HttpRequestMessage, Task<HttpResponseMessage>> _interceptor;
 
@@ -54,7 +51,32 @@
         return Task.FromResult(response);
       });
 
-      return new ChargeBeeApi(new Uri("http://localhost/api/v2/"), null, new HttpClient(handler));
+      return new ChargeBeeApi(new Uri(TestApiRoot), null, new HttpClient(handler));
+    }
+
+    public static ChargeBeeApi ShimChargeBeeApiPdf() {
+      var handler = new InterceptingHandler((request) => {
+        var path = request.RequestUri.AbsolutePath;
+        var isValidPrefix = path.StartsWith("/api/v2/invoices/") || path.StartsWith("/api/v2/credit_notes/");
+        var isValidPostfix = path.EndsWith("/pdf");
+        if (!isValidPrefix || !isValidPostfix || request.Method != HttpMethod.Post) {
+          return Task.FromResult(request.CreateResponse(HttpStatusCode.NotFound));
+        }
+
+        var result = new {
+          download = new {
+            download_url = "unit-test://invoice",
+            valid_till = 1505917851,
+            @object = "download",
+          },
+        };
+        var formatter = new JsonMediaTypeFormatter();
+        formatter.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
+        var response = request.CreateResponse(HttpStatusCode.OK, result, formatter);
+        return Task.FromResult(response);
+      });
+
+      return new ChargeBeeApi(new Uri(TestApiRoot), null, new HttpClient(handler));
     }
   }
 }

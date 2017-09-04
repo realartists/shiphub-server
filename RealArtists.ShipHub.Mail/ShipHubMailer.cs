@@ -2,12 +2,16 @@
   using System;
   using System.IO;
   using System.Net;
+  using System.Net.Http;
   using System.Net.Mail;
   using System.Net.Mime;
   using System.Text;
   using System.Threading.Tasks;
   using Common;
   using Models;
+  using PdfSharp.Drawing;
+  using PdfSharp.Pdf;
+  using PdfSharp.Pdf.IO;
   using Views;
 
   public interface IShipHubMailer {
@@ -34,6 +38,8 @@
       }
     });
     private static string BaseDirectory => _BaseDirectory.Value;
+
+    private static HttpClient _HttpClient { get; } = new HttpClient(HttpUtilities.CreateDefaultHandler(), true);
 
     private async Task SendMailMessage<T>(
       ShipHubTemplateBase<T> htmlTemplate,
@@ -91,8 +97,57 @@
           message.AlternateViews.Add(htmlView);
         }
 
+        if (htmlTemplate.Model is IPdfAttachment attachmentInfo && !string.IsNullOrWhiteSpace(attachmentInfo.AttachmentUrl)) {
+          var attachment = await CreatePdfAttachment(attachmentInfo);
+          if (attachment != null) { // Best effort only
+            message.Attachments.Add(attachment);
+          }
+        }
+
         await client.SendMailAsync(message);
       }
+    }
+
+    private async Task<Attachment> CreatePdfAttachment(IPdfAttachment attachmentInfo) {
+      Attachment result = null;
+
+      try {
+        // Download the link
+        var response = await _HttpClient.GetAsync(attachmentInfo.AttachmentUrl);
+        await response.Content.LoadIntoBufferAsync(4 * 1024 * 1024);
+
+        // Add a page to the attachment so Mail.app won't inline the preview.
+        using (var stream = await response.Content.ReadAsStreamAsync())
+        using (var sourceDoc = PdfReader.Open(stream, PdfDocumentOpenMode.Import))
+        using (var newDoc = new PdfDocument()) {
+          foreach (var page in sourceDoc.Pages) {
+            newDoc.AddPage(page);
+          }
+
+          var firstPage = sourceDoc.Pages[0];
+          var newPage = newDoc.AddPage();
+          newPage.Height = firstPage.Height;
+          newPage.Width = firstPage.Width;
+          using (var gfx = XGraphics.FromPdfPage(newPage)) {
+            gfx.DrawString(
+              "[This page intentionally left blank.]",
+              new XFont("Verdana", 20),
+              XBrushes.Black,
+              new XRect(0, 0, newPage.Width, newPage.Height),
+              XStringFormats.Center);
+          }
+
+          var ms = new MemoryStream();
+          newDoc.Save(ms, false);
+          ms.Position = 0;
+
+          result = new Attachment(ms, attachmentInfo.AttachmentName, MediaTypeNames.Application.Pdf);
+        }
+      } catch (Exception e) {
+        e.Report($"Unable to create attachment: {attachmentInfo.AttachmentUrl}");
+      }
+
+      return result;
     }
 
     public Task CancellationScheduled(CancellationScheduledMailMessage model) {
