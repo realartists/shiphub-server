@@ -166,10 +166,7 @@
     }
 
     public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
-      var request = new GitHubRequest($"repos/{repoFullName}/branches/{WebUtility.UrlEncode(branchName)}/protection") {
-        AcceptHeaderOverride = "application/vnd.github.loki-preview+json"
-      };
-
+      var request = new GitHubRequest($"repos/{repoFullName}/branches/{WebUtility.UrlEncode(branchName)}/protection");
       return EnqueueRequest<IDictionary<string, JToken>>(request);
     }
 
