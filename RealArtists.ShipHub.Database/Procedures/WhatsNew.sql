@@ -214,7 +214,7 @@ BEGIN
     SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.ExtensionData, l.[Delete],
            CAST(CASE WHEN a.UserId IS NULL THEN e.Restricted ELSE 0 END as BIT) as Restricted
     FROM @Logs as l
-      INNER JOIN IssueEvents as e ON (l.ItemId = e.Id)
+      LEFT OUTER JOIN IssueEvents as e ON (l.ItemId = e.Id)
       LEFT OUTER JOIN IssueEventAccess as a ON (e.Restricted = 1 AND a.IssueEventId = e.Id AND a.UserId = @UserId)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'event'

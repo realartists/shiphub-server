@@ -51,11 +51,13 @@ BEGIN
     DELETE FROM IssueEventAccess
     FROM @Changes as c
       INNER LOOP JOIN IssueEventAccess as iea ON (iea.IssueEventId = c.IssueEventId)
+    WHERE c.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     DELETE FROM IssueEvents
     FROM @Changes as c
       INNER LOOP JOIN IssueEvents as ie ON (ie.Id = c.IssueEventId)
+    WHERE c.[Action] = 'DELETE'
     OPTION (FORCE ORDER)
 
     MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
