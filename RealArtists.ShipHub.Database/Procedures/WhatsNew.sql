@@ -211,7 +211,7 @@ BEGIN
       AND l.ItemType = 'comment'
 
     -- Events
-    SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.ExtensionData,
+    SELECT e.Id, e.RepositoryId, e.IssueId, e.ActorId, e.[Event], e.CreatedAt, e.ExtensionData, l.[Delete],
            CAST(CASE WHEN a.UserId IS NULL THEN e.Restricted ELSE 0 END as BIT) as Restricted
     FROM @Logs as l
       INNER JOIN IssueEvents as e ON (l.ItemId = e.Id)

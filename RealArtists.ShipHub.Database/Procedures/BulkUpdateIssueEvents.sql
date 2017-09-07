@@ -12,7 +12,8 @@ BEGIN
 
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
-    [IssueEventId] BIGINT NOT NULL
+    [IssueEventId] BIGINT NOT NULL,
+    [Action] NVARCHAR(10) NOT NULL
   )
 
   DECLARE @WorkEvents IssueEventTableType
@@ -37,6 +38,26 @@ BEGIN
       SET Id = NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier]
     WHERE Id IS NULL
 
+    -- Delete "committed" events that aren't included.
+    -- Needed to properly handle rebases in PRs
+    INSERT INTO @Changes
+    SELECT ie.Id, 'DELETE'
+    FROM IssueEvents as ie
+      LEFT OUTER LOOP JOIN @WorkEvents as we ON (we.Id = ie.Id)
+    WHERE ie.[Event] = 'committed'
+      AND we.Id IS NULL
+    OPTION (FORCE ORDER)
+
+    DELETE FROM IssueEventAccess
+    FROM @Changes as c
+      INNER LOOP JOIN IssueEventAccess as iea ON (iea.IssueEventId = c.IssueEventId)
+    OPTION (FORCE ORDER)
+
+    DELETE FROM IssueEvents
+    FROM @Changes as c
+      INNER LOOP JOIN IssueEvents as ie ON (ie.Id = c.IssueEventId)
+    OPTION (FORCE ORDER)
+
     MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
     USING (
       SELECT Id, UniqueKey, IssueId, ActorId, [Event], CreatedAt, [Hash], Restricted, ExtensionData
@@ -58,12 +79,12 @@ BEGIN
       Restricted = [Source].Restricted,
       Timeline = @Timeline,
       ExtensionData = [Source].ExtensionData
-    OUTPUT INSERTED.Id INTO @Changes
+    OUTPUT INSERTED.Id, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
      -- Add access grants
     INSERT INTO IssueEventAccess (IssueEventId, UserId)
-    OUTPUT INSERTED.IssueEventId INTO @Changes
+    OUTPUT INSERTED.IssueEventId, 'INSERT' INTO @Changes
     SELECT ie.Id, @UserId
     FROM @WorkEvents as ie
     WHERE ie.Restricted = 1
@@ -71,11 +92,11 @@ BEGIN
 
     -- Update existing events
     UPDATE SyncLog SET
+      [Delete] = IIF([Action] = 'DELETE', 1, 0),
       [RowVersion] = DEFAULT
-    WHERE OwnerType = 'repo'
-      AND OwnerId = @RepositoryId
-      AND ItemType = 'event'
-      AND ItemId IN (SELECT DISTINCT IssueEventId FROM @Changes)
+    FROM @Changes as c
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'event' AND ItemId = c.IssueEventId)
+    OPTION (FORCE ORDER)
 
     -- New events
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])

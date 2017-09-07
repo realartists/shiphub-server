@@ -484,38 +484,41 @@
             // Events
             reader.NextResult();
             while (reader.Read()) {
-              string eventType = ddr.Event;
-
-              var data = new IssueEventEntry() {
-                Actor = ddr.ActorId,
-                CreatedAt = ddr.CreatedAt,
-                Event = eventType,
-                ExtensionData = ddr.ExtensionData,
-                Identifier = ddr.Id,
-                Issue = ddr.IssueId,
-                Repository = ddr.RepositoryId,
-              };
-
-              var eventEntry = new SyncLogEntry() {
-                Action = SyncLogAction.Set,
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Event,
-                Data = data,
               };
 
-              if (ddr.Restricted) {
-                // closed event is special
-                if (eventType == "closed") {
-                  // strip all extra info
-                  // See https://realartists.slack.com/archives/general/p1470075341001004
-                  data.ExtensionDataDictionary.Clear();
-                } else {
-                  // Account for missing logs in progress reports
-                  --totalLogs;
-                  continue;
+              if (entry.Action == SyncLogAction.Set) {
+                var data = new IssueEventEntry() {
+                  Actor = ddr.ActorId,
+                  CreatedAt = ddr.CreatedAt,
+                  Event = ddr.Event,
+                  ExtensionData = ddr.ExtensionData,
+                  Identifier = ddr.Id,
+                  Issue = ddr.IssueId,
+                  Repository = ddr.RepositoryId,
+                };
+
+                if (ddr.Restricted) {
+                  // closed event is special
+                  if (data.Event == "closed") {
+                    // strip all extra info
+                    // See https://realartists.slack.com/archives/general/p1470075341001004
+                    data.ExtensionDataDictionary.Clear();
+                  } else {
+                    // Account for missing logs in progress reports
+                    --totalLogs;
+                    continue;
+                  }
                 }
+
+                entry.Data = data;
+              } else {
+                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
               }
 
-              entries.Add(eventEntry);
+              entries.Add(entry);
             }
 
             // Milestones (can be deleted)
