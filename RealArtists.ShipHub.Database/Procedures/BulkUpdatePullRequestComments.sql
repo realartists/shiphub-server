@@ -10,6 +10,15 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  -- For planning and foreign key satisfaction
+  DECLARE @DeletedComments TABLE (
+    [CommentId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  )
+
+  DECLARE @DeletedReactions TABLE (
+    [ReactionId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
+  )
+
   -- For tracking required updates to sync log
   DECLARE @Changes TABLE (
     [Id]     BIGINT       NOT NULL PRIMARY KEY CLUSTERED,
@@ -29,18 +38,33 @@ BEGIN
     FROM @Comments as c
       LEFT OUTER JOIN Reviews as r ON (r.Id = c.PullRequestReviewId)
     WHERE @DropWithMissingReview = 0
-      OR c.PullRequestReviewId IS NULL
-      OR r.Id IS NOT NULL
-    
+      OR c.PullRequestReviewId IS NULL -- No match expected
+      OR r.Id IS NOT NULL -- Match expected and found
+
     -- Delete is tricky
+    -- Compute comments to delete
     -- We never have a complete view of all pending review comments
-    DELETE FROM PullRequestComments
-    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+    INSERT INTO @DeletedComments (CommentId)
+    SELECT prc.Id
     FROM PullRequestComments as prc
       LEFT OUTER JOIN @WorkComments as prcp ON (prcp.Id = prc.Id)
     WHERE prc.IssueId = @IssueId
       AND ISNULL(prc.PullRequestReviewId, -1) = @MatchId
       AND prcp.Id IS NULL
+    OPTION (FORCE ORDER)
+
+    -- Reactions first
+    DELETE FROM Reactions
+    OUTPUT DELETED.Id INTO @DeletedReactions
+    FROM @DeletedComments as dc
+      INNER LOOP JOIN Reactions as r ON (r.PullRequestCommentId = dc.CommentId)
+    OPTION (FORCE ORDER)
+
+    -- Now deleted comments
+    DELETE FROM PullRequestComments
+    OUTPUT DELETED.Id, DELETED.UserId, 'DELETE' INTO @Changes
+    FROM @DeletedComments as dc
+      INNER LOOP JOIN  PullRequestComments as prc ON (prc.Id = dc.CommentId)
     OPTION (FORCE ORDER)
 
     MERGE INTO PullRequestComments WITH (SERIALIZABLE) as [Target]
@@ -68,6 +92,14 @@ BEGIN
         UpdatedAt = [Source].UpdatedAt
     OUTPUT INSERTED.Id, INSERTED.UserId, $action INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
+
+    -- Deleted reactions
+    UPDATE SyncLog SET
+      [Delete] = 1,
+      [RowVersion] = DEFAULT
+    FROM @DeletedReactions as c
+      INNER LOOP JOIN SyncLog ON (OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'reaction' AND ItemId = c.ReactionId)
+    OPTION (FORCE ORDER)
 
     -- Deleted or edited comments
     UPDATE SyncLog SET
