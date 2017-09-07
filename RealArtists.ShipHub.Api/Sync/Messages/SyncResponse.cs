@@ -1,5 +1,4 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync.Messages {
-  using System;
   using System.Collections.Generic;
   using System.Runtime.Serialization;
 
@@ -72,49 +71,9 @@
   }
 
   public class SyncLogEntry {
-    private SyncLogAction _action;
-    public SyncLogAction Action {
-      get => _action;
-      set {
-        ThrowIfInvalid(value, _entity);
-        _action = value;
-      }
-    }
-
-    private SyncEntityType _entity;
-    public SyncEntityType Entity {
-      get => _entity;
-      set {
-        ThrowIfInvalid(_action, value);
-        _entity = value;
-      }
-    }
-
+    public SyncLogAction Action { get; set; }
+    public SyncEntityType Entity { get; set; }
     public SyncEntity Data { get; set; }
-
-    private void ThrowIfInvalid(SyncLogAction action, SyncEntityType entity) {
-      if (action == SyncLogAction.Delete) {
-        switch (entity) {
-          case SyncEntityType.Issue:
-          case SyncEntityType.CommitComment:
-          case SyncEntityType.IssueComment:
-          case SyncEntityType.Label:
-          case SyncEntityType.Milestone:
-          case SyncEntityType.Project:
-          case SyncEntityType.ProtectedBranch:
-          case SyncEntityType.PullRequest:
-          case SyncEntityType.PullRequestComment:
-          case SyncEntityType.Reaction:
-          case SyncEntityType.Repository:
-          case SyncEntityType.Review:
-          case SyncEntityType.Unspecified: // This is required to initialize objects
-            // Delete is allowed
-            break;
-          default:
-            throw new InvalidOperationException($"It is not valid to {action} a {entity}.");
-        }
-      }
-    }
   }
 
   public class SyncSpiderProgress {
