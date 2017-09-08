@@ -38,27 +38,33 @@ BEGIN
       SET Id = NEXT VALUE FOR [dbo].[SyntheticIssueEventIdentifier]
     WHERE Id IS NULL
 
-    -- Delete "committed" events that aren't included.
-    -- Needed to properly handle rebases in PRs
-    INSERT INTO @Changes
-    SELECT ie.Id, 'DELETE'
-    FROM IssueEvents as ie
-      LEFT OUTER LOOP JOIN @WorkEvents as we ON (we.Id = ie.Id)
-    WHERE ie.[Event] = 'committed'
-      AND we.Id IS NULL
-    OPTION (FORCE ORDER)
+    IF (@Timeline = 1 AND (SELECT COUNT (DISTINCT IssueId) FROM @WorkEvents) = 1)
+    BEGIN
+      DECLARE @IssueId BIGINT = (SELECT TOP (1) IssueId FROM @WorkEvents)
 
-    DELETE FROM IssueEventAccess
-    FROM @Changes as c
-      INNER LOOP JOIN IssueEventAccess as iea ON (iea.IssueEventId = c.IssueEventId)
-    WHERE c.[Action] = 'DELETE'
-    OPTION (FORCE ORDER)
+      -- Delete "committed" events that aren't included.
+      -- Needed to properly handle rebases in PRs
+      INSERT INTO @Changes
+      SELECT ie.Id, 'DELETE'
+      FROM IssueEvents as ie
+        LEFT OUTER LOOP JOIN @WorkEvents as we ON (we.Id = ie.Id)
+      WHERE ie.[Event] = 'committed'
+        AND ie.IssueId = @IssueId
+        AND we.Id IS NULL
+      OPTION (FORCE ORDER)
 
-    DELETE FROM IssueEvents
-    FROM @Changes as c
-      INNER LOOP JOIN IssueEvents as ie ON (ie.Id = c.IssueEventId)
-    WHERE c.[Action] = 'DELETE'
-    OPTION (FORCE ORDER)
+      DELETE FROM IssueEventAccess
+      FROM @Changes as c
+        INNER LOOP JOIN IssueEventAccess as iea ON (iea.IssueEventId = c.IssueEventId)
+      WHERE c.[Action] = 'DELETE'
+      OPTION (FORCE ORDER)
+
+      DELETE FROM IssueEvents
+      FROM @Changes as c
+        INNER LOOP JOIN IssueEvents as ie ON (ie.Id = c.IssueEventId)
+      WHERE c.[Action] = 'DELETE'
+      OPTION (FORCE ORDER)
+    END
 
     MERGE INTO IssueEvents WITH (SERIALIZABLE) as [Target]
     USING (
@@ -103,7 +109,7 @@ BEGIN
     -- New events
     INSERT INTO SyncLog (OwnerType, OwnerId, ItemType, ItemId, [Delete])
     SELECT 'repo', @RepositoryId, 'event', c.IssueEventId, 0
-    FROM (SELECT DISTINCT IssueEventId FROM @Changes) as c
+    FROM (SELECT DISTINCT IssueEventId FROM @Changes WHERE [Action] = 'INSERT') as c
     WHERE NOT EXISTS (
       SELECT * FROM SyncLog
       WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'event' AND ItemId = c.IssueEventId)
