@@ -34,6 +34,7 @@
     bool UseFiddler { get; }
     string WebsiteHostName { get; }
     string AdminSecret { get; }
+    string AppleDeveloperMerchantIdDomainAssociation { get; }
   }
 
   /// <summary>
@@ -67,6 +68,7 @@
     public bool UseFiddler { get; set; }
     public string WebsiteHostName { get; set; }
     public string AdminSecret { get; set; }
+    public string AppleDeveloperMerchantIdDomainAssociation { get; set; }
   }
 
   /// <summary>
@@ -197,5 +199,8 @@
       }
       return value;
     }
+
+    private Lazy<string> _appleDeveloperMerchantIdDomainAssociation = new Lazy<string>(() => GetSetting("AppleDeveloperMerchantIdDomainAssociation"));
+    public string AppleDeveloperMerchantIdDomainAssociation => _appleDeveloperMerchantIdDomainAssociation.Value;
   }
 }
