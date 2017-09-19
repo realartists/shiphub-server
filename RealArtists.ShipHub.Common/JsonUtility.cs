@@ -30,25 +30,34 @@
       return settings;
     }
 
-    public static string SerializeObject(this object value, Formatting? formatting = null) {
+    public static string SerializeObject(this object value, Formatting? formatting = null, JsonSerializerSettings serializerSettings = null) {
       if (value == null) {
         return null;
       }
 
-      if (formatting != null) {
-        return JsonConvert.SerializeObject(value, formatting.Value, JsonSerializerSettings);
-      } else {
-        return JsonConvert.SerializeObject(value, JsonSerializerSettings);
-      }
+      formatting = formatting ?? Formatting.None;
+      serializerSettings = serializerSettings ?? JsonSerializerSettings;
+
+      return JsonConvert.SerializeObject(value, formatting.Value, serializerSettings);
+
     }
 
-    public static T DeserializeObject<T>(this string json)
+    public static T DeserializeObject<T>(this string json, JsonSerializerSettings serializerSettings = null)
       where T : class {
       if (json.IsNullOrWhiteSpace()) {
         return null;
       }
 
-      return JsonConvert.DeserializeObject<T>(json, JsonSerializerSettings);
+      serializerSettings = serializerSettings ?? JsonSerializerSettings;
+
+      return JsonConvert.DeserializeObject<T>(json, serializerSettings);
+    }
+
+    public static T Roundtrip<T>(this object value, JsonSerializerSettings serializerSettings = null, JsonSerializerSettings deserializerSettings = null)
+      where T : class {
+      serializerSettings = serializerSettings ?? JsonSerializerSettings;
+      deserializerSettings = deserializerSettings ?? serializerSettings;
+      return value?.SerializeObject(serializerSettings: serializerSettings).DeserializeObject<T>(deserializerSettings);
     }
 
     public static string DumpJson(this object value, string logMessage) {

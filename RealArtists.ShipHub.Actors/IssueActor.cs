@@ -31,7 +31,6 @@
     private bool _isPullRequest;
 
     private GitHubMetadata _metadata;
-    private GitHubMetadata _commentMetadata;
     private GitHubMetadata _reactionMetadata;
 
     // Pull Request Fields
@@ -82,7 +81,6 @@
         _isPullRequest = issue.PullRequest;
 
         _metadata = issue.Metadata;
-        _commentMetadata = issue.CommentMetadata;
         _reactionMetadata = issue.ReactionMetadata;
 
         if (_isPullRequest) {
@@ -114,7 +112,6 @@
       using (var context = _contextFactory.CreateInstance()) {
         // TODO: These actors churn a lot. Make a stored proc for save.
         await context.UpdateMetadata("Issues", _issueId, _metadata);
-        await context.UpdateMetadata("Issues", "CommentMetadataJson", _issueId, _commentMetadata);
         await context.UpdateMetadata("Issues", "ReactionMetadataJson", _issueId, _reactionMetadata);
 
         if (_prId.HasValue) {
@@ -180,6 +177,10 @@
       // Always refresh the issue when viewed
       await UpdateIssueDetails(ghc, updater);
 
+      ISet<long> issueCommentIds;
+      ISet<long> commitCommentIds;
+      ISet<long> prCommentIds = null;
+
       // If it's a PR we need that data too.
       if (_isPullRequest) {
         await UpdatePullRequestDetails(ghc, forUserId, updater);
@@ -187,20 +188,21 @@
         // Reviews have to come before comments, since PR comments reference reviews
         await UpdatePullRequestReviews(ghc, forUserId, updater);
 
-        await UpdatePullRequestComments(ghc, updater);
-        // TODO: PullRequestComment reactions?
+        prCommentIds = await UpdatePullRequestComments(ghc, updater);
+
         await UpdatePullRequestCommitStatuses(ghc, updater);
       }
 
       // This does many things, including retrieving referenced comments, commits, etc.
-      await UpdateIssueTimeline(ghc, forUserId, updater);
+      (issueCommentIds, commitCommentIds) = await UpdateIssueTimeline(ghc, forUserId, updater);
 
       // So many reactions
       await UpdateIssueReactions(ghc, updater);
-      await UpdateIssueCommentReactions(ghc, updater);
-      await UpdateCommitCommentReactions(ghc, updater);
-      if (_isPullRequest) { // Can't roll this up into other PR code because it must come after timeline
-        await UpdatePullRequestCommentReactions(ghc, updater);
+      await UpdateIssueCommentReactions(ghc, updater, issueCommentIds);
+      await UpdateCommitCommentReactions(ghc, updater, commitCommentIds);
+      if (_isPullRequest) {
+      // Can't roll this up into other PR code because it must come after timeline
+        await UpdatePullRequestCommentReactions(ghc, updater, prCommentIds);
       }
     }
 
@@ -211,16 +213,6 @@
         await updater.UpdateIssues(_repoId, issueResponse.Date, new[] { issueResponse.Result });
       }
       _metadata = GitHubMetadata.FromResponse(issueResponse);
-    }
-
-    private async Task UpdateIssueComments(IGitHubActor ghc, DataUpdater updater) {
-      if (_commentMetadata.IsExpired()) {
-        var commentResponse = await ghc.IssueComments(_repoFullName, _issueNumber, null, _commentMetadata, RequestPriority.Interactive);
-        if (commentResponse.IsOk) {
-          await updater.UpdateIssueComments(_repoId, commentResponse.Date, commentResponse.Result);
-        }
-        _commentMetadata = GitHubMetadata.FromResponse(commentResponse);
-      }
     }
 
     private async Task UpdatePullRequestDetails(IGitHubActor ghc, long forUserId, DataUpdater updater) {
@@ -269,12 +261,17 @@
       }
     }
 
-    private async Task UpdatePullRequestComments(IGitHubActor ghc, DataUpdater updater) {
+    private async Task<ISet<long>> UpdatePullRequestComments(IGitHubActor ghc, DataUpdater updater) {
+      ISet<long> prCommentIds = null;
+
       var prCommentsResponse = await ghc.PullRequestComments(_repoFullName, _issueNumber, _prCommentMetadata, RequestPriority.Interactive);
       if (prCommentsResponse.IsOk) {
+        prCommentIds = prCommentsResponse.Result.Select(x => x.Id).ToHashSet();
         await updater.UpdatePullRequestComments(_repoId, _issueId, prCommentsResponse.Date, prCommentsResponse.Result);
       }
       _prCommentMetadata = GitHubMetadata.FromResponse(prCommentsResponse);
+
+      return prCommentIds;
     }
 
     private async Task UpdatePullRequestCommitStatuses(IGitHubActor ghc, DataUpdater updater) {
@@ -285,7 +282,7 @@
       _prStatusMetadata = GitHubMetadata.FromResponse(commitStatusesResponse);
     }
 
-    private async Task UpdateIssueTimeline(IGitHubActor ghc, long forUserId, DataUpdater updater) {
+    private async Task<(ISet<long> IssueCommentIds, ISet<long> CommitCommentIds)> UpdateIssueTimeline(IGitHubActor ghc, long forUserId, DataUpdater updater) {
       ///////////////////////////////////////////
       /* NOTE!
        * We can't sync the timeline incrementally, because the client wants commit and
@@ -295,6 +292,9 @@
        * by the repo.
        */
       //////////////////////////////////////////
+
+      var issueCommentIds = new HashSet<long>();
+      var commitCommentIds = new HashSet<long>();
 
       // TODO: cache per-user
       // TODO: If caching, are there things that should occur every time anyway?
@@ -345,8 +345,15 @@
         await updater.UpdateTimelineEvents(_repoId, timelineResponse.Date, forUserId, accounts, filteredEvents);
 
         // Comments
-        if (allEvents.Any(x => x.Event == "commented")) {
-          await UpdateIssueComments(ghc, updater);
+        var commentEvents = allEvents.Where(x => x.Event == "commented").ToArray();
+        if (commentEvents.Any()) {
+          // The events have all the info we need.
+          var comments = commentEvents.Select(x => x.Roundtrip<gm.IssueComment>(serializerSettings: GitHubSerialization.JsonSerializerSettings)).ToArray();
+
+          // Update known ids
+          issueCommentIds.UnionWith(comments.Select(x => x.Id));
+
+          await updater.UpdateIssueComments(_repoId, timelineResponse.Date, comments);
         }
 
         // Commit Comments
@@ -357,6 +364,9 @@
           var commitComments = commitCommentEvents
             .SelectMany(x => x.ExtensionDataDictionary["comments"].ToObject<IEnumerable<gm.CommitComment>>(GitHubSerialization.JsonSerializer))
             .ToArray();
+
+          // Update known ids
+          commitCommentIds.UnionWith(commitComments.Select(x => x.Id));
 
           await updater.UpdateCommitComments(_repoId, timelineResponse.Date, commitComments);
         }
@@ -379,6 +389,8 @@
           }
         }
       }
+
+      return (IssueCommentIds: issueCommentIds, CommitCommentIds: commitCommentIds);
     }
 
     private async Task LookupEventSourceDetails(IGitHubActor ghc, HashSet<gm.Account> accounts, IEnumerable<gm.IssueEvent> events) {
@@ -496,7 +508,9 @@
       }
     }
 
-    private async Task UpdateIssueCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+    private async Task UpdateIssueCommentReactions(IGitHubActor ghc, DataUpdater updater, ISet<long> knownIssueCommentIds) {
+      // TODO: Use knownIssueCommentIds and response date to prune deleted comments in one go.
+
       IDictionary<long, GitHubMetadata> commentReactionMetadata;
       using (var context = _contextFactory.CreateInstance()) {
         commentReactionMetadata = await context.IssueComments
@@ -523,7 +537,9 @@
               case HttpStatusCode.NotModified:
                 break;
               case HttpStatusCode.NotFound:
-                await updater.DeleteIssueComment(commentReactionsResponse.Key);
+                if (!knownIssueCommentIds.Contains(commentReactionsResponse.Key)) {
+                  await updater.DeleteIssueComment(commentReactionsResponse.Key, resp.Date);
+                }
                 break;
               default:
                 await updater.UpdateIssueCommentReactions(_repoId, resp.Date, commentReactionsResponse.Key, resp.Result);
@@ -537,7 +553,9 @@
       }
     }
 
-    private async Task UpdateCommitCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+    private async Task UpdateCommitCommentReactions(IGitHubActor ghc, DataUpdater updater, ISet<long> knownCommitCommentIds) {
+      // TODO: Use knownCommitCommentIds and response date to prune deleted comments in one go.
+
       IssueEvent[] committedEvents;
       string[] commitShas;
       IDictionary<long, GitHubMetadata> commitCommentCommentMetadata = null;
@@ -575,7 +593,9 @@
               case HttpStatusCode.NotModified:
                 break;
               case HttpStatusCode.NotFound:
-                await updater.DeleteCommitComment(commitCommentReactionsResponse.Key);
+                if (!knownCommitCommentIds.Contains(commitCommentReactionsResponse.Key)) {
+                  await updater.DeleteCommitComment(commitCommentReactionsResponse.Key, resp.Date);
+                }
                 break;
               default:
                 await updater.UpdateCommitCommentReactions(_repoId, resp.Date, commitCommentReactionsResponse.Key, resp.Result);
@@ -589,7 +609,7 @@
       }
     }
 
-    private async Task UpdatePullRequestCommentReactions(IGitHubActor ghc, DataUpdater updater) {
+    private async Task UpdatePullRequestCommentReactions(IGitHubActor ghc, DataUpdater updater, ISet<long> knownPullRequestCommentIds) {
       IDictionary<long, GitHubMetadata> prcReactionMetadata = null;
 
       using (var context = _contextFactory.CreateInstance()) {
@@ -616,7 +636,11 @@
               case HttpStatusCode.NotModified:
                 break;
               case HttpStatusCode.NotFound:
-                await updater.DeletePullRequestComment(prcReactionsResponse.Key);
+                // knownPullRequestCommentIds can be null
+                if (knownPullRequestCommentIds?.Contains(prcReactionsResponse.Key) != true) {
+                  // null or false
+                  await updater.DeletePullRequestComment(prcReactionsResponse.Key, resp.Date);
+                }
                 break;
               default:
                 await updater.UpdatePullRequestCommentReactions(_repoId, resp.Date, prcReactionsResponse.Key, resp.Result);

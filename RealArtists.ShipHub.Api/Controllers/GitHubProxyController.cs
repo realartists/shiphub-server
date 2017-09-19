@@ -339,7 +339,7 @@
         var user = RequestContext.Principal as ShipHubPrincipal;
         try {
           using (var context = new dm.ShipHubContext()) {
-            var changes = await context.DeleteIssueComment(commentId);
+            var changes = await context.DeleteIssueComment(commentId, null);
             await changes.Submit(_queueClient);
           }
         } catch (Exception e) {
@@ -737,7 +737,7 @@
         var user = RequestContext.Principal as ShipHubPrincipal;
         try {
           using (var context = new dm.ShipHubContext()) {
-            var changes = await context.DeletePullRequestComment(commentId);
+            var changes = await context.DeletePullRequestComment(commentId, null);
             await changes.Submit(_queueClient);
           }
         } catch (Exception e) {

@@ -1,5 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[DeleteCommitComment]
-  @CommentId BIGINT
+  @CommentId BIGINT,
+  @Date DATETIMEOFFSET NULL
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -9,6 +10,14 @@ BEGIN
   DECLARE @DeletedReactions TABLE (
     [ReactionId] BIGINT NOT NULL PRIMARY KEY CLUSTERED
   )
+
+  -- GitHub may return 404s for newly created comments. Good times.
+  -- Don't delete unless at least some time has passed.
+  IF (@Date IS NOT NULL
+    AND NOT EXISTS(SELECT * FROM CommitComments WHERE Id = @CommentId AND DATEDIFF(SECOND, CreatedAt, @Date) > 10))
+  BEGIN
+    RETURN
+  END
 
   BEGIN TRY
     BEGIN TRANSACTION
