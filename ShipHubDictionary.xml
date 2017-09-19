@@ -46,6 +46,7 @@
       <Word>submodule</Word>
       <Word>symlink</Word>
       <Word>resync</Word>
+      <Word>deserializer</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
       <Word>AzureClient</Word>

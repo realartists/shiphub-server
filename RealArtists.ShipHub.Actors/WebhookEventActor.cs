@@ -44,7 +44,7 @@
           await updater.UpdateCommitComments(payload.Repository.Id, eventDate, new[] { payload.Comment });
           break;
         case "deleted":
-          await updater.DeleteCommitComment(payload.Comment.Id);
+          await updater.DeleteCommitComment(payload.Comment.Id, null);
           break;
         default:
           throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(CommitComment)}.");
@@ -70,7 +70,7 @@
           await repoActor.RefreshIssueComment(payload.Comment.Id);
           break;
         case "deleted":
-          await updater.DeleteIssueComment(payload.Comment.Id);
+          await updater.DeleteIssueComment(payload.Comment.Id, null);
           break;
         default:
           throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(IssueComment)}.");
@@ -175,7 +175,7 @@
           await repoActor.RefreshPullRequestReviewComment(payload.Comment.Id);
           break;
         case "deleted":
-          await updater.DeletePullRequestComment(payload.Comment.Id);
+          await updater.DeletePullRequestComment(payload.Comment.Id, null);
           break;
         default:
           throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(PullRequestReviewComment)}.");

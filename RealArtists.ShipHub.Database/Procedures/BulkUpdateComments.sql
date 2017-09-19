@@ -39,6 +39,7 @@ BEGIN
 
     -- Edited comments
     UPDATE SyncLog SET
+      [Delete] = 0,
       [RowVersion] = DEFAULT
     WHERE ItemType = 'comment'
       AND ItemId IN (SELECT Id FROM @Changes)

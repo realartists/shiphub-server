@@ -64,15 +64,15 @@
       }
     }
 
-    public async Task DeleteCommitComment(long commentId) {
+    public async Task DeleteCommitComment(long commentId, DateTimeOffset? date) {
       await WithContext(async context => {
-        _changes.UnionWith(await context.DeleteCommitComment(commentId));
+        _changes.UnionWith(await context.DeleteCommitComment(commentId, date));
       });
     }
 
-    public async Task DeleteIssueComment(long commentId) {
+    public async Task DeleteIssueComment(long commentId, DateTimeOffset? date) {
       await WithContext(async context => {
-        _changes.UnionWith(await context.DeleteIssueComment(commentId));
+        _changes.UnionWith(await context.DeleteIssueComment(commentId, date));
       });
     }
 
@@ -88,9 +88,9 @@
       });
     }
 
-    public async Task DeletePullRequestComment(long commentId) {
+    public async Task DeletePullRequestComment(long commentId, DateTimeOffset? date) {
       await WithContext(async context => {
-        _changes.UnionWith(await context.DeletePullRequestComment(commentId));
+        _changes.UnionWith(await context.DeletePullRequestComment(commentId, date));
       });
     }
 

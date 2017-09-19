@@ -982,21 +982,39 @@
       });
     }
 
-    public Task<ChangeSummary> DeleteIssueComment(long commentId) {
+    /// <summary>
+    /// Deletes the comment.
+    /// </summary>
+    /// <param name="commentId">The id of the comment to delete.</param>
+    /// <param name="date">The date at which you suspected the comment was deleted, or null to force deletion if you know for sure it was removed.</param>
+    public Task<ChangeSummary> DeleteIssueComment(long commentId, DateTimeOffset? date) {
       return ExecuteAndReadChanges("[dbo].[DeleteIssueComment]", x => {
         x.CommentId = commentId;
+        x.Date = date;
       });
     }
 
-    public Task<ChangeSummary> DeleteCommitComment(long commentId) {
+    /// <summary>
+    /// Deletes the comment.
+    /// </summary>
+    /// <param name="commentId">The id of the comment to delete.</param>
+    /// <param name="date">The date at which you suspected the comment was deleted, or null to force deletion if you know for sure it was removed.</param>
+    public Task<ChangeSummary> DeleteCommitComment(long commentId, DateTimeOffset? date) {
       return ExecuteAndReadChanges("[dbo].[DeleteCommitComment]", x => {
         x.CommentId = commentId;
+        x.Date = date;
       });
     }
 
-    public Task<ChangeSummary> DeletePullRequestComment(long commentId) {
+    /// <summary>
+    /// Deletes the comment.
+    /// </summary>
+    /// <param name="commentId">The id of the comment to delete.</param>
+    /// <param name="date">The date at which you suspected the comment was deleted, or null to force deletion if you know for sure it was removed.</param>
+    public Task<ChangeSummary> DeletePullRequestComment(long commentId, DateTimeOffset? date) {
       return ExecuteAndReadChanges("[dbo].[DeletePullRequestComment]", x => {
         x.CommentId = commentId;
+        x.Date = date;
       });
     }
 
