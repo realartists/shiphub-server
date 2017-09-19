@@ -198,17 +198,10 @@
 
       // So many reactions
       await UpdateIssueReactions(ghc, updater);
-
-      if (issueCommentIds.Any()) {
-        await UpdateIssueCommentReactions(ghc, updater, issueCommentIds);
-      }
-
-      if (commitCommentIds.Any()) {
-        await UpdateCommitCommentReactions(ghc, updater, commitCommentIds);
-      }
-
-      // Can't roll this up into other PR code because it must come after timeline
+      await UpdateIssueCommentReactions(ghc, updater, issueCommentIds);
+      await UpdateCommitCommentReactions(ghc, updater, commitCommentIds);
       if (_isPullRequest) {
+      // Can't roll this up into other PR code because it must come after timeline
         await UpdatePullRequestCommentReactions(ghc, updater, prCommentIds);
       }
     }
