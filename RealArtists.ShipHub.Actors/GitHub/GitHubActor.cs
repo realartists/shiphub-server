@@ -647,14 +647,12 @@
     private ConcurrentQueue<FutureRequest> _interactiveQueue = new ConcurrentQueue<FutureRequest>();
 
     private class FutureRequest {
-      public FutureRequest(Func<Task> requestFunc, Action cancelAction) {
+      public FutureRequest(Func<Task> requestFunc) {
         MakeRequest = requestFunc;
-        Cancel = cancelAction;
       }
 
       public DateTimeOffset Timestamp { get; } = DateTimeOffset.UtcNow;
       public Func<Task> MakeRequest { get; }
-      public Action Cancel { get; }
     }
 
     private Task<GitHubResponse<T>> EnqueueRequest<T>(GitHubRequest request) {
@@ -700,7 +698,7 @@
       };
 
       // Enqueue the request
-      var futureRequest = new FutureRequest(executeRequestTask, completionTask.SetCanceled);
+      var futureRequest = new FutureRequest(executeRequestTask);
       lock (_queueLock) {
         switch (request.Priority) {
           case RequestPriority.Interactive:
@@ -755,13 +753,7 @@
           var delay = DateTimeOffset.UtcNow.Subtract(dequeued.Timestamp);
           if (delay.TotalSeconds > 30) {
             var backlog = _interactiveQueue.Count + _subRequestQueue.Count + _backgroundQueue.Count;
-            if (delay.TotalMinutes < 3) {
-              Log.Info($"[{UserInfo}] Request delayed {delay} with backlog {backlog}");
-            } else {
-              Log.Error($"[{UserInfo}] Request delayed {delay} with backlog {backlog}. CANCELLING!");
-              dequeued.Cancel();
-              return DequeueNextRequest();
-            }
+            Log.Info($"[{UserInfo}] Request delayed {delay} with backlog {backlog}");
           }
 
           return dequeued.MakeRequest;
