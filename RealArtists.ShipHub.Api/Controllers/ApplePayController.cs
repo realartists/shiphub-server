@@ -1,4 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System.Diagnostics.CodeAnalysis;
   using System.Net;
   using System.Net.Http;
   using System.Net.Mime;
@@ -17,6 +18,7 @@
 
     [HttpGet]
     [Route("apple-developer-merchantid-domain-association")]
+    [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope")]
     public HttpResponseMessage GetAppleDeveloperMerchantIdDomainAssociation(HttpRequestMessage request) {
       var admda = _config.AppleDeveloperMerchantIdDomainAssociation;
       if (admda.IsNullOrWhiteSpace()) {
