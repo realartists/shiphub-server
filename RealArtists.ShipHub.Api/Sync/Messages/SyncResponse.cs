@@ -63,7 +63,10 @@
     CommitComment,
 
     [EnumMember(Value = "protectedbranch")]
-    ProtectedBranch
+    ProtectedBranch,
+
+    [EnumMember(Value = "query")]
+    Query
   }
 
   public abstract class SyncEntity {

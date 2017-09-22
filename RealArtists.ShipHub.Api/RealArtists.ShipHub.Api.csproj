@@ -76,6 +76,7 @@
     <Compile Include="Controllers\ChargeBeeWebhookController.cs" />
     <Compile Include="Controllers\GitHubWebhookController.cs" />
     <Compile Include="Controllers\OrleansTestController.cs" />
+    <Compile Include="Controllers\QueryController.cs" />
     <Compile Include="Controllers\SettingsController.cs" />
     <Compile Include="Controllers\ShipHubController.cs" />
     <Compile Include="Controllers\ShipHubApiController.cs" />
@@ -97,6 +98,7 @@
     <Compile Include="Sync\Messages\Entries\PullRequestEntry.cs" />
     <Compile Include="Sync\Messages\Entries\PullRequestCommentEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ProjectEntry.cs" />
+    <Compile Include="Sync\Messages\Entries\QueryEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionEntry.cs" />
     <Compile Include="Sync\Messages\Entries\ReactionSummary.cs" />
     <Compile Include="Sync\Messages\Entries\ReviewEntry.cs" />

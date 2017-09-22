@@ -3,7 +3,8 @@
   @SelectiveSync BIT = 0,
   @PageSize BIGINT = 1000,
   @RepositoryVersions VersionTableType READONLY,
-  @OrganizationVersions VersionTableType READONLY
+  @OrganizationVersions VersionTableType READONLY,
+  @QueriesVersion BIGINT
 AS
 BEGIN
   -- SET NOCOUNT ON added to prevent extra result sets from
@@ -171,7 +172,25 @@ BEGIN
     INNER LOOP JOIN OrganizationAccounts as oa ON (oa.OrganizationId = uo.OrganizationId)
   OPTION (FORCE ORDER)
 
+  -- ------------------------------------------------------------------------------------------------------------------
+  -- New/Updated/Deleted Queries (non-paginated)
+  -- ------------------------------------------------------------------------------------------------------------------
+
+  SELECT QL.[RowVersion] AS [RowVersion],
+         QL.QueryId AS Id,
+         QL.[Delete] AS [Delete],
+         Q.Title AS Title, 
+         Q.[Predicate] AS [Predicate],
+         A.Id AS AuthorId,
+         A.[Name] AS AuthorName,
+         A.[Login] AS AuthorLogin
+    FROM QueryLog AS QL
+    JOIN Queries AS Q ON (QL.QueryId = Q.Id) -- Queries can't be deleted, they can only be unwatched
+    JOIN Accounts AS A ON (A.Id = Q.AuthorId)
+   WHERE QL.WatcherId = @UserId AND QL.[RowVersion] > @QueriesVersion;
+
   -- Version updates occur as entities sync below
+
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- New/Updated entites (paginated)

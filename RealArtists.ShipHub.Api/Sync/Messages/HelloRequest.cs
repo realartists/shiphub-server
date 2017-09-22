@@ -19,11 +19,12 @@
   public class VersionDetails {
     public VersionDetails() { }
 
-    public VersionDetails(IEnumerable<RepositoryVersion> repoVersions, IEnumerable<OrganizationVersion> orgVersions, long pullRequestVersion, long mentionsVersion) {
+    public VersionDetails(IEnumerable<RepositoryVersion> repoVersions, IEnumerable<OrganizationVersion> orgVersions, long pullRequestVersion, long mentionsVersion, long queriesVersion) {
       Repositories = repoVersions;
       Organizations = orgVersions;
       PullRequestVersion = pullRequestVersion;
       MentionsVersion = mentionsVersion;
+      QueriesVersion = queriesVersion;
     }
 
     [JsonProperty("repos")]
@@ -37,6 +38,9 @@
 
     [JsonProperty("mv")]
     public long? MentionsVersion { get; set; }
+
+    [JsonProperty("q")]
+    public long? QueriesVersion { get; set; }
   }
 
   public class HelloRequest : SyncMessageBase {

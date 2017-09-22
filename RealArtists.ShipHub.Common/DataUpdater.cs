@@ -536,5 +536,17 @@
         _changes.UnionWith(await context.ForceResyncRepositoryIssues(repositoryId));
       });
     }
+
+    public async Task ToggleWatchQuery(Guid queryId, long watcherId, bool watch) {
+      await WithContext(async context => {
+        _changes.UnionWith(await context.ToggleWatchQuery(queryId, watcherId, watch));
+      });
+    }
+
+    public async Task UpdateQuery(Guid queryId, long authorId, string title, string predicate) {
+      await WithContext(async context => {
+        _changes.UnionWith(await context.UpdateQuery(queryId, authorId, title, predicate));
+      });
+    }
   }
 }

@@ -25,17 +25,21 @@
     private static readonly Version MinimumMentionsClientVersion = new Version(676, 0);
     private const long MinimumMentionsVersion = 1;
 
+    private static readonly Version MinimumQueriesClientVersion = new Version(720, 0);
+
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
     private SyncVersions _versions;
     private DateTimeOffset? _lastRecordedUsage;
     private bool _selectiveSyncEnabled;
+    private bool _querySyncEnabled;
 
     private VersionDetails VersionDetails => new VersionDetails(
         _versions.RepoVersions.Select(x => new RepositoryVersion() { Id = x.Key, Version = x.Value }).ToArray(),
         _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }).ToArray(),
         _versions.PullRequestVersion,
-        _versions.MentionsVersion
+        _versions.MentionsVersion,
+        _versions.QueriesVersion
       );
 
     public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
@@ -43,6 +47,7 @@
       _connection = connection;
       _versions = initialVersions;
       _selectiveSyncEnabled = connection.ClientBuild >= MinimumSelectiveSyncVersion;
+      _querySyncEnabled = connection.ClientBuild >= MinimumQueriesClientVersion;
 
       RunUpgradeCheck();
     }
@@ -249,7 +254,8 @@
             ItemId = x.Key,
             RowVersion = x.Value,
           }),
-          _selectiveSyncEnabled
+          _selectiveSyncEnabled,
+          _versions.QueriesVersion
         );
 
         var entries = new List<SyncLogEntry>();
@@ -392,6 +398,56 @@
               SpiderProgress = spiderProgress
             }));
             entries = new List<SyncLogEntry>();
+          }
+
+          /* ************************************************************************************************************
+           * Added/Updated/Deleted Queries (non-paginated)
+           * ***********************************************************************************************************/
+          {
+            reader.NextResult();
+            entries = new List<SyncLogEntry>();
+            long maxRowVersion = 0;
+            while (reader.Read()) {
+              var identifier = ((Guid)ddr.Id).ToString().ToLowerInvariant();
+              SyncLogEntry entry;
+              if (ddr.Delete) {
+                entry = new SyncLogEntry() {
+                  Action = SyncLogAction.Delete,
+                  Entity = SyncEntityType.Query,
+                  Data = new DeletedGuidEntry() {
+                    Identifier = identifier
+                  }
+                };
+              } else {
+                entry = new SyncLogEntry() {
+                  Action = SyncLogAction.Set,
+                  Entity = SyncEntityType.Query,
+                  Data = new QueryEntry() {
+                    Identifier = identifier,
+                    Author = new AccountEntry() {
+                      Identifier = ddr.AuthorId,
+                      Name = ddr.AuthorName,
+                      Login = ddr.AuthorLogin
+                    },
+                    Title = ddr.Title,
+                    Predicate = ddr.Predicate
+                  }
+                };
+              }
+              entries.Add(entry);
+              maxRowVersion = Math.Max(maxRowVersion, ddr.RowVersion);
+            }
+
+            if (_querySyncEnabled) {
+              _versions.QueriesVersion = maxRowVersion;
+              tasks.Add(_connection.SendJsonAsync(new SyncResponse() {
+                Logs = entries,
+                Remaining = 0, // Queries are sent as a single batch
+                Versions = VersionDetails,
+                SpiderProgress = spiderProgress
+              }));
+              entries = new List<SyncLogEntry>();
+            }
           }
 
           /* ************************************************************************************************************

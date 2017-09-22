@@ -186,6 +186,10 @@
     <Build Include="Tables\IssueMentions.sql" />
     <Build Include="Procedures\BulkUpdateIssueMentions.sql" />
     <Build Include="Tables\ApplicationSettings.sql" />
+    <Build Include="Tables\Queries.sql" />
+    <Build Include="Procedures\UpdateQuery.sql" />
+    <Build Include="Procedures\WatchQuery.sql" />
+    <Build Include="Tables\QueryLog.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

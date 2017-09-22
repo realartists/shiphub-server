@@ -50,6 +50,7 @@
     <Compile Include="DataModel\GitHubToken.cs" />
     <Compile Include="DataModel\Project.cs" />
     <Compile Include="DataModel\PullRequest.cs" />
+    <Compile Include="DataModel\Query.cs" />
     <Compile Include="DataModel\SyncLog.cs" />
     <Compile Include="GitHub\Models\GraphQLCore.cs" />
     <Compile Include="DataModel\Types\RepositoryPermissionsTableType.cs" />
