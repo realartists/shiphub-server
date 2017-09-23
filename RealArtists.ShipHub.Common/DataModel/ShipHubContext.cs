@@ -58,6 +58,7 @@
     public virtual DbSet<ProtectedBranch> ProtectedBranches { get; set; }
     public virtual DbSet<Subscription> Subscriptions { get; set; }
     public virtual DbSet<SyncLog> SyncLogs { get; set; }
+    public virtual DbSet<Query> Queries { get; set; }
     public virtual DbSet<Usage> Usage { get; set; }
 
     public virtual IQueryable<User> Users => Accounts.OfType<User>();
@@ -1062,8 +1063,25 @@
       });
     }
 
+    public Task<ChangeSummary> ToggleWatchQuery(Guid queryId, long watcherId, bool watch) {
+      return ExecuteAndReadChanges("[dbo].[WatchQuery]", x => {
+        x.Id = queryId;
+        x.WatcherId = watcherId;
+        x.Watch = watch;
+      });
+    }
+
+    public Task<ChangeSummary> UpdateQuery(Guid queryId, long authorId, string title, string predicate) {
+      return ExecuteAndReadChanges("[dbo].[UpdateQuery]", x => {
+        x.Id = queryId;
+        x.AuthorId = authorId;
+        x.Title = title;
+        x.Predicate = predicate;
+      });
+    }
+
     [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "We're returning it for use elsewhere.")]
-    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions, bool selectiveSync) {
+    public DynamicStoredProcedure PrepareSync(long userId, long pageSize, IEnumerable<VersionTableType> repoVersions, IEnumerable<VersionTableType> orgVersions, bool selectiveSync, long queriesVersion) {
       var sp = new DynamicStoredProcedure("[dbo].[WhatsNew]", ConnectionFactory);
       dynamic dsp = sp;
       dsp.UserId = userId;
@@ -1071,6 +1089,7 @@
       dsp.PageSize = pageSize;
       dsp.RepositoryVersions = CreateVersionTableType("RepositoryVersions", repoVersions);
       dsp.OrganizationVersions = CreateVersionTableType("OrganizationVersions", orgVersions);
+      dsp.QueriesVersion = queriesVersion;
       return sp;
     }
 
