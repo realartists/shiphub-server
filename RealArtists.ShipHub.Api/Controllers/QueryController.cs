@@ -78,7 +78,11 @@
 
       using (var context = new ShipHubContext()) {
         var updater = new DataUpdater(context, _mapper);
-        await updater.UpdateQuery(id, ShipHubUser.UserId, query.Title, query.Predicate); // -- this will raise if queryId doesn't match UserId
+        await updater.UpdateQuery(id, ShipHubUser.UserId, query.Title, query.Predicate);
+        // If there are no changes, then the author ID didn't match
+        if (updater.Changes.IsEmpty) {
+          return StatusCode(System.Net.HttpStatusCode.Conflict);
+        }
         await _queueClient.NotifyChanges(updater.Changes);
       }
 
