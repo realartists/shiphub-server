@@ -55,13 +55,11 @@
 
     [AllowAnonymous]
     [HttpGet]
-    [Route("{queryId}")]
-    public async Task<IHttpActionResult> QueryInfo(string queryId) {
-      var id = Guid.Parse(queryId);
-
+    [Route("{queryId:guid}")]
+    public async Task<IHttpActionResult> QueryInfo(Guid queryId) {
       QueryEntry entry = null;
       using (var context = new ShipHubContext()) {
-        entry = await LookupQuery(context, id);
+        entry = await LookupQuery(context, queryId);
       }
 
       if (entry != null) {
@@ -72,7 +70,7 @@
     }
 
     [HttpPut]
-    [Route("{queryId}")]
+    [Route("{queryId:guid}")]
     public async Task<IHttpActionResult> SaveQuery(string queryId, [FromBody] QueryBody query) {
       var id = Guid.Parse(queryId);
 
@@ -83,7 +81,7 @@
         if (updater.Changes.IsEmpty) {
           return StatusCode(System.Net.HttpStatusCode.Conflict);
         }
-        await _queueClient.NotifyChanges(updater.Changes);
+        _queueClient.NotifyChanges(updater.Changes).LogFailure(ShipHubUser.DebugIdentifier);
       }
 
       var ret = new ShortQueryResponse() {
@@ -97,31 +95,27 @@
     }
 
     [HttpDelete]
-    [Route("{queryId}")]
-    public async Task<IHttpActionResult> UnwatchQuery(string queryId) {
-      var id = Guid.Parse(queryId);
-
+    [Route("{queryId:guid}")]
+    public async Task<IHttpActionResult> UnwatchQuery(Guid queryId) {
       using (var context = new ShipHubContext()) {
         var updater = new DataUpdater(context, _mapper);
-        await updater.ToggleWatchQuery(id, ShipHubUser.UserId, false);
-        await _queueClient.NotifyChanges(updater.Changes);
+        await updater.ToggleWatchQuery(queryId, ShipHubUser.UserId, false);
+        _queueClient.NotifyChanges(updater.Changes).LogFailure(ShipHubUser.DebugIdentifier);
       }
 
       return StatusCode(System.Net.HttpStatusCode.NoContent);
     }
 
     [HttpPut]
-    [Route("{queryId}/watch")]
-    public async Task<IHttpActionResult> WatchQuery(string queryId) {
-      var id = Guid.Parse(queryId);
-
+    [Route("{queryId:guid}/watch")]
+    public async Task<IHttpActionResult> WatchQuery(Guid queryId) {
       QueryEntry entry = null;
       using (var context = new ShipHubContext()) {
-        entry = await LookupQuery(context, id);
+        entry = await LookupQuery(context, queryId);
         if (entry != null) {
           var updater = new DataUpdater(context, _mapper);
-          await updater.ToggleWatchQuery(id, ShipHubUser.UserId, true);
-          await _queueClient.NotifyChanges(updater.Changes);
+          await updater.ToggleWatchQuery(queryId, ShipHubUser.UserId, true);
+          _queueClient.NotifyChanges(updater.Changes).LogFailure(ShipHubUser.DebugIdentifier);
         }
       }
 
