@@ -403,39 +403,36 @@
           /* ************************************************************************************************************
            * Added/Updated/Deleted Queries (non-paginated)
            * ***********************************************************************************************************/
-          {
-            reader.NextResult();
-            entries = new List<SyncLogEntry>();
+
+          reader.NextResult();
+          // Only process these if the client supports queries
+          if (_querySyncEnabled) {
             long maxRowVersion = 0;
             while (reader.Read()) {
-              SyncLogEntry entry;
-              if (ddr.Delete) {
-                entry = new SyncLogEntry() {
-                  Action = SyncLogAction.Delete,
-                  Entity = SyncEntityType.Query,
-                  Data = new DeletedGuidEntry(ddr.Id)
+              var entry = new SyncLogEntry() {
+                Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
+                Entity = SyncEntityType.Query,
+              };
+
+              if (entry.Action == SyncLogAction.Set) {
+                entry.Data = new QueryEntry() {
+                    Id = ddr.Id,
+                  Author = new AccountEntry() {
+                    Identifier = ddr.AuthorId,
+                    Name = ddr.AuthorName,
+                    Login = ddr.AuthorLogin
+                  },
+                  Title = ddr.Title,
+                  Predicate = ddr.Predicate
                 };
               } else {
-                entry = new SyncLogEntry() {
-                  Action = SyncLogAction.Set,
-                  Entity = SyncEntityType.Query,
-                  Data = new QueryEntry() {
-                    Id = ddr.Id,
-                    Author = new AccountEntry() {
-                      Identifier = ddr.AuthorId,
-                      Name = ddr.AuthorName,
-                      Login = ddr.AuthorLogin
-                    },
-                    Title = ddr.Title,
-                    Predicate = ddr.Predicate
-                  }
-                };
+                entry.Data = new DeletedGuidEntry(ddr.Id);
               }
               entries.Add(entry);
               maxRowVersion = Math.Max(maxRowVersion, ddr.RowVersion);
             }
 
-            if (_querySyncEnabled) {
+            if (entries.Any()) {
               _versions.QueriesVersion = maxRowVersion;
               tasks.Add(_connection.SendJsonAsync(new SyncResponse() {
                 Logs = entries,
@@ -443,7 +440,6 @@
                 Versions = VersionDetails,
                 SpiderProgress = spiderProgress
               }));
-              entries = new List<SyncLogEntry>();
             }
           }
 
