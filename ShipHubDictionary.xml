@@ -47,6 +47,7 @@
       <Word>symlink</Word>
       <Word>resync</Word>
       <Word>deserializer</Word>
+      <Word>unwatch</Word>
       <!-- Misc non-words -->
       <Word>ApiHostName</Word>
       <Word>AzureClient</Word>

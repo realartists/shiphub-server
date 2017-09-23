@@ -1,42 +1,46 @@
-﻿using System;
-using System.Data.Entity;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Web.Http;
-using AutoMapper;
-using RealArtists.ShipHub.Api.Sync.Messages.Entries;
-using RealArtists.ShipHub.Common;
-using RealArtists.ShipHub.Common.DataModel;
-using RealArtists.ShipHub.QueueClient;
+﻿namespace RealArtists.ShipHub.Api.Controllers {
+  using System;
+  using System.Data.Entity;
+  using System.Linq;
+  using System.Threading.Tasks;
+  using System.Web.Http;
+  using AutoMapper;
+  using RealArtists.ShipHub.Api.Sync.Messages.Entries;
+  using RealArtists.ShipHub.Common;
+  using RealArtists.ShipHub.Common.DataModel;
+  using RealArtists.ShipHub.QueueClient;
 
-namespace RealArtists.ShipHub.Api.Controllers {
+  public class ShortQueryResponse {
+    public string Identifier { get; set; }
+    public string Title { get; set; }
+    public string Predicate { get; set; }
+    public long Author { get; set; }
+  }
+
+  public class QueryBody {
+    public string Title { get; set; }
+    public string Predicate { get; set; }
+  }
+
   [RoutePrefix("api/query")]
   public class QueryController : ShipHubApiController {
     private IMapper _mapper;
     private IShipHubQueueClient _queueClient;
 
-    public class ShortQueryResponse {
-      public string Identifier { get; set; }
-      public string Title { get; set; }
-      public string Predicate { get; set; }
-      public long Author { get; set; }
-    }
-
-    public class QueryBody {
-      public string Title { get; set; }
-      public string Predicate { get; set; }
-    }
-
     public QueryController(IMapper mapper, IShipHubQueueClient queueClient) {
       _mapper = mapper;
       _queueClient = queueClient;
     }
-    
+
     private async Task<QueryEntry> LookupQuery(ShipHubContext context, Guid id) {
-      var q = await context.Queries.Where(x => x.Id == id).Include(x => x.Author).SingleOrDefaultAsync();
+      var q = await context.Queries
+        .AsNoTracking()
+        .Include(x => x.Author)
+        .Where(x => x.Id == id)
+        .SingleOrDefaultAsync();
       if (q != null) {
         return new QueryEntry() {
-          Identifier = q.Id.ToString().ToLowerInvariant(),
+          Id = q.Id,
           Title = q.Title,
           Predicate = q.Predicate,
           Author = new AccountEntry() {

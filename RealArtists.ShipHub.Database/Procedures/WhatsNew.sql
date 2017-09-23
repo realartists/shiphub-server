@@ -176,21 +176,14 @@ BEGIN
   -- New/Updated/Deleted Queries (non-paginated)
   -- ------------------------------------------------------------------------------------------------------------------
 
-  SELECT QL.[RowVersion] AS [RowVersion],
-         QL.QueryId AS Id,
-         QL.[Delete] AS [Delete],
-         Q.Title AS Title, 
-         Q.[Predicate] AS [Predicate],
-         A.Id AS AuthorId,
-         A.[Name] AS AuthorName,
-         A.[Login] AS AuthorLogin
-    FROM QueryLog AS QL
-    JOIN Queries AS Q ON (QL.QueryId = Q.Id) -- Queries can't be deleted, they can only be unwatched
-    JOIN Accounts AS A ON (A.Id = Q.AuthorId)
-   WHERE QL.WatcherId = @UserId AND QL.[RowVersion] > @QueriesVersion;
+  SELECT ql.[RowVersion], ql.QueryId as Id, ql.[Delete], q.Title, q.[Predicate],
+         a.Id as AuthorId, a.[Name] as AuthorName, a.[Login] as AuthorLogin
+    FROM QueryLog AS ql
+      INNER JOIN Queries as q ON (ql.QueryId = q.Id) -- Queries can't be deleted, they can only be unwatched
+      INNER JOIN Accounts as a ON (a.Id = q.AuthorId)
+   WHERE ql.WatcherId = @UserId AND ql.[RowVersion] > @QueriesVersion;
 
   -- Version updates occur as entities sync below
-
 
   -- ------------------------------------------------------------------------------------------------------------------
   -- New/Updated entites (paginated)

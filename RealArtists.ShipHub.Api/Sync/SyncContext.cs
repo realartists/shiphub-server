@@ -408,22 +408,19 @@
             entries = new List<SyncLogEntry>();
             long maxRowVersion = 0;
             while (reader.Read()) {
-              var identifier = ((Guid)ddr.Id).ToString().ToLowerInvariant();
               SyncLogEntry entry;
               if (ddr.Delete) {
                 entry = new SyncLogEntry() {
                   Action = SyncLogAction.Delete,
                   Entity = SyncEntityType.Query,
-                  Data = new DeletedGuidEntry() {
-                    Identifier = identifier
-                  }
+                  Data = new DeletedGuidEntry(ddr.Id)
                 };
               } else {
                 entry = new SyncLogEntry() {
                   Action = SyncLogAction.Set,
                   Entity = SyncEntityType.Query,
                   Data = new QueryEntry() {
-                    Identifier = identifier,
+                    Id = ddr.Id,
                     Author = new AccountEntry() {
                       Identifier = ddr.AuthorId,
                       Name = ddr.AuthorName,

@@ -1,8 +1,8 @@
 ﻿CREATE TABLE [dbo].[QueryLog] (
-  [RowVersion] BIGINT NOT NULL CONSTRAINT [DF_QueryLog_RowVersion] DEFAULT (NEXT VALUE FOR [dbo].[SyncIdentifier]),
-  [QueryId] UNIQUEIDENTIFIER NOT NULL,
-  [WatcherId] BIGINT NOT NULL,
-  [Delete] BIT NOT NULL,
+  [RowVersion] BIGINT           NOT NULL CONSTRAINT [DF_QueryLog_RowVersion] DEFAULT (NEXT VALUE FOR [dbo].[SyncIdentifier]),
+  [QueryId]    UNIQUEIDENTIFIER NOT NULL,
+  [WatcherId]  BIGINT           NOT NULL,
+  [Delete]     BIT              NOT NULL,
   CONSTRAINT [PK_QueryLog] PRIMARY KEY ([RowVersion])
 )
 GO
