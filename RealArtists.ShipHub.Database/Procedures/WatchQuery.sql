@@ -8,24 +8,25 @@ BEGIN
 
    BEGIN TRY
     BEGIN TRANSACTION
-      -- removing watch
-      UPDATE QueryLog SET 
-        [RowVersion] = Default,
-        [Delete] = 1
-      WHERE WatcherId = @WatcherId AND QueryId = @Id AND [Delete] = 0 AND @Watch = 0;
-      
+
+    IF (NOT EXISTS (SELECT * FROM Queries WHERE Id = @Id))
+    BEGIN
+      RETURN
+    END
+
+    -- updating watch
+    UPDATE QueryLog SET 
+      [RowVersion] = DEFAULT,
+      [Delete] = CASE WHEN @Watch = 0 THEN 1 ELSE 0 END
+    WHERE WatcherId = @WatcherId AND QueryId = @Id
+
+    IF(@@ROWCOUNT = 0 AND @Watch = 1)
+    BEGIN
       -- inserting new watch
       INSERT INTO QueryLog (QueryId, WatcherId, [Delete])
       SELECT @Id, @WatcherId, 0
-      WHERE EXISTS(SELECT * FROM Queries WHERE Id = @Id) 
-        AND NOT EXISTS (SELECT * FROM QueryLog WHERE WatcherId = @WatcherId AND QueryId = @Id) 
-        AND @Watch = 1;
-
-      -- toggling watch from off to on
-      UPDATE QueryLog SET 
-        [RowVersion] = Default,
-        [Delete] = 0
-      WHERE WatcherId = @WatcherId AND QueryId = @Id AND [Delete] = 1 AND @Watch = 1;
+      WHERE NOT EXISTS (SELECT * FROM QueryLog WHERE WatcherId = @WatcherId AND QueryId = @Id) 
+    END
 
     COMMIT TRANSACTION
    END TRY
