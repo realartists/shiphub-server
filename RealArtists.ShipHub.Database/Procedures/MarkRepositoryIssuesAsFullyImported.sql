@@ -8,7 +8,7 @@ BEGIN
 
   UPDATE Repositories
     SET IssuesFullyImported = 1
-  WHERE Id = @RepositoryId AND IssuesFullyImported = 0;
+  WHERE Id = @RepositoryId AND IssuesFullyImported = 0
 
   IF(@@ROWCOUNT > 0)
   BEGIN

@@ -3,7 +3,11 @@
   using System.Diagnostics.CodeAnalysis;
 
   public class DeletedEntry : SyncEntity {
-    public long Identifier { get; set; }
+    public long Identifier { get; }
+
+    public DeletedEntry(long identifier) {
+      Identifier = identifier;
+    }
   }
 
   public class DeletedGuidEntry : SyncEntity {

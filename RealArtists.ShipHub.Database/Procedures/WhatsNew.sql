@@ -181,7 +181,7 @@ BEGIN
     FROM QueryLog AS ql
       INNER JOIN Queries as q ON (ql.QueryId = q.Id) -- Queries can't be deleted, they can only be unwatched
       INNER JOIN Accounts as a ON (a.Id = q.AuthorId)
-   WHERE ql.WatcherId = @UserId AND ql.[RowVersion] > @QueriesVersion;
+   WHERE ql.WatcherId = @UserId AND ql.[RowVersion] > @QueriesVersion
 
   -- Version updates occur as entities sync below
 
@@ -366,7 +366,7 @@ BEGIN
     FROM @Logs as l
       LEFT OUTER JOIN ProtectedBranches as e on (l.ItemId = e.Id)
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
-      AND l.ItemType = 'protectedbranch';
+      AND l.ItemType = 'protectedbranch'
 
     -- Current Versions
     SELECT OwnerType, OwnerId, MAX([RowVersion]) as [RowVersion]

@@ -318,9 +318,7 @@
             entries.Add(new SyncLogEntry() {
               Action = SyncLogAction.Delete,
               Entity = SyncEntityType.Repository,
-              Data = new DeletedEntry() {
-                Identifier = repoId,
-              },
+              Data = new DeletedEntry(repoId),
             });
             _versions.RepoVersions.Remove(repoId);
           }
@@ -499,7 +497,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -524,7 +522,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -564,7 +562,7 @@
 
                 entry.Data = data;
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -592,7 +590,7 @@
                   UpdatedAt = ddr.UpdatedAt,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -619,7 +617,7 @@
                   Repository = ddr.RepositoryId
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -645,7 +643,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -667,7 +665,7 @@
                   Repository = ddr.RepositoryId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -741,9 +739,7 @@
                 };
                 entry.Data = issueEntry;
               } else {
-                entry.Data = new DeletedEntry() {
-                  Identifier = ddr.Id
-                };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -832,7 +828,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -864,7 +860,7 @@
                   User = ddr.UserId,
                 };
               } else {
-                entry.Data = new DeletedEntry() { Identifier = ddr.Id };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);
@@ -906,9 +902,7 @@
                   ExtensionData = ddr.Protection
                 };
               } else {
-                entry.Data = new DeletedEntry() {
-                  Identifier = ddr.Id
-                };
+                entry.Data = new DeletedEntry(ddr.Id);
               }
 
               entries.Add(entry);

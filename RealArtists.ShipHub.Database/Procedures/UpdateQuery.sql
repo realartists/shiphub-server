@@ -5,6 +5,8 @@
   @Predicate NVARCHAR(MAX)
 AS
 BEGIN
+  -- SET NOCOUNT ON added to prevent extra result sets from
+  -- interfering with SELECT statements.
   SET NOCOUNT ON
 
   BEGIN TRY
@@ -36,20 +38,20 @@ BEGIN
         [Delete] = 0
       WHERE WatcherId = @AuthorId
         AND QueryId = @Id
-        AND [Delete] = 1;
+        AND [Delete] = 1
 
       -- Update the version in SyncLog for all existing watchers of this query
       UPDATE QueryLog SET
         [RowVersion] = DEFAULT
       OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
       WHERE QueryId = @Id
-        AND [Delete] = 0;
+        AND [Delete] = 0
 
       -- Insert a watcher row into the synclog for the author if there isn't one already
       INSERT INTO QueryLog (QueryId, WatcherId, [Delete])
       OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
       SELECT @Id, @AuthorId, 0
-       WHERE NOT EXISTS (SELECT * FROM QueryLog WHERE WatcherId = @AuthorId AND QueryId = @Id);
+        WHERE NOT EXISTS (SELECT * FROM QueryLog WHERE WatcherId = @AuthorId AND QueryId = @Id)
 
     COMMIT TRANSACTION
   END TRY

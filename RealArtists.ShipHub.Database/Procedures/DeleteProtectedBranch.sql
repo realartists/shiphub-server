@@ -9,19 +9,19 @@ BEGIN
 
   DECLARE @Changes TABLE (
     [Id] BIGINT NOT NULL PRIMARY KEY
-  );
+  )
 
   BEGIN TRY
     BEGIN TRANSACTION
 
     DELETE FROM ProtectedBranches
     OUTPUT Deleted.Id INTO @Changes
-     WHERE RepositoryId = @RepositoryId AND [Name] = @Name;
+     WHERE RepositoryId = @RepositoryId AND [Name] = @Name
 
     UPDATE SyncLog SET 
       [RowVersion] = Default,
       [Delete] = 1
-    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'protectedbranch' AND  ItemId IN (SELECT Id FROM @Changes);
+    WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'protectedbranch' AND  ItemId IN (SELECT Id FROM @Changes)
     
     COMMIT TRANSACTION
   END TRY
@@ -31,5 +31,5 @@ BEGIN
   END CATCH
 
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
-  WHERE EXISTS (SELECT * FROM @Changes);
+  WHERE EXISTS (SELECT * FROM @Changes)
 END

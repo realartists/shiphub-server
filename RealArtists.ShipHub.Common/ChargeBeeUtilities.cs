@@ -1,12 +1,13 @@
-﻿using System;
-using System.Text.RegularExpressions;
+﻿namespace RealArtists.ShipHub.Common {
+  using System;
+  using System.Diagnostics.CodeAnalysis;
+  using System.Text.RegularExpressions;
 
-namespace RealArtists.ShipHub.Common {
   public static class ChargeBeeUtilities {
     private static Regex CustomerIdRegex { get; } = new Regex(@"^(user|org)-(\d+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(200));
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "1#")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "2#")]
+    [SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "1#")]
+    [SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "2#")]
     public static void ParseCustomerId(string customerId, out string type, out long id) {
       var match = CustomerIdRegex.Match(customerId);
       if (!match.Success) {
@@ -22,7 +23,7 @@ namespace RealArtists.ShipHub.Common {
       return id;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays")]
+    [SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays")]
     public static string[] PersonalPlanIds => new string[] {
         "personal",
         "personal-yearly",

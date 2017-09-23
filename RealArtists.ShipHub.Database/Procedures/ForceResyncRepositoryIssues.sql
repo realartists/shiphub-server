@@ -42,38 +42,38 @@ BEGIN
     OUTPUT Deleted.Id, 'reaction' INTO @RemoveFromSyncLog
       FROM Reactions
       JOIN Issues ON (Issues.Id = Reactions.IssueId)
-     WHERE Issues.RepositoryId = @RepositoryId;
+     WHERE Issues.RepositoryId = @RepositoryId
 
     DELETE Reactions
     OUTPUT Deleted.Id, 'reaction' INTO @RemoveFromSyncLog
       FROM Reactions
       JOIN Comments ON (Comments.Id = Reactions.CommentId)
-     WHERE Comments.RepositoryId = @RepositoryId;
+     WHERE Comments.RepositoryId = @RepositoryId
 
     DELETE Reactions
     OUTPUT Deleted.Id, 'reaction' INTO @RemoveFromSyncLog
       FROM Reactions
       JOIN PullRequestComments ON (PullRequestComments.Id = Reactions.PullRequestCommentId)
-     WHERE PullRequestComments.RepositoryId = @RepositoryId;
+     WHERE PullRequestComments.RepositoryId = @RepositoryId
 
     DELETE Reactions
     OUTPUT Deleted.Id, 'reaction' INTO @RemoveFromSyncLog
       FROM Reactions
       JOIN CommitComments ON (CommitComments.Id = Reactions.CommitCommentId)
-     WHERE CommitComments.RepositoryId = @RepositoryId;
+     WHERE CommitComments.RepositoryId = @RepositoryId
     
     DELETE FROM Comments
     OUTPUT Deleted.Id, 'comment' INTO @RemoveFromSyncLog
-     WHERE RepositoryId = @RepositoryId;
+     WHERE RepositoryId = @RepositoryId
 
     DELETE FROM IssueEventAccess
     FROM IssueEventAccess as iea
     INNER JOIN IssueEvents as ie on (ie.Id = iea.IssueEventId)
-    WHERE ie.RepositoryId = @RepositoryId;
+    WHERE ie.RepositoryId = @RepositoryId
 
     DELETE FROM IssueEvents
     OUTPUT Deleted.Id, 'event' INTO @RemoveFromSyncLog
-     WHERE RepositoryId = @RepositoryId;
+     WHERE RepositoryId = @RepositoryId
 
     DELETE IssueLabels
       FROM IssueLabels
@@ -88,21 +88,21 @@ BEGIN
     DELETE FROM PullRequestReviewers
     FROM PullRequestReviewers as prr
       INNER JOIN Issues as i ON (i.Id = prr.IssueId)
-    WHERE i.RepositoryId = @RepositoryId;
+    WHERE i.RepositoryId = @RepositoryId
 
     -- DO NOT DELETE IssueMentions!
     -- They're allowed to remain in case mentioned issues are later synced.
 
     DELETE FROM PullRequestComments
     OUTPUT Deleted.Id, 'prcomment' INTO @RemoveFromSyncLog
-     WHERE RepositoryId = @RepositoryId;
+     WHERE RepositoryId = @RepositoryId
 
     DELETE FROM Reviews
     OUTPUT Deleted.Id, 'review' INTO @RemoveFromSyncLog
-     WHERE RepositoryId = @RepositoryId;
+     WHERE RepositoryId = @RepositoryId
 
     DELETE FROM PullRequests
-     WHERE RepositoryId = @RepositoryId;
+     WHERE RepositoryId = @RepositoryId
      
     -- End cascade-able entities, now handle issues themselves
 
@@ -114,12 +114,12 @@ BEGIN
 
     DELETE SyncLog
       FROM SyncLog
-      JOIN @RemoveFromSyncLog AS R ON (R.ItemId = SyncLog.ItemId AND R.ItemType = SyncLog.ItemType AND SyncLog.OwnerType = 'repo' AND SyncLog.OwnerId = @RepositoryId);
+      JOIN @RemoveFromSyncLog AS R ON (R.ItemId = SyncLog.ItemId AND R.ItemType = SyncLog.ItemType AND SyncLog.OwnerType = 'repo' AND SyncLog.OwnerId = @RepositoryId)
     
     UPDATE SyncLog
        SET [RowVersion] = DEFAULT, [Delete] = 1
       FROM SyncLog
-      JOIN @MarkDeletedInSyncLog AS M ON (M.ItemId = SyncLog.ItemId AND M.ItemType = SyncLog.ItemType AND SyncLog.OwnerType = 'repo' AND SyncLog.OwnerId = @RepositoryId);
+      JOIN @MarkDeletedInSyncLog AS M ON (M.ItemId = SyncLog.ItemId AND M.ItemType = SyncLog.ItemType AND SyncLog.OwnerType = 'repo' AND SyncLog.OwnerId = @RepositoryId)
 
     -- Finally, reset our sync nibble progress
 
@@ -132,7 +132,7 @@ BEGIN
            PullRequestMetadataJson = NULL,
            PullRequestUpdatedAt = NULL,
            PullRequestSkip = NULL
-     WHERE Id = @RepositoryId;
+     WHERE Id = @RepositoryId
 
     COMMIT TRANSACTION
   END TRY
@@ -142,6 +142,6 @@ BEGIN
   END CATCH
 
   -- Return sync notifications
-  SELECT 'repo' as ItemType, @RepositoryId as ItemId;
+  SELECT 'repo' as ItemType, @RepositoryId as ItemId
 RETURN 0
 END

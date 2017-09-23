@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
@@ -301,7 +302,7 @@ namespace RealArtists.ShipHub.Common {
         }
       }
 
-      [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
+      [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
       public void WriteLines(LogLine[] lines) {
         var sent = false;
         for (var i = 0; i < 2 && !sent; i++) {

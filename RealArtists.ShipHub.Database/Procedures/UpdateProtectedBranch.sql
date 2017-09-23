@@ -11,7 +11,7 @@ BEGIN
 
   DECLARE @Changes TABLE (
     [Id] BIGINT NOT NULL PRIMARY KEY
-  );
+  )
 
   BEGIN TRY
     BEGIN TRANSACTION
@@ -47,7 +47,7 @@ BEGIN
       FROM (SELECT Id FROM @Changes) as c
      WHERE NOT EXISTS (
       SELECT * FROM SyncLog
-       WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'protectedbranch' AND ItemId = c.Id);
+       WHERE OwnerType = 'repo' AND OwnerId = @RepositoryId AND ItemType = 'protectedbranch' AND ItemId = c.Id)
 
     COMMIT TRANSACTION
   END TRY
@@ -58,5 +58,5 @@ BEGIN
 
   -- Output sync notifications
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
-  WHERE EXISTS (SELECT * FROM @Changes);
+  WHERE EXISTS (SELECT * FROM @Changes)
 END

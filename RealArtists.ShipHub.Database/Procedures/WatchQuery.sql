@@ -4,9 +4,11 @@
   @Watch BIT
 AS
 BEGIN
+  -- SET NOCOUNT ON added to prevent extra result sets from
+  -- interfering with SELECT statements.
   SET NOCOUNT ON
 
-   BEGIN TRY
+  BEGIN TRY
     BEGIN TRANSACTION
 
     IF (NOT EXISTS (SELECT * FROM Queries WHERE Id = @Id))
@@ -29,13 +31,12 @@ BEGIN
     END
 
     COMMIT TRANSACTION
-   END TRY
+  END TRY
   BEGIN CATCH
     IF (XACT_STATE() != 0) ROLLBACK TRANSACTION;
     THROW;
   END CATCH
 
   -- Return changelog
-  SELECT 'user' AS ItemType, @WatcherId as ItemId;
-
+  SELECT 'user' AS ItemType, @WatcherId as ItemId
 END

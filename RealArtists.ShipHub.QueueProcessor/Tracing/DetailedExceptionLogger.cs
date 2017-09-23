@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.QueueProcessor.Tracing {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics.CodeAnalysis;
   using Common;
   using Microsoft.ApplicationInsights;
   using Mindscape.Raygun4Net;
@@ -31,7 +32,7 @@
       _raygunClient = raygunClient;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly")]
+    [SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly")]
     public void Log(
       Guid functionInstanceId,
       long? forUserId,

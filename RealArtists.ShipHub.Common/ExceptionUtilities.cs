@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Common {
   using System;
   using System.Collections.Generic;
+  using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Runtime.CompilerServices;
   using Microsoft.ApplicationInsights;
@@ -39,7 +40,7 @@
       }
     });
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
+    [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
     public static void Report(this Exception exception, string message = null, string userInfo = null, [CallerFilePath] string filePath = "", [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0) {
       try {
         var ex = exception.Simplify();

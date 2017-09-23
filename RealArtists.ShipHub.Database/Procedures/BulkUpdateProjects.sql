@@ -15,17 +15,17 @@ BEGIN
   IF (@OrganizationId IS NULL AND @RepositoryId IS NULL)
     RAISERROR('Either OrganizationId or RepositoryId must be specified', 1, 1)
 
-  DECLARE @OwnerId BIGINT;
-  DECLARE @OwnerType NVARCHAR(4);
+  DECLARE @OwnerId BIGINT
+  DECLARE @OwnerType NVARCHAR(4)
 
-  SET @OwnerId = ISNULL(@RepositoryId, @OrganizationId);
-  SET @OwnerType = CASE WHEN @OrganizationId IS NULL THEN 'repo' ELSE 'org' END;
+  SET @OwnerId = ISNULL(@RepositoryId, @OrganizationId)
+  SET @OwnerType = CASE WHEN @OrganizationId IS NULL THEN 'repo' ELSE 'org' END
   
   -- Storage for updates to the log tables
   DECLARE @Changes TABLE (
     [Id] BIGINT NOT NULL PRIMARY KEY CLUSTERED,
     [Action] NVARCHAR(10) NOT NULL
-  );
+  )
 
   BEGIN TRY
     BEGIN TRANSACTION
