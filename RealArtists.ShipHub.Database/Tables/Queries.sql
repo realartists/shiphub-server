@@ -7,3 +7,7 @@
   CONSTRAINT [FK_Queries_AuthorId_Accounts_Id] FOREIGN KEY ([AuthorId]) REFERENCES [dbo].[Accounts] ([Id])
 )
 GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [IX_Queries_AuthorId]
+  ON [dbo].[Queries]([AuthorId])
+GO
