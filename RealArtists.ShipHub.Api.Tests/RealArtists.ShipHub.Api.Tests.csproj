@@ -255,10 +255,6 @@
       <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
       <Name>RealArtists.ShipHub.QueueClient</Name>
     </ProjectReference>
-    <ProjectReference Include="..\RealArtists.ShipHub.QueueProcessor\RealArtists.ShipHub.QueueProcessor.csproj">
-      <Project>{87ce7f09-bee2-411e-a2bb-bd9b135ca74c}</Project>
-      <Name>RealArtists.ShipHub.QueueProcessor</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
