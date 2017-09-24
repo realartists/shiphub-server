@@ -13,7 +13,6 @@
   using QueueClient;
   using SimpleInjector;
   using Tracing;
-  using cb = ChargeBee;
 
   static class Program {
     public const string ApplicationInsightsKey = "APPINSIGHTS_INSTRUMENTATIONKEY";
@@ -171,13 +170,6 @@
 
         // IDetailedExceptionLogger
         container.RegisterSingleton(() => detailedLogger);
-
-        // ChargeBee
-        var chargeBeeHostAndApiKey = ShipHubCloudConfiguration.Instance.ChargeBeeHostAndKey;
-        if (!chargeBeeHostAndApiKey.IsNullOrWhiteSpace()) {
-          var parts = chargeBeeHostAndApiKey.Split(':');
-          container.RegisterSingleton(() => new cb.ChargeBeeApi(parts[0], parts[1]));
-        }
 
         container.Verify();
       } catch {
