@@ -119,8 +119,8 @@
     <Reference Include="OrleansTelemetryConsumers.Counters, Version=1.5.1.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Orleans.OrleansTelemetryConsumers.Counters.1.5.1\lib\net461\OrleansTelemetryConsumers.Counters.dll</HintPath>
     </Reference>
-    <Reference Include="SimpleInjector, Version=4.0.8.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
-      <HintPath>..\packages\SimpleInjector.4.0.8\lib\net45\SimpleInjector.dll</HintPath>
+    <Reference Include="SimpleInjector, Version=4.0.11.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
+      <HintPath>..\packages\SimpleInjector.4.0.11\lib\net45\SimpleInjector.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
