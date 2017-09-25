@@ -4,6 +4,7 @@
   using System.Linq;
   using System.Threading.Tasks;
   using System.Web.Http;
+  using System.Web.Http.Cors;
   using AutoMapper;
   using RealArtists.ShipHub.Api.Sync.Messages.Entries;
   using RealArtists.ShipHub.Common;
@@ -53,9 +54,11 @@
       return null;
     }
 
-    [AllowAnonymous]
     [HttpGet]
+    [HttpOptions]
+    [AllowAnonymous]
     [Route("{queryId:guid}")]
+    [EnableCors(origins: "https://ship.realartists.com", headers: "Accept,Origin,Content-Type", methods: "GET,OPTIONS", exposedHeaders: "", PreflightMaxAge = 300,  SupportsCredentials= false)]
     public async Task<IHttpActionResult> QueryInfo(Guid queryId) {
       QueryEntry entry = null;
       using (var context = new ShipHubContext()) {

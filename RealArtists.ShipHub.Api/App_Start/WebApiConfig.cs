@@ -25,6 +25,8 @@
       config.Formatters.Clear();
       config.Formatters.Add(new ChunkedJsonMediaTypeFormatter() { SerializerSettings = JsonUtility.JsonSerializerSettings });
 
+      config.EnableCors();
+
       config.MapHttpAttributeRoutes();
 
       // Application Insights exception logging
