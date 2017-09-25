@@ -47,5 +47,5 @@ GO
 CREATE NONCLUSTERED INDEX [IX_PullRequests_MergedById] ON [dbo].[PullRequests]([MergedById])
 GO
 
-CREATE NONCLUSTERED INDEX [IX_PullRequests_RepositoryId_RowVersion] ON [dbo].[PullRequests]([RepositoryId], [RowVersion]) INCLUDE ([IssueId], [Number], [ReviewMetadataJson])
+CREATE NONCLUSTERED INDEX [IX_PullRequests_RepositoryId_RowVersion] ON [dbo].[PullRequests]([RepositoryId], [RowVersion])
 GO
