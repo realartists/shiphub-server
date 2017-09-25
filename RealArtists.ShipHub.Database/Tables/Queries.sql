@@ -8,6 +8,6 @@
 )
 GO
 
-CREATE UNIQUE NONCLUSTERED INDEX [IX_Queries_AuthorId]
+CREATE NONCLUSTERED INDEX [IX_Queries_AuthorId]
   ON [dbo].[Queries]([AuthorId])
 GO
