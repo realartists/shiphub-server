@@ -106,7 +106,7 @@
         _queueClient.NotifyChanges(updater.Changes).LogFailure(ShipHubUser.DebugIdentifier);
       }
 
-      return StatusCode(System.Net.HttpStatusCode.NoContent);
+      return StatusCode(System.Net.HttpStatusCode.OK);
     }
 
     [HttpPut]
