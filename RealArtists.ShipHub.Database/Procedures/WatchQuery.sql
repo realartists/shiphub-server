@@ -8,13 +8,13 @@ BEGIN
   -- interfering with SELECT statements.
   SET NOCOUNT ON
 
+  IF (NOT EXISTS (SELECT * FROM Queries WHERE Id = @Id))
+  BEGIN
+    RETURN
+  END
+
   BEGIN TRY
     BEGIN TRANSACTION
-
-    IF (NOT EXISTS (SELECT * FROM Queries WHERE Id = @Id))
-    BEGIN
-      RETURN
-    END
 
     -- updating watch
     UPDATE QueryLog SET 

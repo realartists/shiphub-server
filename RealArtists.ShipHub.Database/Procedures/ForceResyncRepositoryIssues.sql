@@ -143,5 +143,4 @@ BEGIN
 
   -- Return sync notifications
   SELECT 'repo' as ItemType, @RepositoryId as ItemId
-RETURN 0
 END

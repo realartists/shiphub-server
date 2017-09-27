@@ -28,31 +28,30 @@ BEGIN
       -- WHEN AuthorId mismatch, we refuse to do anything
 
       -- If we've failed to change anything, this is due to an AuthorId mismatch. Abort.
-      IF (@@ROWCOUNT = 0)
+      IF (@@ROWCOUNT > 0)
       BEGIN
-        RETURN
-      END
 
-      -- Let the author of the query start watching it again if she had previously stopped watching
-      UPDATE QueryLog SET
-        [Delete] = 0
-      WHERE WatcherId = @AuthorId
-        AND QueryId = @Id
-        AND [Delete] = 1
+        -- Let the author of the query start watching it again if she had previously stopped watching
+        UPDATE QueryLog SET
+          [Delete] = 0
+        WHERE WatcherId = @AuthorId
+          AND QueryId = @Id
+          AND [Delete] = 1
 
-      -- Update the version in SyncLog for all existing watchers of this query
-      UPDATE QueryLog SET
-        [RowVersion] = DEFAULT
-      OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
-      WHERE QueryId = @Id
-        AND [Delete] = 0
+        -- Update the version in SyncLog for all existing watchers of this query
+        UPDATE QueryLog SET
+          [RowVersion] = DEFAULT
+        OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
+        WHERE QueryId = @Id
+          AND [Delete] = 0
 
-      -- Insert a watcher row into the synclog for the author if there isn't one already
-      INSERT INTO QueryLog (QueryId, WatcherId, [Delete])
-      OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
-      SELECT @Id, @AuthorId, 0
+        -- Insert a watcher row into the synclog for the author if there isn't one already
+        INSERT INTO QueryLog (QueryId, WatcherId, [Delete])
+        OUTPUT 'user' as ItemType, Inserted.WatcherId as ItemId
+        SELECT @Id, @AuthorId, 0
         WHERE NOT EXISTS (SELECT * FROM QueryLog WHERE WatcherId = @AuthorId AND QueryId = @Id)
 
+      END
     COMMIT TRANSACTION
   END TRY
   BEGIN CATCH
