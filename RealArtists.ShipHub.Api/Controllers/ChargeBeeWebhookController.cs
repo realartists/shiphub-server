@@ -13,6 +13,7 @@
   using Mail;
   using Newtonsoft.Json;
   using QueueClient;
+  using RealArtists.ShipHub.ActorInterfaces;
   using cb = ChargeBee;
 
   public class ChargeBeeWebhookCard {
@@ -97,12 +98,14 @@
     private IShipHubQueueClient _queueClient;
     private IShipHubMailer _mailer;
     private cb.ChargeBeeApi _chargeBee;
+    private IAsyncGrainFactory _grainFactory;
 
-    public ChargeBeeWebhookController(IShipHubConfiguration configuration, IShipHubQueueClient queueClient, IShipHubMailer mailer, cb.ChargeBeeApi chargeBee) {
+    public ChargeBeeWebhookController(IShipHubConfiguration configuration, IShipHubQueueClient queueClient, IShipHubMailer mailer, cb.ChargeBeeApi chargeBee, IAsyncGrainFactory grainFactory) {
       _configuration = configuration;
       _queueClient = queueClient;
       _mailer = mailer;
       _chargeBee = chargeBee;
+      _grainFactory = grainFactory;
     }
 
     private async Task<(string SignedUrl, string FileName, string DirectUrl)> PdfInfo(ChargeBeeWebhookPayload payload) {
@@ -551,12 +554,16 @@
           // For all users associated with this org and that have logged into Ship
           // (i.e., they have a Subscription record), go re-evaluate whether the
           // user should have a complimentary personal subscription.
-          var orgAccountIds = context.OrganizationAccounts
+          var userIds = context.OrganizationAccounts
             .AsNoTracking()
             .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
             .Select(x => x.UserId)
             .ToArray();
-          tasks.AddRange(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
+
+          foreach (var user in userIds) {
+            var actor = await _grainFactory.GetGrain<IUserBillingActor>(user);
+            tasks.Add(actor.UpdateComplimentarySubscription());
+          }
         }
       }
 

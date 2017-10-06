@@ -32,17 +32,23 @@
     public const int SaveSkip = 5; // Saving metadata is expensive
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
-      "commit_comment"
+        "commit_comment"
       , "issue_comment"
       , "issues"
       , "label"
+      //, "member"
       , "milestone"
-      , "pull_request_review_comment"
-      , "pull_request_review"
+      //, "project"
+      //, "project_card"
+      //, "project_column"
+      //, "public"
       , "pull_request"
+      , "pull_request_review"
+      , "pull_request_review_comment"
       , "push"
       , "repository"
       , "status"
+      //, "team_add"
     );
 
     public static Regex ExactMatchIssueTemplateRegex { get; } = new Regex(
