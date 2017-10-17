@@ -139,8 +139,8 @@
     <Reference Include="nunit.framework, Version=3.8.1.0, Culture=neutral, PublicKeyToken=2638cd05610744eb, processorArchitecture=MSIL">
       <HintPath>..\packages\NUnit.3.8.1\lib\net45\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="Orleans, Version=1.5.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Orleans.Core.1.5.1\lib\net461\Orleans.dll</HintPath>
+    <Reference Include="Orleans, Version=1.5.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Orleans.Core.1.5.2\lib\net461\Orleans.dll</HintPath>
     </Reference>
     <Reference Include="RealArtists.ChargeBee, Version=2.2.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RealArtists.ChargeBee.2.2.4-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
