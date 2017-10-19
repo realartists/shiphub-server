@@ -1038,6 +1038,7 @@
     }
 
     public Task<ChangeSummary> DeleteRepositories(IEnumerable<long> repositories) {
+      Log.Info($"Deleting repositories: [{string.Join(",", repositories)}]");
       return ExecuteAndReadChanges("[dbo].[DeleteRepositories]", x => {
         x.Repositories = CreateItemListTable("Repositories", repositories);
       });
