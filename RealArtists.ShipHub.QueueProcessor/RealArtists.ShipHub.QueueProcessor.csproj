@@ -82,7 +82,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="App.Release.config" />
-    <None Include="packages.config" />
     <None Include="Properties\PublishProfiles\shiphub-dev - Web Deploy.pubxml" />
     <None Include="Properties\webjob-publish-settings.json" />
   </ItemGroup>

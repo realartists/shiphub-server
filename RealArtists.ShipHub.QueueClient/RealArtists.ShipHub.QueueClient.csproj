@@ -48,9 +48,6 @@
     <Compile Include="WebJobInterop.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
     <CodeAnalysisDictionary Include="..\ShipHubDictionary.xml">
       <Link>ShipHubDictionary.xml</Link>
     </CodeAnalysisDictionary>

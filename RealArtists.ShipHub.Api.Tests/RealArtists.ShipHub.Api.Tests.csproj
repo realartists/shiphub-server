@@ -63,7 +63,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="App.config" />
-    <None Include="packages.config" />
     <None Include="PrepareAppVeyorTest.ps1" />
     <None Include="PrepareAzureTest.ps1" />
   </ItemGroup>
