@@ -152,10 +152,66 @@
     <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <ItemGroup>
-    <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />
-    <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
+    <PackageReference Include="AutoMapper">
+      <Version>6.1.1</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.ApplicationInsights.Web">
+      <Version>2.4.1</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNet.WebApi.Cors">
+      <Version>5.2.3</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNet.WebApi.WebHost">
+      <Version>5.2.3</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeDom.Providers.DotNetCompilerPlatform">
+      <Version>1.0.8</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Orleans.Client">
+      <Version>2.0.0-beta1</Version>
+    </PackageReference>
+    <PackageReference Include="Mindscape.Raygun4Net.WebApi">
+      <Version>5.5.2</Version>
+    </PackageReference>
+    <PackageReference Include="mixpanel-csharp">
+      <Version>4.0.1</Version>
+    </PackageReference>
+    <PackageReference Include="RealArtists.ChargeBee">
+      <Version>2.2.8-alpha</Version>
+    </PackageReference>
+    <PackageReference Include="SimpleInjector.Integration.WebApi">
+      <Version>4.0.12</Version>
+    </PackageReference>
+    <PackageReference Include="System.Reactive">
+      <Version>3.1.1</Version>
+    </PackageReference>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">
+      <Project>{a23a5314-a785-4d1e-9405-969e0b6d1979}</Project>
+      <Name>RealArtists.ShipHub.ActorInterfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Actors\RealArtists.ShipHub.Actors.csproj">
+      <Project>{EAA1A282-233E-495C-9210-6307CD8DA6A0}</Project>
+      <Name>RealArtists.ShipHub.Actors</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
+      <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
+      <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Mail\RealArtists.ShipHub.Mail.csproj">
+      <Project>{0e4e2509-0412-4bc2-a74a-96892bd3045e}</Project>
+      <Name>RealArtists.ShipHub.Mail</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
+      <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
+      <Name>RealArtists.ShipHub.QueueClient</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Web" />
+  </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>

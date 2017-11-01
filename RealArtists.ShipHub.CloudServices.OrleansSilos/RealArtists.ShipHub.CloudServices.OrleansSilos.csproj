@@ -15,6 +15,7 @@
     <RoleType>Worker</RoleType>
     <NuGetPackageImportStamp>
     </NuGetPackageImportStamp>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -38,10 +39,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ShipStartupProvider.cs" />
     <Compile Include="StatHatTelemetryConsumer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaygunTelemetryConsumer.cs" />
-    <Compile Include="ShipStartupProvider.cs" />
     <Compile Include="WorkerRole.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -55,8 +56,32 @@
     </CodeAnalysisDictionary>
   </ItemGroup>
   <ItemGroup>
-    <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.Analyzers.dll" />
-    <Analyzer Include="..\packages\Microsoft.CodeAnalysis.Analyzers.1.1.0\analyzers\dotnet\cs\Microsoft.CodeAnalysis.CSharp.Analyzers.dll" />
+    <PackageReference Include="Microsoft.Orleans.OrleansTelemetryConsumers.AI">
+      <Version>2.0.0-beta1</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Orleans.Server">
+      <Version>2.0.0-beta1</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.WindowsAzure.SDK">
+      <Version>2.9.0</Version>
+    </PackageReference>
+    <PackageReference Include="Mindscape.Raygun4Net">
+      <Version>5.5.2</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.Actors\RealArtists.ShipHub.Actors.csproj">
+      <Project>{eaa1a282-233e-495c-9210-6307cd8da6a0}</Project>
+      <Name>RealArtists.ShipHub.Actors</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
+      <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
+      <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
+      <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
+      <Name>RealArtists.ShipHub.QueueClient</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -72,13 +97,4 @@
     -->
     <AutoUnifyAssemblyReferences>false</AutoUnifyAssemblyReferences>
   </PropertyGroup>
-  <Import Project="..\packages\Microsoft.Orleans.OrleansHost.1.5.2\build\Microsoft.Orleans.OrleansHost.targets" Condition="Exists('..\packages\Microsoft.Orleans.OrleansHost.1.5.2\build\Microsoft.Orleans.OrleansHost.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\Microsoft.Orleans.OrleansHost.1.5.2\build\Microsoft.Orleans.OrleansHost.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.OrleansHost.1.5.2\build\Microsoft.Orleans.OrleansHost.targets'))" />
-    <Error Condition="!Exists('..\packages\Microsoft.Orleans.CounterControl.1.5.2\build\Microsoft.Orleans.CounterControl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Orleans.CounterControl.1.5.2\build\Microsoft.Orleans.CounterControl.targets'))" />
-  </Target>
-  <Import Project="..\packages\Microsoft.Orleans.CounterControl.1.5.2\build\Microsoft.Orleans.CounterControl.targets" Condition="Exists('..\packages\Microsoft.Orleans.CounterControl.1.5.2\build\Microsoft.Orleans.CounterControl.targets')" />
 </Project>

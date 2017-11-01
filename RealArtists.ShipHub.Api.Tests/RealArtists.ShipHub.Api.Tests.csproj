@@ -71,18 +71,66 @@
       <Link>ShipHubDictionary.xml</Link>
     </CodeAnalysisDictionary>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoMapper">
+      <Version>6.1.1</Version>
+    </PackageReference>
+    <PackageReference Include="EntityFramework">
+      <Version>6.2.0</Version>
+    </PackageReference>
+    <PackageReference Include="Moq">
+      <Version>4.7.142</Version>
+    </PackageReference>
+    <PackageReference Include="NUnit">
+      <Version>3.8.1</Version>
+    </PackageReference>
+    <PackageReference Include="NUnit3TestAdapter">
+      <Version>3.9.0</Version>
+    </PackageReference>
+    <PackageReference Include="RealArtists.ChargeBee">
+      <Version>2.2.8-alpha</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RealArtists.ShipHub.ActorInterfaces\RealArtists.ShipHub.ActorInterfaces.csproj">
+      <Project>{a23a5314-a785-4d1e-9405-969e0b6d1979}</Project>
+      <Name>RealArtists.ShipHub.ActorInterfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Actors\RealArtists.ShipHub.Actors.csproj">
+      <Project>{eaa1a282-233e-495c-9210-6307cd8da6a0}</Project>
+      <Name>RealArtists.ShipHub.Actors</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Api\RealArtists.ShipHub.Api.csproj">
+      <Project>{10212ac5-34f5-4bac-aad6-8865183575bc}</Project>
+      <Name>RealArtists.ShipHub.Api</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Common\RealArtists.ShipHub.Common.csproj">
+      <Project>{6ecf5873-32ab-459d-985b-b949599fed74}</Project>
+      <Name>RealArtists.ShipHub.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.Mail\RealArtists.ShipHub.Mail.csproj">
+      <Project>{0e4e2509-0412-4bc2-a74a-96892bd3045e}</Project>
+      <Name>RealArtists.ShipHub.Mail</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
+      <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
+      <Name>RealArtists.ShipHub.QueueClient</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\RealArtists.ShipHub.QueueProcessor\RealArtists.ShipHub.QueueProcessor.csproj">
+      <Project>{87ce7f09-bee2-411e-a2bb-bd9b135ca74c}</Project>
+      <Name>RealArtists.ShipHub.QueueProcessor</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+  </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
     </PostBuildEvent>
   </PropertyGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('..\packages\NUnit3TestAdapter.3.8.0\build\net35\NUnit3TestAdapter.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\NUnit3TestAdapter.3.8.0\build\net35\NUnit3TestAdapter.props'))" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
