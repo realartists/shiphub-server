@@ -11,6 +11,7 @@
   using Microsoft.Azure.WebJobs.ServiceBus;
   using Mindscape.Raygun4Net;
   using QueueClient;
+  using RealArtists.ShipHub.ActorInterfaces;
   using SimpleInjector;
   using Tracing;
   using cb = ChargeBee;
@@ -161,8 +162,8 @@
 
         // Orleans
         container.RegisterSingleton<IAsyncGrainFactory>(() => {
-          var factory = new OrleansAzureClient(config.DeploymentId, config.DataConnectionString);
-          factory.Configuration.DefaultTraceLevel = Orleans.Runtime.Severity.Error;
+          var actorAssembly = typeof(IEchoActor).Assembly;
+          var factory = new OrleansAzureClient(config.DeploymentId, config.DataConnectionString, actorAssembly);
           return factory;
         });
 

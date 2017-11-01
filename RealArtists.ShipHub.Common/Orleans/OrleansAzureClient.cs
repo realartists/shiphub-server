@@ -40,10 +40,11 @@
     public string DeploymentId { get; private set; }
     public string DataConnectionString { get; private set; }
     public ClientConfiguration Configuration { get; private set; }
+    public Assembly ActorApplicationPart { get; private set; }
 
     private Lazy<Task<IClusterClient>> _instance;
 
-    public OrleansAzureClient(string deploymentId, string dataConnectionString) {
+    public OrleansAzureClient(string deploymentId, string dataConnectionString, Assembly actorApplicationPart) {
       DeploymentId = deploymentId;
       DataConnectionString = dataConnectionString;
 
@@ -51,18 +52,18 @@
         GatewayProvider = ClientConfiguration.GatewayProviderType.AzureTable,
         DeploymentId = DeploymentId,
         DataConnectionString = DataConnectionString,
-        TraceFilePattern = "false",
-        TraceToConsole = false,
         ResponseTimeout = ResponseTimeout,
         FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo(),
       };
 
       Configuration.SerializationProviders.Add(typeof(JsonObjectSerializer).GetTypeInfo());
 
+      ActorApplicationPart = actorApplicationPart;
+
       _instance = new Lazy<Task<IClusterClient>>(new Func<Task<IClusterClient>>(CreateOrleansClient), LazyThreadSafetyMode.ExecutionAndPublication);
     }
 
-    public async Task<IClusterClient> CreateOrleansClient() {
+    private async Task<IClusterClient> CreateOrleansClient() {
       if (DeploymentId.IsNullOrWhiteSpace()) {
         throw new ConfigurationErrorsException($"Cannot connect to Azure silos with null deploymentId.");
       }
@@ -81,6 +82,7 @@
 
         try {
           var client = new ClientBuilder()
+            .AddApplicationPart(ActorApplicationPart)
             .UseConfiguration(Configuration)
             .AddClusterConnectionLostHandler((sender, e) => Log.Info("Orleans cluster connection lost."))
             .Build();

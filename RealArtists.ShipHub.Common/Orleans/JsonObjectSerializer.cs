@@ -33,14 +33,14 @@
 
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public object Deserialize(Type expectedType, IDeserializationContext context) {
-      var json = context.SerializationManager.Deserialize<string>(context.StreamReader);
+      var json = (string)context.DeserializeInner(typeof(string));
       return JsonConvert.DeserializeObject(json, expectedType, _jsonSerializerSettings);
     }
 
     [SuppressMessage("Microsoft.Usage", "CA2202:Do not dispose objects multiple times")]
     public void Serialize(object item, ISerializationContext context, Type expectedType) {
       var json = JsonConvert.SerializeObject(item, _jsonSerializerSettings);
-      context.SerializationManager.Serialize(json, context.StreamWriter);
+      context.SerializeInner(json);
     }
   }
 }

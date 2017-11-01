@@ -8,6 +8,7 @@
   using Mixpanel;
   using QueueClient;
   using RealArtists.ChargeBee;
+  using RealArtists.ShipHub.ActorInterfaces;
   using SimpleInjector;
   using SimpleInjector.Integration.WebApi;
   using SimpleInjector.Lifestyles;
@@ -37,7 +38,8 @@
       });
 
       // Orleans
-      container.RegisterSingleton<IAsyncGrainFactory>(new OrleansAzureClient(config.DeploymentId, config.DataConnectionString));
+      var actorAssembly = typeof(IEchoActor).Assembly;
+      container.RegisterSingleton<IAsyncGrainFactory>(new OrleansAzureClient(config.DeploymentId, config.DataConnectionString, actorAssembly));
 
       // Queue Client
       container.RegisterSingleton<IShipHubQueueClient, ShipHubQueueClient>();

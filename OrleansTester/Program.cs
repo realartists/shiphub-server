@@ -17,7 +17,8 @@
     }
 
     static async Task DoIt3() {
-      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
+      var actorAssembly = typeof(IEchoActor).Assembly;
+      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString, actorAssembly);
 
       var github = await gc.GetGrain<IGitHubActor>(87309); // kogir
       var repoFullName = "realartists/shiphub-server";
@@ -79,7 +80,8 @@
     }
 
     static async Task DoIt() {
-      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
+      var actorAssembly = typeof(IEchoActor).Assembly;
+      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString, actorAssembly);
 
       var user = await gc.GetGrain<IUserActor>(87309); // kogir
 
