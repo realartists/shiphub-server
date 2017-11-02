@@ -3,18 +3,26 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
   using System.Diagnostics.CodeAnalysis;
   using System.Linq;
   using System.Reflection;
+  using Actors;
+  using AutoMapper;
   using Common;
+  using Common.DataModel;
+  using Microsoft.Extensions.DependencyInjection;
+  using Microsoft.Extensions.Logging;
   using Microsoft.WindowsAzure.ServiceRuntime;
+  using Orleans;
+  using Orleans.Hosting;
   using Orleans.Runtime.Configuration;
   using Orleans.Runtime.Host;
   using Orleans.Serialization;
+  using QueueClient;
 
   // For lifecycle details see https://docs.microsoft.com/en-us/azure/cloud-services/cloud-services-role-lifecycle-dotnet
   [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable")]
   public class WorkerRole : RoleEntryPoint {
     private static readonly TimeSpan SiloRequestTimeout = TimeSpan.FromMinutes(30);
 
-    private AzureSilo _silo;
+    private ISiloHost _siloHost;
     private ShipHubCloudConfiguration _config = new ShipHubCloudConfiguration();
 
     public override bool OnStart() {
@@ -51,41 +59,41 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
       return base.OnStart();
     }
 
-    //private void ConfigureServices(IServiceCollection services) {
-    //  Log.Trace();
+    private void ConfigureServices(IServiceCollection services) {
+      Log.Trace();
 
-    //  // Just use the Microsoft container.
+      // Just use the Microsoft container.
 
-    //  var config = ShipHubCloudConfiguration.Instance;
-    //  // Configuration
-    //  services.AddSingleton(config);
+      var config = ShipHubCloudConfiguration.Instance;
+      // Configuration
+      services.AddSingleton(config);
 
-    //  // Transient configuration
-    //  services.AddSingleton<IShipHubRuntimeConfiguration, ShipHubRuntimeConfiguration>();
+      // Transient configuration
+      services.AddSingleton<IShipHubRuntimeConfiguration, ShipHubRuntimeConfiguration>();
 
-    //  services.AddSingleton<IFactory<ShipHubContext>>(
-    //    new GenericFactory<ShipHubContext>(() => new ShipHubContext(config.ShipHubContext)));
+      services.AddSingleton<IFactory<ShipHubContext>>(
+        new GenericFactory<ShipHubContext>(() => new ShipHubContext(config.ShipHubContext)));
 
-    //  // AutoMapper
-    //  services.AddSingleton(
-    //    new MapperConfiguration(cfg => {
-    //      cfg.AddProfile<GitHubToDataModelProfile>();
-    //    }).CreateMapper());
+      // AutoMapper
+      services.AddSingleton(
+        new MapperConfiguration(cfg => {
+          cfg.AddProfile<GitHubToDataModelProfile>();
+        }).CreateMapper());
 
-    //  // Service Bus
-    //  Log.Info($"Creating {nameof(ServiceBusFactory)}");
-    //  // HACK: This is gross
-    //  var sbf = new ServiceBusFactory();
-    //  sbf.Initialize().GetAwaiter().GetResult();
-    //  services.AddSingleton<IServiceBusFactory>(sbf);
-    //  Log.Info($"Created {nameof(ServiceBusFactory)}");
+      // Service Bus
+      Log.Info($"Creating {nameof(ServiceBusFactory)}");
+      // HACK: This is gross
+      var sbf = new ServiceBusFactory();
+      sbf.Initialize().GetAwaiter().GetResult();
+      services.AddSingleton<IServiceBusFactory>(sbf);
+      Log.Info($"Created {nameof(ServiceBusFactory)}");
 
-    //  // Queue Client
-    //  services.AddSingleton<IShipHubQueueClient, ShipHubQueueClient>();
+      // Queue Client
+      services.AddSingleton<IShipHubQueueClient, ShipHubQueueClient>();
 
-    //  // TimeLoggerFilter Interceptor
-    //  services.AddSingleton<IGrainCallFilter, TimeLoggerFilter>();
-    //}
+      // TimeLoggerFilter Interceptor
+      services.AddSingleton<IGrainCallFilter, TimeLoggerFilter>();
+    }
 
     [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
     public override void Run() {
@@ -106,26 +114,24 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
         // Ensure exceptions can be serialized
         siloConfig.Globals.FallbackSerializationProvider = typeof(ILBasedSerializer).GetTypeInfo();
 
-        // Dependency Injection
-#pragma warning disable CS0618 // Type or member is obsolete
-        siloConfig.UseStartupType<ShipStartupProvider>();
-#pragma warning restore CS0618 // Type or member is obsolete
+        siloConfig.Globals.ReminderServiceType = GlobalConfiguration.ReminderServiceProviderType.Disabled;
 
-        siloConfig.AddAzureTableStorageProvider("AzureStore", _config.DataConnectionString);
-
-        //var builder = new SiloHostBuilder()
-        //  .AddApplicationPart(typeof(EchoActor).Assembly)
-        //  .UseConfiguration(siloConfig)
-        //  .ConfigureServices(ConfigureServices)
-        //  .Build();
+        _siloHost = new SiloHostBuilder()
+          .UseConfiguration(siloConfig)
+          .UseAzureTableMembership(opt => {
+            opt.ConnectionString = _config.DataConnectionString;
+          })
+          .ConfigureServices(ConfigureServices)
+          .AddApplicationPartsFromReferences(typeof(EchoActor).Assembly)
+          .ConfigureLogging(logging => logging.AddConsole())
+          .Build();
 
         // It is IMPORTANT to start the silo not in OnStart but in Run.
         // Azure may not have the firewalls open yet (on the remote silos) at the OnStart phase.
-        _silo = new AzureSilo();
-        _silo.Start(siloConfig);
+        _siloHost.StartAsync().GetAwaiter().GetResult();
 
         // Block until silo is shutdown
-        _silo.Run();
+        _siloHost.Stopped.GetAwaiter().GetResult();
       } catch (Exception e) {
         e.Report("Error while running silo. Aborting.");
       }
@@ -136,11 +142,11 @@ namespace RealArtists.ShipHub.CloudServices.OrleansSilos {
     public override void OnStop() {
       Log.Trace();
 
-      if (_silo != null) {
+      if (_siloHost != null) {
         Log.Info("Stopping silo.");
-        _silo.Stop();
+        _siloHost.StopAsync().GetAwaiter().GetResult();
         Log.Info("Stopped silo.");
-        _silo = null;
+        _siloHost = null;
       }
 
       base.OnStop();
