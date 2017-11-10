@@ -2,7 +2,7 @@
   using System;
   using System.Diagnostics.CodeAnalysis;
 
-  public class PaymentSucceededOrganizationMailMessage : MailMessageBase {
+  public class PaymentSucceededOrganizationMailMessage : MailMessageBase, IPdfAttachment {
     public double AmountPaid { get; set; }
     public string InvoicePdfUrl { get; set; }
     public PaymentMethodSummary PaymentMethodSummary { get; set; }
@@ -11,5 +11,7 @@
     public string[] PreviousMonthActiveUsersSample { get; set; }
     public DateTimeOffset PreviousMonthStart { get; set; }
     public DateTimeOffset ServiceThroughDate { get; set; }
+    public string AttachmentUrl { get; set; }
+    public string AttachmentName { get; set; }
   }
 }

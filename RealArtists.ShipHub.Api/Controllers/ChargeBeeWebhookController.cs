@@ -105,28 +105,36 @@
       _chargeBee = chargeBee;
     }
 
-    private async Task<string> InvoiceUrl(ChargeBeeWebhookPayload payload) {
-      var invoiceId = payload.Content.Invoice.Id;
-      var githubUserName = await GitHubUserNameFromWebhookPayload(payload);
-      var filename = $"ship-invoice-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date).ToString("yyyy-MM-dd")}.pdf";
-      var signature = BillingController.CreateSignature(invoiceId, invoiceId);
-      var downloadUrl = $"https://{_configuration.ApiHostName}/billing/invoice/{invoiceId}/{signature}/{filename}";
-      return downloadUrl;
-    }
+    private async Task<(string SignedUrl, string FileName, string DirectUrl)> PdfInfo(ChargeBeeWebhookPayload payload) {
+      string signedUrl;
+      string fileName;
+      string directUrl;
 
-    private async Task<string> CreditNoteUrl(ChargeBeeWebhookPayload payload) {
-      var creditNoteId = payload.Content.CreditNote.Id;
       var githubUserName = await GitHubUserNameFromWebhookPayload(payload);
-      var filename = $"ship-credit-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date).ToString("yyyy-MM-dd")}.pdf";
-      var signature = BillingController.CreateSignature(creditNoteId, creditNoteId);
-      var downloadUrl = $"https://{_configuration.ApiHostName}/billing/credit/{creditNoteId}/{signature}/{filename}";
-      return downloadUrl;
+
+      if (payload.Content.CreditNote?.Id != null) {
+        var creditNoteId = payload.Content.CreditNote.Id;
+        var signature = BillingController.CreateLegacySignature(creditNoteId);
+        fileName = $"ship-credit-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.CreditNote.Date).ToString("yyyy-MM-dd")}.pdf";
+        signedUrl = $"https://{_configuration.ApiHostName}/billing/credit/{creditNoteId}/{signature}/{fileName}";
+        directUrl = (await _chargeBee.CreditNote.Pdf(creditNoteId).Request()).Download.DownloadUrl;
+      } else if (payload.Content.Invoice?.Id != null) {
+        var invoiceId = payload.Content.Invoice.Id;
+        var signature = BillingController.CreateLegacySignature(invoiceId);
+        fileName = $"ship-invoice-{githubUserName}-{DateTimeOffset.FromUnixTimeSeconds(payload.Content.Invoice.Date).ToString("yyyy-MM-dd")}.pdf";
+        signedUrl = $"https://{_configuration.ApiHostName}/billing/invoice/{invoiceId}/{signature}/{fileName}";
+        directUrl = (await _chargeBee.Invoice.Pdf(invoiceId).Request()).Download.DownloadUrl;
+      } else {
+        throw new Exception($"Cannot determine PDF for {payload.EventType}");
+      }
+
+      return (SignedUrl: signedUrl, FileName: fileName, DirectUrl: directUrl);
     }
 
     private async Task<string> GitHubUserNameFromWebhookPayload(ChargeBeeWebhookPayload payload) {
       // Most events include the customer portion which gives us the GitHub username.
       if (payload.Content.Customer?.GitHubUserName != null) {
-        return payload.Content.Customer?.GitHubUserName;
+        return payload.Content.Customer.GitHubUserName;
       } else {
         // Invoice events (and maybe others, TBD) don't include the Customer portion so
         // we have to find the customer id in another section.
@@ -138,8 +146,12 @@
         if (customerId != null) {
           var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(customerId);
           using (var context = new ShipHubContext()) {
-            var account = await context.Accounts.SingleOrDefaultAsync(x => x.Id == accountId);
-            return account?.Login;
+            var login = await context.Accounts
+              .AsNoTracking()
+              .Where(x => x.Id == accountId)
+              .Select(x => x.Login)
+              .FirstOrDefaultAsync();
+            return login;
           }
         } else {
           return null;
@@ -193,8 +205,11 @@
       var payloadBytes = Encoding.UTF8.GetBytes(payloadString);
       var payload = JsonConvert.DeserializeObject<ChargeBeeWebhookPayload>(payloadString, GitHubSerialization.JsonSerializerSettings);
 
+
       if (await ShouldIgnoreWebhook(payload)) {
-        return Ok($"Ignoring webhook because customer's GitHub username is on the exclude list, or not on the include list.");
+        var message = "Ignoring webhook because customer's GitHub username is on the exclude list, or not on the include list.";
+        Log.Info(message);
+        return Ok(message);
       }
 
       switch (payload.EventType) {
@@ -303,13 +318,16 @@
 
     public async Task SendPaymentFailedMessage(ChargeBeeWebhookPayload payload) {
       var updateUrl = GetPaymentMethodUpdateUrl(_configuration, payload.Content.Customer.Id);
+      var pdf = await PdfInfo(payload);
 
       var message = new Mail.Models.PaymentFailedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         Amount = payload.Content.Transaction.Amount / 100.0,
-        InvoicePdfUrl = await InvoiceUrl(payload),
+        InvoicePdfUrl = pdf.SignedUrl,
+        AttachmentName = pdf.FileName,
+        AttachmentUrl = pdf.DirectUrl,
         PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
         ErrorText = payload.Content.Transaction.ErrorText,
         UpdatePaymentMethodUrl = updateUrl,
@@ -323,25 +341,32 @@
     }
 
     public async Task SendPaymentRefundedMessage(ChargeBeeWebhookPayload payload) {
+      var pdf = await PdfInfo(payload);
+      
       await _mailer.PaymentRefunded(new Mail.Models.PaymentRefundedMailMessage() {
         GitHubUserName = payload.Content.Customer.GitHubUserName,
         ToAddress = payload.Content.Customer.Email,
         CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
         AmountRefunded = payload.Content.CreditNote.AmountRefunded / 100.0,
-        CreditNotePdfUrl = await CreditNoteUrl(payload),
+        CreditNotePdfUrl = pdf.SignedUrl,
+        AttachmentName = pdf.FileName,
+        AttachmentUrl = pdf.DirectUrl,
         PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
       });
     }
 
     public async Task SendPaymentSucceededPersonalMessage(ChargeBeeWebhookPayload payload) {
       var planLineItem = payload.Content.Invoice.LineItems.Single(x => x.EntityType == "plan");
+      var pdf = await PdfInfo(payload);
 
       await _mailer.PaymentSucceededPersonal(
         new Mail.Models.PaymentSucceededPersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoicePdfUrl = await InvoiceUrl(payload),
+          InvoicePdfUrl = pdf.SignedUrl,
+          AttachmentName = pdf.FileName,
+          AttachmentUrl = pdf.DirectUrl,
           AmountPaid = payload.Content.Invoice.AmountPaid / 100.0,
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
           PaymentMethodSummary = PaymentMethodSummary(payload.Content.Transaction),
@@ -387,12 +412,16 @@
           .ToArrayAsync();
       }
 
+      var pdf = await PdfInfo(payload);
+
       await _mailer.PaymentSucceededOrganization(
         new Mail.Models.PaymentSucceededOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoicePdfUrl = await InvoiceUrl(payload),
+          InvoicePdfUrl = pdf.SignedUrl,
+          AttachmentName = pdf.FileName,
+          AttachmentUrl = pdf.DirectUrl,
           ServiceThroughDate = DateTimeOffset.FromUnixTimeSeconds(planLineItem.DateTo),
           PreviousMonthActiveUsersCount = activeUsersCount,
           PreviousMonthActiveUsersSample = activeUsersSample,
@@ -420,6 +449,8 @@
       var wasGivenTrialCredit = payload.Content.Invoice.Discounts?
         .Count(x => x.EntityType == "document_level_coupon" && x.EntityId.StartsWith("trial_days_left")) > 0;
 
+      var pdf = await PdfInfo(payload);
+
       await _mailer.PurchasePersonal(
         new Mail.Models.PurchasePersonalMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
@@ -427,19 +458,24 @@
           CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
           BelongsToOrganization = belongsToOrganization,
           WasGivenTrialCredit = wasGivenTrialCredit,
-          InvoicePdfUrl = await InvoiceUrl(payload),
+          InvoicePdfUrl = pdf.SignedUrl,
+          AttachmentName = pdf.FileName,
+          AttachmentUrl = pdf.DirectUrl,
         });
     }
 
     public async Task SendPurchaseOrganizationMessage(ChargeBeeWebhookPayload payload) {
       var accountId = ChargeBeeUtilities.AccountIdFromCustomerId(payload.Content.Customer.Id);
+      var pdf = await PdfInfo(payload);
 
       await _mailer.PurchaseOrganization(
         new Mail.Models.PurchaseOrganizationMailMessage() {
           GitHubUserName = payload.Content.Customer.GitHubUserName,
           ToAddress = payload.Content.Customer.Email,
           CustomerName = payload.Content.Customer.FirstName + " " + payload.Content.Customer.LastName,
-          InvoicePdfUrl = await InvoiceUrl(payload),
+          InvoicePdfUrl = pdf.SignedUrl,
+          AttachmentName = pdf.FileName,
+          AttachmentUrl = pdf.DirectUrl,
         });
     }
 

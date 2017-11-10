@@ -139,12 +139,16 @@
     }
 
     public static string CreateSignature(long actorId, long targetId) {
-      return CreateSignature(actorId.ToString(), targetId.ToString());
+      return CreateSignature($"{actorId}|{targetId}");
     }
 
-    public static string CreateSignature(string actorId, string targetId) {
+    public static string CreateLegacySignature(string input) {
+      return CreateSignature($"{input}|{input}");
+    }
+
+    public static string CreateSignature(string value) {
       using (var hmac = new HMACSHA1(Encoding.UTF8.GetBytes("N7lowJKM71PgNdwfMTDHmNb82wiwFGl"))) {
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{actorId}|{targetId}"));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(value));
         var hashString = string.Join("", hash.Select(x => x.ToString("x2")));
         return hashString.Substring(0, 8);
       }
@@ -470,15 +474,14 @@
     }
 
     private static readonly TimeSpan _HandlerTimeout = TimeSpan.FromSeconds(60);
-
-    private static readonly HttpMessageHandler _HttpHandler = HttpUtilities.CreateDefaultHandler(maxRedirects: 3);
-
-    private static readonly HttpClient _HttpClient = new HttpClient(_HttpHandler) {
+    private static readonly HttpClient _HttpClient = new HttpClient(HttpUtilities.CreateDefaultHandler(maxRedirects: 3)) {
       Timeout = _HandlerTimeout
     };
 
     private async Task<HttpResponseMessage> DownloadEntity(cba.EntityRequest<Type> entityResult, string entityId, string fileName, string signature, CancellationToken cancellationToken) {
-      if (!CreateSignature(entityId, entityId).Equals(signature)) {
+      // Allow old and new style signatures.
+      if (!CreateSignature(entityId).Equals(signature)
+        && !CreateLegacySignature(entityId).Equals(signature)) {
         return Request.CreateErrorResponse(HttpStatusCode.BadRequest, "Signature does not match.");
       }
 
