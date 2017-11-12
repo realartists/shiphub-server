@@ -967,6 +967,7 @@
             ("HasIssues", typeof(bool)),
             ("HasProjects", typeof(bool)),
             ("Disabled", typeof(bool)),
+            ("Archived", typeof(bool)),
           },
           y => new object[] {
             y.Id,
@@ -978,6 +979,7 @@
             y.HasIssues,
             y.HasProjects,
             y.Disabled,
+            y.Archived,
           },
           repositories);
       });

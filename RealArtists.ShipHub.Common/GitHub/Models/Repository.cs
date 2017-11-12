@@ -19,5 +19,6 @@
     public RepositoryPermissions Permissions { get; set; }
     public string DefaultBranch { get; set; }
     public long Size { get; set; }
+    public bool Archived { get; set; }
   }
 }

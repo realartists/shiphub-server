@@ -86,6 +86,7 @@ BEGIN
       AND (@SelectiveSync = 1 OR ar.RepositoryId IS NOT NULL) -- Filter for older clients
       AND (r.[Private] = 0 OR ar.RepositoryId IS NOT NULL) -- This *should* be redundant, but that's ok
       AND r.[Disabled] = 0
+      AND r.Archived = 0
     UNION ALL
     SELECT sl.OwnerType, sl.OwnerId, sl.ItemType, sl.ItemId, sl.[Delete], sl.[RowVersion]
       FROM SyncLog as sl
@@ -147,6 +148,7 @@ BEGIN
   WHERE asr.RepositoryId IS NULL
     OR (@SelectiveSync = 0 AND ar.RepositoryId IS NULL)
     OR ISNULL(r.[Disabled], 0) = 1
+    OR r.Archived = 1
 
   SELECT ov.ItemId as OrganizationId, a.[Login]
   FROM @OrganizationVersions as ov

@@ -9,5 +9,6 @@
     public bool HasIssues { get; set; }
     public bool HasProjects { get; set; }
     public bool? Disabled { get; set; }
+    public bool Archived { get; set; }
   }
 }
