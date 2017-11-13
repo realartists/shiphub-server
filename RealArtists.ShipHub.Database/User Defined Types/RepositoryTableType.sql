@@ -7,5 +7,6 @@
   [Size]        BIGINT         NOT NULL,
   [HasIssues]   BIT            NOT NULL,
   [HasProjects] BIT            NOT NULL,
-  [Disabled]    BIT            NULL
+  [Disabled]    BIT            NULL,
+  [Archived]    BIT            NOT NULL
 )

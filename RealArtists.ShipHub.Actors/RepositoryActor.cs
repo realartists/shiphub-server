@@ -77,6 +77,7 @@
     private long _repoId;
     private string _fullName;
     private bool _disabled;
+    private bool _archived;
     private bool _hasProjects;
     private bool _isPrivate;
 
@@ -150,6 +151,7 @@
         // Core properties
         Initialize(repo.Id, repo.FullName);
         _disabled = repo.Disabled;
+        _archived = repo.Archived;
         _hasProjects = repo.HasProjects;
         _isPrivate = repo.Private;
 
@@ -368,7 +370,7 @@
         // Private repos in orgs that have reverted to the free plan show in users'
         // repo lists but are inaccessible (404). We mark such repos _disabled until
         // we can access them.
-        if (_disabled) {
+        if (_disabled || _archived) {
           return; // Do nothing else until an update succeeds
         } else {
           await UpdateIssueTemplate(updater, github);
@@ -450,6 +452,7 @@
           await updater.UpdateRepositories(repo.Date, new[] { repo.Result }, enable: true);
 
           // Update cached local state
+          _archived = repo.Result.Archived;
           _fullName = repo.Result.FullName;
           _repoSize = repo.Result.Size;
           _hasProjects = repo.Result.HasProjects;

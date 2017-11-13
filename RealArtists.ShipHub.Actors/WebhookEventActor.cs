@@ -305,6 +305,8 @@
         case "created":
         case "publicized":
         case "privatized":
+        case "archived":
+        case "unarchived":
           await updater.UpdateRepositories(eventDate, new[] { payload.Repository });
           break;
         case "deleted": {

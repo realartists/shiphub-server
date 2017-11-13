@@ -46,6 +46,8 @@
 
     public long? PullRequestReviewVersion { get; set; }
 
+    public bool Archived { get; set; }
+
     public virtual Account Account { get; set; }
 
     public string MetadataJson {
