@@ -114,7 +114,7 @@
           collectorMock.Object,
           mockClient.Object,
           Console.Out,
-          utcNow);
+          utcNow));
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
