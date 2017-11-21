@@ -335,24 +335,24 @@ BEGIN
 
     -- Pull Request Reviews
     SELECT l.ItemId as Id, e.IssueId, e.UserId, e.Body,
-      e.CommitId, e.[State], e.SubmittedAt, l.[Delete]
+      e.CommitId, e.[State], e.SubmittedAt, l.[Delete],
+      CAST(CASE WHEN e.Id IS NULL THEN 1 ELSE 0 END as BIT) as Restricted
     FROM @Logs as l
-      LEFT OUTER JOIN Reviews as e ON (l.ItemId = e.Id)
+      LEFT OUTER JOIN Reviews as e ON (l.ItemId = e.Id AND (e.[State] != 'PENDING' OR e.UserId = @UserId))
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'review'
-      AND (e.[State] != 'PENDING' OR e.UserId = @UserId)
 
     -- Pull Request Comments
     SELECT l.ItemId as Id, e.IssueId, e.RepositoryId, e.UserId,
       e.PullRequestReviewId, e.DiffHunk, e.[Path], e.Position,
       e.OriginalPosition, e.CommitId, e.OriginalCommitId,
-      e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete]
+      e.Body, e.CreatedAt, e.UpdatedAt, l.[Delete],
+      CAST(CASE WHEN r.Id IS NULL THEN 1 ELSE 0 END as BIT) as Restricted
     FROM @Logs as l
       LEFT OUTER JOIN PullRequestComments as e ON (l.ItemId = e.Id)
-      LEFT OUTER JOIN Reviews as r ON (r.Id = e.PullRequestReviewId)
+      LEFT OUTER JOIN Reviews as r ON (r.Id = e.PullRequestReviewId AND (ISNULL(r.[State], '') != 'PENDING' OR r.UserId = @UserId))
     WHERE l.RowNumber BETWEEN @WindowBegin AND @WindowEnd
       AND l.ItemType = 'prcomment'
-      AND (ISNULL(r.[State], '') != 'PENDING' OR r.UserId = @UserId)
 
     -- Commit Statuses
     SELECT l.ItemId as Id, e.RepositoryId, e.Reference, e.[State],

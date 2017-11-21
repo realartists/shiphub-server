@@ -812,6 +812,12 @@
             // Pull Request Reviews
             reader.NextResult();
             while (reader.Read()) {
+              if (ddr.Restricted) {
+                // Account for missing logs in progress reports
+                --totalLogs;
+                continue;
+              }
+
               var entry = new SyncLogEntry() {
                 Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.Review,
@@ -837,6 +843,12 @@
             // Pull Request Comments
             reader.NextResult();
             while (reader.Read()) {
+              if (ddr.Restricted) {
+                // Account for missing logs in progress reports
+                --totalLogs;
+                continue;
+              }
+
               var entry = new SyncLogEntry() {
                 Action = (bool)ddr.Delete ? SyncLogAction.Delete : SyncLogAction.Set,
                 Entity = SyncEntityType.PullRequestComment,
