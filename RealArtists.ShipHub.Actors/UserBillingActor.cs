@@ -1,51 +1,81 @@
-﻿namespace RealArtists.ShipHub.QueueProcessor.Jobs {
+﻿namespace RealArtists.ShipHub.Actors {
   using System;
   using System.Collections.Generic;
   using System.Data.Entity;
-  using System.IO;
   using System.Linq;
   using System.Threading.Tasks;
+  using ActorInterfaces;
   using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel.Types;
   using Common.GitHub;
-  using Microsoft.Azure.WebJobs;
   using Newtonsoft.Json.Linq;
+  using Orleans;
   using QueueClient;
-  using QueueClient.Messages;
-  using Tracing;
   using cb = ChargeBee;
   using cbm = ChargeBee.Models;
   using cm = Common.DataModel;
 
-  public class BillingQueueHandler : LoggingHandlerBase {
-    private IAsyncGrainFactory _grainFactory;
-    private cb.ChargeBeeApi _chargeBee;
-
+  /// <summary>
+  /// For now keep this separate as an intermediate step.
+  /// In actuality pieces should probably move to UserActor and OrganzationActor respectively.
+  /// </summary>
+  public class UserBillingActor : Grain, IUserBillingActor {
     // anyone whose trial has expired earlier than the AmnestyDate will get a restart on it.
     public static DateTimeOffset AmnestyDate { get; } = new DateTimeOffset(2017, 7, 10, 0, 0, 0, TimeSpan.Zero);
 
-    public BillingQueueHandler(IAsyncGrainFactory grainFactory, IDetailedExceptionLogger logger, cb.ChargeBeeApi chargeBee)
-        : base(logger) {
+    // Injected
+    private IGrainFactory _grainFactory;
+    private IFactory<cm.ShipHubContext> _contextFactory;
+    private IShipHubQueueClient _queueClient;
+    private cb.ChargeBeeApi _chargeBee;
+
+    // Grain state
+    private long _userId;
+    private IGitHubActor _github;
+
+    public UserBillingActor(IGrainFactory grainFactory, IFactory<cm.ShipHubContext> contextFactory, IShipHubQueueClient queueClient, cb.ChargeBeeApi chargeBee) {
       _grainFactory = grainFactory;
+      _contextFactory = contextFactory;
+      _queueClient = queueClient;
       _chargeBee = chargeBee;
     }
 
-    public async Task GetOrCreatePersonalSubscriptionHelper(
-      UserIdMessage message,
-      IAsyncCollector<ChangeMessage> notifyChanges,
-      IGitHubActor gitHubClient,
-      TextWriter logger,
-      DateTimeOffset? utcNow = null) {
+    public override async Task OnActivateAsync() {
+      // Set this first as subsequent calls require it.
+      _userId = this.GetPrimaryKeyLong();
 
-      var customerId = $"user-{message.UserId}";
+      // Ensure this user actually exists, and lookup their token.
+      cm.User user = null;
+      using (var context = _contextFactory.CreateInstance()) {
+        user = await context.Users
+         .AsNoTracking()
+         .Include(x => x.Tokens)
+         .SingleOrDefaultAsync(x => x.Id == _userId);
+      }
+
+      if (user == null) {
+        throw new InvalidOperationException($"User {_userId} does not exist and cannot be activated.");
+      }
+
+      if (!user.Tokens.Any()) {
+        throw new InvalidOperationException($"User {_userId} has an invalid token and cannot be activated.");
+      }
+
+      _github = _grainFactory.GetGrain<IGitHubActor>(_userId);
+
+      await base.OnActivateAsync();
+    }
+
+    public async Task GetOrCreatePersonalSubscription(DateTimeOffset utcNow) {
+      var customerId = $"user-{_userId}";
       var customerList = (await _chargeBee.Customer.List().Id().Is(customerId).Request()).List;
       cbm.Customer customer = null;
       if (customerList.Count == 0) {
         // Cannot use cache because we need fields like Name + Email which
         // we don't currently save to the DB.
-        var githubUser = (await gitHubClient.User()).Result;
-        var emails = (await gitHubClient.UserEmails()).Result;
+        var githubUser = (await _github.User()).Result;
+        var emails = (await _github.UserEmails()).Result;
         var primaryEmail = emails.First(x => x.Primary);
 
         var createRequest = _chargeBee.Customer.Create()
@@ -62,10 +92,10 @@
           createRequest.LastName(lastName);
         }
 
-        logger.WriteLine("Billing: Creating customer");
+        this.Debug(() => "Billing: Creating customer");
         customer = (await createRequest.Request()).Customer;
       } else {
-        logger.WriteLine("Billing: Customer already exists");
+        this.Debug(() => "Billing: Customer already exists");
         customer = customerList.First().Customer;
       }
 
@@ -77,7 +107,7 @@
         .Request()).List;
       cbm.Subscription sub = null;
 
-      var trialEnd = (utcNow ?? DateTimeOffset.UtcNow).AddDays(14).ToUnixTimeSeconds();
+      var trialEnd = utcNow.AddDays(14).ToUnixTimeSeconds();
       if (subList.Count == 0) {
         var metaData = new ChargeBeePersonalSubscriptionMetadata() {
           // If someone purchases a personal subscription while their free trial is still
@@ -86,22 +116,22 @@
           TrialPeriodDays = 14,
         };
 
-        logger.WriteLine("Billing: Creating personal subscription");
+        this.Debug(() => "Billing: Creating personal subscription");
         sub = (await _chargeBee.Subscription.CreateForCustomer(customerId)
           .PlanId("personal")
           .TrialEnd(trialEnd)
           .MetaData(JObject.FromObject(metaData, GitHubSerialization.JsonSerializer))
           .Request()).Subscription;
       } else {
-        logger.WriteLine("Billing: Subscription already exists");
+        this.Debug(() => "Billing: Subscription already exists");
         sub = subList.First().Subscription;
       }
 
       if (sub.Status == cbm.Subscription.StatusEnum.Cancelled && (sub.CancelledAt ?? DateTime.UtcNow) < AmnestyDate) {
-        logger.WriteLine("Billing: Applying subscription amnesty for cancelled subscription");
+        this.Debug(() => "Billing: Applying subscription amnesty for cancelled subscription");
         // delete any payment sources that we've got for this person
         if (customer.PaymentMethod != null) {
-          logger.WriteLine("Billing: Deleting existing card for cancelled subscription");
+          this.Debug(() => "Billing: Deleting existing card for cancelled subscription");
           await _chargeBee.Card.DeleteCardForCustomer(customerId).Request();
         }
         sub = (await _chargeBee.Subscription.Reactivate(sub.Id).TrialEnd(trialEnd).Request()).Subscription;
@@ -112,10 +142,10 @@
 
       ChangeSummary changes;
       using (var context = new cm.ShipHubContext()) {
-        var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == message.UserId);
+        var accountSubscription = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _userId);
 
         if (accountSubscription == null) {
-          accountSubscription = new cm.Subscription() { AccountId = message.UserId, };
+          accountSubscription = new cm.Subscription() { AccountId = _userId, };
         }
 
         var version = sub.ResourceVersion.GetValueOrDefault(0);
@@ -152,121 +182,16 @@
         });
       }
 
-      if (!changes.IsEmpty) {
-        await notifyChanges.AddAsync(new ChangeMessage(changes));
-      }
+      await changes.Submit(_queueClient, urgent: true);
+
+      await UpdateComplimentarySubscription();
     }
 
-    [Singleton("{UserId}")]
-    public async Task GetOrCreatePersonalSubscription(
-      [ServiceBusTrigger(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription)] UserIdMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger,
-      ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        var gh = await _grainFactory.GetGrain<IGitHubActor>(message.UserId);
-        await GetOrCreatePersonalSubscriptionHelper(message, notifyChanges, gh, logger);
-        // we also need to double check complimentary subscriptions here as well
-        await UpdateComplimentarySubscriptionHelper(message, logger);
-      });
-    }
-
-    public async Task SyncOrgSubscriptionStateHelper(
-      SyncOrgSubscriptionStateMessage message,
-      IAsyncCollector<ChangeMessage> notifyChanges,
-      IGitHubActor gitHubClient,
-      TextWriter logger) {
-
-      IEnumerable<cm.Organization> orgs;
-      using (var context = new cm.ShipHubContext()) {
-        // Lookup orgs
-        orgs = await context.Organizations
-          .AsNoTracking()
-          .Where(x => message.OrgIds.Contains(x.Id))
-          .Include(x => x.Subscription)
-          .ToArrayAsync();
-      }
-      var orgCustomerIds = orgs.Select(x => $"org-{x.Id}").ToArray();
-
-      // Get subscriptions from ChargeBee
-      var subsById = new Dictionary<long, cbm.Subscription>();
-      string offset = null;
-      do {
-        var response = await _chargeBee.Subscription.List()
-          .CustomerId().In(orgCustomerIds)
-          .PlanId().Is("organization")
-          .Status().Is(cbm.Subscription.StatusEnum.Active)
-          .Offset(offset)
-          .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Asc)
-          .Request();
-
-        foreach (var sub in response.List.Select(x => x.Subscription)) {
-          subsById.Add(ChargeBeeUtilities.AccountIdFromCustomerId(sub.CustomerId), sub);
-        }
-
-        offset = response.NextOffset;
-      } while (!offset.IsNullOrWhiteSpace());
-
-      // Process any updates
-      foreach (var org in orgs) {
-        if (org.Subscription == null) {
-          org.Subscription = new cm.Subscription() { AccountId = org.Id };
-        }
-
-        var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
-
-        if (sub != null) {
-          switch (sub.Status) {
-            case cbm.Subscription.StatusEnum.Active:
-            case cbm.Subscription.StatusEnum.NonRenewing:
-            case cbm.Subscription.StatusEnum.Future:
-              org.Subscription.State = cm.SubscriptionState.Subscribed;
-              break;
-            default:
-              org.Subscription.State = cm.SubscriptionState.NotSubscribed;
-              break;
-          }
-          org.Subscription.Version = sub.GetValue<long>("resource_version");
-        } else {
-          org.Subscription.State = cm.SubscriptionState.NotSubscribed;
-        }
-      }
-
-      ChangeSummary changes;
-      using (var context = new cm.ShipHubContext()) {
-        changes = await context.BulkUpdateSubscriptions(
-          orgs.Select(x =>
-          new SubscriptionTableType() {
-            AccountId = x.Subscription.AccountId,
-            State = x.Subscription.StateName,
-            TrialEndDate = x.Subscription.TrialEndDate,
-            Version = x.Subscription.Version,
-          })
-        );
-      }
-
-      if (!changes.IsEmpty) {
-        await notifyChanges.AddAsync(new ChangeMessage(changes));
-      }
-    }
-
-    public async Task SyncOrgSubscriptionState(
-      [ServiceBusTrigger(ShipHubQueueNames.BillingSyncOrgSubscriptionState)] SyncOrgSubscriptionStateMessage message,
-      [ServiceBus(ShipHubTopicNames.Changes)] IAsyncCollector<ChangeMessage> notifyChanges,
-      TextWriter logger,
-      ExecutionContext executionContext) {
-
-      await WithEnhancedLogging(executionContext.InvocationId, message.ForUserId, message, async () => {
-        var gh = await _grainFactory.GetGrain<IGitHubActor>(message.ForUserId);
-        await SyncOrgSubscriptionStateHelper(message, notifyChanges, gh, logger);
-      });
-    }
-
-    private async Task UpdateComplimentarySubscriptionHelper(UserIdMessage message, TextWriter logger) {
+    public async Task UpdateComplimentarySubscription() {
       var couponId = "member_of_paid_org";
 
       var sub = (await _chargeBee.Subscription.List()
-        .CustomerId().Is($"user-{message.UserId}")
+        .CustomerId().Is($"user-{_userId}")
         .PlanId().In(ChargeBeeUtilities.PersonalPlanIds)
         .Limit(1)
         .Request()).List.FirstOrDefault()?.Subscription;
@@ -276,7 +201,7 @@
         var isMemberOfPaidOrg = await context.OrganizationAccounts
           .AsNoTracking()
           .Where(x =>
-            x.UserId == message.UserId &&
+            x.UserId == _userId &&
             x.Organization.Subscription.StateName == cm.SubscriptionState.Subscribed.ToString())
           .AnyAsync();
 
@@ -310,16 +235,6 @@
             .Request();
         }
       }
-    }
-
-    [Singleton("{UserId}")]
-    public async Task UpdateComplimentarySubscription(
-      [ServiceBusTrigger(ShipHubQueueNames.BillingUpdateComplimentarySubscription)] UserIdMessage message,
-      TextWriter logger,
-      ExecutionContext executionContext) {
-      await WithEnhancedLogging(executionContext.InvocationId, message.UserId, message, async () => {
-        await UpdateComplimentarySubscriptionHelper(message, logger);
-      });
     }
   }
 }

@@ -226,8 +226,8 @@
     <Reference Include="OrleansProviders, Version=1.5.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Orleans.OrleansProviders.1.5.2\lib\net461\OrleansProviders.dll</HintPath>
     </Reference>
-    <Reference Include="RealArtists.ChargeBee, Version=2.2.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RealArtists.ChargeBee.2.2.4-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
+    <Reference Include="RealArtists.ChargeBee, Version=2.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RealArtists.ChargeBee.2.4.2-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
     </Reference>
     <Reference Include="SimpleInjector, Version=4.0.12.0, Culture=neutral, PublicKeyToken=984cb50dea722e99, processorArchitecture=MSIL">
       <HintPath>..\packages\SimpleInjector.4.0.12\lib\net45\SimpleInjector.dll</HintPath>

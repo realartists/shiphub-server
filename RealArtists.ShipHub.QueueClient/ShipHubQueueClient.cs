@@ -1,5 +1,4 @@
 ﻿namespace RealArtists.ShipHub.QueueClient {
-  using System.Collections.Generic;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel.Types;
@@ -7,9 +6,6 @@
 
   public interface IShipHubQueueClient {
     Task NotifyChanges(IChangeSummary changeSummary, bool urgent = false);
-    Task BillingGetOrCreatePersonalSubscription(long userId);
-    Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId);
-    Task BillingUpdateComplimentarySubscription(long userId);
   }
 
   public static class ShipHubQueueClientExtensions {
@@ -27,18 +23,6 @@
 
     public ShipHubQueueClient(IServiceBusFactory serviceBusFactory) {
       _factory = serviceBusFactory;
-    }
-
-    public Task BillingGetOrCreatePersonalSubscription(long userId) {
-      return SendIt(ShipHubQueueNames.BillingGetOrCreatePersonalSubscription, new UserIdMessage(userId));
-    }
-
-    public Task BillingSyncOrgSubscriptionState(IEnumerable<long> orgIds, long forUserId) {
-      return SendIt(ShipHubQueueNames.BillingSyncOrgSubscriptionState, new SyncOrgSubscriptionStateMessage(orgIds, forUserId));
-    }
-
-    public Task BillingUpdateComplimentarySubscription(long userId) {
-      return SendIt(ShipHubQueueNames.BillingUpdateComplimentarySubscription, new UserIdMessage(userId));
     }
 
     public Task NotifyChanges(IChangeSummary changeSummary, bool urgent) {

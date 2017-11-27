@@ -11,10 +11,8 @@
   public interface IShipHubConfiguration {
     string ApiHostName { get; }
     string ApplicationInsightsKey { get; }
-    string AzureWebJobsDashboard { get; }
     string AzureWebJobsServiceBus { get; }
     string AzureWebJobsServiceBusPair { get; }
-    string AzureWebJobsStorage { get; }
     string ChargeBeeHostAndKey { get; }
     string ChargeBeeWebhookSecret { get; }
     ISet<string> ChargeBeeWebhookIncludeOnlyList { get; }
@@ -43,10 +41,8 @@
   public class ShipHubConfiguration : IShipHubConfiguration {
     public string ApiHostName { get; set; }
     public string ApplicationInsightsKey { get; set; }
-    public string AzureWebJobsDashboard { get; set; }
     public string AzureWebJobsServiceBus { get; set; }
     public string AzureWebJobsServiceBusPair { get; set; }
-    public string AzureWebJobsStorage { get; set; }
     public string ChargeBeeHostAndKey { get; set; }
     public string ChargeBeeWebhookSecret { get; set; }
     [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly", Justification = "Only used in tests.")]
@@ -86,17 +82,11 @@
     private Lazy<string> _applicationInsightsKey = new Lazy<string>(() => GetSetting("APPINSIGHTS_INSTRUMENTATIONKEY"));
     public string ApplicationInsightsKey => _applicationInsightsKey.Value;
 
-    private Lazy<string> _azureWebJobsDashboard = new Lazy<string>(() => GetSetting("AzureWebJobsDashboard"));
-    public string AzureWebJobsDashboard => _azureWebJobsDashboard.Value;
-
     private Lazy<string> _azureWebJobsServiceBus = new Lazy<string>(() => GetSetting("AzureWebJobsServiceBus"));
     public string AzureWebJobsServiceBus => _azureWebJobsServiceBus.Value;
 
     private Lazy<string> _azureWebJobsServiceBusPair = new Lazy<string>(() => GetSetting("AzureWebJobsServiceBusPair"));
     public string AzureWebJobsServiceBusPair => _azureWebJobsServiceBusPair.Value;
-
-    private Lazy<string> _azureWebJobsStorage = new Lazy<string>(() => GetSetting("AzureWebJobsStorage"));
-    public string AzureWebJobsStorage => _azureWebJobsStorage.Value;
 
     private Lazy<string> _chargeBeeHostAndKey = new Lazy<string>(() => GetSetting("ChargeBeeHostAndKey", required: true));
     public string ChargeBeeHostAndKey => _chargeBeeHostAndKey.Value;

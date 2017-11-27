@@ -90,18 +90,6 @@
     <Reference Include="Microsoft.Azure.KeyVault.Core, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Azure.KeyVault.Core.2.0.4\lib\net45\Microsoft.Azure.KeyVault.Core.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Core.2.0.0\lib\net45\Microsoft.Azure.WebJobs.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Extensions, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Extensions.2.0.0\lib\net45\Microsoft.Azure.WebJobs.Extensions.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Host, Version=2.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.2.0.0\lib\net45\Microsoft.Azure.WebJobs.Host.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Azure.WebJobs.Script.Extensibility, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Azure.WebJobs.Script.Extensibility.1.0.0-beta2\lib\net45\Microsoft.Azure.WebJobs.Script.Extensibility.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.Data.Edm, Version=5.8.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Data.Edm.5.8.3\lib\net40\Microsoft.Data.Edm.dll</HintPath>
@@ -145,8 +133,8 @@
     <Reference Include="Orleans, Version=1.5.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Orleans.Core.1.5.2\lib\net461\Orleans.dll</HintPath>
     </Reference>
-    <Reference Include="RealArtists.ChargeBee, Version=2.2.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RealArtists.ChargeBee.2.2.4-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
+    <Reference Include="RealArtists.ChargeBee, Version=2.4.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RealArtists.ChargeBee.2.4.2-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -254,10 +242,6 @@
     <ProjectReference Include="..\RealArtists.ShipHub.QueueClient\RealArtists.ShipHub.QueueClient.csproj">
       <Project>{b4688837-ca13-4503-b0d9-c255129ecb76}</Project>
       <Name>RealArtists.ShipHub.QueueClient</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\RealArtists.ShipHub.QueueProcessor\RealArtists.ShipHub.QueueProcessor.csproj">
-      <Project>{87ce7f09-bee2-411e-a2bb-bd9b135ca74c}</Project>
-      <Name>RealArtists.ShipHub.QueueProcessor</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />

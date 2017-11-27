@@ -7,11 +7,8 @@
   using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
-  using Microsoft.Azure.WebJobs;
   using Moq;
   using NUnit.Framework;
-  using QueueProcessor.Jobs;
-  using QueueProcessor.Tracing;
   using RealArtists.ShipHub.Common;
   using RealArtists.ShipHub.QueueClient.Messages;
 

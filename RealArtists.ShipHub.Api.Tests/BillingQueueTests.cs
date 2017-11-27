@@ -8,36 +8,20 @@
   using ActorInterfaces.GitHub;
   using Common.DataModel;
   using Common.GitHub;
-  using ChargeBee;
-  using Microsoft.Azure.WebJobs;
   using Moq;
+  using Newtonsoft.Json;
   using NUnit.Framework;
   using QueueClient.Messages;
-  using QueueProcessor.Jobs;
-  using QueueProcessor.Tracing;
-  using Newtonsoft.Json;
+  using RealArtists.ShipHub.Actors;
   using RealArtists.ShipHub.Common;
 
   [TestFixture]
   [AutoRollback]
   public class BillingQueueTests {
-
-    private static BillingQueueHandler CreateHandler(ChargeBeeApi api) {
-      return new BillingQueueHandler(null, new DetailedExceptionLogger(), api);
-    }
-
     [Test]
     public async Task WillCreateTrialIfNeeded() {
       using (var context = new ShipHubContext()) {
         var user = TestUtil.MakeTestUser(context);
-
-        var changeMessages = new List<ChangeMessage>();
-        var collectorMock = new Mock<IAsyncCollector<ChangeMessage>>();
-        collectorMock.Setup(x => x.AddAsync(It.IsAny<ChangeMessage>(), It.IsAny<CancellationToken>()))
-          .Returns((ChangeMessage msg, CancellationToken token) => {
-            changeMessages.Add(msg);
-            return Task.CompletedTask;
-          });
 
         var mockClient = new Mock<IGitHubActor>();
         mockClient
@@ -124,12 +108,13 @@
           }
         });
 
+        var userActor = new UserActor(
         await CreateHandler(api).GetOrCreatePersonalSubscriptionHelper(
           new UserIdMessage(user.Id),
           collectorMock.Object,
           mockClient.Object,
-          Console.Out, 
-          utcNow);
+          Console.Out,
+          utcNow));
 
         var sub = context.Subscriptions.Single(x => x.AccountId == user.Id);
         Assert.AreEqual(SubscriptionState.InTrial, sub.State);
