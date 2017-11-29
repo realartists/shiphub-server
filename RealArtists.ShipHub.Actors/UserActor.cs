@@ -33,6 +33,7 @@
     private string _userInfo;
     private IGitHubActor _github;
     private IMentionsActor _mentions;
+    private IUserBillingActor _billing;
 
     private SemaphoreSlim _syncLimit = new SemaphoreSlim(1); // Only allow one sync at a time
 
@@ -44,12 +45,12 @@
     // Sync logic
     private DateTimeOffset _lastSyncInterest;
     private IDisposable _syncTimer;
-    int _linkedReposCurrent = 0;
-    int _linkedReposDesired = 0;
-    int _syncReposCurrent = 0;
-    int _syncReposDesired = 0;
-    int _billingStateCurrent = 0;
-    int _billingStateDesired = 0;
+    private int _linkedReposCurrent = 0;
+    private int _linkedReposDesired = 0;
+    private int _syncReposCurrent = 0;
+    private int _syncReposDesired = 0;
+    private int _billingStateCurrent = 0;
+    private int _billingStateDesired = 0;
 
     // Local cache
     private SyncSettings _syncSettings;
@@ -94,6 +95,7 @@
 
       _github = _grainFactory.GetGrain<IGitHubActor>(user.Id);
       _mentions = _grainFactory.GetGrain<IMentionsActor>(user.Id);
+      _billing = _grainFactory.GetGrain<IUserBillingActor>(user.Id);
 
       _metadata = user.Metadata;
       _repoMetadata = user.RepositoryMetadata;
@@ -221,11 +223,7 @@
           var savedBillingCurrent = _billingStateCurrent;
           var savedBillingDesired = _billingStateDesired;
           if (savedBillingCurrent < savedBillingDesired) {
-            _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
-
-            if (_orgActors.Any()) {
-              _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
-            }
+            _billing.GetOrCreatePersonalSubscription(DateTimeOffset.UtcNow).LogFailure(_userInfo);
 
             Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
           }
@@ -290,7 +288,7 @@
 
             // When this user's org membership changes, re-evaluate whether or not they
             // should have a complimentary personal subscription.
-            _queueClient.BillingUpdateComplimentarySubscription(_userId).LogFailure(_userInfo);
+            _billing.UpdateComplimentarySubscription().LogFailure(_userInfo);
 
             // Also re-evaluate their linked repos
             Interlocked.Increment(ref _linkedReposDesired);

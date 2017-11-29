@@ -50,6 +50,7 @@
     <Compile Include="TimeLoggerFilter.cs" />
     <Compile Include="MentionsActor.cs" />
     <Compile Include="UserActor.cs" />
+    <Compile Include="UserBillingActor.cs" />
     <Compile Include="WebhookEventActor.cs" />
   </ItemGroup>
   <ItemGroup>

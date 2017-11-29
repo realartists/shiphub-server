@@ -4,7 +4,6 @@
   using System.Collections.Immutable;
   using System.Data.Entity;
   using System.Linq;
-  using System.Net;
   using System.Threading.Tasks;
   using ActorInterfaces;
   using ActorInterfaces.GitHub;
@@ -16,6 +15,7 @@
   using GitHub;
   using Orleans;
   using QueueClient;
+  using cb = ChargeBee;
   using gh = Common.GitHub.Models;
 
   public class OrganizationActor : Grain, IOrganizationActor {
@@ -29,6 +29,7 @@
     private IGrainFactory _grainFactory;
     private IFactory<ShipHubContext> _contextFactory;
     private IShipHubQueueClient _queueClient;
+    private cb.ChargeBeeApi _chargeBee;
 
     private long _orgId;
     private string _login;
@@ -48,12 +49,14 @@
       IGrainFactory grainFactory,
       IFactory<ShipHubContext> contextFactory,
       IShipHubQueueClient queueClient,
-      IShipHubConfiguration configuration) {
+      IShipHubConfiguration configuration,
+      cb.ChargeBeeApi chargeBee) {
       _mapper = mapper;
       _grainFactory = grainFactory;
       _contextFactory = contextFactory;
       _queueClient = queueClient;
       _apiHostName = configuration.ApiHostName;
+      _chargeBee = chargeBee;
     }
 
     public override async Task OnActivateAsync() {
@@ -346,6 +349,79 @@
       }
 
       return changes;
+    }
+
+    public Task SyncSubscriptionState() {
+      return Task.CompletedTask;
+      //  IEnumerable<Organization> orgs;
+      //  using (var context = _contextFactory.CreateInstance()) {
+      //    // Lookup orgs
+      //    orgs = await context.Organizations
+      //      .AsNoTracking()
+      //      .Where(x => organizationIds.Contains(x.Id))
+      //      .Include(x => x.Subscription)
+      //      .ToArrayAsync();
+      //  }
+      //  var orgCustomerIds = orgs.Select(x => $"org-{x.Id}").ToArray();
+
+      //  // Get subscriptions from ChargeBee
+      //  var subsById = new Dictionary<long, cbm.Subscription>();
+      //  string offset = null;
+      //  do {
+      //    var response = await _chargeBee.Subscription.List()
+      //      .CustomerId().In(orgCustomerIds)
+      //      .PlanId().Is("organization")
+      //      .Status().Is(cbm.Subscription.StatusEnum.Active)
+      //      .Offset(offset)
+      //      .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Asc)
+      //      .Request();
+
+      //    foreach (var sub in response.List.Select(x => x.Subscription)) {
+      //      subsById.Add(ChargeBeeUtilities.AccountIdFromCustomerId(sub.CustomerId), sub);
+      //    }
+
+      //    offset = response.NextOffset;
+      //  } while (!offset.IsNullOrWhiteSpace());
+
+      //  // Process any updates
+      //  foreach (var org in orgs) {
+      //    if (org.Subscription == null) {
+      //      org.Subscription = new Subscription() { AccountId = org.Id };
+      //    }
+
+      //    var sub = subsById.ContainsKey(org.Id) ? subsById[org.Id] : null;
+
+      //    if (sub != null) {
+      //      switch (sub.Status) {
+      //        case cbm.Subscription.StatusEnum.Active:
+      //        case cbm.Subscription.StatusEnum.NonRenewing:
+      //        case cbm.Subscription.StatusEnum.Future:
+      //          org.Subscription.State = SubscriptionState.Subscribed;
+      //          break;
+      //        default:
+      //          org.Subscription.State = SubscriptionState.NotSubscribed;
+      //          break;
+      //      }
+      //      org.Subscription.Version = sub.GetValue<long>("resource_version");
+      //    } else {
+      //      org.Subscription.State = SubscriptionState.NotSubscribed;
+      //    }
+      //  }
+
+      //  ChangeSummary changes;
+      //  using (var context = _contextFactory.CreateInstance()) {
+      //    changes = await context.BulkUpdateSubscriptions(
+      //      orgs.Select(x =>
+      //      new SubscriptionTableType() {
+      //        AccountId = x.Subscription.AccountId,
+      //        State = x.Subscription.StateName,
+      //        TrialEndDate = x.Subscription.TrialEndDate,
+      //        Version = x.Subscription.Version,
+      //      })
+      //    );
+      //  }
+
+      //  await changes.Submit(_queueClient, urgent: true);
     }
   }
 }
