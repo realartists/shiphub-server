@@ -1275,7 +1275,6 @@
     public Task<ChangeSummary> BulkUpdateHooks(
       IEnumerable<HookTableType> hooks = null,
       IEnumerable<long> seen = null,
-      IEnumerable<long> pinged = null,
       IEnumerable<long> deleted = null) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateHooks]", x => {
         if (hooks?.Any() == true) {
@@ -1301,10 +1300,6 @@
 
         if (seen?.Any() == true) {
           x.Seen = CreateItemListTable("Seen", seen);
-        }
-
-        if (pinged?.Any() == true) {
-          x.Pinged = CreateItemListTable("Pinged", pinged);
         }
 
         if (deleted?.Any() == true) {
@@ -1338,6 +1333,28 @@
           }
         }
       });
+    }
+
+    public async Task<IEnumerable<ExcessHookType>> ExcessHooks() {
+      var results = new List<ExcessHookType>();
+
+      using (var sp = new DynamicStoredProcedure("[dbo].[ExcessHooks]", ConnectionFactory)) {
+        dynamic dsp = sp;
+
+        using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
+          dynamic ddr = sdr;
+          while (sdr.Read()) { }
+
+          results.Add(new ExcessHookType() {
+            Id = ddr.Id,
+            GitHubId = ddr.GitHubId,
+            AccountId = ddr.AccountId,
+            RepoFullName = ddr.RepoFullName,
+          });
+        }
+      }
+
+      return results;
     }
 
     public Task<ChangeSummary> BulkUpdateSubscriptions(IEnumerable<SubscriptionTableType> subscriptions) {

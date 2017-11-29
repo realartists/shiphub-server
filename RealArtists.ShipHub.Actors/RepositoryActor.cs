@@ -18,6 +18,7 @@
   using GitHub;
   using Orleans;
   using QueueClient;
+  using gh = Common.GitHub.Models;
 
   public class RepositoryActor : Grain, IRepositoryActor {
     private const int BiteChunkPages = 75;
@@ -32,17 +33,23 @@
     public const int SaveSkip = 5; // Saving metadata is expensive
 
     public static ImmutableHashSet<string> RequiredEvents { get; } = ImmutableHashSet.Create(
-      "commit_comment"
+        "commit_comment"
       , "issue_comment"
       , "issues"
       , "label"
+      //, "member"
       , "milestone"
-      , "pull_request_review_comment"
-      , "pull_request_review"
+      //, "project"
+      //, "project_card"
+      //, "project_column"
+      //, "public"
       , "pull_request"
+      , "pull_request_review"
+      , "pull_request_review_comment"
       , "push"
       , "repository"
       , "status"
+      //, "team_add"
     );
 
     public static Regex ExactMatchIssueTemplateRegex { get; } = new Regex(
@@ -94,6 +101,7 @@
     private GitHubMetadata _milestoneMetadata;
     private GitHubMetadata _pullRequestMetadata;
     private GitHubMetadata _projectMetadata;
+    private GitHubMetadata _hookMetadata;
 
     private GitHubMetadata _contentsRootMetadata;
     private GitHubMetadata _contentsDotGithubMetadata;
@@ -493,14 +501,14 @@
       await updater.Changes.Submit(_queueClient);
     }
 
-    private static bool IsIssueTemplateFile(Common.GitHub.Models.ContentsFile file) {
-      return file.Type == Common.GitHub.Models.ContentsFileType.File
+    private static bool IsIssueTemplateFile(gh.ContentsFile file) {
+      return file.Type == gh.ContentsFileType.File
             && file.Name != null
             && ExactMatchIssueTemplateRegex.IsMatch(file.Name);
     }
 
-    private static bool IsPullRequestTemplateFile(Common.GitHub.Models.ContentsFile file) {
-      return file.Type == Common.GitHub.Models.ContentsFileType.File
+    private static bool IsPullRequestTemplateFile(gh.ContentsFile file) {
+      return file.Type == gh.ContentsFileType.File
             && file.Name != null
             && ExactMatchPullRequestTemplateRegex.IsMatch(file.Name);
     }
@@ -569,7 +577,7 @@
 
           if (rootIssueTemplateFile == null && rootPullRequestTemplateFile == null) {
             var hasDotGitHub = rootListing.Result.Any((file) => {
-              return file.Type == Common.GitHub.Models.ContentsFileType.Dir
+              return file.Type == gh.ContentsFileType.Dir
                 && file.Name != null
                 && file.Name.ToLowerInvariant() == ".github";
             });
@@ -808,7 +816,7 @@
 
       if (_pullRequestUpdatedAt != null) {
         uint skip = 0;
-        GitHubResponse<IEnumerable<Common.GitHub.Models.PullRequest>> updated = null;
+        GitHubResponse<IEnumerable<gh.PullRequest>> updated = null;
         GitHubMetadata firstPageMetadata = null;
         var mostRecent = _pullRequestUpdatedAt ?? DateTimeOffset.MinValue;
 
@@ -973,128 +981,131 @@
     }
 
     public async Task<IChangeSummary> AddOrUpdateWebhooks(IGitHubRepositoryAdmin admin) {
-      var changes = ChangeSummary.Empty;
-
-      Hook hook = null;
-      HookTableType newHook = null;
-      using (var context = _contextFactory.CreateInstance()) {
-        hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
-        // If our last operation on this repo hook resulted in error, delay.
-        if (hook?.LastError != null && hook?.LastError.Value > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
-          return changes; // Wait to try later.
-        }
-        if (hook?.GitHubId == null) {
-          // GitHub will immediately send a ping when the webhook is created.
-          // To avoid any chance for a race, add the Hook to the DB first, then
-          // create on GitHub.
-          if (hook == null) {
-            newHook = await context.CreateHook(Guid.NewGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
-          } else {
-            newHook = new HookTableType() {
-              Id = hook.Id,
-              Secret = hook.Secret,
-              Events = string.Join(",", RequiredEvents),
-            };
-          }
-
-          // Assume failure until we succeed
-          newHook.LastError = DateTimeOffset.UtcNow;
-        }
+      if (admin == null) {
+        throw new ArgumentNullException(nameof(admin));
       }
 
-      // There are now a few cases to handle
-      // If there is no record of a hook, try to make one.
-      // If there is an incomplete record, try to make it.
-      // If there is an errored record, sleep or retry
-      if (hook?.GitHubId == null) {
+      var changes = new ChangeSummary();
+      var notify = true;
+
+      using (var context = _contextFactory.CreateInstance()) {
+        HookTableType hookRecord = null;
+        DateTimeOffset? lastError = DateTimeOffset.UtcNow;
+
+        // First, do we think there is a hook?
+        var hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == _repoId);
+        context.Database.Connection.Close();
+
+        // If our last operation on this repo hook resulted in error, delay.
+        // This is pretty hacky, and ideally won't happen often.
+        if (hook?.LastError != null && hook.LastError.Value > DateTimeOffset.UtcNow.Subtract(HookErrorDelay)) {
+          return ChangeSummary.Empty; // Wait to try later.
+        }
+
+        // Ensure there exists a hook record on our end if only for error tracking.
+        if (hook == null) {
+          hookRecord = await context.CreateHook(SecureRandom.GenerateGuid(), string.Join(",", RequiredEvents), repositoryId: _repoId);
+        } else {
+          hookRecord = new HookTableType() {
+            Id = hook.Id,
+            Secret = hook.Secret,
+            Events = hook.Events,
+            GitHubId = hook.GitHubId,
+          };
+        }
+        
         try {
-          var hookList = await admin.RepositoryWebhooks(_fullName);
+          // No matter what, we need to know about exant hooks on GitHub's side.
+          // TODO: CACHE!
+          var hookList = await admin.RepositoryWebhooks(_fullName, _hookMetadata);
+          _hookMetadata = GitHubMetadata.FromResponse(hookList);
+
+          // Check for cache hit (no need to do anything) or error (log)
           if (!hookList.IsOk) {
-            this.Info($"Unable to list hooks for {_fullName}. {hookList.Status} {hookList.Error}");
-            return changes;
+            if (!hookList.Succeeded) {
+              this.Info($"Unable to list hooks for {_fullName}. {hookList.Status} {hookList.Error}");
+            }
+            return ChangeSummary.Empty;
           }
 
-          var existingHooks = hookList.Result
-            .Where(x => x.Name.Equals("web"))
-            .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/", StringComparison.OrdinalIgnoreCase));
+          var webhooks = hookList.Result.Where(x => x.Name.Equals("web")).ToList();
+          var deleteHooks = webhooks
+            .Where(x => x.Config.Url.StartsWith($"https://{_apiHostName}/webhook/repo/", StringComparison.OrdinalIgnoreCase))
+            .Where(x => x.Id != hookRecord.GitHubId)
+            .ToArray();
 
           // Delete any existing hooks that already point back to us - don't
           // want to risk adding multiple Ship hooks.
-          foreach (var existingHook in existingHooks) {
+          foreach (var existingHook in deleteHooks) {
             var deleteResponse = await admin.DeleteRepositoryWebhook(_fullName, existingHook.Id);
             if (!deleteResponse.Succeeded) {
-              this.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}'{deleteResponse.Status} {deleteResponse.Error}");
+              this.Info($"Failed to delete existing hook ({existingHook.Id}) for repo '{_fullName}' {deleteResponse.Status} {deleteResponse.Error}");
+            } else {
+              webhooks.Remove(existingHook);
             }
           }
 
-          var addRepoHookResponse = await admin.AddRepositoryWebhook(
-            _fullName,
-            new Common.GitHub.Models.Webhook() {
-              Name = "web",
-              Active = true,
-              Events = RequiredEvents,
-              Config = new Common.GitHub.Models.WebhookConfiguration() {
-                Url = $"https://{_apiHostName}/webhook/repo/{_repoId}",
-                ContentType = "json",
-                Secret = newHook.Secret.ToString(),
-              },
-            });
+          var eventCounts = webhooks
+            .Where(x => x.Id != hookRecord.GitHubId) // Don't count existing hook, if present
+            .SelectMany(x => x.Events)
+            .GroupBy(x => x)
+            .ToDictionary(x => x.Key, x => x.Count());
 
-          if (addRepoHookResponse.Succeeded) {
-            newHook.GitHubId = addRepoHookResponse.Result.Id;
-            newHook.LastError = null;
-            using (var context = _contextFactory.CreateInstance()) {
-              changes = await context.BulkUpdateHooks(hooks: new[] { newHook });
+          // https://developer.github.com/webhooks/
+          // You can create up to 20 webhooks for each event on each installation target (specific organization or specific repository).
+          // Don't try to add oversubscribed events
+          var computedEvents = RequiredEvents.Except(eventCounts.Where(x => x.Value >= 20).Select(x => x.Key));
+          if (computedEvents.SetEquals(RequiredEvents) == false) {
+            this.Info($"Skipping oversubscribed events: [{string.Join(",", RequiredEvents.Except(computedEvents))}]");
+          }
+
+          var currentHook = webhooks.SingleOrDefault(x => x.Id == hookRecord.GitHubId);
+          if (currentHook == null) {
+            // Let's make it!
+            var response = await admin.AddRepositoryWebhook(
+              _fullName,
+              new gh.Webhook() {
+                Name = "web",
+                Active = true,
+                Events = computedEvents,
+                Config = new gh.WebhookConfiguration() {
+                  Url = $"https://{_apiHostName}/webhook/repo/{_repoId}",
+                  ContentType = "json",
+                  Secret = hookRecord.Secret.ToString(),
+                },
+              });
+
+            if (response.Succeeded) {
+              hookRecord.Events = string.Join(",", response.Result.Events);
+              hookRecord.GitHubId = response.Result.Id;
+              lastError = null;
+            } else {
+              this.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {response.Status} {response.Error}");
             }
-          } else {
-            this.Error($"Failed to add hook for repo '{_fullName}' ({_repoId}): {addRepoHookResponse.Status} {addRepoHookResponse.Error}");
+          } else if (computedEvents.SetEquals(currentHook.Events) == false || currentHook.Active == false) {
+            // Update the hook
+            notify = false; // Don't notify for updates.
+            this.Info($"Updating webhook {_fullName}/{currentHook.Id} from Events: [{string.Join(",", currentHook.Events)}] to [{string.Join(",", computedEvents)}] and Active: [{currentHook.Active} => true]");
+            var response = await admin.EditRepositoryWebhookEvents(_fullName, currentHook.Id, computedEvents);
+
+            if (response.Succeeded) {
+              hookRecord.Events = string.Join(",", response.Result.Events);
+              hookRecord.GitHubId = response.Result.Id;
+              lastError = null;
+            } else {
+              this.Error($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {response.Status} {response.Error}");
+            }
           }
         } catch (Exception e) {
-          e.Report($"Failed to add hook for repo '{_fullName}' ({_repoId})");
-          // Save LastError
-          using (var context = _contextFactory.CreateInstance()) {
-            await context.BulkUpdateHooks(hooks: new[] { newHook });
-          }
-        }
-      } else if (!RequiredEvents.SetEquals(hook.Events.Split(','))) {
-        var editHook = new HookTableType() {
-          Id = hook.Id,
-          GitHubId = hook.GitHubId,
-          Secret = hook.Secret,
-          Events = hook.Events,
-          LastError = DateTimeOffset.UtcNow, // Default to faulted.
-        };
-
-        try {
-          this.Info($"Updating webhook {_fullName}/{hook.GitHubId} from [{hook.Events}] to [{string.Join(",", RequiredEvents)}]");
-          var editResponse = await admin.EditRepositoryWebhookEvents(_fullName, (long)hook.GitHubId, RequiredEvents);
-
-          if (editResponse.Succeeded) {
-            editHook.LastError = null;
-            editHook.GitHubId = editResponse.Result.Id;
-            editHook.Events = string.Join(",", editResponse.Result.Events);
-            using (var context = _contextFactory.CreateInstance()) {
-              await context.BulkUpdateHooks(hooks: new[] { editHook });
-            }
-          } else if (editResponse.Status == HttpStatusCode.NotFound) {
-            // Our record is out of date.
-            this.Info($"Failed to edit hook for repo '{_fullName}' ({_repoId}). Deleting our hook record. {editResponse.Status} {editResponse.Error}");
-            using (var context = _contextFactory.CreateInstance()) {
-              changes = await context.BulkUpdateHooks(deleted: new[] { editHook.Id });
-            }
-          } else {
-            throw new Exception($"Failed to edit hook for repo '{_fullName}' ({_repoId}): {editResponse.Status} {editResponse.Error}");
-          }
-        } catch (Exception e) {
-          e.Report();
-          // Save LastError
-          using (var context = _contextFactory.CreateInstance()) {
-            await context.BulkUpdateHooks(hooks: new[] { editHook });
-          }
+          notify = false;
+          e.Report($"Error processing hooks for org '{_fullName}' ({_repoId})");
+        } finally {
+          hookRecord.LastError = lastError;
+          changes = await context.BulkUpdateHooks(hooks: new[] { hookRecord });
         }
       }
 
-      return changes;
+      return notify ? changes : ChangeSummary.Empty;
     }
 
     public async Task SyncProtectedBranch(string branchName, long forUserId) {

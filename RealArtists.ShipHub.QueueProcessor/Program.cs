@@ -100,7 +100,6 @@
       sbConfig.MessagingProvider = new PairedMessagingProvider(sbConfig, sbFactory);
 
       config.UseServiceBus(sbConfig);
-      config.UseTimers();
       config.UseCore(); // For ExecutionContext
 
       Log.Info("[Job Host]: Starting");

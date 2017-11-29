@@ -546,6 +546,7 @@
         new HttpMethod("PATCH"),
         $"repos/{repoFullName}/hooks/{hookId}",
         new {
+          Active = true,
           Events = events,
         },
         priority);
@@ -558,6 +559,7 @@
         new HttpMethod("PATCH"),
         $"orgs/{orgName}/hooks/{hookId}",
         new {
+          Active = true,
           Events = events,
         },
         priority);
