@@ -1,7 +1,6 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateHooks]
   @Hooks HookTableType READONLY,
   @Seen ItemListTableType READONLY,
-  @Pinged ItemListTableType READONLY,
   @Deleted ItemListTableType READONLY
 AS
 BEGIN
@@ -44,19 +43,9 @@ BEGIN
 
     -- Seen hooks
     UPDATE Hooks SET
-      LastSeen = SYSUTCDATETIME(),
-      PingCount = NULL,
-      LastPing = NULL
+      LastSeen = SYSUTCDATETIME()
     FROM @Seen as s
       INNER LOOP JOIN Hooks as h ON (h.Id = s.Item)
-    OPTION (FORCE ORDER)
-
-    -- Pinged hooks
-    UPDATE Hooks SET
-      PingCount = ISNULL(PingCount, 0) + 1,
-      LastPing = SYSUTCDATETIME()
-    FROM @Pinged as p
-      INNER LOOP JOIN Hooks as h ON (h.Id = p.Item)
     OPTION (FORCE ORDER)
 
     -- Changes
