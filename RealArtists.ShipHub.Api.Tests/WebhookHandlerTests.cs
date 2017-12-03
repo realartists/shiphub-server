@@ -26,7 +26,7 @@
     }
 
     public static OrganizationActor CreateOrgActor(long orgId, string login) {
-      var orgActor = new OrganizationActor(null, null, null, null, Configuration, null);
+      var orgActor = new OrganizationActor(null, null, null, null, Configuration);
       orgActor.Initialize(orgId, login);
       return orgActor;
     }
