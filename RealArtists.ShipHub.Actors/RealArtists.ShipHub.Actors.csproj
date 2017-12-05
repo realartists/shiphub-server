@@ -44,12 +44,14 @@
     <Compile Include="IssueActor.cs" />
     <Compile Include="GrainLog.cs" />
     <Compile Include="OrganizationActor.cs" />
+    <Compile Include="OrganizationBillingActor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="GitHub\GitHubActor.cs" />
     <Compile Include="RepositoryActor.cs" />
     <Compile Include="TimeLoggerFilter.cs" />
     <Compile Include="MentionsActor.cs" />
     <Compile Include="UserActor.cs" />
+    <Compile Include="UserBillingActor.cs" />
     <Compile Include="WebhookEventActor.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -101,6 +103,9 @@
     </Reference>
     <Reference Include="Orleans, Version=1.5.2.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Orleans.Core.1.5.2\lib\net461\Orleans.dll</HintPath>
+    </Reference>
+    <Reference Include="RealArtists.ChargeBee">
+      <HintPath>..\packages\RealArtists.ChargeBee.2.2.4-alpha\lib\net46\RealArtists.ChargeBee.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.AppContext, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">

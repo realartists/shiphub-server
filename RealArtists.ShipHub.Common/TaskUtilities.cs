@@ -20,11 +20,11 @@
       } else {
         task.ContinueWith(
           t => {
-            t.Exception.Report(userInfo: userInfo, filePath: filePath, memberName: memberName, lineNumber: lineNumber);
+            t.Exception?.Report(userInfo: userInfo, filePath: filePath, memberName: memberName, lineNumber: lineNumber);
           },
           CancellationToken.None,
-          TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-          TaskScheduler.Default);
+          TaskContinuationOptions.NotOnRanToCompletion,
+          TaskScheduler.Current);
       }
     }
   }

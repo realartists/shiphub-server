@@ -30,6 +30,8 @@
     <EnableFullTextSearch>True</EnableFullTextSearch>
     <TargetFrameworkProfile />
     <AssemblyOwner>dbo</AssemblyOwner>
+    <CompatibilityMode>140</CompatibilityMode>
+    <Parameterization>FORCED</Parameterization>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <OutputPath>bin\Release\</OutputPath>

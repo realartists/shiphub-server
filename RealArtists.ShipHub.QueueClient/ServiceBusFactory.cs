@@ -46,7 +46,7 @@
       MessagingFactory = MessagingFactory.CreateFromConnectionString(_connString);
 
       // Create topics and queues
-      await Task.WhenAll(EnsureQueues(), EnsureTopics());
+      await EnsureTopics();
 
       if (!_pairConnString.IsNullOrWhiteSpace()) {
         var pairManager = NamespaceManager.CreateFromConnectionString(_pairConnString);
@@ -107,34 +107,6 @@
           EnableBatchedOperations = true,
         });
       }
-    }
-
-    private QueueDescription GetQueueDescription(string queueName) {
-      return new QueueDescription(queueName) {
-        DefaultMessageTimeToLive = DefaultTimeToLive, // If we ever get that far behind start shedding.
-        EnableExpress = true,
-        EnableBatchedOperations = true,
-        EnableDeadLetteringOnMessageExpiration = true, // So we know when we've dropped events, and how many.
-        EnablePartitioning = true,
-        IsAnonymousAccessible = false,
-        MaxDeliveryCount = 1, // Prevent explosions of errors.
-        MaxSizeInMegabytes = 5120,
-        RequiresDuplicateDetection = false,
-      };
-    }
-
-    private async Task EnsureQueues() {
-      var checks = ShipHubQueueNames.AllQueues
-        .Select(x => new { QueueName = x, ExistsTask = NamespaceManager.QueueExistsAsync(x) })
-        .ToArray();
-
-      await Task.WhenAll(checks.Select(x => x.ExistsTask));
-
-      var creations = checks
-        .Where(x => !x.ExistsTask.Result)
-        .Select(x => NamespaceManager.CreateQueueAsync(GetQueueDescription(x.QueueName)));
-
-      await Task.WhenAll(creations);
     }
 
     private async Task EnsureTopics() {

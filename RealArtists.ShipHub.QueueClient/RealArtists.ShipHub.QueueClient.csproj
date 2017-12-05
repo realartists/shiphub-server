@@ -37,13 +37,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Messages\SyncOrgSusbscriptionStateMessage.cs" />
-    <Compile Include="Messages\UserIdMessage.cs" />
     <Compile Include="Messages\ChangeMessage.cs" />
     <Compile Include="ShipHubQueueClient.cs" />
     <Compile Include="ServiceBusFactory.cs" />
     <Compile Include="ShipHubTopicNames.cs" />
-    <Compile Include="ShipHubQueueNames.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WebJobInterop.cs" />
   </ItemGroup>

@@ -692,63 +692,63 @@
       };
     }
 
-    [Test]
-    public async Task WillScheduleUpdateComplimentarySubscriptionOnStateChange() {
-      using (var context = new ShipHubContext()) {
-        var user1 = TestUtil.MakeTestUser(context, 3001, "aroon");
-        var user2 = TestUtil.MakeTestUser(context, 3002, "alok");
-        var org = TestUtil.MakeTestOrg(context);
+    //[Test]
+    //public async Task WillScheduleUpdateComplimentarySubscriptionOnStateChange() {
+    //  using (var context = new ShipHubContext()) {
+    //    var user1 = TestUtil.MakeTestUser(context, 3001, "aroon");
+    //    var user2 = TestUtil.MakeTestUser(context, 3002, "alok");
+    //    var org = TestUtil.MakeTestOrg(context);
 
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = org.Id,
-          State = SubscriptionState.Subscribed,
-          Version = 0,
-        });
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = user1.Id,
-          State = SubscriptionState.Subscribed,
-          Version = 0,
-        });
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = user2.Id,
-          State = SubscriptionState.Subscribed,
-          Version = 0,
-        });
+    //    context.Subscriptions.Add(new Subscription() {
+    //      AccountId = org.Id,
+    //      State = SubscriptionState.Subscribed,
+    //      Version = 0,
+    //    });
+    //    context.Subscriptions.Add(new Subscription() {
+    //      AccountId = user1.Id,
+    //      State = SubscriptionState.Subscribed,
+    //      Version = 0,
+    //    });
+    //    context.Subscriptions.Add(new Subscription() {
+    //      AccountId = user2.Id,
+    //      State = SubscriptionState.Subscribed,
+    //      Version = 0,
+    //    });
 
-        await context.SetOrganizationAdmins(org.Id, new[] {
-          user1.Id,
-          user2.Id,
-        });
+    //    await context.SetOrganizationAdmins(org.Id, new[] {
+    //      user1.Id,
+    //      user2.Id,
+    //    });
 
-        await context.SaveChangesAsync();
+    //    await context.SaveChangesAsync();
 
-        var scheduledUserIds = new List<long>();
-        var mockBusClient = new Mock<IShipHubQueueClient>();
-        mockBusClient
-          .Setup(x => x.BillingUpdateComplimentarySubscription(It.IsAny<long>()))
-          .Returns(Task.CompletedTask)
-          .Callback((long userId) => { scheduledUserIds.Add(userId); });
-        var mockMailer = new Mock<IShipHubMailer>();
-        var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, null);
-        ConfigureController(
-          controller,
-          new ChargeBeeWebhookPayload() {
-            EventType = "subscription_cancelled",
-            Content = new ChargeBeeWebhookContent() {
-              Customer = new ChargeBeeWebhookCustomer() {
-                Id = $"org-{org.Id}",
-              },
-              Subscription = new ChargeBeeWebhookSubscription() {
-                Status = "cancelled",
-                ResourceVersion = 1234,
-              }
-            },
-          });
-        await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
+    //    var scheduledUserIds = new List<long>();
+    //    var mockBusClient = new Mock<IShipHubQueueClient>();
+    //    mockBusClient
+    //      .Setup(x => x.BillingUpdateComplimentarySubscription(It.IsAny<long>()))
+    //      .Returns(Task.CompletedTask)
+    //      .Callback((long userId) => { scheduledUserIds.Add(userId); });
+    //    var mockMailer = new Mock<IShipHubMailer>();
+    //    var controller = new ChargeBeeWebhookController(Configuration, mockBusClient.Object, mockMailer.Object, null);
+    //    ConfigureController(
+    //      controller,
+    //      new ChargeBeeWebhookPayload() {
+    //        EventType = "subscription_cancelled",
+    //        Content = new ChargeBeeWebhookContent() {
+    //          Customer = new ChargeBeeWebhookCustomer() {
+    //            Id = $"org-{org.Id}",
+    //          },
+    //          Subscription = new ChargeBeeWebhookSubscription() {
+    //            Status = "cancelled",
+    //            ResourceVersion = 1234,
+    //          }
+    //        },
+    //      });
+    //    await controller.HandleHook(Configuration.ChargeBeeWebhookSecret);
 
-        Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
-      };
-    }
+    //    Assert.AreEqual(new[] { 3001, 3002 }, scheduledUserIds.ToArray());
+    //  };
+    //}
 
     [Test]
     public async Task PaymentSucceededForOrganizationSendsMessage() {

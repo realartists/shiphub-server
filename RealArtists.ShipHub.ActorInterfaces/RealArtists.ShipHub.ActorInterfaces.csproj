@@ -41,6 +41,8 @@
     <Compile Include="GitHub\IGitHubPoolable.cs" />
     <Compile Include="GitHub\IGitHubPublicPoolActor.cs" />
     <Compile Include="GitHub\IGitHubRepositoryAdmin.cs" />
+    <Compile Include="IOrganizationBillingActor.cs" />
+    <Compile Include="IUserBillingActor.cs" />
     <Compile Include="IEchoActor.cs" />
     <Compile Include="IIssueActor.cs" />
     <Compile Include="IOrganizationActor.cs" />
