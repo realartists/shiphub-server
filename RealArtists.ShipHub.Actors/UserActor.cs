@@ -225,6 +225,12 @@
           if (savedBillingCurrent < savedBillingDesired) {
             _billing.GetOrCreatePersonalSubscription(DateTimeOffset.UtcNow).LogFailure(_userInfo);
 
+            foreach(var orgActor in _orgActors) {
+              var orgBilling = _grainFactory.GetGrain<IOrganizationBillingActor>(orgActor.Key);
+              orgBilling.InvokeOneWay(x => x.Sync)
+              _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
+            }
+
             Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
           }
         } finally {
