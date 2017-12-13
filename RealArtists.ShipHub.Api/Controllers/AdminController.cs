@@ -80,7 +80,7 @@ namespace RealArtists.ShipHub.Api.Controllers {
             try {
               if (delete.Succeeded) {
                 ++githubDeleted;
-                continue;
+                break; // Inner foreach
               }
             } catch (Exception e) {
               e.Report($"Error collecting hook {record.Id} on {record.RepoFullName} using {record.AccountId}");

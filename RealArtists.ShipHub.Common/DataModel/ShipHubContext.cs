@@ -1300,7 +1300,6 @@
             dynamic ddr = sdr;
             return new HookTableType() {
               Id = ddr.Id,
-              GitHubId = ddr.GitHubId,
               Secret = ddr.Secret,
               Events = ddr.Events,
             };
@@ -1315,16 +1314,17 @@
       using (var sp = new DynamicStoredProcedure("[dbo].[ExcessHooks]", ConnectionFactory)) {
         dynamic dsp = sp;
 
-        using (var sdr = await sp.ExecuteReaderAsync(CommandBehavior.SingleRow)) {
+        using (var sdr = await sp.ExecuteReaderAsync()) {
           dynamic ddr = sdr;
-          while (sdr.Read()) { }
+          while (sdr.Read()) {
 
-          results.Add(new ExcessHookType() {
-            Id = ddr.Id,
-            GitHubId = ddr.GitHubId,
-            AccountId = ddr.AccountId,
-            RepoFullName = ddr.RepoFullName,
-          });
+            results.Add(new ExcessHookType() {
+              Id = ddr.Id,
+              GitHubId = ddr.GitHubId,
+              AccountId = ddr.AccountId,
+              RepoFullName = ddr.RepoFullName,
+            });
+          }
         }
       }
 
