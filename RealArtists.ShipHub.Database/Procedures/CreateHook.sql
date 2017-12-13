@@ -10,8 +10,7 @@ BEGIN
   SET NOCOUNT ON
 
   INSERT INTO Hooks ([Secret], [Events], OrganizationId, RepositoryId)
-  OUTPUT INSERTED.Id, INSERTED.GitHubId, INSERTED.[Secret], INSERTED.[Events], INSERTED.LastSeen,
-         INSERTED.RepositoryId, INSERTED.OrganizationId
+  OUTPUT INSERTED.Id, INSERTED.[Secret], INSERTED.[Events]
   VALUES(@Secret, @Events, @OrganizationId, @RepositoryId)
   
   -- Do not signal changes here, since creation on GitHub's side has not yet
