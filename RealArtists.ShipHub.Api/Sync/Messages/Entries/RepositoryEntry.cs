@@ -12,6 +12,9 @@
     public string PullRequestTemplate { get; set; }
     public bool HasIssues { get; set; }
     public bool Disabled { get; set; }
+    public bool AllowMergeCommit { get; set; }
+    public bool AllowRebaseMerge { get; set; }
+    public bool AllowSquashMerge { get; set; }
 
     public IEnumerable<long> Assignees { get; set; } = Array.Empty<long>();
     public bool ShipNeedsWebhookHelp { get; set; }

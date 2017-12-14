@@ -10,5 +10,8 @@
     public bool HasProjects { get; set; }
     public bool? Disabled { get; set; }
     public bool Archived { get; set; }
+    public bool? AllowMergeCommit { get; set; }
+    public bool? AllowRebaseMerge { get; set; }
+    public bool? AllowSquashMerge { get; set; }
   }
 }

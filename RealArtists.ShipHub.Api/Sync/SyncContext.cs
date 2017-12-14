@@ -805,6 +805,9 @@
                   PullRequestTemplate = ddr.PullRequestTemplate,
                   HasIssues = ddr.HasIssues,
                   Disabled = ddr.Disabled,
+                  AllowMergeCommit = ddr.AllowMergeCommit,
+                  AllowRebaseMerge = ddr.AllowRebaseMerge,
+                  AllowSquashMerge = ddr.AllowSquashMerge,
                 },
               });
             }
