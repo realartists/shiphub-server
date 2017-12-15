@@ -20,5 +20,8 @@
     public string DefaultBranch { get; set; }
     public long Size { get; set; }
     public bool Archived { get; set; }
+    public bool? AllowMergeCommit { get; set; }
+    public bool? AllowRebaseMerge { get; set; }
+    public bool? AllowSquashMerge { get; set; }
   }
 }

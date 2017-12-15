@@ -968,6 +968,9 @@
             ("HasProjects", typeof(bool)),
             ("Disabled", typeof(bool)),
             ("Archived", typeof(bool)),
+            ("AllowMergeCommit", typeof(bool)),
+            ("AllowRebaseMerge", typeof(bool)),
+            ("AllowSquashMerge", typeof(bool)),
           },
           y => new object[] {
             y.Id,
@@ -980,6 +983,9 @@
             y.HasProjects,
             y.Disabled,
             y.Archived,
+            y.AllowMergeCommit,
+            y.AllowRebaseMerge,
+            y.AllowSquashMerge,
           },
           repositories);
       });

@@ -27,6 +27,9 @@
 
     private static readonly Version MinimumQueriesClientVersion = new Version(720, 0);
 
+    private static readonly Version MinimumMergeRestrictionsClientVersion = new Version(790, 0);
+    private const long MinimumMergeRestrictionsVersion = 1;
+
     private ShipHubPrincipal _user;
     private ISyncConnection _connection;
     private SyncVersions _versions;
@@ -39,7 +42,8 @@
         _versions.OrgVersions.Select(x => new OrganizationVersion() { Id = x.Key, Version = x.Value }).ToArray(),
         _versions.PullRequestVersion,
         _versions.MentionsVersion,
-        _versions.QueriesVersion
+        _versions.QueriesVersion,
+        _versions.MergeRestrictionVersion
       );
 
     public SyncContext(ShipHubPrincipal user, ISyncConnection connection, SyncVersions initialVersions) {
@@ -69,6 +73,13 @@
         && _versions.MentionsVersion < MinimumMentionsVersion) {
         resync = true;
         _versions.MentionsVersion = MinimumMentionsVersion;
+      }
+
+      // Repo merge options upgrade
+      if (_connection.ClientBuild >= MinimumMergeRestrictionsClientVersion
+        && _versions.MergeRestrictionVersion < MinimumMergeRestrictionsVersion) {
+        resync = true;
+        _versions.MergeRestrictionVersion = MinimumMergeRestrictionsVersion;
       }
 
       if (resync) {
@@ -414,7 +425,7 @@
 
               if (entry.Action == SyncLogAction.Set) {
                 entry.Data = new QueryEntry() {
-                    Id = ddr.Id,
+                  Id = ddr.Id,
                   Author = new AccountEntry() {
                     Identifier = ddr.AuthorId,
                     Name = ddr.AuthorName,
@@ -805,6 +816,9 @@
                   PullRequestTemplate = ddr.PullRequestTemplate,
                   HasIssues = ddr.HasIssues,
                   Disabled = ddr.Disabled,
+                  AllowMergeCommit = ddr.AllowMergeCommit,
+                  AllowRebaseMerge = ddr.AllowRebaseMerge,
+                  AllowSquashMerge = ddr.AllowSquashMerge,
                 },
               });
             }

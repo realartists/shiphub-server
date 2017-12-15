@@ -30,6 +30,9 @@
   [ContentsPullRequestTemplateMetadataJson] NVARCHAR(MAX)  NULL,
   [PullRequestReviewVersion]                BIGINT         NULL,
   [Archived]                                BIT            NOT NULL DEFAULT 0,
+  [AllowMergeCommit]                        BIT            NOT NULL DEFAULT 1,
+  [AllowRebaseMerge]                        BIT            NOT NULL DEFAULT 1,
+  [AllowSquashMerge]                        BIT            NOT NULL DEFAULT 1,
   CONSTRAINT [PK_Repositories] PRIMARY KEY CLUSTERED ([Id] ASC),
   CONSTRAINT [FK_Repositories_AccountId_Accounts_Id] FOREIGN KEY ([AccountId]) REFERENCES [dbo].[Accounts] ([Id]),
 )

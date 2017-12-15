@@ -115,7 +115,8 @@
             hello.Versions?.Organizations?.ToDictionary(x => x.Id, x => x.Version),
             hello.Versions?.PullRequestVersion,
             hello.Versions?.MentionsVersion,
-            hello.Versions?.QueriesVersion)
+            hello.Versions?.QueriesVersion,
+            hello.Versions?.MergeRestrictionVersion)
           );
           await _syncContext.SendHelloResponse(Constants.PurgeIdentifier);
 

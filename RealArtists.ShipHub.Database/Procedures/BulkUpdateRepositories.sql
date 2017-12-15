@@ -31,19 +31,19 @@ BEGIN
 
     MERGE INTO Repositories WITH (SERIALIZABLE) as [Target]
     USING (
-      SELECT Id, AccountId, [Private], [Name], FullName, Size, HasIssues, HasProjects, [Disabled], Archived
+      SELECT Id, AccountId, [Private], [Name], FullName, Size, HasIssues, HasProjects, [Disabled], Archived, AllowMergeCommit, AllowRebaseMerge, AllowSquashMerge
       FROM @Repositories
     ) as [Source]
     ON ([Target].Id = [Source].Id)
     WHEN NOT MATCHED BY TARGET THEN
-      INSERT (Id, AccountId, [Private], [Name], FullName, Size, [Date], HasIssues, HasProjects, [Disabled], Archived)
-      VALUES (Id, AccountId, [Private], [Name], FullName, Size, @Date,  HasIssues, HasProjects, ISNULL([Disabled], 0), Archived)
+      INSERT (Id, AccountId, [Private], [Name], FullName, Size, [Date], HasIssues, HasProjects, [Disabled], Archived, AllowMergeCommit, AllowRebaseMerge, AllowSquashMerge)
+      VALUES (Id, AccountId, [Private], [Name], FullName, Size, @Date,  HasIssues, HasProjects, ISNULL([Disabled], 0), Archived, ISNULL(AllowMergeCommit, 1), ISNULL(AllowRebaseMerge, 1), ISNULL(AllowSquashMerge, 1))
     WHEN MATCHED
       AND [Target].[Date] < @Date
       AND EXISTS (
-        SELECT [Target].AccountId, [Target].[Private], [Target].[Name], [Target].FullName, [Target].Size, [Target].HasIssues, [Target].HasProjects, [Target].[Disabled], [Target].Archived
+        SELECT [Target].AccountId, [Target].[Private], [Target].[Name], [Target].FullName, [Target].Size, [Target].HasIssues, [Target].HasProjects, [Target].[Disabled], [Target].Archived, [Target].AllowMergeCommit, [Target].AllowRebaseMerge, [Target].AllowSquashMerge
         EXCEPT
-        SELECT [Source].AccountId, [Source].[Private], [Source].[Name], [Source].FullName, [Source].Size, [Source].HasIssues, [Source].HasProjects, ISNULL([Source].[Disabled], [Target].[Disabled]), [Source].Archived
+        SELECT [Source].AccountId, [Source].[Private], [Source].[Name], [Source].FullName, [Source].Size, [Source].HasIssues, [Source].HasProjects, ISNULL([Source].[Disabled], [Target].[Disabled]), [Source].Archived, ISNULL([Source].AllowMergeCommit, [Target].AllowMergeCommit), ISNULL([Source].AllowRebaseMerge, [Target].AllowRebaseMerge), ISNULL([Source].AllowSquashMerge, [Target].AllowSquashMerge)
       ) THEN
       UPDATE SET
         AccountId = [Source].AccountId,
@@ -55,7 +55,10 @@ BEGIN
         HasIssues = [Source].HasIssues,
         HasProjects = [Source].HasProjects,
         [Disabled] = ISNULL([Source].[Disabled], [Target].[Disabled]),
-        Archived = [Source].Archived
+        Archived = [Source].Archived,
+        AllowMergeCommit = ISNULL([Source].AllowMergeCommit, [Target].AllowMergeCommit),
+        AllowRebaseMerge = ISNULL([Source].AllowRebaseMerge, [Target].AllowRebaseMerge),
+        AllowSquashMerge = ISNULL([Source].AllowSquashMerge, [Target].AllowSquashMerge)
     OUTPUT INSERTED.Id, INSERTED.AccountId INTO @Changes
     OPTION (LOOP JOIN, FORCE ORDER);
 
