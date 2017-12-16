@@ -5,6 +5,7 @@
   using System.Linq;
   using System.Net;
   using System.Net.Http;
+  using System.Net.Http.Headers;
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
@@ -24,6 +25,8 @@
     private static readonly TimeSpan _ProxyTimeout = TimeSpan.FromSeconds(60);
 
     private static readonly HttpMessageHandler _ProxyHandler = HttpUtilities.CreateDefaultHandler(maxRedirects: 3);
+
+    private const string PersonalAccessTokenHeader = "X-Authorization-PAT";
 
     // Using one HttpClient for all requests should be safe according to the documentation.
     // See https://msdn.microsoft.com/en-us/library/system.net.http.httpclient(v=vs.110).aspx?f=255&mspperror=-2147217396#Anchor_5
@@ -58,7 +61,14 @@
       request.RequestUri = builder.Uri;
 
       request.Headers.Host = request.RequestUri.Host;
-      // Authorization header passes through unaltered.
+
+      // Authorization header passes through unaltered, unless overridden by Personal Access Token
+      var pat = request.Headers.ParseHeader(PersonalAccessTokenHeader, x => x);
+      if (!string.IsNullOrWhiteSpace(pat)
+        && AuthenticationHeaderValue.TryParse(pat, out var patHeader)) {
+        request.Headers.Authorization = patHeader;
+        request.Headers.Remove(PersonalAccessTokenHeader);
+      }
 
       // This is dumb
       if (_BareMethods.Contains(request.Method)) {
