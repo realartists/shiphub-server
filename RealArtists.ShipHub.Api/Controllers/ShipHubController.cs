@@ -96,7 +96,7 @@
       sm.PullRequestEntry prEntry = null;
       sm.IssueEntry issueEntry = null;
 
-      if (issueResponse.IsOk) {
+      if (issueResponse?.IsOk == true) {
         var issue = issueResponse.Result;
         issueEntry = new sm.IssueEntry() {
           Assignees = issue.Assignees.Select(x => x.Id).ToArray(),
