@@ -92,6 +92,14 @@
       return false;
     }
 
+    [HttpGet]
+    [AllowAnonymous]
+    [Route("webhook")]
+    [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
+    public IHttpActionResult RedirectBrowser() {
+      return Redirect("https://www.realartists.com/docs/2.0/privacy.html");
+    }
+
     [HttpPost]
     [AllowAnonymous]
     [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
