@@ -190,6 +190,7 @@
     <Build Include="Procedures\UpdateQuery.sql" />
     <Build Include="Procedures\WatchQuery.sql" />
     <Build Include="Tables\QueryLog.sql" />
+    <Build Include="Procedures\ExcessHooks.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

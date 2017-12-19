@@ -57,7 +57,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Jobs\LoggingHandlerBase.cs" />
-    <Compile Include="Jobs\WebhookReaperTimer.cs" />
     <Compile Include="Tracing\DetailedExceptionLogger.cs" />
     <Compile Include="Jobs\BillingQueueHandler.cs" />
     <Compile Include="PairedMessagingProvider.cs" />

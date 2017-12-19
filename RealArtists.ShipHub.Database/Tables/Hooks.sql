@@ -4,8 +4,6 @@
   [Secret]           UNIQUEIDENTIFIER NOT NULL,
   [Events]           NVARCHAR(500)    NOT NULL,
   [LastSeen]         DATETIMEOFFSET   NULL,
-  [LastPing]         DATETIMEOFFSET   NULL,
-  [PingCount]        INT              NULL,
   [RepositoryId]     BIGINT           NULL,
   [OrganizationId]   BIGINT           NULL,
   [LastError]        DATETIMEOFFSET   NULL,
@@ -14,10 +12,6 @@
   CONSTRAINT [FK_Hooks_RepositoryId_Repositories_Id] FOREIGN KEY ([RepositoryId]) REFERENCES [dbo].[Repositories]([Id]),
   CONSTRAINT [FK_Hooks_OrganizationId_Accounts_Id] FOREIGN KEY ([OrganizationId]) REFERENCES [dbo].[Accounts]([Id])
 )
-GO
-
-CREATE NONCLUSTERED INDEX [IX_Hooks_LastSeen_LastPing]
-  ON [dbo].[Hooks] ([LastSeen], [LastPing])
 GO
 
 CREATE UNIQUE NONCLUSTERED INDEX [UIX_Hooks_RepositoryId]

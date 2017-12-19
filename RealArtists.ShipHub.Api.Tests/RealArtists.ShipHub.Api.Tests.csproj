@@ -56,7 +56,6 @@
     <Compile Include="SyncContextTests.cs" />
     <Compile Include="WebhookHandlerTests.cs" />
     <Compile Include="TestUtil.cs" />
-    <Compile Include="WebhookReaperTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

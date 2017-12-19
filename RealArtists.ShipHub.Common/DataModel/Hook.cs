@@ -13,8 +13,6 @@
     public string Events { get; set; }
 
     public DateTimeOffset? LastSeen { get; set; }
-    public DateTimeOffset? LastPing { get; set; }
-    public int? PingCount { get; set; }
 
     public long? RepositoryId { get; set; }
     public long? OrganizationId { get; set; }
