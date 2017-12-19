@@ -107,7 +107,12 @@
       return $"sha1={new SoapHexBinary(hash)}";
     }
 
-    private static void ConfigureController(ApiController controller, string eventName, string body, string signature) {
+    // Hack
+    public class RemoteEndpointMessagehack {
+      public string Address { get; set; }
+    }
+
+    private static void ConfigureController(ApiController controller, string eventName, string body, string signature, string clientIP = "192.30.252.67") {
       var config = new HttpConfiguration();
       var request = new HttpRequestMessage(HttpMethod.Post, "http://localhost/webhook");
       request.Headers.Add("User-Agent", GitHubWebhookController.GitHubUserAgent);
@@ -115,6 +120,7 @@
       request.Headers.Add(GitHubWebhookController.SignatureHeaderName, signature);
       request.Headers.Add(GitHubWebhookController.DeliveryIdHeaderName, Guid.NewGuid().ToString());
       request.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body));
+      request.Properties[GitHubWebhookController.RemoteEndpointMessageKey] = new RemoteEndpointMessagehack() { Address = clientIP };
       var routeData = new HttpRouteData(config.Routes.MapHttpRoute("Webhook", "webhook"));
 
       controller.ControllerContext = new HttpControllerContext(config, routeData, request);
