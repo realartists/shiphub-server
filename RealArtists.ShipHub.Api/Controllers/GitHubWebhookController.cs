@@ -41,6 +41,7 @@
         jsonReader.Close();
         // We're not worth launching a timing attack against.
         if (!hmac.Hash.SequenceEqual(signature)) {
+          Log.Info($"Invalid signature detected: {GetIPAddress()} {Request.RequestUri}");
           throw new HttpResponseException(HttpStatusCode.BadRequest);
         }
         return payload;
@@ -96,6 +97,7 @@
     [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
     public async Task<IHttpActionResult> ReceiveHook(string type, long id) {
       if (!IsRequestFromGitHub()) {
+        Log.Info($"Rejecting webhook request from impersonator: {GetIPAddress()} {Request.RequestUri}");
         return BadRequest("Not you.");
       }
 
