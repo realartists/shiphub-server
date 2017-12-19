@@ -41,17 +41,71 @@
         jsonReader.Close();
         // We're not worth launching a timing attack against.
         if (!hmac.Hash.SequenceEqual(signature)) {
+          Log.Info($"Invalid signature detected: {GetIPAddress()} {Request.RequestUri}");
           throw new HttpResponseException(HttpStatusCode.BadRequest);
         }
         return payload;
       }
     }
 
+    private const string HttpContextKey = "MS_HttpContext";
+    public const string RemoteEndpointMessageKey = "System.ServiceModel.Channels.RemoteEndpointMessageProperty";
+
+    private string GetIPAddress() {
+      try {
+        if (Request.Properties.ContainsKey(HttpContextKey)) {
+          dynamic ctx = Request.Properties[HttpContextKey];
+          if (ctx != null) {
+            return ctx.Request.UserHostAddress;
+          }
+        }
+
+        if (Request.Properties.ContainsKey(RemoteEndpointMessageKey)) {
+          dynamic remoteEndpoint = Request.Properties[RemoteEndpointMessageKey];
+          if (remoteEndpoint != null) {
+            return remoteEndpoint.Address;
+          }
+        }
+      } catch (Exception ex) {
+        ex.Report("Failed to determine client IP address.");
+      }
+      return null;
+    }
+
+    // Current hook IPs from https://api.github.com/meta are "192.30.252.0/22", "185.199.108.0/22"
+    // This is a super gross hack.
+    private static readonly uint hookNet1 = BitConverter.ToUInt32(IPAddress.Parse("192.30.252.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
+    private static readonly uint hookNet2 = BitConverter.ToUInt32(IPAddress.Parse("185.199.108.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
+
+    private bool IsRequestFromGitHub() {
+      if(Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) { return false; }
+
+      var remoteIPString = GetIPAddress();
+      if(IPAddress.TryParse(remoteIPString, out var remoteIP)) {
+        var remoteIPBytes = remoteIP.GetAddressBytes();
+        Array.Reverse(remoteIPBytes);
+        var remoteIPInt = BitConverter.ToUInt32(remoteIPBytes, 0);
+        var shifted = remoteIPInt >> 10;
+        return shifted == hookNet1 || shifted == hookNet2;
+      }
+
+      return false;
+    }
+
+    [HttpGet]
+    [AllowAnonymous]
+    [Route("webhook")]
+    [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
+    public IHttpActionResult RedirectBrowser() {
+      return Redirect("https://www.realartists.com/docs/2.0/privacy.html");
+    }
+
     [HttpPost]
     [AllowAnonymous]
     [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
     public async Task<IHttpActionResult> ReceiveHook(string type, long id) {
-      if (Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) {
+      if (!IsRequestFromGitHub()) {
+        Log.Info($"Rejecting webhook request from impersonator: {GetIPAddress()} {Request.RequestUri}");
         return BadRequest("Not you.");
       }
 
