@@ -810,7 +810,7 @@
           // Grab it from the first page in case the data changes under us during pagination.
           // Don't want to miss anything permanently.
           if (firstPageMetadata == null) {
-            firstPageMetadata = GitHubMetadata.FromResponse(updated);
+            firstPageMetadata = GitHubMetadata.FromResponse(updated, useDangerousFirstPage: true);
           }
 
           if (updated.IsOk) {

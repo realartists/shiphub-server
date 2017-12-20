@@ -28,12 +28,13 @@
       };
     }
 
-    public static GitHubMetadata FromResponse(GitHubResponse response) {
-      if (response?.Succeeded != true || response?.CacheData == null) {
+    public static GitHubMetadata FromResponse(GitHubResponse response, bool useDangerousFirstPage = false) {
+      var cacheData = useDangerousFirstPage ? response?.DangerousFirstPageCacheData : response?.CacheData;
+
+      if (response?.Succeeded != true || cacheData == null) {
         return null;
       }
 
-      var cacheData = response.CacheData;
       return new GitHubMetadata() {
         UserId = cacheData.UserId,
         AccessToken = cacheData.AccessToken,

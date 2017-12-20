@@ -824,6 +824,9 @@
       // In all cases we need the first page 🙄
       var response = await EnqueueRequest<IEnumerable<T>>(request);
 
+      // Save first page cache data
+      var dangerousFirstPageCacheData = response.CacheData;
+
       // When successful, try to enumerate. Else immediately return the error.
       if (response.IsOk) {
         // If skipping pages, calculate here.
@@ -870,6 +873,9 @@
       // 1) Pagination header from last page
       // 2) Cache data from first page, IIF it's a complete result, and not truncated due to errors.
       // 3) Number of pages returned
+
+      // Set first page cache data
+      response.DangerousFirstPageCacheData = dangerousFirstPageCacheData;
 
       return response.Distinct(keySelector);
     }
