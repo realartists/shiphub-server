@@ -74,19 +74,24 @@
 
     // Current hook IPs from https://api.github.com/meta are "192.30.252.0/22", "185.199.108.0/22"
     // This is a super gross hack.
-    private static readonly uint hookNet1 = BitConverter.ToUInt32(IPAddress.Parse("192.30.252.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
-    private static readonly uint hookNet2 = BitConverter.ToUInt32(IPAddress.Parse("185.199.108.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
+    private static readonly uint HookNet1 = BitConverter.ToUInt32(IPAddress.Parse("192.30.252.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
+    private static readonly uint HookNet2 = BitConverter.ToUInt32(IPAddress.Parse("185.199.108.0").GetAddressBytes().Reverse().ToArray(), 0) >> 10;
+    private static readonly IPAddress VpnIp = IPAddress.Parse("172.27.175.1");
 
     private bool IsRequestFromGitHub() {
       if(Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) { return false; }
 
       var remoteIPString = GetIPAddress();
       if(IPAddress.TryParse(remoteIPString, out var remoteIP)) {
-        var remoteIPBytes = remoteIP.GetAddressBytes();
-        Array.Reverse(remoteIPBytes);
-        var remoteIPInt = BitConverter.ToUInt32(remoteIPBytes, 0);
-        var shifted = remoteIPInt >> 10;
-        return shifted == hookNet1 || shifted == hookNet2;
+        if (remoteIP.Equals(VpnIp)) {
+          return true;
+        } else {
+          var remoteIPBytes = remoteIP.GetAddressBytes();
+          Array.Reverse(remoteIPBytes);
+          var remoteIPInt = BitConverter.ToUInt32(remoteIPBytes, 0);
+          var shifted = remoteIPInt >> 10;
+          return shifted == HookNet1 || shifted == HookNet2;
+        }
       }
 
       return false;
