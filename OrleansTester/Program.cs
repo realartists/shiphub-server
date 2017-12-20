@@ -83,8 +83,9 @@
 
       var user = await gc.GetGrain<IUserActor>(87309); // kogir
 
-      var repo = await gc.GetGrain<IRepositoryActor>(59613425); // realartists/test
-
+      //var repo = await gc.GetGrain<IRepositoryActor>(59613425); // realartists/test
+      var repo = await gc.GetGrain<IRepositoryActor>(28232663); // dotnet/orleans
+      
       //var issue = gc.GetGrain<IIssueActor>(139, "realartists/test", grainClassNamePrefix: null); // realartists/test#139
       var issue = await gc.GetGrain<IIssueActor>(423, "realartists/shiphub-server", grainClassNamePrefix: null); // realartists/shiphub-server#423
 

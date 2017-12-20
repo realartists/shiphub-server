@@ -39,6 +39,16 @@
     public GitHubRateLimit RateLimit { get; set; }
     public GitHubRedirect Redirect { get; set; }
     public GitHubPagination Pagination { get; set; }
+
+    /// <summary>
+    /// Only use this if you really know what you're doing, or you'll have a bad time.
+    /// Pagination sets it to the cache data for the first page, even when skipping pages.
+    /// Make sure you completely understand it and need it before using it.
+    /// Really. Don't use this.
+    /// Stop it.
+    /// No.
+    /// </summary>
+    public GitHubCacheDetails DangerousFirstPageCacheData { get; set; }
   }
 
   public class GitHubResponse<T> : GitHubResponse {
