@@ -183,6 +183,8 @@
       foreach (var header in message.Headers) {
         if (header.Key.Equals("authorization", StringComparison.OrdinalIgnoreCase)) {
           streamWriter.WriteLine($"{header.Key}: [Redacted]");
+        } else if (header.Key.Equals("x-authorization-pat", StringComparison.OrdinalIgnoreCase)) {
+          streamWriter.WriteLine($"{header.Key}: [Redacted]");
         } else {
           streamWriter.WriteLine($"{header.Key}: {string.Join(", ", header.Value)}");
         }
