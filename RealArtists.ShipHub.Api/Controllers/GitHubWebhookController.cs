@@ -1,6 +1,7 @@
 ﻿namespace RealArtists.ShipHub.Api.Controllers {
   using System;
   using System.Data.Entity;
+  using System.Diagnostics.CodeAnalysis;
   using System.IO;
   using System.Linq;
   using System.Net;
@@ -51,6 +52,7 @@
     private const string HttpContextKey = "MS_HttpContext";
     public const string RemoteEndpointMessageKey = "System.ServiceModel.Channels.RemoteEndpointMessageProperty";
 
+    [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes")]
     private string GetIPAddress() {
       try {
         if (Request.Properties.ContainsKey(HttpContextKey)) {
@@ -79,10 +81,10 @@
     private static readonly IPAddress VpnIp = IPAddress.Parse("172.27.175.1");
 
     private bool IsRequestFromGitHub() {
-      if(Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) { return false; }
+      if (Request.Headers.UserAgent.Single().Product.Name != GitHubUserAgent) { return false; }
 
       var remoteIPString = GetIPAddress();
-      if(IPAddress.TryParse(remoteIPString, out var remoteIP)) {
+      if (IPAddress.TryParse(remoteIPString, out var remoteIP)) {
         if (remoteIP.Equals(VpnIp)) {
           return true;
         } else {
