@@ -671,7 +671,9 @@
 
     private async Task UpdateAssignees(DataUpdater updater, IGitHubPoolable github) {
       if (_assignableMetadata.IsExpired()) {
-        var assignees = await github.Assignable(_fullName, _assignableMetadata);
+        // With the hard page limit here, we'll cache an empty response for lists we can't enumerate.
+        // This is ok for assignees, and strictly better than failing while exhausting all available rate.
+        var assignees = await github.Assignable(_fullName, 100, _assignableMetadata);
         if (assignees.IsOk) {
           await updater.SetRepositoryAssignees(_repoId, assignees.Date, assignees.Result);
         }

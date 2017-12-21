@@ -506,9 +506,9 @@
       return FetchPaged(request, (PullRequestComment x) => x.Id);
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, uint hardPageLimit, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/assignees", cacheOptions, priority);
-      return FetchPaged(request, (Account x) => x.Id);
+      return FetchPaged(request, (Account x) => x.Id, hardPageLimit: hardPageLimit);
     }
 
     public Task<GitHubResponse<IEnumerable<Webhook>>> OrganizationWebhooks(string name, GitHubCacheDetails cacheOptions, RequestPriority priority) {
@@ -808,12 +808,15 @@
       }
     }
 
-    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint maxPages = uint.MaxValue, uint skipPages = 0) {
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint softPageLimit = uint.MaxValue, uint skipPages = 0, uint hardPageLimit = uint.MaxValue) {
       if (request.Method != HttpMethod.Get) {
         throw new InvalidOperationException("Only GETs can be paginated.");
       }
-      if (maxPages == 0) {
-        throw new InvalidOperationException($"{nameof(maxPages)} must be omitted or greater than 0");
+      if (softPageLimit == 0) {
+        throw new InvalidOperationException($"{nameof(softPageLimit)} must be omitted or greater than 0");
+      }
+      if (hardPageLimit == 0) {
+        throw new InvalidOperationException($"{nameof(hardPageLimit)} must be omitted or greater than 0");
       }
 
       // Always request the largest page size
@@ -855,8 +858,17 @@
             break;
         }
 
-        // Now, if there's more to do, enumerate the results
-        if (maxPages > 1 && response.Pagination?.Next != null) {
+        // Check hard limit
+        if (response.Pagination?.CanInterpolate == true
+          && response.Pagination.Interpolate().Count() > hardPageLimit) {
+          // We'll hit our hard limit, so return no results.
+          response.Pagination = null;
+          response.Result = Array.Empty<T>();
+
+          // Maybe this is a bad idea, but the goal with the hard limit is to cache the empty result we'll never be able to really enumerate.
+          response.CacheData = dangerousFirstPageCacheData;
+        } else if (softPageLimit > 1 && response.Pagination?.Next != null) {
+          // Now, if there's more to do, enumerate the results
           // By default, upgrade background => subrequest
           var subRequestPriority = RequestPriority.SubRequest;
           // Ensure interactive => interactive
@@ -865,7 +877,7 @@
           }
 
           // Walk in order
-          response = await EnumerateSequential(response, subRequestPriority, maxPages);
+          response = await EnumerateSequential(response, subRequestPriority, softPageLimit);
         }
       }
 

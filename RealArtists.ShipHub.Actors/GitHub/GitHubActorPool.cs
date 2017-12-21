@@ -119,9 +119,9 @@
       );
     }
 
-    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
+    public Task<GitHubResponse<IEnumerable<Account>>> Assignable(string repoFullName, uint hardPageLimit, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       return TryWithFallback(
-        (actor, cache) => actor.Assignable(repoFullName, cache, priority),
+        (actor, cache) => actor.Assignable(repoFullName, hardPageLimit, cache, priority),
         cacheOptions
       );
     }
