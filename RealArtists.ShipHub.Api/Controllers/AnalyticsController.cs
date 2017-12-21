@@ -37,7 +37,7 @@
 
       var headers = httpClient.DefaultRequestHeaders;
       headers.UserAgent.Clear();
-      headers.UserAgent.Add(new ProductInfoHeaderValue("RealArtists", "server"));
+      headers.UserAgent.Add(new ProductInfoHeaderValue("RealArtists", "1.0"));
 
       return httpClient;
     }

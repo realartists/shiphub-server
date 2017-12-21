@@ -118,7 +118,7 @@
       headers.Add("Time-Zone", "Etc/UTC");
 
       headers.UserAgent.Clear();
-      headers.UserAgent.Add(new ProductInfoHeaderValue(ApplicationName, ApplicationVersion));
+      headers.UserAgent.Add(new ProductInfoHeaderValue("ShipHubWebJob", "1.0"));
 
       var basicAuth = $"{config.GitHubClientId}:{config.GitHubClientSecret}";
       var basicBytes = Encoding.ASCII.GetBytes(basicAuth);
@@ -127,9 +127,6 @@
 
       return httpClient;
     }
-
-    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
-    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
     private async Task<string> ResetToken(string accessToken) {
       var httpRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(_config.GitHubApiRoot, $"applications/{_config.GitHubClientId}/tokens/{accessToken}"));
