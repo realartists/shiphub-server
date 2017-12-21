@@ -31,6 +31,7 @@
       _config = config;
     }
 
+    [Singleton]
     [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "timerInfo")]
     public async Task TokenRollTimer(
       [TimerTrigger("0 */10 * * * *")] TimerInfo timerInfo,
