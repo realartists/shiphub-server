@@ -81,6 +81,7 @@
     <Compile Include="GitHub\Models\GraphQL\RateLimit.cs" />
     <Compile Include="GitHub\Models\GraphQL\User.cs" />
     <Compile Include="GitHub\Models\PullRequestComment.cs" />
+    <Compile Include="GitHub\Models\ResetAccessToken.cs" />
     <Compile Include="GitHub\Models\Review.cs" />
     <Compile Include="GitHub\Models\ContentsFile.cs" />
     <Compile Include="GitHub\Models\Project.cs" />

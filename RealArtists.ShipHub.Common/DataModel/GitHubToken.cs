@@ -9,6 +9,9 @@
 
     public long UserId { get; set; }
 
+    public int Version { get; set; }
+
     public virtual User User { get; set; }
+
   }
 }

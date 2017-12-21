@@ -272,6 +272,26 @@
       });
     }
 
+    public Task RollUserAccessToken(long userId, string oldToken, string newToken, int version) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[RollToken]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.UserId = userId;
+          dsp.OldToken = oldToken;
+          dsp.NewToken = newToken;
+          dsp.Version = version;
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
+    }
+
+    public Task DeleteUserAccessToken(long userId, string token) {
+      return ExecuteCommandTextAsync(
+        $"DELETE FROM GitHubTokens WHERE Token = @Token AND UserId = @UserId",
+        new SqlParameter("Token", SqlDbType.NVarChar, 64) { Value = token },
+        new SqlParameter("UserId", SqlDbType.BigInt) { Value = userId });
+    }
+
     public Task UpdateAccountMentionSince(long accountId, DateTimeOffset? mentionSince) {
       return UpdateSince("Accounts", "MentionSince", accountId, mentionSince);
     }
