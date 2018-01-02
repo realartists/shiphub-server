@@ -1,4 +1,6 @@
 # Secrets
+*.pem
+*.csp
 [Ss]ecret.*.config
 RealArtists.ShipHub.CloudServices/ServiceConfiguration.Local.cscfg
 RealArtists.ShipHub.Api/deploy/
