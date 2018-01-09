@@ -320,7 +320,8 @@
         // Fixup and sanity checks
         foreach (var item in filteredEvents) {
           switch (item.Event) {
-            case "crossreferenced":
+            case "crossreferenced": // In case original wasn't a typo
+            case "cross-referenced":
               if (item.Actor != null) { // It's a comment reference
                 accounts.Add(item.Source?.Actor);
                 item.Actor = item.Source?.Actor;
@@ -394,8 +395,12 @@
     }
 
     private async Task LookupEventSourceDetails(IGitHubActor ghc, HashSet<gm.Account> accounts, IEnumerable<gm.IssueEvent> events) {
-      var withSources = events.Where(x => x.Source?.Url != null).ToArray();
-      var sources = withSources.Select(x => x.Source.Url).Distinct().ToArray();
+      string sourceUrl(gm.IssueEvent e) {
+        return e.Source?.Url ?? e.Source?.Issue?.Url;
+      }
+
+      var withSources = events.Where(x => sourceUrl(x) != null).ToArray();
+      var sources = withSources.Select(x => sourceUrl(x)).Distinct().ToArray();
 
       if (sources.Any()) {
         var sourceLookups = sources
@@ -431,7 +436,7 @@
         await Task.WhenAll(prLookups.Values);
 
         foreach (var item in withSources) {
-          var refIssue = sourceLookups[item.Source.Url].Result.Result;
+          var refIssue = sourceLookups[sourceUrl(item)].Result.Result;
           accounts.Add(item.Source.Actor);
           if (refIssue.Assignees.Any()) {
             accounts.UnionWith(refIssue.Assignees);
