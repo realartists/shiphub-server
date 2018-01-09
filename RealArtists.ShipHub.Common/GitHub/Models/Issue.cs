@@ -16,6 +16,7 @@
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public Account ClosedBy { get; set; }
+    public string Url { get; set; }
 
     public ReactionSummary Reactions { get; set; }
     public PullRequestDetails PullRequest { get; set; }
