@@ -320,15 +320,20 @@
         // Fixup and sanity checks
         foreach (var item in filteredEvents) {
           switch (item.Event) {
-            case "crossreferenced": // In case original wasn't a typo
             case "cross-referenced":
-              if (item.Actor != null) { // It's a comment reference
+              if (item.Source?.Actor != null) {
                 accounts.Add(item.Source?.Actor);
-                item.Actor = item.Source?.Actor;
-              } else { // It's an issue reference
-                accounts.Add(item.Source?.Issue?.User);
-                item.Actor = item.Source?.Issue?.User;
               }
+              if (item.Source?.Issue?.User != null) {
+                accounts.Add(item.Source?.Issue?.User);
+              }
+              //if (item.Actor != null) { // It's a comment reference
+              //  accounts.Add(item.Source?.Actor);
+              //  item.Actor = item.Source?.Actor;
+              //} else { // It's an issue reference
+              //  accounts.Add(item.Source?.Issue?.User);
+              //  item.Actor = item.Source?.Issue?.User;
+              //}
               break;
             case "committed":
               item.CreatedAt = item.ExtensionDataDictionary["committer"]["date"].ToObject<DateTimeOffset>();
