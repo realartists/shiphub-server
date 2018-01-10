@@ -7,7 +7,7 @@
   /// <summary>
   /// Represents a ShipHub user.
   /// </summary>
-  [Version(2)]
+  [Version(Constants.InterfaceBaseVersion + 2)]
   public interface IUserActor : IGrainWithIntegerKey {
     /// <summary>
     /// Saves the provided sync settings and applies them immediately.

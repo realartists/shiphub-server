@@ -6,7 +6,7 @@
   /// <summary>
   /// Represents a Github/ShipHub organization.
   /// </summary>
-  [Version(1)]
+  [Version(Constants.InterfaceBaseVersion + 1)]
   public interface IOrganizationActor : IGrainWithIntegerKey {
     /// <summary>
     /// Right now this simply refreshes a timer. If no sync interest

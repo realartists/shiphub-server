@@ -36,6 +36,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Constants.cs" />
     <Compile Include="GitHub\IGitHubActor.cs" />
     <Compile Include="GitHub\IGitHubOrganizationAdmin.cs" />
     <Compile Include="GitHub\IGitHubPoolable.cs" />

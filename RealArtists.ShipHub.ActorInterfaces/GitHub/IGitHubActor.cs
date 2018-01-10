@@ -9,7 +9,7 @@
   /// <summary>
   /// Interacts with GitHub on behalf of a user, using their credentials.
   /// </summary>
-  [Version(1)]
+  [Version(Constants.InterfaceBaseVersion + 1)]
   public interface IGitHubActor : Orleans.IGrainWithIntegerKey, IGitHubPoolable, IGitHubOrganizationAdmin, IGitHubRepositoryAdmin {
     // Implict user scope and permissions (My _)
     Task<GitHubResponse<IEnumerable<Issue>>> IssueMentions(DateTimeOffset? since, uint maxPages, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background);

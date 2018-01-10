@@ -3,7 +3,7 @@
   using Orleans;
   using Orleans.CodeGeneration;
 
-  [Version(1)]
+  [Version(Constants.InterfaceBaseVersion + 1)]
   public interface IRepositoryActor : IGrainWithIntegerKey {
     /// <summary>
     /// Right now this simply refreshes a timer. If no sync interest

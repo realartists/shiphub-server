@@ -6,7 +6,7 @@
   /// <summary>
   /// This is just for James.
   /// </summary>
-  [Version(1)]
+  [Version(Constants.InterfaceBaseVersion + 1)]
   public interface IMentionsActor : IGrainWithIntegerKey {
     /// <summary>
     /// Indicates sync interest. If none is observed for a period of time,
