@@ -20,6 +20,8 @@
       <Setting name="ApiHostName" />
       <Setting name="StatHatKey" />
       <Setting name="StatHatPrefix" />
+      <Setting name="GitHubAppId" />
+      <Setting name="GitHubAppSigningKey" />
     </ConfigurationSettings>
     <Endpoints>
       <InternalEndpoint name="OrleansSiloEndpoint"

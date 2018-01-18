@@ -9,11 +9,32 @@
 
   class Program {
     static void Main(string[] args) {
-      DoIt().Wait();
+      //DoIt().Wait();
       //DoIt2();
       //DoIt3().Wait();
+      DoIt4().Wait();
       Console.WriteLine("Done");
       Console.ReadKey();
+    }
+
+    static async Task DoIt4() {
+      var gc = new OrleansAzureClient(ShipHubCloudConfiguration.Instance.DeploymentId, ShipHubCloudConfiguration.Instance.DataConnectionString);
+
+      var gapp = await gc.GetGrain<IGitHubAppActor>(0);
+
+      Console.WriteLine("[q]: Quit, [a]: Make App request");
+      ConsoleKeyInfo keyInfo;
+      while ((keyInfo = Console.ReadKey(true)).Key != ConsoleKey.Q) {
+        switch (keyInfo.Key) {
+          case ConsoleKey.A:
+            Console.WriteLine($"[{DateTimeOffset.Now}]: Requesting app details.");
+            var resp = await gapp.App();
+            if (resp.IsOk) {
+              Console.WriteLine(resp.Result.SerializeObject(Formatting.Indented));
+            }
+            break;
+        }
+      }
     }
 
     static async Task DoIt3() {

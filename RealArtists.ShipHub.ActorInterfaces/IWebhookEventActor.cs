@@ -5,9 +5,11 @@
   using Orleans;
   using Orleans.CodeGeneration;
 
-  [Version(Constants.InterfaceBaseVersion + 1)]
+  [Version(Constants.InterfaceBaseVersion + 2)]
   public interface IWebhookEventActor : IGrainWithIntegerKey {
     Task CommitComment(DateTimeOffset eventDate, CommitCommentPayload payload);
+    Task Installation(DateTimeOffset eventDate, InstallationPayload payload);
+    Task InstallationRepositories(DateTimeOffset eventDate, InstallationRepositoriesPayload payload);
     Task IssueComment(DateTimeOffset eventDate, IssueCommentPayload payload);
     Task Issues(DateTimeOffset eventDate, IssuesPayload payload);
     Task Label(DateTimeOffset eventDate, LabelPayload payload);

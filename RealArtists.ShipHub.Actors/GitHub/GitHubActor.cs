@@ -23,90 +23,64 @@
   using dmt = Common.DataModel.Types;
   using gql = Common.GitHub.Models.GraphQL;
 
-  public interface IGitHubClient {
-    string AccessToken { get; }
-    Uri ApiRoot { get; }
-    ProductInfoHeaderValue UserAgent { get; }
-    string UserInfo { get; }
-    long UserId { get; }
-
-    int NextRequestId();
-  }
-
   [Reentrant]
-  public class GitHubActor : Grain, IGitHubActor, IGitHubClient {
+  public class GitHubActor : Grain, IGitHubActor {
     public const int PageSize = 100;
 
     // Should be less than Orleans timeout.
     // If changing, may also need to update values in CreateGitHubHttpClient()
     public static readonly TimeSpan GitHubRequestTimeout = OrleansAzureClient.ResponseTimeout.Subtract(TimeSpan.FromSeconds(2));
 
-    public static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
-    public static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
     private IFactory<dm.ShipHubContext> _shipContextFactory;
     private IShipHubQueueClient _queueClient;
     private IShipHubConfiguration _configuration;
     private IShipHubRuntimeConfiguration _runtimeConfiguration;
 
-    public string AccessToken { get; private set; }
-    public string Login { get; private set; }
-    public long UserId { get; private set; }
+    private long _id;
+    private string _login;
+    private string _debugInfo;
 
     private DateTimeOffset? _dropRequestsUntil;
     private volatile bool _dropRequestAbuse;
     private volatile bool _lastRequestLimited;
     private volatile GitHubRateLimit _rateLimit; // Do not update directly please.
 
-    public Uri ApiRoot { get; }
-    public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
-    public string UserInfo => $"{UserId} {Login}";
-
-    private static IGitHubHandler SharedHandler;
-    private static void EnsureHandlerPipelineCreated(Uri apiRoot) {
-      if (SharedHandler != null) {
-        return;
-      }
-
-      // Set the maximum number of concurrent connections
-      HttpUtilities.SetServicePointConnectionLimit(apiRoot);
-
-      SharedHandler = new GitHubHandler();
-    }
+    
+    private GitHubClient _ghc;
 
     public GitHubActor(IFactory<dm.ShipHubContext> shipContextFactory, IShipHubQueueClient queueClient, IShipHubConfiguration configuration, IShipHubRuntimeConfiguration runtimeConfiguration) {
       _shipContextFactory = shipContextFactory;
       _queueClient = queueClient;
       _configuration = configuration;
       _runtimeConfiguration = runtimeConfiguration;
-
-      ApiRoot = _configuration.GitHubApiRoot;
-      EnsureHandlerPipelineCreated(ApiRoot);
     }
 
     public override async Task OnActivateAsync() {
-      UserId = this.GetPrimaryKeyLong();
+      _id = this.GetPrimaryKeyLong();
 
       using (var context = _shipContextFactory.CreateInstance()) {
         // Require user and token to already exist in database.
         var user = await context.Users
           .Include(x => x.Tokens)
-          .SingleOrDefaultAsync(x => x.Id == UserId);
+          .SingleOrDefaultAsync(x => x.Id == _id);
 
         if (user == null) {
-          throw new InvalidOperationException($"User {UserId} does not exist.");
+          throw new InvalidOperationException($"User {_id} does not exist.");
         }
+
+        _debugInfo = $"{user.Id} {user.Login}";
 
         if (!user.Tokens.Any()) {
-          throw new InvalidOperationException($"User {UserId} has no token.");
+          throw new InvalidOperationException($"User {_debugInfo} has no token.");
         }
 
-        AccessToken = user.Tokens.First().Token;
-        Login = user.Login;
+        var tokens = user.Tokens.Select(x => x.Token).ToArray();
+        _ghc = new GitHubClient(_configuration.GitHubApiRoot, _debugInfo, tokens);
+
 
         if (user.RateLimitReset != EpochUtility.EpochOffset) {
           UpdateRateLimit(new GitHubRateLimit(
-            AccessToken,
+            tokens.First(),
             user.RateLimit,
             user.RateLimitRemaining,
             user.RateLimitReset));
@@ -149,7 +123,7 @@
 
     public Task<GitHubResponse<IEnumerable<CommitComment>>> CommitComments(string repoFullName, string reference, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/commits/{WebUtility.UrlEncode(reference)}/comments", cacheOptions, priority);
-      return FetchPaged(request, (CommitComment x) => x.Id);
+      return _ghc.FetchPaged(request, (CommitComment x) => x.Id);
     }
 
     public Task<GitHubResponse<IEnumerable<Reaction>>> CommitCommentReactions(string repoFullName, long commentId, GitHubCacheDetails cacheOptions, RequestPriority priority) {
@@ -806,136 +780,6 @@
         // Normal rate limit tracking
         UpdateRateLimit(response.RateLimit);
       }
-    }
-
-    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint softPageLimit = uint.MaxValue, uint skipPages = 0, uint hardPageLimit = uint.MaxValue) {
-      if (request.Method != HttpMethod.Get) {
-        throw new InvalidOperationException("Only GETs can be paginated.");
-      }
-      if (softPageLimit == 0) {
-        throw new InvalidOperationException($"{nameof(softPageLimit)} must be omitted or greater than 0");
-      }
-      if (hardPageLimit == 0) {
-        throw new InvalidOperationException($"{nameof(hardPageLimit)} must be omitted or greater than 0");
-      }
-
-      // Always request the largest page size
-      if (!request.Parameters.ContainsKey("per_page")) {
-        request.AddParameter("per_page", PageSize);
-      }
-
-      // In all cases we need the first page 🙄
-      var response = await EnqueueRequest<IEnumerable<T>>(request);
-
-      // Save first page cache data
-      var dangerousFirstPageCacheData = response.CacheData;
-
-      // When successful, try to enumerate. Else immediately return the error.
-      if (response.IsOk) {
-        // If skipping pages, calculate here.
-        switch (skipPages) {
-          case 0:
-            break;
-          case 1 when response.Pagination?.Next != null:
-            var nextUri = response.Pagination.Next;
-            response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
-            break;
-          case 1: // response.Pagination == null
-            response.Result = Array.Empty<T>();
-            break;
-          default: // skipPages > 1
-            if (response.Pagination?.CanInterpolate != true) {
-              throw new InvalidOperationException($"Skipping pages is not supported for [{response.Request.Uri}]: {response.Pagination?.SerializeObject()}");
-            }
-            nextUri = response.Pagination.Interpolate().Skip((int)(skipPages - 1)).FirstOrDefault();
-            if (nextUri == null) {
-              // We skipped more pages than existed.
-              response.Pagination = null;
-              response.Result = Array.Empty<T>();
-            } else {
-              response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
-            }
-            break;
-        }
-
-        // Check hard limit
-        if (response.Pagination?.CanInterpolate == true
-          && response.Pagination.Interpolate().Count() > hardPageLimit) {
-          // We'll hit our hard limit, so return no results.
-          response.Pagination = null;
-          response.Result = Array.Empty<T>();
-
-          // Maybe this is a bad idea, but the goal with the hard limit is to cache the empty result we'll never be able to really enumerate.
-          response.CacheData = dangerousFirstPageCacheData;
-        } else if (softPageLimit > 1 && response.Pagination?.Next != null) {
-          // Now, if there's more to do, enumerate the results
-          // By default, upgrade background => subrequest
-          var subRequestPriority = RequestPriority.SubRequest;
-          // Ensure interactive => interactive
-          if (response.Request.Priority == RequestPriority.Interactive) {
-            subRequestPriority = RequestPriority.Interactive;
-          }
-
-          // Walk in order
-          response = await EnumerateSequential(response, subRequestPriority, softPageLimit);
-        }
-      }
-
-      // Response should have:
-      // 1) Pagination header from last page
-      // 2) Cache data from first page, IIF it's a complete result, and not truncated due to errors.
-      // 3) Number of pages returned
-
-      // Set first page cache data
-      response.DangerousFirstPageCacheData = dangerousFirstPageCacheData;
-
-      return response.Distinct(keySelector);
-    }
-
-    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {
-      var partial = false;
-      var results = new List<TItem>(firstPage.Result);
-
-      // Walks pages in order, one at a time.
-      var current = firstPage;
-      uint page = 1;
-
-      while (current.Pagination?.Next != null) {
-        if (page >= maxPages) {
-          partial = true;
-          break;
-        }
-
-        var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
-        nextReq.Priority = priority;
-        current = await EnqueueRequest<IEnumerable<TItem>>(nextReq);
-
-        if (current.IsOk) {
-          results.AddRange(current.Result);
-        } else if (maxPages < uint.MaxValue) {
-          // Return results up to this point.
-          partial = true;
-          break;
-        } else {
-          // On error, return the error
-          return current;
-        }
-
-        ++page;
-      }
-
-      // Keep cache from the first page, rate + pagination from the last.
-      var result = firstPage;
-      result.Result = results;
-      result.Pages = page;
-      result.RateLimit = current.RateLimit;
-
-      // Don't return cache data for partial results
-      if (partial) {
-        result.CacheData = null;
-      }
-
-      return result;
     }
   }
 }

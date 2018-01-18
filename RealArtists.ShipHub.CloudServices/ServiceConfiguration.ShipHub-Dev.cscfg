@@ -14,7 +14,7 @@
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString"
                value="UseDevelopmentStorage=true" />
       <Setting name="ShipHubContext"
-               value="Server=(local);Database=ShipHub;User=ShipUser;Password=uB4vtZbsjUGvqzmS0S6i;MultipleActiveResultSets=true" />
+               value="Server=(local);Database=ShipHub;User=ShipUser;Password=[];MultipleActiveResultSets=true" />
       <Setting name="APPINSIGHTS_INSTRUMENTATIONKEY"
                value="6299522e-2b2d-4ebd-bb78-e0968eca82f6" />
       <Setting name="AzureWebJobsServiceBus"
@@ -36,6 +36,10 @@
       <Setting name="StatHatKey"
                value="" />
       <Setting name="StatHatPrefix"
+               value="" />
+      <Setting name="GitHubAppId"
+               value="" />
+      <Setting name="GitHubAppSigningKey"
                value="" />
     </ConfigurationSettings>
   </Role>

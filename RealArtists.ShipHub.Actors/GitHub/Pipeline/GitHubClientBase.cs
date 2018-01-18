@@ -7,6 +7,7 @@
   using System.Net;
   using System.Net.Http;
   using System.Net.Http.Headers;
+  using System.Reflection;
   using System.Threading;
   using System.Threading.Tasks;
   using Common;
@@ -15,19 +16,50 @@
   using Microsoft.WindowsAzure.Storage;
   using RealArtists.ShipHub.Common.GitHub.Models;
 
+  public interface IGitHubClient {
+    string AccessToken { get; }
+    Uri ApiRoot { get; }
+    ProductInfoHeaderValue UserAgent { get; }
+    string UserInfo { get; }
+    long UserId { get; }
+
+    int NextRequestId();
+  }
+
   /// <summary>
   /// Currently supports redirects, pagination, rate limits and limited retry logic.
   /// 
-  /// WARNING! THIS HANDLER DOES NO RATE LIMIT ENFORCEMENT OR TRACKING
-  /// ALL LIMITING CODE SHOULD LIVE IN CALLING CODE
+  /// WARNING! THIS CLASS DOES NO RATE LIMIT ENFORCEMENT OR TRACKING
+  /// ALL ACCOUNTING SHOULD LIVE IN CALLING CODE
   /// </summary>
-  public class GitHubHandler {
+  public class GitHubClient {
     public const int LastAttempt = 2; // Make three attempts
     public const int RetryMilliseconds = 1000;
 
+    private static readonly string ApplicationName = Assembly.GetExecutingAssembly().GetName().Name;
+    private static readonly string ApplicationVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    public static ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
+
     private static readonly HttpClient _HttpClient = CreateGitHubHttpClient();
 
-    public async Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken) {
+    private Uri _apiRoot;
+
+    public GitHubClient(Uri apiRoot, string debugInfo, IEnumerable<string> tokens) {
+      _apiRoot = apiRoot;
+    }
+
+    private static void EnsureHandlerPipelineCreated(Uri apiRoot) {
+      if (SharedHandler != null) {
+        return;
+      }
+
+      // Set the maximum number of concurrent connections
+      HttpUtilities.SetServicePointConnectionLimit(apiRoot);
+
+      SharedHandler = new GitHubHandler();
+    }
+
+    public async Task<GitHubResponse<T>> Fetch<T>(GitHubRequest request, CancellationToken cancellationToken) {
       GitHubResponse<T> result = null;
 
       for (var attempt = 0; attempt <= LastAttempt; ++attempt) {
@@ -38,7 +70,7 @@
         }
 
         try {
-          result = await MakeRequest<T>(client, request, cancellationToken, null);
+          result = await MakeRequest<T>(request, cancellationToken, null);
         } catch (HttpRequestException hre) {
           if (attempt < LastAttempt) {
             hre.Report($"Error making GitHub request: {request.Uri}");
@@ -63,8 +95,8 @@
       return result;
     }
 
-    private async Task<GitHubResponse<T>> MakeRequest<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken, GitHubRedirect redirect) {
-      var uri = new Uri(client.ApiRoot, request.Uri);
+    private async Task<GitHubResponse<T>> MakeRequest<T>(GitHubRequest request, CancellationToken cancellationToken, GitHubRedirect redirect) {
+      var uri = new Uri(_apiRoot, request.Uri);
       var httpRequest = new HttpRequestMessage(request.Method, uri) {
         Content = request.CreateBodyContent(),
       };
@@ -269,6 +301,136 @@
       headers.Add("Time-Zone", "Etc/UTC");
 
       return httpClient;
+    }
+
+    private async Task<GitHubResponse<IEnumerable<T>>> FetchPaged<T, TKey>(GitHubRequest request, Func<T, TKey> keySelector, uint softPageLimit = uint.MaxValue, uint skipPages = 0, uint hardPageLimit = uint.MaxValue) {
+      if (request.Method != HttpMethod.Get) {
+        throw new InvalidOperationException("Only GETs can be paginated.");
+      }
+      if (softPageLimit == 0) {
+        throw new InvalidOperationException($"{nameof(softPageLimit)} must be omitted or greater than 0");
+      }
+      if (hardPageLimit == 0) {
+        throw new InvalidOperationException($"{nameof(hardPageLimit)} must be omitted or greater than 0");
+      }
+
+      // Always request the largest page size
+      if (!request.Parameters.ContainsKey("per_page")) {
+        request.AddParameter("per_page", PageSize);
+      }
+
+      // In all cases we need the first page 🙄
+      var response = await EnqueueRequest<IEnumerable<T>>(request);
+
+      // Save first page cache data
+      var dangerousFirstPageCacheData = response.CacheData;
+
+      // When successful, try to enumerate. Else immediately return the error.
+      if (response.IsOk) {
+        // If skipping pages, calculate here.
+        switch (skipPages) {
+          case 0:
+            break;
+          case 1 when response.Pagination?.Next != null:
+            var nextUri = response.Pagination.Next;
+            response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
+            break;
+          case 1: // response.Pagination == null
+            response.Result = Array.Empty<T>();
+            break;
+          default: // skipPages > 1
+            if (response.Pagination?.CanInterpolate != true) {
+              throw new InvalidOperationException($"Skipping pages is not supported for [{response.Request.Uri}]: {response.Pagination?.SerializeObject()}");
+            }
+            nextUri = response.Pagination.Interpolate().Skip((int)(skipPages - 1)).FirstOrDefault();
+            if (nextUri == null) {
+              // We skipped more pages than existed.
+              response.Pagination = null;
+              response.Result = Array.Empty<T>();
+            } else {
+              response = await EnqueueRequest<IEnumerable<T>>(response.Request.CloneWithNewUri(nextUri));
+            }
+            break;
+        }
+
+        // Check hard limit
+        if (response.Pagination?.CanInterpolate == true
+          && response.Pagination.Interpolate().Count() > hardPageLimit) {
+          // We'll hit our hard limit, so return no results.
+          response.Pagination = null;
+          response.Result = Array.Empty<T>();
+
+          // Maybe this is a bad idea, but the goal with the hard limit is to cache the empty result we'll never be able to really enumerate.
+          response.CacheData = dangerousFirstPageCacheData;
+        } else if (softPageLimit > 1 && response.Pagination?.Next != null) {
+          // Now, if there's more to do, enumerate the results
+          // By default, upgrade background => subrequest
+          var subRequestPriority = RequestPriority.SubRequest;
+          // Ensure interactive => interactive
+          if (response.Request.Priority == RequestPriority.Interactive) {
+            subRequestPriority = RequestPriority.Interactive;
+          }
+
+          // Walk in order
+          response = await EnumerateSequential(response, subRequestPriority, softPageLimit);
+        }
+      }
+
+      // Response should have:
+      // 1) Pagination header from last page
+      // 2) Cache data from first page, IIF it's a complete result, and not truncated due to errors.
+      // 3) Number of pages returned
+
+      // Set first page cache data
+      response.DangerousFirstPageCacheData = dangerousFirstPageCacheData;
+
+      return response.Distinct(keySelector);
+    }
+
+    private async Task<GitHubResponse<IEnumerable<TItem>>> EnumerateSequential<TItem>(GitHubResponse<IEnumerable<TItem>> firstPage, RequestPriority priority, uint maxPages) {
+      var partial = false;
+      var results = new List<TItem>(firstPage.Result);
+
+      // Walks pages in order, one at a time.
+      var current = firstPage;
+      uint page = 1;
+
+      while (current.Pagination?.Next != null) {
+        if (page >= maxPages) {
+          partial = true;
+          break;
+        }
+
+        var nextReq = current.Request.CloneWithNewUri(current.Pagination.Next);
+        nextReq.Priority = priority;
+        current = await EnqueueRequest<IEnumerable<TItem>>(nextReq);
+
+        if (current.IsOk) {
+          results.AddRange(current.Result);
+        } else if (maxPages < uint.MaxValue) {
+          // Return results up to this point.
+          partial = true;
+          break;
+        } else {
+          // On error, return the error
+          return current;
+        }
+
+        ++page;
+      }
+
+      // Keep cache from the first page, rate + pagination from the last.
+      var result = firstPage;
+      result.Result = results;
+      result.Pages = page;
+      result.RateLimit = current.RateLimit;
+
+      // Don't return cache data for partial results
+      if (partial) {
+        result.CacheData = null;
+      }
+
+      return result;
     }
   }
 }

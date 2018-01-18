@@ -196,6 +196,33 @@
         .WillCascadeOnDelete(false);
     }
 
+    public Task UpdateGitHubInstallation(long installationId, long accountId, string repositorySelection) {
+      return RetryOnDeadlock(async () => {
+        using (var sp = new DynamicStoredProcedure("[dbo].[UpdateGitHubInstallation]", ConnectionFactory)) {
+          dynamic dsp = sp;
+          dsp.InstallationId = installationId;
+          dsp.AccountId = accountId;
+          dsp.RepositorySelection = repositorySelection;
+          return await sp.ExecuteNonQueryAsync();
+        }
+      });
+    }
+
+    public Task<ChangeSummary> SetGitHubInstallationRepositories(long installationId, IEnumerable<long> repositoryIds) {
+      return ExecuteAndReadChanges("[dbo].[SetGitHubInstallationRepositories]", x => {
+        x.InstallationId = installationId;
+        if (repositoryIds?.Any() == true) {
+          x.RepoIds = CreateItemListTable("RepoIds", repositoryIds);
+        }
+      });
+    }
+
+    public Task<ChangeSummary> DeleteGitHubInstallation(long installationId) {
+      return ExecuteAndReadChanges("[dbo].[DeleteGitHubInstallation]", x => {
+        x.InstallationId = installationId;
+      });
+    }
+
     public Task BumpRepositoryVersion(long repositoryId) {
       return ExecuteCommandTextAsync(
         "UPDATE SyncLog SET [RowVersion] = DEFAULT WHERE OwnerType = 'repo' AND OwnerId = @RepoId AND ItemType = 'repository' and ItemId = @RepoId",

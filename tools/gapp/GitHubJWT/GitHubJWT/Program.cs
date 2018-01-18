@@ -36,7 +36,7 @@
     ";
 
     static void Main(string[] args) {
-      var cspFileName = "real-artists-ship-companion.2017-12-28.private-key.csp";
+      var cspFileName = "real-artists-ship-companion-dev.2017-12-28.private-key.csp";
       var rsa = new RSACryptoServiceProvider();
 
       if (File.Exists(cspFileName)) {
