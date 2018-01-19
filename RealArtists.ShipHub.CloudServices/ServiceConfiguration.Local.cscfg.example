@@ -37,6 +37,10 @@
                value="" />
       <Setting name="StatHatPrefix"
                value="" />
+      <Setting name="GitHubAppId"
+               value="" />
+      <Setting name="GitHubAppSigningKey"
+               value="" />
     </ConfigurationSettings>
   </Role>
 </ServiceConfiguration>

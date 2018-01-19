@@ -35,6 +35,9 @@
     string WebsiteHostName { get; }
     string AdminSecret { get; }
     string AppleDeveloperMerchantIdDomainAssociation { get; }
+    string GitHubAppId { get; }
+    string GitHubAppSigningKey { get; }
+    string GitHubAppWebhookSecret { get; }
   }
 
   /// <summary>
@@ -69,6 +72,9 @@
     public string WebsiteHostName { get; set; }
     public string AdminSecret { get; set; }
     public string AppleDeveloperMerchantIdDomainAssociation { get; set; }
+    public string GitHubAppId { get; set; }
+    public string GitHubAppSigningKey { get; set;  }
+    public string GitHubAppWebhookSecret { get; set; }
   }
 
   /// <summary>
@@ -202,5 +208,14 @@
 
     private Lazy<string> _appleDeveloperMerchantIdDomainAssociation = new Lazy<string>(() => GetSetting("AppleDeveloperMerchantIdDomainAssociation"));
     public string AppleDeveloperMerchantIdDomainAssociation => _appleDeveloperMerchantIdDomainAssociation.Value;
+
+    private Lazy<string> _gitHubAppId = new Lazy<string>(() => GetSetting("GitHubAppId"));
+    public string GitHubAppId => _gitHubAppId.Value;
+
+    private Lazy<string> _githubAppSigningKey = new Lazy<string>(() => GetSetting("GitHubAppSigningKey", true));
+    public string GitHubAppSigningKey => _githubAppSigningKey.Value;
+
+    private Lazy<string> _githubAppWebhookSecret = new Lazy<string>(() => GetSetting("GitHubAppWebhookSecret", true));
+    public string GitHubAppWebhookSecret => _githubAppWebhookSecret.Value;
   }
 }
