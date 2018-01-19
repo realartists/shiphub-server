@@ -144,7 +144,10 @@
       mockGrainFactory.Setup(x => x.GetGrain<IWebhookEventActor>(It.IsAny<long>(), It.IsAny<string>()))
         .Returns((long primaryKey, string prefix) => Task.FromResult(mockActor.Object));
 
-      var controller = new GitHubWebhookController(mockGrainFactory.Object);
+      var config = new ShipHubConfiguration() {
+      };
+
+      var controller = new GitHubWebhookController(mockGrainFactory.Object, config);
       ConfigureController(controller, eventName, body, signature);
       return await controller.ReceiveHook(type, id);
     }

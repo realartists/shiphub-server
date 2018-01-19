@@ -89,6 +89,8 @@
     <Compile Include="GitHub\Models\Project.cs" />
     <Compile Include="GitHub\Models\TimedToken.cs" />
     <Compile Include="GitHub\Models\WebhookPayloads\CommitCommentPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\InstallationPayload.cs" />
+    <Compile Include="GitHub\Models\WebhookPayloads\InstallationRepositoriesPayload.cs" />
     <Compile Include="GitHub\Models\WebhookPayloads\IssueCommentPayload.cs" />
     <Compile Include="GitHub\Models\WebhookPayloads\IssuesPayload.cs" />
     <Compile Include="GitHub\Models\WebhookPayloads\LabelPayload.cs" />

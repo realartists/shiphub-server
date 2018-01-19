@@ -24,12 +24,18 @@
     public const string DeliveryIdHeaderName = "X-GitHub-Delivery";
     public const string SignatureHeaderName = "X-Hub-Signature";
 
+    public const string HookTypeApp = "app";
+    public const string HookTypeOrg = "org";
+    public const string HookTypeRepo = "repo";
+
     public const int GrainSprayWidth = 256;
 
     private IAsyncGrainFactory _grainFactory;
+    private IShipHubConfiguration _config;
 
-    public GitHubWebhookController(IAsyncGrainFactory grainFactory) {
+    public GitHubWebhookController(IAsyncGrainFactory grainFactory, IShipHubConfiguration config) {
       _grainFactory = grainFactory;
+      _config = config;
     }
 
     private async Task<T> ReadPayloadAsync<T>(byte[] signature, byte[] secret) {
@@ -40,11 +46,21 @@
       using (var jsonReader = new JsonTextReader(textReader) { CloseInput = true }) {
         var payload = GitHubSerialization.JsonSerializer.Deserialize<T>(jsonReader);
         jsonReader.Close();
-        // We're not worth launching a timing attack against.
-        if (!hmac.Hash.SequenceEqual(signature)) {
+
+        // Constant time comparison (length not secret)
+        var fail = 1;
+        if (hmac.Hash.Length == signature.Length) {
+          fail = 0;
+          for (var i = 0; i < hmac.Hash.Length; ++i) {
+            fail |= hmac.Hash[i] ^ signature[i];
+          }
+        }
+
+        if (fail != 0) {
           Log.Info($"Invalid signature detected: {GetIPAddress()} {Request.RequestUri}");
           throw new HttpResponseException(HttpStatusCode.BadRequest);
         }
+
         return payload;
       }
     }
@@ -99,6 +115,9 @@
       return false;
     }
 
+    /// <summary>
+    /// For broswer requests.
+    /// </summary>
     [HttpGet]
     [AllowAnonymous]
     [Route("webhook")]
@@ -107,10 +126,27 @@
       return Redirect("https://www.realartists.com/docs/2.0/privacy.html");
     }
 
+    /// <summary>
+    /// For GitHub App hooks.
+    /// </summary>
+    [HttpPost]
+    [AllowAnonymous]
+    [Route("github-app/hook")]
+    public Task<IHttpActionResult> ReceiveAppHook() {
+      return HandleHook(HookTypeApp);
+    }
+
+    /// <summary>
+    /// For standard webhooks.
+    /// </summary>
     [HttpPost]
     [AllowAnonymous]
     [Route("webhook/{type:regex(^(org|repo)$)}/{id:long}")]
-    public async Task<IHttpActionResult> ReceiveHook(string type, long id) {
+    public Task<IHttpActionResult> ReceiveHook(string type, long id) {
+      return HandleHook(type, id);
+    }
+
+    private async Task<IHttpActionResult> HandleHook(string type = null, long id = 0) {
       if (!IsRequestFromGitHub()) {
         Log.Info($"Rejecting webhook request from impersonator: {GetIPAddress()} {Request.RequestUri}");
         return BadRequest("Not you.");
@@ -123,99 +159,129 @@
       // signature of the form "sha1=..."
       var signature = Request.ParseHeader(SignatureHeaderName, x => SoapHexBinary.Parse(x.Substring(5)).Value);
 
-      using (var context = new ShipHubContext()) {
-        Hook hook;
-        if (type == "org") {
-          hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.OrganizationId == id);
-        } else {
-          hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == id);
+      string secret;
+      long? hookId = null;
+      if (type == HookTypeApp) {
+        // There's only one app (for now) so we don't need the ID.
+        // Lookup and validate the secret from app configuration.
+        // This is safe because org/repo admins cannot see the secret.
+        secret = _config.GitHubAppWebhookSecret;
+      } else {
+        using (var context = new ShipHubContext()) {
+          Hook hook = null;
+
+          if (type == HookTypeOrg) {
+            hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.OrganizationId == id);
+          } else if (type == HookTypeRepo) {
+            hook = await context.Hooks.AsNoTracking().SingleOrDefaultAsync(x => x.RepositoryId == id);
+          }
+
+          secret = hook?.Secret.ToString();
+          hookId = hook?.Id;
         }
+      }
 
-        if (hook == null) {
-          // I don't care anymore. This is GitHub's problem.
-          // They should support unsubscribing from a hook with a special response code or body.
-          // We may not even have credentials to remove the hook anymore.
-          return NotFound();
+      if (string.IsNullOrWhiteSpace(secret)) {
+        // I don't care anymore. This is GitHub's problem.
+        // They should support unsubscribing from a hook with a special response code or body.
+        // We may not even have credentials to remove the hook anymore.
+        return NotFound();
+      }
+
+      var secretBytes = Encoding.UTF8.GetBytes(secret);
+      var webhookEventActor = await _grainFactory.GetGrain<IWebhookEventActor>(0); // Stateless worker grain with single pool (0)
+      var debugInfo = $"[{type}:{id}#{eventName}/{deliveryId}]";
+
+      Task hookTask = null;
+
+      switch (eventName) {
+        case "commit_comment": {
+            var payload = await ReadPayloadAsync<CommitCommentPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.CommitComment(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "installation" when type == HookTypeApp: {
+            var payload = await ReadPayloadAsync<InstallationPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Installation(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "installation_repositories" when type == HookTypeApp: {
+            var payload = await ReadPayloadAsync<InstallationRepositoriesPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.InstallationRepositories(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "issue_comment": {
+            var payload = await ReadPayloadAsync<IssueCommentPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.IssueComment(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "issues": {
+            var payload = await ReadPayloadAsync<IssuesPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Issues(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "label": {
+            var payload = await ReadPayloadAsync<LabelPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Label(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "milestone": {
+            var payload = await ReadPayloadAsync<MilestonePayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Milestone(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "ping":
+          await ReadPayloadAsync<object>(signature, secretBytes); // read payload to validate signature
+          break;
+        case "pull_request_review_comment": {
+            var payload = await ReadPayloadAsync<PullRequestReviewCommentPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.PullRequestReviewComment(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "pull_request_review": {
+            var payload = await ReadPayloadAsync<PullRequestReviewPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.PullRequestReview(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "pull_request": {
+            var payload = await ReadPayloadAsync<PullRequestPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.PullRequest(DateTimeOffset.UtcNow, payload);
+          }
+          break;
+        case "push": {
+            var payload = await ReadPayloadAsync<PushPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Push(DateTimeOffset.UtcNow, payload);
+            break;
+          }
+        case "repository": {
+            var payload = await ReadPayloadAsync<RepositoryPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Repository(DateTimeOffset.UtcNow, payload);
+            break;
+          }
+        case "status": {
+            var payload = await ReadPayloadAsync<StatusPayload>(signature, secretBytes);
+            hookTask = webhookEventActor.Status(DateTimeOffset.UtcNow, payload);
+            break;
+          }
+        default:
+          Log.Error($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
+          break;
+      }
+
+      // Just in case
+      if (hookTask == null && eventName != "ping") {
+        Log.Error($"Webhook event '{eventName}' does net set the {nameof(hookTask)}. Failures will be silent.");
+      }
+
+      hookTask?.LogFailure(debugInfo);
+
+      // TODO: LAST SEEN FOR APP HOOKS
+
+      if (hookId.HasValue) {
+        using (var context = new ShipHubContext()) {
+          // Reset the ping count so this webhook won't get reaped.
+          await context.BulkUpdateHooks(seen: new[] { hookId.Value });
         }
-
-        var secret = Encoding.UTF8.GetBytes(hook.Secret.ToString());
-        var webhookEventActor = await _grainFactory.GetGrain<IWebhookEventActor>(0); // Stateless worker grain with single pool (0)
-        var debugInfo = $"[{type}:{id}#{eventName}/{deliveryId}]";
-
-        Task hookTask = null;
-        switch (eventName) {
-          case "commit_comment": {
-              var payload = await ReadPayloadAsync<CommitCommentPayload>(signature, secret);
-              hookTask = webhookEventActor.CommitComment(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "issue_comment": {
-              var payload = await ReadPayloadAsync<IssueCommentPayload>(signature, secret);
-              hookTask = webhookEventActor.IssueComment(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "issues": {
-              var payload = await ReadPayloadAsync<IssuesPayload>(signature, secret);
-              hookTask = webhookEventActor.Issues(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "label": {
-              var payload = await ReadPayloadAsync<LabelPayload>(signature, secret);
-              hookTask = webhookEventActor.Label(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "milestone": {
-              var payload = await ReadPayloadAsync<MilestonePayload>(signature, secret);
-              hookTask = webhookEventActor.Milestone(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "ping":
-            await ReadPayloadAsync<object>(signature, secret); // read payload to validate signature
-            break;
-          case "pull_request_review_comment": {
-              var payload = await ReadPayloadAsync<PullRequestReviewCommentPayload>(signature, secret);
-              hookTask = webhookEventActor.PullRequestReviewComment(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "pull_request_review": {
-              var payload = await ReadPayloadAsync<PullRequestReviewPayload>(signature, secret);
-              hookTask = webhookEventActor.PullRequestReview(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "pull_request": {
-              var payload = await ReadPayloadAsync<PullRequestPayload>(signature, secret);
-              hookTask = webhookEventActor.PullRequest(DateTimeOffset.UtcNow, payload);
-            }
-            break;
-          case "push": {
-              var payload = await ReadPayloadAsync<PushPayload>(signature, secret);
-              hookTask = webhookEventActor.Push(DateTimeOffset.UtcNow, payload);
-              break;
-            }
-          case "repository": {
-              var payload = await ReadPayloadAsync<RepositoryPayload>(signature, secret);
-              hookTask = webhookEventActor.Repository(DateTimeOffset.UtcNow, payload);
-              break;
-            }
-          case "status": {
-              var payload = await ReadPayloadAsync<StatusPayload>(signature, secret);
-              hookTask = webhookEventActor.Status(DateTimeOffset.UtcNow, payload);
-              break;
-            }
-          default:
-            Log.Error($"Webhook event '{eventName}' is not handled. Either support it or don't subscribe to it.");
-            break;
-        }
-
-        // Just in case
-        if (hookTask == null && eventName != "ping") {
-          Log.Error($"Webhook event '{eventName}' does net set the {nameof(hookTask)}. Failures will be silent.");
-        }
-
-        hookTask?.LogFailure(debugInfo);
-
-        // Reset the ping count so this webhook won't get reaped.
-        await context.BulkUpdateHooks(seen: new[] { hook.Id });
       }
 
       return StatusCode(HttpStatusCode.Accepted);

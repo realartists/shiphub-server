@@ -39,6 +39,7 @@
     <Compile Include="EchoActor.cs" />
     <Compile Include="GitHub\GitHubActorPool.cs" />
     <Compile Include="GitHub\GitHubAppActor.cs" />
+    <Compile Include="GitHub\GitHubInstallationActor.cs" />
     <Compile Include="GitHub\GitHubPoolEmptyException.cs" />
     <Compile Include="GitHub\Logging\LoggingMessageProcessingHandler.cs" />
     <Compile Include="GitHub\Pipeline\GitHubHandler.cs" />

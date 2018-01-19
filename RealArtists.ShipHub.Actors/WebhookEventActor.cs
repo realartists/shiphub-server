@@ -53,6 +53,44 @@
       await updater.Changes.Submit(_queueClient);
     }
 
+    public async Task Installation(DateTimeOffset eventDate, InstallationPayload payload) {
+      var updater = new DataUpdater(_contextFactory, _mapper);
+
+      switch (payload.Action) {
+        case "created":
+          await updater.UpdateGitHubInstallation(payload.Installation, eventDate);
+          break;
+        case "deleted":
+          await updater.DeleteGitHubInstallation(payload.Installation.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Installation)}.");
+      }
+
+      // Trigger repo sync
+      var inst = _grainFactory.GetGrain<IInstallationActor>(payload.Installation.Id);
+      inst.UpdateAccessibleRepos().LogFailure();
+
+      await updater.Changes.Submit(_queueClient);
+    }
+
+    public async Task InstallationRepositories(DateTimeOffset eventDate, InstallationRepositoriesPayload payload) {
+      var updater = new DataUpdater(_contextFactory, _mapper);
+
+      switch (payload.Action) {
+        case "added":
+          await updater.UpdateGitHubInstallation(payload.Installation, eventDate);
+          break;
+        case "removed":
+          await updater.DeleteGitHubInstallation(payload.Installation.Id);
+          break;
+        default:
+          throw new NotImplementedException($"Action '{payload.Action}' is not valid for event {nameof(Installation)}.");
+      }
+
+      await updater.Changes.Submit(_queueClient);
+    }
+
     public async Task IssueComment(DateTimeOffset eventDate, IssueCommentPayload payload) {
       var updater = new DataUpdater(_contextFactory, _mapper);
 
