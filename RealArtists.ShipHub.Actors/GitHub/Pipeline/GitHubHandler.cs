@@ -15,18 +15,13 @@
   using Microsoft.WindowsAzure.Storage;
   using RealArtists.ShipHub.Common.GitHub.Models;
 
-  public interface IGitHubHandler {
-    Task<GitHubResponse<T>> Fetch<T>(IGitHubClient client, GitHubRequest request, CancellationToken cancellationToken);
-  }
-
   /// <summary>
-  /// This is the core GitHub handler. It's the end of the line and does not delegate.
   /// Currently supports redirects, pagination, rate limits and limited retry logic.
   /// 
   /// WARNING! THIS HANDLER DOES NO RATE LIMIT ENFORCEMENT OR TRACKING
-  /// ALL LIMITING CODE SHOULD LIVE IN GitHubActor
+  /// ALL LIMITING CODE SHOULD LIVE IN CALLING CODE
   /// </summary>
-  public class GitHubHandler : IGitHubHandler {
+  public class GitHubHandler {
     public const int LastAttempt = 2; // Make three attempts
     public const int RetryMilliseconds = 1000;
 
@@ -144,7 +139,7 @@
       result.CacheData = new GitHubCacheDetails() {
         UserId = client.UserId,
         Path = request.Path,
-        AccessToken = client.AccessToken,
+        AccessToken = httpRequest.Headers.Authorization.Parameter,
         ETag = response.Headers.ETag?.Tag,
         LastModified = response.Content?.Headers?.LastModified,
         PollInterval = response.ParseHeader("X-Poll-Interval", x => (x == null) ? TimeSpan.Zero : TimeSpan.FromSeconds(int.Parse(x))),
@@ -256,6 +251,7 @@
       );
 
       var httpClient = new HttpClient(handler, true) {
+        // TODO: Decouple this
         Timeout = GitHubActor.GitHubRequestTimeout,
       };
 

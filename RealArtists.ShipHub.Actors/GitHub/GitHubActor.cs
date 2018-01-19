@@ -62,7 +62,7 @@
     public ProductInfoHeaderValue UserAgent { get; } = new ProductInfoHeaderValue(ApplicationName, ApplicationVersion);
     public string UserInfo => $"{UserId} {Login}";
 
-    private static IGitHubHandler SharedHandler;
+    private static GitHubHandler SharedHandler;
     private static void EnsureHandlerPipelineCreated(Uri apiRoot) {
       if (SharedHandler != null) {
         return;

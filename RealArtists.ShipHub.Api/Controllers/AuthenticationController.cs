@@ -57,7 +57,7 @@
       "read:org",
       "user:email");
 
-    private static readonly IGitHubHandler _handlerPipeline = new GitHubHandler();
+    private static readonly GitHubHandler _handlerPipeline = new GitHubHandler();
 
     private IShipHubConfiguration _config;
     private IAsyncGrainFactory _grainFactory;
