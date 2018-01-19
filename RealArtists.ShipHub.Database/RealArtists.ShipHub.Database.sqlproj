@@ -191,6 +191,11 @@
     <Build Include="Procedures\WatchQuery.sql" />
     <Build Include="Tables\QueryLog.sql" />
     <Build Include="Procedures\RollToken.sql" />
+    <Build Include="Tables\GitHubInstallations.sql" />
+    <Build Include="Tables\GitHubInstallationRepositories.sql" />
+    <Build Include="Procedures\UpdateGitHubInstallation.sql" />
+    <Build Include="Procedures\DeleteGitHubInstallation.sql" />
+    <Build Include="Procedures\SetGitHubInstallationRepositories.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Security\ShipUser.sql" />

@@ -70,6 +70,12 @@
       });
     }
 
+    public async Task DeleteGitHubInstallation(long installationId) {
+      await WithContext(async context => {
+        _changes.UnionWith(await context.DeleteGitHubInstallation(installationId));
+      });
+    }
+
     public async Task DeleteIssueComment(long commentId, DateTimeOffset? date) {
       await WithContext(async context => {
         _changes.UnionWith(await context.DeleteIssueComment(commentId, date));
@@ -239,6 +245,13 @@
 
       await WithContext(async context => {
         _changes.UnionWith(await context.BulkUpdateCommitStatuses(repositoryId, reference, mappedStatuses));
+      });
+    }
+
+    public async Task UpdateGitHubInstallation(g.Installation installation, DateTimeOffset date) {
+      await WithContext(async context => {
+        await UpdateAccounts(date, new[] { installation.Account });
+        await context.UpdateGitHubInstallation(installation.Id, installation.Account.Id, installation.RepositorySelection);
       });
     }
 
