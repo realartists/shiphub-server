@@ -85,14 +85,14 @@
     // GitHub Actions
     ////////////////////////////////////////////////////////////
 
-    public Task<GitHubResponse<IEnumerable<gh.Repository>>> Repositories(GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
-      var request = new GitHubRequest(HttpMethod.Get, $"installation/repositories", priority) {
+    public Task<GitHubResponse<IEnumerable<gh.Repository>>> Repositories(GitHubCacheDetails cacheOptions, RequestPriority priority) {
+      var request = new GitHubRequest($"installation/repositories", cacheOptions, priority) {
         AcceptHeaderOverride = GitHubAppAccept,
       };
       return Fetch<IEnumerable<gh.Repository>>(request);
     }
 
-    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions = null, RequestPriority priority = RequestPriority.Background) {
+    public Task<GitHubResponse<IDictionary<string, JToken>>> BranchProtection(string repoFullName, string branchName, GitHubCacheDetails cacheOptions, RequestPriority priority) {
       var request = new GitHubRequest($"repos/{repoFullName}/branches/{WebUtility.UrlEncode(branchName)}/protection") {
         AcceptHeaderOverride = GitHubAppAccept,
       };
