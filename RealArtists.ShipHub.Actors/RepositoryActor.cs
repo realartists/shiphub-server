@@ -115,7 +115,6 @@
     private IDisposable _syncTimer;
     private IDisposable _syncIssueTemplateTimer;
     private bool _needsIssueTemplateSync;
-    private bool _pollIssueTemplate;
     private int _syncCount;
     private bool _issuesFullyImported;
     private bool _needsForceResyncIssues;
@@ -186,10 +185,7 @@
         _issueTemplateContent = repo.IssueTemplate;
         _pullRequestTemplateContent = repo.PullRequestTemplate;
 
-        // if we have no webhook, we must poll the ISSUE_TEMPLATE
-        _pollIssueTemplate = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
         _needsIssueTemplateSync = _contentsRootMetadata == null;
-        this.Info($"{_fullName} polls ISSUE_TEMPLATE:{_pollIssueTemplate}");
 
         _protectedBranchMetadata = await context.ProtectedBranches
           .Where(x => x.RepositoryId == repo.Id)
@@ -510,10 +506,22 @@
     }
 
     private async Task UpdateIssueTemplate(DataUpdater updater, IGitHubPoolable github) {
-      if (!(_needsIssueTemplateSync || _pollIssueTemplate && (_syncCount % PollIssueTemplateSkip == 0))) {
+      // Is sync requested? If so, just do it.
+      var sync = _needsIssueTemplateSync;
+
+      if (sync == false && (_syncCount % PollIssueTemplateSkip == 0)) {
+        using (var context = _contextFactory.CreateInstance()) {
+          // if we have no webhook, we must poll the ISSUE_TEMPLATE
+          var hasHook = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
+          sync = (hasHook == false);
+        }
+      }
+
+      if (sync == false) {
         this.Info($"{_fullName} skipping ISSUE_TEMPLATE sync");
         return;
       }
+
       this.Info($"{_fullName} performing ISSUE_TEMPLATE sync");
 
       if (_repoSize == 0) {
