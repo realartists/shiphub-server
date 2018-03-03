@@ -1274,7 +1274,6 @@
 
     public Task<ChangeSummary> BulkUpdateHooks(
       IEnumerable<HookTableType> hooks = null,
-      IEnumerable<long> seen = null,
       IEnumerable<long> deleted = null) {
       return ExecuteAndReadChanges("[dbo].[BulkUpdateHooks]", x => {
         if (hooks?.Any() == true) {
@@ -1296,10 +1295,6 @@
               y.LastError,
             },
             hooks);
-        }
-
-        if (seen?.Any() == true) {
-          x.Seen = CreateItemListTable("Seen", seen);
         }
 
         if (deleted?.Any() == true) {

@@ -296,7 +296,6 @@
         Assert.AreEqual(repo.Id, hook.RepositoryId);
         Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.OrganizationId);
-        Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
 
         Assert.AreEqual(repo.FullName, installRepoName);
@@ -419,7 +418,6 @@
         Assert.AreEqual(org.Id, hook.OrganizationId);
         Assert.AreEqual(9999, hook.GitHubId);
         Assert.Null(hook.RepositoryId);
-        Assert.Null(hook.LastSeen);
         Assert.NotNull(hook.Secret);
 
         Assert.AreEqual("web", installWebhook.Name);

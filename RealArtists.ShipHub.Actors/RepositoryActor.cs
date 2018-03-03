@@ -520,7 +520,7 @@
       if (sync == false && (_syncCount % PollIssueTemplateSkip == 0)) {
         using (var context = _contextFactory.CreateInstance()) {
           // if we have no webhook, we must poll the ISSUE_TEMPLATE
-          var hasHook = await context.Hooks.Where(hook => hook.RepositoryId == _repoId && hook.LastSeen != null).AnyAsync();
+          var hasHook = await context.Hooks.AnyAsync(hook => hook.RepositoryId == _repoId);
           sync = (hasHook == false);
         }
       }

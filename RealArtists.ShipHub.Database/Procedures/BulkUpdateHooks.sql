@@ -1,6 +1,5 @@
 ﻿CREATE PROCEDURE [dbo].[BulkUpdateHooks]
   @Hooks HookTableType READONLY,
-  @Seen ItemListTableType READONLY,
   @Deleted ItemListTableType READONLY
 AS
 BEGIN
@@ -39,13 +38,6 @@ BEGIN
     OUTPUT DELETED.Id, DELETED.RepositoryId, DELETED.OrganizationId INTO @Changes
     FROM @Deleted as d
       INNER LOOP JOIN Hooks as h ON (h.Id = d.Item)
-    OPTION (FORCE ORDER)
-
-    -- Seen hooks
-    UPDATE Hooks SET
-      LastSeen = SYSUTCDATETIME()
-    FROM @Seen as s
-      INNER LOOP JOIN Hooks as h ON (h.Id = s.Item)
     OPTION (FORCE ORDER)
 
     -- Changes

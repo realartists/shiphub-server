@@ -3,7 +3,6 @@
   [GitHubId]         BIGINT           NULL,
   [Secret]           UNIQUEIDENTIFIER NOT NULL,
   [Events]           NVARCHAR(500)    NOT NULL,
-  [LastSeen]         DATETIMEOFFSET   NULL,
   [RepositoryId]     BIGINT           NULL,
   [OrganizationId]   BIGINT           NULL,
   [LastError]        DATETIMEOFFSET   NULL,

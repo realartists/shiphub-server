@@ -12,8 +12,6 @@
     [StringLength(500)]
     public string Events { get; set; }
 
-    public DateTimeOffset? LastSeen { get; set; }
-
     public long? RepositoryId { get; set; }
     public long? OrganizationId { get; set; }
 
