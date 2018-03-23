@@ -1,7 +1,5 @@
 ﻿namespace RealArtists.ShipHub.Api.Tests {
-  using System;
   using System.Collections.Generic;
-  using System.Globalization;
   using System.Linq;
   using System.Threading.Tasks;
   using Common.DataModel;
@@ -70,63 +68,6 @@
     }
 
     [Test]
-    public async Task ModeIsFreeWithNoSubscription() {
-      using (var context = new ShipHubContext()) {
-        var env = await MakeEnvironment(context);
-
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = env.user1.Id,
-          State = SubscriptionState.NotSubscribed,
-        });
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = env.org.Id,
-          State = SubscriptionState.NotSubscribed,
-        });
-        await context.SaveChangesAsync();
-
-        var entry = await GetSubscriptionResponse(env.user1);
-        Assert.AreEqual(SubscriptionMode.Free, entry.Mode,
-          "Mode is free if nobody (personal or org) is paying.");
-      }
-    }
-
-    [Test]
-    public async Task ModeIsFreeWhenTrialHasEnded() {
-      using (var context = new ShipHubContext()) {
-        var env = await MakeEnvironment(context);
-
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = env.user1.Id,
-          State = SubscriptionState.InTrial,
-          TrialEndDate = DateTimeOffset.UtcNow.AddHours(-1),
-        });
-        await context.SaveChangesAsync();
-
-        var entry = await GetSubscriptionResponse(env.user1);
-        Assert.AreEqual(SubscriptionMode.Free, entry.Mode, "Mode is free if trial has passed.");
-        Assert.Null(entry.TrialEndDate, "should have no trial end date");
-      }
-    }
-
-    [Test]
-    public async Task ModeIsTrialWhenInTrial() {
-      using (var context = new ShipHubContext()) {
-        var env = await MakeEnvironment(context);
-
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = env.user1.Id,
-          State = SubscriptionState.InTrial,
-          TrialEndDate = DateTimeOffset.UtcNow.AddDays(15),
-        });
-        await context.SaveChangesAsync();
-
-        var entry = await GetSubscriptionResponse(env.user1);
-        Assert.AreEqual(SubscriptionMode.Trial, entry.Mode,
-          "We're in trial mode when user is in trial");
-      }
-    }
-
-    [Test]
     public async Task ModeIsPaidWithPersonalSubscription() {
       using (var context = new ShipHubContext()) {
         var env = await MakeEnvironment(context);
@@ -183,60 +124,6 @@
         Assert.AreEqual(SubscriptionMode.Paid, entry.Mode,
           "A paid organization overrides a user's trial");
         Assert.IsNull(entry.TrialEndDate, "should not be set if we're in paid mode");
-      }
-    }
-
-    [Test]
-    public async Task TrialEndDateIsSetWhenUserIsInTrial() {
-      using (var context = new ShipHubContext()) {
-        var env = await MakeEnvironment(context);
-
-        var trialEndDate = DateTimeOffset.UtcNow.AddDays(15);
-
-        context.Subscriptions.Add(new Subscription() {
-          AccountId = env.user1.Id,
-          State = SubscriptionState.InTrial,
-          TrialEndDate = trialEndDate,
-        });
-        await context.SaveChangesAsync();
-
-        var entry = await GetSubscriptionResponse(env.user1);
-        Assert.AreEqual(SubscriptionMode.Trial, entry.Mode,
-          "A paid organization overrides a user's trial");
-        Assert.AreEqual(trialEndDate, entry.TrialEndDate);
-      }
-    }
-
-    [Test]
-    public async Task ManageSubscriptionsRefreshHashChanges() {
-      using (var context = new ShipHubContext()) {
-        var env = await MakeEnvironment(context);
-
-        var user1Sub = context.Subscriptions.Add(new Subscription() {
-          AccountId = env.user1.Id,
-          State = SubscriptionState.NotSubscribed,
-        });
-        var orgSub = context.Subscriptions.Add(new Subscription() {
-          AccountId = env.org.Id,
-          State = SubscriptionState.NotSubscribed,
-        });
-        await context.SaveChangesAsync();
-
-        var firstHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
-
-        orgSub.State = SubscriptionState.Subscribed;
-        await context.SaveChangesAsync();
-        var secondHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
-
-        Assert.AreNotEqual(secondHash, firstHash,
-          "hash should change because the org's subscription state changed");
-
-        user1Sub.State = SubscriptionState.Subscribed;
-        await context.SaveChangesAsync();
-        var thirdHash = (await GetSubscriptionResponse(env.user1)).ManageSubscriptionsRefreshHash;
-
-        Assert.AreNotEqual(thirdHash, secondHash,
-          "hash should change because the user's subscription state changed");
       }
     }
   }

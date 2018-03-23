@@ -46,7 +46,6 @@
   <ItemGroup>
     <Compile Include="AutoRollbackAttribute.cs" />
     <Compile Include="BillingControllerTests.cs" />
-    <Compile Include="BillingQueueTests.cs" />
     <Compile Include="ChargeBeeTestUtil.cs" />
     <Compile Include="ChargeBeeWebHookControllerTests.cs" />
     <Compile Include="GitHubWebhookTests.cs" />

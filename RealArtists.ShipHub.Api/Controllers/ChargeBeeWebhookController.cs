@@ -545,19 +545,6 @@
             Version = sub.Version,
           }
         });
-
-        var afterState = sub.State;
-        if (afterState != beforeState && sub.Account is Organization) {
-          // For all users associated with this org and that have logged into Ship
-          // (i.e., they have a Subscription record), go re-evaluate whether the
-          // user should have a complimentary personal subscription.
-          var orgAccountIds = context.OrganizationAccounts
-            .AsNoTracking()
-            .Where(x => x.OrganizationId == sub.AccountId && x.User.Subscription != null)
-            .Select(x => x.UserId)
-            .ToArray();
-          tasks.AddRange(orgAccountIds.Select(x => _queueClient.BillingUpdateComplimentarySubscription(x)));
-        }
       }
 
       if (!changes.IsEmpty) {

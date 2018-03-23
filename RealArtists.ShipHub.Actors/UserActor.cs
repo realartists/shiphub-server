@@ -48,8 +48,6 @@
     int _linkedReposDesired = 0;
     int _syncReposCurrent = 0;
     int _syncReposDesired = 0;
-    int _billingStateCurrent = 0;
-    int _billingStateDesired = 0;
 
     // Local cache
     private SyncSettings _syncSettings;
@@ -167,12 +165,6 @@
       return Task.CompletedTask;
     }
 
-    public Task SyncBillingState() {
-      // Important, but not interactive. Can wait for next sync cycle.
-      Interlocked.Increment(ref _billingStateDesired);
-      return Sync();
-    }
-
     public async Task SyncRepositories() {
       await _syncLimit.WaitAsync();
       try {
@@ -215,20 +207,6 @@
         await _syncLimit.WaitAsync();
         try {
           metaDataMeaningfullyChanged |= await InternalSync(updater);
-
-          // Billing
-          // Must come last since orgs can change above
-          var savedBillingCurrent = _billingStateCurrent;
-          var savedBillingDesired = _billingStateDesired;
-          if (savedBillingCurrent < savedBillingDesired) {
-            _queueClient.BillingGetOrCreatePersonalSubscription(_userId).LogFailure(_userInfo);
-
-            if (_orgActors.Any()) {
-              _queueClient.BillingSyncOrgSubscriptionState(_orgActors.Keys, _userId).LogFailure(_userInfo);
-            }
-
-            Interlocked.CompareExchange(ref _billingStateCurrent, savedBillingDesired, savedBillingCurrent);
-          }
         } finally {
           _syncLimit.Release();
         }
@@ -287,10 +265,6 @@
 
             _orgActors = orgs.Result
               .ToDictionary(x => x.Organization.Id, x => _grainFactory.GetGrain<IOrganizationActor>(x.Organization.Id));
-
-            // When this user's org membership changes, re-evaluate whether or not they
-            // should have a complimentary personal subscription.
-            _queueClient.BillingUpdateComplimentarySubscription(_userId).LogFailure(_userInfo);
 
             // Also re-evaluate their linked repos
             Interlocked.Increment(ref _linkedReposDesired);
