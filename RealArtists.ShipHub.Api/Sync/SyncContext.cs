@@ -1,14 +1,11 @@
 ﻿namespace RealArtists.ShipHub.Api.Sync {
   using System;
   using System.Collections.Generic;
-  using System.Data.Entity;
   using System.Linq;
-  using System.Text;
   using System.Threading.Tasks;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
-  using Common.Hashing;
   using Filters;
   using Messages;
   using Messages.Entries;
@@ -118,57 +115,13 @@
       await RecordUsage();
     }
 
+    private const string SubscriptionsRefreshHashString = "A43A9A8C-B7CC-4213-B481-769419D805BF";
     private async Task SendSubscriptionEntry() {
-      SubscriptionResponse response;
-      using (var context = new ShipHubContext()) {
-        var personalSub = await context.Subscriptions.SingleOrDefaultAsync(x => x.AccountId == _user.UserId);
-        var orgs = await context.OrganizationAccounts
-          .Where(x => x.UserId == _user.UserId)
-          .Select(x => x.Organization)
-          .Include(x => x.Subscription)
-          .ToListAsync();
-        var numOfSubscribedOrgs = orgs
-          .Where(x => x.Subscription != null && x.Subscription.StateName.Equals(SubscriptionState.Subscribed.ToString()))
-          .Count();
-
-        SubscriptionMode mode;
-        DateTimeOffset? trialEndDate = null;
-
-        if (personalSub == null) {
-          mode = SubscriptionMode.Paid;
-        } else if (numOfSubscribedOrgs > 0) {
-          mode = SubscriptionMode.Paid;
-        } else if (personalSub.State == SubscriptionState.Subscribed) {
-          mode = SubscriptionMode.Paid;
-        } else if (personalSub.State == SubscriptionState.InTrial) {
-          if (personalSub.TrialEndDate > DateTimeOffset.UtcNow) {
-            mode = SubscriptionMode.Trial;
-            trialEndDate = personalSub.TrialEndDate;
-          } else { // personalSub.TrialEndDate is null or in the past
-            mode = SubscriptionMode.Free;
-          }
-        } else {
-          mode = SubscriptionMode.Free;
-        }
-
-        var userState = $"{_user.UserId}:{personalSub?.StateName}";
-        var orgStates = orgs
-          .OrderBy(x => x.Id)
-          .Select(x => $"{x.Id}:{x.Subscription?.StateName}");
-
-        string hashString;
-        using (var hashFunction = new MurmurHash3()) {
-          var str = string.Join(";", new[] { userState }.Concat(orgStates));
-          var hash = hashFunction.ComputeHash(Encoding.UTF8.GetBytes(str));
-          hashString = new Guid(hash).ToString();
-        }
-
-        response = new SubscriptionResponse() {
-          Mode = mode,
-          TrialEndDate = trialEndDate,
-          ManageSubscriptionsRefreshHash = hashString,
-        };
-      }
+      var response = new SubscriptionResponse() {
+        Mode = SubscriptionMode.Paid,
+        TrialEndDate = null,
+        ManageSubscriptionsRefreshHash = SubscriptionsRefreshHashString,
+      };
 
       await _connection.SendJsonAsync(response);
     }

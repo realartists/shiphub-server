@@ -12,15 +12,12 @@
   using System.Threading;
   using System.Threading.Tasks;
   using System.Web.Http;
-  using System.Web.Http.Results;
-  using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;
   using Common.GitHub;
   using Mixpanel;
   using Newtonsoft.Json;
-  using Newtonsoft.Json.Linq;
   using QueueClient;
   using cb = ChargeBee;
   using cba = ChargeBee.Api;
@@ -55,32 +52,18 @@
 
   [RoutePrefix("billing")]
   public class BillingController : ShipHubApiController {
+    private const string EndOfLifeBlogPostUrl = "https://www.realartists.com/blog/move-to-trash.html";
+
     private IShipHubConfiguration _configuration;
     private IShipHubQueueClient _queueClient;
-    private IAsyncGrainFactory _grainFactory;
     private cb.ChargeBeeApi _chargeBee;
     private IMixpanelClient _mixpanelClient;
 
-    public BillingController(IShipHubConfiguration config, IAsyncGrainFactory grainFactory, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient, IMixpanelClient mixpanelClient) {
+    public BillingController(IShipHubConfiguration config, cb.ChargeBeeApi chargeBee, IShipHubQueueClient queueClient, IMixpanelClient mixpanelClient) {
       _configuration = config;
       _queueClient = queueClient;
-      _grainFactory = grainFactory;
       _chargeBee = chargeBee;
       _mixpanelClient = mixpanelClient;
-    }
-
-    private static IEnumerable<string> GetActionLines(Account account) {
-      if (account.Subscription.State == SubscriptionState.Subscribed) {
-        // Should server send the "Already Subscribed" place holder text?
-        return new string[0];
-      } else if (account is Organization) {
-        return new[] {
-          "$5 per active user / month",
-          "Minimum charge of $5 per month",
-        };
-      } else {
-        return new[] { "$5 per month" };
-      }
     }
 
     [HttpGet]
@@ -129,9 +112,9 @@
            },
            Subscribed = hasSubscription,
            // TODO: Only allow edits for purchaser or admins.
-           CanEdit = true,
+           CanEdit = hasSubscription,
            ActionUrl = actionUrl,
-           PricingLines = GetActionLines(x),
+           PricingLines = new[] { "free until service shutdown July 1, 2018" },
          };
        }).ToList();
 
@@ -210,220 +193,15 @@
       return Redirect($"https://{_configuration.WebsiteHostName}/signup-thankyou.html#{WebUtility.UrlEncode(hashParamBase64)}");
     }
 
-    private async Task<RedirectResult> BuyPersonal(Account actorAccount, long targetId, string analyticsId = null) {
-      var subList = (await _chargeBee.Subscription.List()
-        .CustomerId().Is($"user-{targetId}")
-        .PlanId().Is("personal")
-        .Limit(1)
-        .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
-        .Request()).List;
-
-      if (subList.Count == 0) {
-        throw new ArgumentException("Could not find existing subscription");
-      }
-
-      var sub = subList.First().Subscription;
-
-      if (sub.Status == cbm.Subscription.StatusEnum.Active) {
-        throw new ArgumentException("Existing subscription is already active");
-      }
-
-      var subMetaData = (sub.MetaData ?? new JObject()).ToObject<ChargeBeePersonalSubscriptionMetadata>(GitHubSerialization.JsonSerializer);
-
-      var pageRequest = _chargeBee.HostedPage.CheckoutExisting()
-        .SubscriptionId(sub.Id)
-        .SubscriptionPlanId("personal")
-        .Embed(false);
-
-      var isMemberOfPaidOrg = false;
-      using (var context = new ShipHubContext()) {
-        isMemberOfPaidOrg = await context.OrganizationAccounts
-          .AnyAsync(x =>
-            x.UserId == targetId &&
-            x.Organization.Subscription.StateName == SubscriptionState.Subscribed.ToString());
-      }
-
-      string couponToAdd = null;
-
-      if (sub.Status == cbm.Subscription.StatusEnum.InTrial) {
-        if (isMemberOfPaidOrg) {
-          // If you belong to a paid organization, your personal subscription
-          // is complimentary.
-          couponToAdd = "member_of_paid_org";
-        } else {
-          // Apply a coupon to make up for any unused free trial time that's
-          // still remaining.  Don't want to penalize folks that decide to buy
-          // before the free trial is up.
-          var totalDays = (sub.TrialEnd.Value.ToUniversalTime() - DateTime.UtcNow).TotalDays;
-          var trialPeriodDays = subMetaData.TrialPeriodDays ?? 30;
-
-          // Always round up to the nearest whole day.
-          var daysLeftOnTrial = (int)Math.Min(trialPeriodDays, Math.Floor(totalDays + 1));
-          couponToAdd = $"trial_days_left_{daysLeftOnTrial}";
-        }
-
-        pageRequest
-          // Setting trial end to 0 makes the checkout page run the charge
-          // immediately rather than waiting for the trial period to end.
-          .SubscriptionTrialEnd(0);
-      } else if (sub.Status == cbm.Subscription.StatusEnum.Cancelled) {
-        // This case would happen if the customer was a subscriber in the past, cancelled,
-        // and is now returning to signup again.
-        pageRequest.AddParam("reactivate", true);
-
-        if (isMemberOfPaidOrg) {
-          couponToAdd = "member_of_paid_org";
-        }
-      }
-
-      // ChargeBee's hosted page will throw an error if we request to add a coupon
-      // that's already been applied to this subscription.
-      if (couponToAdd != null && sub.Coupons?.SingleOrDefault(x => x.CouponId() == couponToAdd) == null) {
-        pageRequest.SubscriptionCoupon(couponToAdd);
-      }
-
-      if (sub.PlanUnitPrice == 900) {
-        // This was an old subscription that was started before the price change.  ChargeBee
-        // provided us no way to update the "Plan Unit Price" for a subscription/customer that
-        // had no payment info set.  As a workaround, we override the price at checkout time.
-        pageRequest.SubscriptionPlanUnitPrice(500);
-      }
-
-      pageRequest
-        .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
-        .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
-          ActorId = actorAccount.Id,
-          ActorLogin = actorAccount.Login,
-          AnalyticsId = analyticsId,
-        }));
-
-      var result = (await pageRequest.Request()).HostedPage;
-
-      return Redirect(result.Url);
-    }
-
-    private async Task<RedirectResult> BuyOrganization(Account actorAccount, long targetId, Account targetAccount, string analyticsId = null) {
-      var ghc = await _grainFactory.GetGrain<IGitHubActor>(actorAccount.Id);
-      var ghcUser = (await ghc.User()).Result;
-      var ghcOrg = (await ghc.Organization(targetAccount.Login)).Result;
-
-      var emails = (await ghc.UserEmails()).Result;
-      var primaryEmail = emails.First(x => x.Primary);
-
-      string firstName = null;
-      string lastName = null;
-      var companyName = ghcOrg.Name.IsNullOrWhiteSpace() ? ghcOrg.Login : ghcOrg.Name;
-
-      // Name is optional for GitHub.
-      if (!ghcUser.Name.IsNullOrWhiteSpace()) {
-        var nameParts = ghcUser.Name.Trim().Split(' ');
-        firstName = string.Join(" ", nameParts.Take(nameParts.Count() - 1));
-        lastName = nameParts.Last();
-      }
-
-      var sub = (await _chargeBee.Subscription.List()
-        .CustomerId().Is($"org-{targetId}")
-        .PlanId().Is("organization")
-        .Limit(1)
-        .SortByCreatedAt(cb.Filters.Enums.SortOrderEnum.Desc)
-        .Request()).List.FirstOrDefault()?.Subscription;
-
-      if (sub != null) {
-        // Customers with past subscriptions have to use the checkout existing flow.
-        var updateRequest = _chargeBee.Customer.Update($"org-{targetId}")
-          .AddParam("cf_github_username", targetAccount.Login)
-          .Company(companyName);
-
-        if (firstName != null) {
-          updateRequest.FirstName(firstName);
-        }
-
-        if (lastName != null) {
-          updateRequest.LastName(lastName);
-        }
-
-        await updateRequest.Request();
-
-        var result = (await _chargeBee.HostedPage.CheckoutExisting()
-          .SubscriptionId(sub.Id)
-          .SubscriptionPlanId("organization")
-          .Embed(false)
-          // ChargeBee's CheckoutExisting flow will not re-activate a cancelled subscription
-          // on its own, so we'll have to do that ourselves in the return handler.  It's a
-          // bummer because it means the customer's card won't get run as part of checkout.
-          // If they provide invalid CC info, they won't know it until after they've completed
-          // the checkout page; the failure info will have to come in an email.
-          .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
-            ActorId = actorAccount.Id,
-            ActorLogin = actorAccount.Login,
-            AnalyticsId = analyticsId,
-          }))
-          .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish")
-          .Request()).HostedPage;
-
-        return Redirect(result.Url);
-      } else {
-        var checkoutRequest = _chargeBee.HostedPage.CheckoutNew()
-       .CustomerId($"org-{targetId}")
-       .CustomerEmail(primaryEmail.Email)
-       .CustomerCompany(companyName)
-       .SubscriptionPlanId("organization")
-       .AddParam("customer[cf_github_username]", ghcOrg.Login)
-       .Embed(false)
-       .PassThruContent(JsonConvert.SerializeObject(new BuyPassThruContent() {
-         ActorId = actorAccount.Id,
-         ActorLogin = actorAccount.Login,
-         AnalyticsId = analyticsId,
-       }))
-       .RedirectUrl($"https://{_configuration.ApiHostName}/billing/buy/finish");
-
-        if (!firstName.IsNullOrWhiteSpace()) {
-          checkoutRequest.CustomerFirstName(firstName);
-        }
-
-        if (!lastName.IsNullOrWhiteSpace()) {
-          checkoutRequest.CustomerLastName(lastName);
-        }
-
-        var checkoutResult = (await checkoutRequest.Request()).HostedPage;
-
-        return Redirect(checkoutResult.Url);
-      }
-    }
-
     [AllowAnonymous]
     [HttpGet]
     [Route("buy/{actorId}/{targetId}/{signature}")]
-    public async Task<IHttpActionResult> Buy(long actorId, long targetId, string signature, [FromUri(Name = "analytics_id")] string analyticsId = null) {
+    public IHttpActionResult Buy(long actorId, long targetId, string signature) {
       if (!CreateSignature(actorId, targetId).Equals(signature)) {
         return BadRequest("Signature does not match.");
       }
 
-      Account actorAccount;
-      Account targetAccount;
-      using (var context = new ShipHubContext()) {
-        actorAccount = await context.Accounts.SingleAsync(x => x.Id == actorId);
-        targetAccount = await context.Accounts.SingleAsync(x => x.Id == targetId);
-      }
-
-      RedirectResult result;
-      if (targetAccount is Organization) {
-        result = await BuyOrganization(actorAccount, targetId, targetAccount, analyticsId);
-      } else {
-        result = await BuyPersonal(actorAccount, targetId, analyticsId);
-      }
-
-      if (analyticsId != null) {
-        await _mixpanelClient.TrackAsync(
-          "Redirect to ChargeBee",
-          analyticsId,
-          new {
-            _github_id = actorAccount.Id,
-            _github_login = actorAccount.Login,
-          });
-      }
-
-      return result;
+      return Redirect(EndOfLifeBlogPostUrl);
     }
 
     [AllowAnonymous]

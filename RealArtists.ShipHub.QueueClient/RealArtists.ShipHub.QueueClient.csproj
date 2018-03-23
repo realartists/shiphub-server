@@ -43,7 +43,6 @@
     <Compile Include="ShipHubQueueClient.cs" />
     <Compile Include="ServiceBusFactory.cs" />
     <Compile Include="ShipHubTopicNames.cs" />
-    <Compile Include="ShipHubQueueNames.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WebJobInterop.cs" />
   </ItemGroup>

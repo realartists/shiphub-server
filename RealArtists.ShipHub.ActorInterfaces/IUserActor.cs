@@ -7,7 +7,7 @@
   /// <summary>
   /// Represents a ShipHub user.
   /// </summary>
-  [Version(Constants.InterfaceBaseVersion + 2)]
+  [Version(Constants.InterfaceBaseVersion + 3)]
   public interface IUserActor : IGrainWithIntegerKey {
     /// <summary>
     /// Saves the provided sync settings and applies them immediately.
@@ -20,11 +20,6 @@
     /// the grain will deactivate.
     /// </summary>
     Task Sync();
-
-    /// <summary>
-    /// Called whenever a client connects and says Hello.
-    /// </summary>
-    Task SyncBillingState();
 
     /// <summary>
     /// Forces a refresh of repos next sync. Helpful when one is known to
