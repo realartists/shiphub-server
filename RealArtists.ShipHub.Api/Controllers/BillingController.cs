@@ -114,7 +114,7 @@
            // TODO: Only allow edits for purchaser or admins.
            CanEdit = hasSubscription,
            ActionUrl = actionUrl,
-           PricingLines = new[] { "free until service shutdown July 1, 2018" },
+           PricingLines = new[] { "Free" },
          };
        }).ToList();
 
