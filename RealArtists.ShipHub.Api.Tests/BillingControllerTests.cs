@@ -7,7 +7,6 @@
   using System.Text;
   using System.Threading.Tasks;
   using System.Web.Http.Results;
-  using ActorInterfaces.GitHub;
   using Common;
   using Common.DataModel;
   using Common.DataModel.Types;

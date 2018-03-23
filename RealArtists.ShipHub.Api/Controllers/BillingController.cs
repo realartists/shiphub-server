@@ -66,20 +66,6 @@
       _mixpanelClient = mixpanelClient;
     }
 
-    private static IEnumerable<string> GetActionLines(Account account) {
-      if (account.Subscription.State == SubscriptionState.Subscribed) {
-        // Should server send the "Already Subscribed" place holder text?
-        return new string[0];
-      } else if (account is Organization) {
-        return new[] {
-          "$5 per active user / month",
-          "Minimum charge of $5 per month",
-        };
-      } else {
-        return new[] { "$5 per month" };
-      }
-    }
-
     [HttpGet]
     [Route("accounts")]
     public async Task<IHttpActionResult> Accounts() {
@@ -126,9 +112,9 @@
            },
            Subscribed = hasSubscription,
            // TODO: Only allow edits for purchaser or admins.
-           CanEdit = true,
+           CanEdit = hasSubscription,
            ActionUrl = actionUrl,
-           PricingLines = GetActionLines(x),
+           PricingLines = new[] { "free until service shutdown July 1, 2018" },
          };
        }).ToList();
 
