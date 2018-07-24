@@ -1,31 +1,74 @@
-# shiphub-server ![Build Status](https://realartists.visualstudio.com/_apis/public/build/definitions/88275168-cb10-4b52-bf29-9eb07b033ef7/3/badge)
-Aspires to be as good as GHSyncConnection.
+﻿#  Ship: A GitHub Issues and Pull Requests App for macOS
 
-##Deployment
-I tried to keep it simple but despite my best efforts it's complicated now.
+Ship was formerly a commercial GitHub Issues and Pull Requests client distributed by [Real Artists, Inc](https://www.realartists.com). The product is now discontinued, and the source code is now publicly available here.
 
-### DB on Azure SQL
-TODO
+While Real Artists has no intention of developing the product further, therefore will not be reviewing or accepting pull requests, anyone so inclined is welcome to fork the repository or copy any parts of the code.
 
-### App Server on Azure Websites
-TODO
+# shiphub-server: The Magic Behind the Scenes
 
-### Web Job on Azure Websites
-TODO
+So you want to run [Ship](https://github.com/realartists/shiphub-cocoa) and need a server to point it at? Or maybe you just want to see how it all worked? You're in the right place. This README will cover the basics you need to know to run Ship's server component locally for development.
 
-### Orleans on Cloud Services
-#### Prerequisites
-* Visual Studio 2015 Pro/Enterprise Update 3+ (Get from MSDN)
-* [Azure SDK 2.9.6+](https://azure.microsoft.com/en-us/downloads/)
+This guide is neither detailed nor complete. It should be just enough for someone familiar with C#, Visual Studio, and Azure to get things going.
 
-#### Configuration
-For security reasons we don't commit configuration secrets to git. If required, the Dev and Live configurations in git can be updated with fresh values, but that's a pain. Instead, download the running configuration here:
+## Prerequisites
 
-* [Dev](https://portal.azure.com/#resource/subscriptions/b9f28aae-2074-4097-b5ce-ec28f68c4981/resourceGroups/ShipHub-Dev/providers/Microsoft.ClassicCompute/domainNames/shiphub-dev-cs/configuration)
-* [Live](https://portal.azure.com/#resource/subscriptions/b9f28aae-2074-4097-b5ce-ec28f68c4981/resourceGroups/ShipHub-Live/providers/Microsoft.ClassicCompute/domainNames/shiphub-live-cs/configuration)
+While I tried to keep the server simple, I failed. The Azure SDK emulators are almost enough, but they lack the required Service Bus features. You'll need an Azure account.
 
-Just save over the example files. **DON'T FORGET AND COMMIT THEM LATER!**
+#### SQL Server 2017
 
-#### Deployment
-To actually deploy the cluster, right click on the `RealArtists.ShipHub.CloudServices` project and select `Publish`. Select the right target profile and go. It'll between 3 and 35 minutes. Yes, really.
+Grab the latest [SQL Server](https://www.microsoft.com/en-us/sql-server/sql-server-downloads). I only tested with Developer Edition, but Express *might* work. You probably also want [SQL Server Management Studio](https://docs.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?view=sql-server-2017) or [SQL Operations Studio](https://docs.microsoft.com/en-us/sql/sql-operations-studio/download?view=sql-server-2017), but neither is required.
 
+#### Visual Studio 2017
+
+Grab the latest [Visual Studio](https://visualstudio.microsoft.com/downloads/). Community is fine. You'll need the "ASP.NET and Web Development," "Azure Development," and "Data Storage and Processing" roles.
+
+#### Azure Service Bus
+
+Create an Azure Service Bus namespace [here](https://portal.azure.com/#create/Microsoft.ServiceBus). Note the credentials, since you'll need them later.
+
+## Configuration
+
+Clone the repository and open `RealArtists.ShipHub.sln`. If Visual Studio complains or won't load some of the projects, install any missing tooling.
+
+Build the solution. This will do two important things:
+
+  1. Restore all needed NuGet packages.
+  2. Create configuration files in which to store your secrets.
+
+Open the "Solution Items" and set appropriate values in the `Secret.AppSettings.config` and `Secret.ConnectionStrings.config` files. 
+
+Open the `RealArtists.ShipHub.CloudServices` project and set proper values in the `ServiceConfiguration.Local.cscfg` file.
+
+Rebuild the solution to propogate your changes.
+
+## Database
+
+[Enable SQL Authentication](https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/change-server-authentication-mode?view=sql-server-2017). You need not (and should not) enable the `sa` account.
+
+Enable contained databases:
+
+    sp_configure 'contained database authentication', 1;
+    GO
+    RECONFIGURE;
+    GO
+
+The `RealArtists.ShipHub.Database` project contains the schema you'll need to run Ship. Deploy the generated dacpac file to the database you specified in `Secret.ConnectionStrings.config`.
+
+Make the database you're using for ship contained:
+
+    USE [master]
+    GO
+    ALTER DATABASE [ShipHub] SET CONTAINMENT = PARTIAL
+    GO
+
+## IIS or IIS Express
+
+You'll need a certificate your Mac (running the Ship client) thinks is valid. You can get a real one or generate your own. Install the certificate.
+
+Register `RealArtists.ShipHub.Api` with IIS or IIS Express with a TLS 1.2 Endpoint.
+
+## Start All the Things
+
+To run Ship, you need to at a minimum be running the Orleans silo and the API. Open the solution properties, select `Startup Project`, `Multiple Startup Projects` and ensure `RealArtists.ShipHub.Api` and `RealArtists.ShipHub.CloudServices` are set to start.
+
+If you get an error saying, "Unable to get setting value Parameter name: profileName," close Visual Studio. It'll work when you re-open it ¯\\_(ツ)_/¯
