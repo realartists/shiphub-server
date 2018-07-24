@@ -188,4 +188,11 @@
     </CodeAnalysisDictionary>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="..\SecretStubs.targets" />
+  <PropertyGroup>
+    <BuildDependsOn>
+      EnsureShipHubSecrets;
+      $(BuildDependsOn)
+    </BuildDependsOn>
+  </PropertyGroup>
 </Project>

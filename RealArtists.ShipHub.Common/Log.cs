@@ -185,7 +185,7 @@ namespace RealArtists.ShipHub.Common {
         _timer = new Timer((ctx) => {
           ((LogSink)ctx).TimerFired();
         }, this, Timeout.Infinite, Timeout.Infinite);
-        _syslog = new Syslog("logs.papertrailapp.com", 36114);
+        _syslog = new Syslog("localhost", 36114);
         _consumerThread = new Thread(ProcessBuffer) {
           IsBackground = true,
         };
